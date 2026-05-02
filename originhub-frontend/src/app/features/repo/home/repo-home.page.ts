@@ -73,8 +73,17 @@ export class RepoHomePage implements OnDestroy {
   private readonly repoRouteParams = parentParamMapSignal(this.route);
   readonly owner = computed(() => this.repoRouteParams().get('owner') ?? '');
   readonly repoName = computed(() => this.repoRouteParams().get('repo') ?? '');
-  readonly httpsCloneUrl = computed(() => `ssh://${environment.gitUrl}/${this.owner()}/${this.repoName()}.git`);
-  readonly sshCloneUrl = computed(() => `ssh://${environment.gitUrl}/${this.owner()}/${this.repoName()}.git`);
+  /** Smart HTTP Git under `/git/{owner}/{repo}` (no `.git` suffix; server maps to bare repo on disk). */
+  readonly httpsCloneUrl = computed(() => {
+    const base = environment.apiUrl.replace(/\/$/, '');
+    const o = encodeURIComponent(this.owner());
+    const r = encodeURIComponent(this.repoName());
+    return `${base}/git/${o}/${r}`;
+  });
+
+  readonly sshCloneUrl = computed(
+    () => `ssh://${environment.gitUrl}/${this.owner()}/${this.repoName()}.git`,
+  );
 
   constructor() {
     const parent = this.route.parent;

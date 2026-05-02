@@ -16,7 +16,8 @@
         <h1 class="text-base-content text-3xl font-bold sm:text-4xl">Documentation</h1>
       </div>
       <p class="text-base-content/70 text-lg">
-        Get started with OriginHub. Configure your local environment and start pushing code.
+        Get started with OriginHub. Clone over HTTPS or SSH (JGit smart HTTP and SSH), configure your environment, and
+        push code.
       </p>
     </header>
 
@@ -29,7 +30,16 @@
             class="text-primary cursor-pointer hover:underline"
             (click)="scrollToSection('local-setup'); $event.preventDefault()"
           >
-            Local environment setup
+            SSH keys (for Git over SSH)
+          </a>
+        </li>
+        <li>
+          <a
+            href="#http-git"
+            class="text-primary cursor-pointer hover:underline"
+            (click)="scrollToSection('http-git'); $event.preventDefault()"
+          >
+            HTTP / HTTPS Git
           </a>
         </li>
         <li>
@@ -59,11 +69,14 @@
           <span class="bg-primary/20 text-primary flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm"
             >1</span
           >
-          Local environment setup
+          SSH keys (for Git over SSH)
         </h2>
         <p class="text-base-content/70 mb-6">
-          To use OriginHub over SSH, you need to generate an SSH key and add it to your account. Follow these steps for
-          local development (default SSH port: 2222).
+          To clone and push over SSH (default port <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-sm"
+            >2222</code
+          >), add an SSH key to your account. If you only use
+          <a href="#http-git" class="text-primary hover:underline">HTTP or HTTPS Git</a>, you can skip this and sign in
+          with your username and password instead.
         </p>
 
         <div class="space-y-6">
@@ -95,7 +108,7 @@
           </div>
 
           <div class="step-block">
-            <h3 class="text-base-content mb-2 text-lg font-semibold">Step 4 — Clone without SSH Config</h3>
+            <h3 class="text-base-content mb-2 text-lg font-semibold">Step 4 — Clone over SSH (full URL)</h3>
 
             <div class="code-block">
               <pre
@@ -104,6 +117,36 @@
             </div>
           </div>
         </div>
+      </section>
+
+      <section id="http-git">
+        <h2 class="text-base-content mb-4 flex items-center gap-2 text-2xl font-bold">
+          <span class="bg-primary/20 text-primary flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm"
+            >2</span
+          >
+          HTTP / HTTPS Git
+        </h2>
+        <p class="text-base-content/70 mb-4">
+          OriginHub exposes Git smart HTTP on the same origin as the REST API, under
+          <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-sm">/git/&lt;owner&gt;/&lt;repo&gt;</code>. Use
+          <strong>HTTP Basic</strong> authentication: your OriginHub username and account password when Git prompts for
+          credentials (for example on <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-sm">git clone</code>,
+          <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-sm">git pull</code>, or
+          <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-sm">git push</code>).
+        </p>
+        <p class="text-base-content/70 mb-4">
+          Use the URL form below (no <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-sm">.git</code> suffix
+          in the path). With TLS in front of the app, use <code class="font-mono text-sm">https://</code> instead of
+          <code class="font-mono text-sm">http://</code>.
+        </p>
+        <div class="code-block mb-4">
+          <pre class="m-0 overflow-x-auto p-4 text-sm"><code>git clone http://localhost:8080/git/owner/repo</code></pre>
+        </div>
+        <p class="text-base-content/70 text-sm">
+          Smart HTTP can be disabled server-side via
+          <code class="bg-base-300 rounded px-1.5 py-0.5 font-mono text-xs">originhub.http.enabled=false</code>; if so,
+          use SSH only.
+        </p>
       </section>
 
       <section id="ssh-config">
@@ -139,7 +182,7 @@ git push origin main</code></pre>
       <section id="clone-push">
         <h2 class="text-base-content mb-4 flex items-center gap-2 text-2xl font-bold">
           <span class="bg-primary/20 text-primary flex h-8 w-8 items-center justify-center rounded-lg font-mono text-sm"
-            >2</span
+            >4</span
           >
           Clone &amp; push quick reference
         </h2>
@@ -153,11 +196,17 @@ git push origin main</code></pre>
             </thead>
             <tbody>
               <tr>
-                <td>Clone (full URL)</td>
+                <td>Clone (HTTPS / HTTP)</td>
+                <td>
+                  <code class="font-mono text-sm">git clone http://localhost:8080/git/owner/repo</code>
+                </td>
+              </tr>
+              <tr>
+                <td>Clone (SSH full URL)</td>
                 <td><code class="font-mono text-sm">git clone ssh://git&#64;localhost:2222/owner/repo.git</code></td>
               </tr>
               <tr>
-                <td>Clone (with config)</td>
+                <td>Clone (SSH with config)</td>
                 <td><code class="font-mono text-sm">git clone originhub-local:owner/repo.git</code></td>
               </tr>
               <tr>

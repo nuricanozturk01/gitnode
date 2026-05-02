@@ -57,18 +57,31 @@ public class GitSmartHttpController {
       @NonNull HttpServletResponse response)
       throws IOException {
 
-    validatePath(owner, repo);
-    final var tenant = this.authenticator.authenticate(request);
-    final var service = request.getParameter("service");
-    final var isWrite = "receive-pack".equals(service);
-    this.accessValidator.assertAccess(tenant, owner, repo, isWrite);
+    this.validatePath(owner, repo);
+
+    com.nuricanozturk.originhub.shared.tenant.entities.Tenant tenant;
+    String service;
+    boolean isWrite;
+
+    try {
+      tenant = this.authenticator.authenticate(request);
+      service = request.getParameter("service");
+      isWrite = "receive-pack".equals(service);
+      this.accessValidator.assertAccess(tenant, owner, repo, isWrite);
+    } catch (final IllegalArgumentException ex) {
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      response.setContentType("text/plain");
+      response.getWriter().write("Unauthorized: " + ex.getMessage());
+      log.warn("HTTP Git auth failed: {}", ex.getMessage());
+      return;
+    }
 
     try (final var repository = this.gitProvider.open(owner, repo)) {
       response.setContentType("application/x-" + service + "-advertisement");
       response.addHeader("Cache-Control", "no-cache");
 
       final var output = response.getOutputStream();
-      sendAdvertisement(output, service, repository);
+      this.sendAdvertisement(output, service, repository);
 
       log.info(
           "Git HTTP refs request: user={}, repo={}/{}, service={}, write={}",
@@ -82,15 +95,25 @@ public class GitSmartHttpController {
 
   @PostMapping("/{owner}/{repo}/git-upload-pack")
   public void uploadPack(
-      @PathVariable @NonNull String owner,
-      @PathVariable @NonNull String repo,
-      @NonNull HttpServletRequest request,
-      @NonNull HttpServletResponse response)
+      final @PathVariable String owner,
+      final @PathVariable String repo,
+      final HttpServletRequest request,
+      final HttpServletResponse response)
       throws IOException {
 
-    validatePath(owner, repo);
-    final var tenant = this.authenticator.authenticate(request);
-    this.accessValidator.assertAccess(tenant, owner, repo, false);
+    this.validatePath(owner, repo);
+
+    com.nuricanozturk.originhub.shared.tenant.entities.Tenant tenant;
+    try {
+      tenant = this.authenticator.authenticate(request);
+      this.accessValidator.assertAccess(tenant, owner, repo, false);
+    } catch (final IllegalArgumentException ex) {
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      response.setContentType("text/plain");
+      response.getWriter().write("Unauthorized: " + ex.getMessage());
+      log.warn("HTTP Git auth failed: {}", ex.getMessage());
+      return;
+    }
 
     log.info("Git HTTP upload-pack: user={}, repo={}/{}", tenant.getUsername(), owner, repo);
 
@@ -108,13 +131,23 @@ public class GitSmartHttpController {
   public void receivePack(
       @PathVariable @NonNull String owner,
       @PathVariable @NonNull String repo,
-      jakarta.servlet.http.HttpServletRequest request,
-      jakarta.servlet.http.HttpServletResponse response)
+      @NonNull HttpServletRequest request,
+      @NonNull HttpServletResponse response)
       throws IOException {
 
-    validatePath(owner, repo);
-    final var tenant = this.authenticator.authenticate(request);
-    this.accessValidator.assertAccess(tenant, owner, repo, true);
+    this.validatePath(owner, repo);
+
+    com.nuricanozturk.originhub.shared.tenant.entities.Tenant tenant;
+    try {
+      tenant = this.authenticator.authenticate(request);
+      this.accessValidator.assertAccess(tenant, owner, repo, true);
+    } catch (final IllegalArgumentException ex) {
+      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      response.setContentType("text/plain");
+      response.getWriter().write("Unauthorized: " + ex.getMessage());
+      log.warn("HTTP Git auth failed: {}", ex.getMessage());
+      return;
+    }
 
     log.info("Git HTTP receive-pack: user={}, repo={}/{}", tenant.getUsername(), owner, repo);
 

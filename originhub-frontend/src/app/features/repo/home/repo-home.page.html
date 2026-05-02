@@ -9,13 +9,27 @@
     <p class="text-base-content/60 mb-6 text-sm">This repository is empty. Push your first commit to get started.</p>
 
     <div class="space-y-6">
-      <div>
-        <h3 class="text-base-content mb-2 text-sm font-semibold">Quick setup — clone URL</h3>
-        <div class="bg-base-200 border-base-300 flex items-center gap-2 rounded-lg border p-3">
-          <span class="text-base-content flex-1 truncate font-mono text-sm">{{ httpsCloneUrl() }}</span>
-          <button class="btn btn-ghost btn-xs" (click)="copyText(httpsCloneUrl(), 'https')">
-            @if (copied() === 'https') { Copied! } @else { Copy }
-          </button>
+      <div class="space-y-3">
+        <div>
+          <h3 class="text-base-content mb-2 text-sm font-semibold">HTTPS — clone URL</h3>
+          <p class="text-base-content/55 mb-2 text-xs">
+            Use your OriginHub username and password when Git asks for credentials.
+          </p>
+          <div class="bg-base-200 border-base-300 flex items-center gap-2 rounded-lg border p-3">
+            <span class="text-base-content flex-1 truncate font-mono text-sm">{{ httpsCloneUrl() }}</span>
+            <button class="btn btn-ghost btn-xs" (click)="copyText(httpsCloneUrl(), 'https')">
+              @if (copied() === 'https') { Copied! } @else { Copy }
+            </button>
+          </div>
+        </div>
+        <div>
+          <h3 class="text-base-content mb-2 text-sm font-semibold">SSH — clone URL</h3>
+          <div class="bg-base-200 border-base-300 flex items-center gap-2 rounded-lg border p-3">
+            <span class="text-base-content flex-1 truncate font-mono text-sm">{{ sshCloneUrl() }}</span>
+            <button class="btn btn-ghost btn-xs" (click)="copyText(sshCloneUrl(), 'ssh')">
+              @if (copied() === 'ssh') { Copied! } @else { Copy }
+            </button>
+          </div>
         </div>
       </div>
 
@@ -131,26 +145,52 @@
       <h3 class="text-base-content text-lg font-semibold">Clone repository</h3>
       <button class="btn btn-sm btn-ghost" (click)="closeCloneDialog()">Close</button>
     </div>
-    <p class="text-base-content/70 mb-4 text-sm">Use SSH and copy the URL.</p>
+    <p class="text-base-content/70 mb-4 text-sm">
+      Clone with HTTPS (same host as the API; sign in with your account password) or SSH (SSH key on your profile).
+    </p>
 
-    <div class="form-control mt-4 space-y-3">
-      <label class="label" for="clone-ssh">
-        <span class="label-text font-medium">SSH</span>
-      </label>
-      <div class="join w-full">
-        <input
-          id="clone-ssh"
-          class="input input-bordered join-item mono w-full text-sm"
-          readonly
-          [value]="sshCloneUrl()"
-        />
-        <button class="btn btn-primary join-item min-w-24 gap-2" (click)="copyText(sshCloneUrl(), 'ssh')">
-          @if (copied() === 'ssh') {
-          <lucide-icon name="checkCircle" class="size-4"></lucide-icon>
-          Copied! } @else {
-          <lucide-icon name="copy" class="size-4"></lucide-icon>
-          Copy }
-        </button>
+    <div class="form-control mt-4 space-y-5">
+      <div>
+        <label class="label pb-1" for="clone-https">
+          <span class="label-text font-medium">HTTPS</span>
+        </label>
+        <p class="text-base-content/55 mb-2 text-xs">Git will prompt for your OriginHub username and password.</p>
+        <div class="join w-full">
+          <input
+            id="clone-https"
+            class="input input-bordered join-item mono w-full text-sm"
+            readonly
+            [value]="httpsCloneUrl()"
+          />
+          <button class="btn btn-primary join-item min-w-24 gap-2" (click)="copyText(httpsCloneUrl(), 'https')">
+            @if (copied() === 'https') {
+            <lucide-icon name="checkCircle" class="size-4"></lucide-icon>
+            Copied! } @else {
+            <lucide-icon name="copy" class="size-4"></lucide-icon>
+            Copy }
+          </button>
+        </div>
+      </div>
+
+      <div>
+        <label class="label pb-1" for="clone-ssh">
+          <span class="label-text font-medium">SSH</span>
+        </label>
+        <div class="join w-full">
+          <input
+            id="clone-ssh"
+            class="input input-bordered join-item mono w-full text-sm"
+            readonly
+            [value]="sshCloneUrl()"
+          />
+          <button class="btn btn-outline join-item min-w-24 gap-2" (click)="copyText(sshCloneUrl(), 'ssh')">
+            @if (copied() === 'ssh') {
+            <lucide-icon name="checkCircle" class="size-4"></lucide-icon>
+            Copied! } @else {
+            <lucide-icon name="copy" class="size-4"></lucide-icon>
+            Copy }
+          </button>
+        </div>
       </div>
     </div>
   </div>

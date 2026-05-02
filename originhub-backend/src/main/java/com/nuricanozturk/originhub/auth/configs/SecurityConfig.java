@@ -90,9 +90,9 @@ public class SecurityConfig {
 
     auth.requestMatchers("/actuator/**").permitAll();
     auth.requestMatchers("/public/**").permitAll();
+    auth.requestMatchers("/git/**").permitAll();
 
     auth.requestMatchers("/api/**").authenticated();
-    auth.requestMatchers("/git/**").authenticated();
     auth.anyRequest().permitAll();
   }
 

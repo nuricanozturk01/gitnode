@@ -6,17 +6,17 @@ POSTGRES_NAME := originhub-postgres
 APP_NAME      := originhub
 IMAGE         := repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 
-POSTGRES_DB   := originhub
-POSTGRES_USER := admin
-POSTGRES_PASS := admin123
+POSTGRES_DB    := originhub
+POSTGRES_USER  := admin
+POSTGRES_PASS  := admin123
 
-JWT_SECRET    := 995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0
-GIT_REPO_ROOT := /data/repos
-REPOS_VOLUME  := originhub-repos
+JWT_SECRET     := 995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0
+GIT_REPO_ROOT  := /data/repos
+REPOS_VOLUME   := originhub-repos
 SPRING_PROFILE := os
 
-HTTP_PORT     := 8080
-SSH_PORT      := 2222
+HTTP_PORT := 8080
+SSH_PORT  := 2222
 
 # Google Client
 GOOGLE_CLIENT_ID     := YOUR_CLIENT

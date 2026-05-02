@@ -64,9 +64,11 @@ public class HttpGitConfiguration {
           final var owner = parts[0];
           final var repoName = parts[1];
 
-          repoRepository
-              .findByOwnerUsernameAndName(owner, repoName)
-              .orElseThrow(() -> new RepositoryNotFoundException(name));
+          final var repoOpt = repoRepository.findByOwnerUsernameAndName(owner, repoName);
+
+          if (repoOpt.isEmpty()) {
+            throw new RepositoryNotFoundException(name);
+          }
 
           try {
             final var gitDir = Path.of(this.repoRoot, owner, repoName + ".git");

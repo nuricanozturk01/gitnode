@@ -103,7 +103,8 @@ public class BranchNonTxService {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
 
-    try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
+    try (final var gitRepo = this.gitProvider.open(owner, repoName);
+        final var walk = new RevWalk(gitRepo)) {
 
       final var refs = gitRepo.getRefDatabase().getRefsByPrefix(Constants.R_HEADS);
 
@@ -111,7 +112,7 @@ public class BranchNonTxService {
           comparing((BranchInfo b) -> b.isDefault() ? 0 : 1).thenComparing(BranchInfo::name);
 
       return refs.stream()
-          .map(ref -> this.buildBranchInfo(gitRepo, ref, repo.getDefaultBranch()))
+          .map(ref -> this.buildBranchInfo(walk, ref, repo.getDefaultBranch()))
           .sorted(comparator)
           .toList();
     }
@@ -123,11 +124,12 @@ public class BranchNonTxService {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
 
-    try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
+    try (final var gitRepo = this.gitProvider.open(owner, repoName);
+        final var walk = new RevWalk(gitRepo)) {
 
       final var ref = this.getBranchRef(gitRepo, branchName);
 
-      return this.buildBranchInfo(gitRepo, ref, repo.getDefaultBranch());
+      return this.buildBranchInfo(walk, ref, repo.getDefaultBranch());
     }
   }
 
@@ -234,11 +236,11 @@ public class BranchNonTxService {
   }
 
   private @NonNull BranchInfo buildBranchInfo(
-      final @NonNull Repository gitRepo,
+      final @NonNull RevWalk walk,
       final @NonNull Ref ref,
       final @NonNull String defaultBranch) {
 
-    try (final var walk = new RevWalk(gitRepo)) {
+    try {
 
       final var commit = walk.parseCommit(ref.getObjectId());
 

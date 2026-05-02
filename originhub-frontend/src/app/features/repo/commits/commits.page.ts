@@ -15,6 +15,7 @@
 ///
 
 import { Component, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -57,8 +58,8 @@ export class CommitsPage {
   });
 
   constructor() {
-    this.route.params.subscribe(() => this.loadData());
-    this.route.queryParamMap.subscribe(() => this.loadData());
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => this.loadData());
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe(() => this.loadData());
   }
 
   async loadData(): Promise<void> {

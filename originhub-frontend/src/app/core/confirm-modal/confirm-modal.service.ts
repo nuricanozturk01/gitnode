@@ -34,6 +34,12 @@ export class ConfirmModalService {
   private resolveFn: ((value: boolean) => void) | null = null;
 
   confirm(title: string, message?: string, options?: ConfirmOptions): Promise<boolean> {
+    // Resolve any previously pending confirmation as cancelled to prevent Promise leaks
+    if (this.resolveFn) {
+      this.resolveFn(false);
+      this.resolveFn = null;
+    }
+
     this.title.set(title);
     this.message.set(message);
     this.confirmLabel.set(options?.confirmLabel ?? 'Confirm');

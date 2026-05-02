@@ -14,7 +14,8 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
@@ -31,6 +32,7 @@ import type { PullRequestInfo } from '../../../domain/pull-request/models/pull-r
 export class PullRequestsPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly prService = inject(PullRequestService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly repoContext = inject(RepoContextService);
 
   readonly pulls = signal<PullRequestInfo[]>([]);
@@ -50,7 +52,7 @@ export class PullRequestsPage implements OnInit {
   });
 
   ngOnInit(): void {
-    this.route.parent?.params.subscribe(() => this.loadAll());
+    this.route.parent?.params.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.loadAll());
     this.loadAll();
   }
 

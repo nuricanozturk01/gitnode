@@ -30,6 +30,7 @@ export class ToastService {
 
   private nextId = 0;
   private readonly DEFAULT_DURATION = 4000;
+  private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
 
   success(message: string, duration = this.DEFAULT_DURATION): void {
     this.show(message, 'success', duration);
@@ -44,11 +45,20 @@ export class ToastService {
     const toast: Toast = { id, message, type };
     this.toasts.update((list) => [...list, toast]);
     if (duration > 0) {
-      setTimeout(() => this.dismiss(id), duration);
+      const timer = setTimeout(() => {
+        this.timers.delete(id);
+        this.dismiss(id);
+      }, duration);
+      this.timers.set(id, timer);
     }
   }
 
   dismiss(id: string): void {
+    const timer = this.timers.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      this.timers.delete(id);
+    }
     this.toasts.update((list) => list.filter((t) => t.id !== id));
   }
 }

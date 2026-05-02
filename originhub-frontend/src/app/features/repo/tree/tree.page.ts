@@ -15,8 +15,10 @@
 ///
 
 import { Component, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { FileSizePipe } from '../../../shared/pipes/file-size.pipe';
 import { environment } from '../../../../environments/environment';
@@ -55,8 +57,8 @@ export class TreePage {
   });
 
   constructor() {
-    this.route.params.subscribe(() => this.parseUrlAndLoad());
-    this.route.url.subscribe(() => this.parseUrlAndLoad());
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => this.parseUrlAndLoad());
+    this.route.url.pipe(takeUntilDestroyed()).subscribe(() => this.parseUrlAndLoad());
   }
 
   private parseUrlAndLoad(): void {
@@ -73,7 +75,7 @@ export class TreePage {
     this.loadTree();
   }
 
-  private loadTree(): void {
+  private async loadTree(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     const branch = this.branch();
@@ -82,13 +84,14 @@ export class TreePage {
     this.loading.set(true);
     const pathSuffix = path ? `/${path}` : '';
     const url = `${environment.apiUrl}/api/repos/${owner}/${repo}/tree/${branch}${pathSuffix}`;
-    this.http.get<TreeResponse>(url).subscribe({
-      next: (data) => {
-        this.tree.set(data.entries ?? []);
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    try {
+      const data = await firstValueFrom(this.http.get<TreeResponse>(url));
+      this.tree.set(data.entries ?? []);
+    } catch {
+      this.tree.set([]);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   entryRoute(entry: TreeResponseEntry): string[] {

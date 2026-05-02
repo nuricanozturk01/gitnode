@@ -15,8 +15,10 @@
 ///
 
 import { Component, inject, signal, computed, ViewEncapsulation, OnDestroy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { FileSizePipe } from '../../../shared/pipes/file-size.pipe';
 import { environment } from '../../../../environments/environment';
@@ -52,6 +54,7 @@ export class BlobPage implements OnDestroy {
   readonly pdfObjectUrl = signal<SafeResourceUrl | null>(null);
   readonly rawBlobUrl = signal<string | null>(null);
   private objectUrlToRevoke: string | null = null;
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly owner = computed(() => this.route.snapshot.parent?.parent?.paramMap.get('owner') ?? '');
   readonly repoName = computed(() => this.route.snapshot.parent?.parent?.paramMap.get('repo') ?? '');
@@ -87,8 +90,8 @@ export class BlobPage implements OnDestroy {
   });
 
   constructor() {
-    this.route.params.subscribe(() => this.parseUrlAndLoad());
-    this.route.url.subscribe(() => this.parseUrlAndLoad());
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => this.parseUrlAndLoad());
+    this.route.url.pipe(takeUntilDestroyed()).subscribe(() => this.parseUrlAndLoad());
   }
 
   private parseUrlAndLoad(): void {
@@ -106,7 +109,7 @@ export class BlobPage implements OnDestroy {
     this.loadBlob();
   }
 
-  private loadBlob(): void {
+  private async loadBlob(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     const branch = this.branch();
@@ -119,51 +122,51 @@ export class BlobPage implements OnDestroy {
 
     const ext = path.toLowerCase().split('.').pop() ?? '';
     if (ext === 'pdf') {
-      this.loadPdfAsBlob(owner, repo, branch, path);
+      await this.loadPdfAsBlob(owner, repo, branch, path);
       return;
     }
 
     const url = `${environment.apiUrl}/api/repos/${owner}/${repo}/blob/${branch}/${path}`;
-    this.http.get<BlobResponse>(url).subscribe({
-      next: (data) => {
-        this.blob.set(data);
-        this.loading.set(false);
-        if (!data.isBinary && data.size <= TEXT_SIZE_LIMIT) {
-          this.processHighlighting(data);
-        } else if (!data.isBinary && data.size > TEXT_SIZE_LIMIT) {
-          this.highlightedLines.set([]);
-          this.rawBlobUrl.set(this.buildRawUrl(owner, repo, branch, path));
-        }
-      },
-      error: () => this.loading.set(false),
-    });
+    try {
+      const data = await firstValueFrom(this.http.get<BlobResponse>(url));
+      this.blob.set(data);
+      this.loading.set(false);
+      if (!data.isBinary && data.size <= TEXT_SIZE_LIMIT) {
+        this.processHighlighting(data);
+      } else if (!data.isBinary && data.size > TEXT_SIZE_LIMIT) {
+        this.highlightedLines.set([]);
+        this.rawBlobUrl.set(this.buildRawUrl(owner, repo, branch, path));
+      }
+    } catch {
+      this.loading.set(false);
+    }
   }
 
   private buildRawUrl(owner: string, repo: string, branch: string, path: string): string {
     return `${environment.apiUrl}/api/repos/${owner}/${repo}/raw/${branch}/${path}`;
   }
 
-  private loadPdfAsBlob(owner: string, repo: string, branch: string, path: string): void {
+  private async loadPdfAsBlob(owner: string, repo: string, branch: string, path: string): Promise<void> {
     const rawUrl = this.buildRawUrl(owner, repo, branch, path);
-    this.http.get(rawUrl, { responseType: 'blob' }).subscribe({
-      next: (blob) => {
-        const objectUrl = URL.createObjectURL(blob);
-        this.objectUrlToRevoke = objectUrl;
-        this.pdfObjectUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl));
-        this.blob.set({
-          path,
-          name: path.split('/').pop() ?? path,
-          sha: '',
-          size: blob.size,
-          content: '',
-          isBinary: true,
-          language: null,
-          lineCount: 0,
-        });
-        this.loading.set(false);
-      },
-      error: () => this.loading.set(false),
-    });
+    try {
+      const blob = await firstValueFrom(this.http.get(rawUrl, { responseType: 'blob' }));
+      const objectUrl = URL.createObjectURL(blob);
+      this.objectUrlToRevoke = objectUrl;
+      this.pdfObjectUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl));
+      this.blob.set({
+        path,
+        name: path.split('/').pop() ?? path,
+        sha: '',
+        size: blob.size,
+        content: '',
+        isBinary: true,
+        language: null,
+        lineCount: 0,
+      });
+      this.loading.set(false);
+    } catch {
+      this.loading.set(false);
+    }
   }
 
   private revokeBlobUrl(): void {
@@ -175,6 +178,10 @@ export class BlobPage implements OnDestroy {
 
   ngOnDestroy(): void {
     this.revokeBlobUrl();
+    if (this.copiedTimer !== null) {
+      clearTimeout(this.copiedTimer);
+      this.copiedTimer = null;
+    }
   }
 
   private processHighlighting(b: BlobResponse): void {
@@ -200,13 +207,21 @@ export class BlobPage implements OnDestroy {
   copyContent(): void {
     navigator.clipboard.writeText(this.decodedContent());
     this.copied.set(true);
-    setTimeout(() => this.copied.set(false), 2000);
+    if (this.copiedTimer !== null) clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => {
+      this.copied.set(false);
+      this.copiedTimer = null;
+    }, 2000);
   }
 
   copyRawUrl(): void {
     const url = `${environment.apiUrl}/api/repos/${this.owner()}/${this.repoName()}/raw/${this.branch()}/${this.path()}`;
     navigator.clipboard.writeText(url);
     this.copied.set(true);
-    setTimeout(() => this.copied.set(false), 2000);
+    if (this.copiedTimer !== null) clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => {
+      this.copied.set(false);
+      this.copiedTimer = null;
+    }, 2000);
   }
 }

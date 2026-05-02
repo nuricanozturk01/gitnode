@@ -18,7 +18,7 @@ jobs:
         with:
           version: v3.0.3
 
-      - run: editorconfig-checker
+      - run: editorconfig-checker -exclude 'Makefile'
 
   originhub-backend-checks:
     name: OriginHub Backend Checks

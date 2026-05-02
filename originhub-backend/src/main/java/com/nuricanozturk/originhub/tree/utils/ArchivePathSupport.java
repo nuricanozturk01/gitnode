@@ -15,41 +15,57 @@
  */
 package com.nuricanozturk.originhub.tree.utils;
 
+import java.util.Set;
 import org.jspecify.annotations.NonNull;
 
 public final class ArchivePathSupport {
+
+  private static final char MIN_PRINTABLE_ASCII = 0x20;
+  private static final Set<Character> INVALID_CHARS =
+      Set.of('/', '\\', ':', '*', '?', '"', '<', '>', '|');
+  private static final String DOUBLE_DASH = "--";
+  private static final String SINGLE_DASH = "-";
+  private static final String FALLBACK_NAME = "archive";
 
   private ArchivePathSupport() {}
 
   public static @NonNull String attachmentFileName(
       final @NonNull String owner, final @NonNull String repo, final @NonNull String branch) {
 
-    return sanitizePathToken(owner + "-" + repo + "-" + branch) + ".zip";
+    return sanitizePathToken(owner + SINGLE_DASH + repo + SINGLE_DASH + branch) + ".zip";
   }
 
   /** Root folder inside the ZIP (GitHub-style single top-level directory). */
   public static @NonNull String archiveTreePrefix(
       final @NonNull String owner, final @NonNull String repo, final @NonNull String branch) {
 
-    return sanitizePathToken(owner + "-" + repo + "-" + branch) + "/";
+    return sanitizePathToken(owner + SINGLE_DASH + repo + SINGLE_DASH + branch) + "/";
   }
 
   static @NonNull String sanitizePathToken(final @NonNull String raw) {
+    final var replaced = replaceInvalidChars(raw);
+    final var collapsed = collapseDoubleDashes(replaced);
+    final var stripped = collapsed.strip();
+    return stripped.isEmpty() ? FALLBACK_NAME : stripped;
+  }
+
+  private static @NonNull String replaceInvalidChars(final @NonNull String raw) {
     final var sb = new StringBuilder(raw.length());
     for (int i = 0; i < raw.length(); i++) {
-      final char c = raw.charAt(i);
-      if (c < 0x20 || c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' || c == '"'
-          || c == '<' || c == '>' || c == '|') {
-        sb.append('-');
-      } else {
-        sb.append(c);
-      }
+      sb.append(isInvalidChar(raw.charAt(i)) ? '-' : raw.charAt(i));
     }
-    var s = sb.toString();
-    while (s.contains("--")) {
-      s = s.replace("--", "-");
+    return sb.toString();
+  }
+
+  private static boolean isInvalidChar(final char c) {
+    return c < MIN_PRINTABLE_ASCII || INVALID_CHARS.contains(c);
+  }
+
+  private static @NonNull String collapseDoubleDashes(final @NonNull String s) {
+    var result = s;
+    while (result.contains(DOUBLE_DASH)) {
+      result = result.replace(DOUBLE_DASH, SINGLE_DASH);
     }
-    s = s.strip();
-    return s.isEmpty() ? "archive" : s;
+    return result;
   }
 }

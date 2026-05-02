@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.git.http;
+package com.nuricanozturk.originhub.shared.git.provider;
 
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
@@ -30,12 +30,12 @@ import java.util.Base64;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.http.server.GitServlet;
-import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -49,33 +49,35 @@ public class HttpGitConfiguration {
 
   @Bean
   public ServletRegistrationBean<GitServlet> gitServletRegistration(
-      final @NonNull RepoRepository repoRepository) {
+      final RepoRepository repoRepository) {
 
     final var gitServlet = new GitServlet();
-    gitServlet.setRepositoryResolver((req, name) -> {
-      final var cleanName = name.replace(".git", "");
-      final var parts = cleanName.split("/");
+    gitServlet.setRepositoryResolver(
+        (_, name) -> {
+          final var cleanName = name.replace(".git", "");
+          final var parts = cleanName.split("/");
 
-      if (parts.length < 2) {
-        throw new org.eclipse.jgit.errors.RepositoryNotFoundException(name);
-      }
+          if (parts.length < 2) {
+            throw new RepositoryNotFoundException(name);
+          }
 
-      final var owner = parts[0];
-      final var repoName = parts[1];
+          final var owner = parts[0];
+          final var repoName = parts[1];
 
-      final var repo = repoRepository.findByOwnerUsernameAndName(owner, repoName)
-          .orElseThrow(() -> new org.eclipse.jgit.errors.RepositoryNotFoundException(name));
+          repoRepository
+              .findByOwnerUsernameAndName(owner, repoName)
+              .orElseThrow(() -> new RepositoryNotFoundException(name));
 
-      try {
-        final var gitDir = Path.of(this.repoRoot, owner, repoName + ".git");
-        return new org.eclipse.jgit.storage.file.FileRepositoryBuilder()
-            .setGitDir(gitDir.toFile())
-            .build();
-      } catch (final IOException ex) {
-        log.error("Failed to open repository: {}/{}", owner, repoName, ex);
-        throw new org.eclipse.jgit.errors.RepositoryNotFoundException(name, ex);
-      }
-    });
+          try {
+            final var gitDir = Path.of(this.repoRoot, owner, repoName + ".git");
+            return new org.eclipse.jgit.storage.file.FileRepositoryBuilder()
+                .setGitDir(gitDir.toFile())
+                .build();
+          } catch (final IOException ex) {
+            log.error("Failed to open repository: {}/{}", owner, repoName, ex);
+            throw new org.eclipse.jgit.errors.RepositoryNotFoundException(name, ex);
+          }
+        });
 
     final var registration = new ServletRegistrationBean<>(gitServlet, "/git/*");
     registration.setName("GitServlet");
@@ -86,7 +88,7 @@ public class HttpGitConfiguration {
 
   @Bean
   public FilterRegistrationBean<HttpGitAuthenticationFilter> httpGitAuthenticationFilter(
-      final @NonNull TenantRepository tenantRepository) {
+      final TenantRepository tenantRepository) {
 
     final var filter = new HttpGitAuthenticationFilter(tenantRepository);
     final var registration = new FilterRegistrationBean<>(filter);
@@ -96,18 +98,15 @@ public class HttpGitConfiguration {
     return registration;
   }
 
-
   @Slf4j
   @RequiredArgsConstructor
   public static class HttpGitAuthenticationFilter implements Filter {
 
-    private final @NonNull TenantRepository tenantRepository;
+    private final TenantRepository tenantRepository;
 
     @Override
     public void doFilter(
-        final @NonNull ServletRequest request,
-        final @NonNull ServletResponse response,
-        final @NonNull FilterChain chain)
+        final ServletRequest request, final ServletResponse response, final FilterChain chain)
         throws IOException, ServletException {
 
       final var httpRequest = (HttpServletRequest) request;
@@ -117,7 +116,7 @@ public class HttpGitConfiguration {
         final var auth = httpRequest.getHeader("Authorization");
 
         if (auth != null && auth.startsWith("Basic ")) {
-          authenticate(auth);
+          this.authenticate(auth);
           chain.doFilter(request, response);
         } else {
           httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -133,7 +132,7 @@ public class HttpGitConfiguration {
       }
     }
 
-    private void authenticate(final @NonNull String authHeader) {
+    private void authenticate(final String authHeader) {
       try {
         final var base64 = authHeader.substring("Basic ".length());
         final var decoded = new String(Base64.getDecoder().decode(base64));
@@ -146,8 +145,10 @@ public class HttpGitConfiguration {
         final var username = parts[0];
         final var password = parts[1];
 
-        final var tenant = this.tenantRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        final var tenant =
+            this.tenantRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         if (tenant.getSalt() == null || tenant.getHash() == null) {
           throw new IllegalArgumentException("User password not configured");

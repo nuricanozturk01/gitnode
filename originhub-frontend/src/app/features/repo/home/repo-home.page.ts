@@ -120,11 +120,13 @@ export class RepoHomePage implements OnDestroy {
   private loadTreeOnce(owner: string, repo: string, branch: string): Promise<void> {
     return firstValueFrom(
       this.http.get<TreeResponse>(`${environment.apiUrl}/api/repos/${owner}/${repo}/tree/${branch}`),
-    ).then((data) => {
-      this.tree.set(data.entries ?? []);
-    }).catch(() => {
-      this.tree.set([]);
-    });
+    )
+      .then((data) => {
+        this.tree.set(data.entries ?? []);
+      })
+      .catch(() => {
+        this.tree.set([]);
+      });
   }
 
   private async loadReadme(owner: string, repo: string, branch: string): Promise<void> {

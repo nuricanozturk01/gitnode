@@ -5,75 +5,79 @@
     </div>
   } @else if (repo()) {
     <div class="border-base-300 bg-base-100 border-b">
-      <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <a
-              [routerLink]="['/', owner()]"
-              class="text-base-content/70 hover:text-base-content font-medium no-underline"
-              >{{ owner() }}</a
-            >
-            <span class="text-base-content/50">/</span>
-            <a
-              [routerLink]="['/', owner(), repoName()]"
-              class="text-base-content hover:text-primary font-semibold no-underline"
-              >{{ repoName() }}</a
-            >
+      <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
+        <div class="flex flex-col gap-0.5">
+          <div class="flex min-h-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 leading-none">
+              <a
+                [routerLink]="['/', owner()]"
+                class="text-base-content/70 hover:text-base-content shrink-0 text-xs font-medium no-underline"
+                >{{ owner() }}</a
+              >
+              <span class="text-base-content/45 shrink-0 text-xs">/</span>
+              <a
+                [routerLink]="['/', owner(), repoName()]"
+                class="text-base-content hover:text-primary text-sm font-semibold no-underline"
+                >{{ repoName() }}</a
+              >
+            </span>
             @if (repo()?.isPrivate) {
               <span class="badge-pill badge-pill--neutral">Private</span>
             }
-          </div>
-          @if (repo()?.description) {
-            <p class="text-base-content/70 text-sm">{{ repo()?.description }}</p>
-          }
-          <div class="text-base-content/70 flex flex-wrap gap-4 text-sm">
             @if (repo()?.topics?.length) {
-              <div class="flex gap-1">
-                @for (topic of repo()?.topics; track topic) {
-                  <span class="badge-pill badge-pill--topic">{{ topic }}</span>
-                }
-              </div>
+              @for (topic of repo()?.topics; track topic) {
+                <span class="badge-pill badge-pill--topic">{{ topic }}</span>
+              }
             }
           </div>
+          @if (repo()?.description) {
+            <p class="text-base-content/65 m-0 line-clamp-2 max-w-4xl text-xs leading-tight">
+              {{ repo()?.description }}
+            </p>
+          }
         </div>
       </div>
     </div>
 
     <div class="border-base-300 bg-base-100/80 border-b">
       <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div role="tablist" class="tabs gap-1 bg-transparent py-1">
+        <div role="tablist" class="repo-tabs tabs gap-0.5 bg-transparent py-0.5">
           <a
             [routerLink]="['/', owner(), repoName()]"
             routerLinkActive="tab-active"
             [routerLinkActiveOptions]="{ exact: true }"
-            class="tab gap-2 rounded-lg"
+            ariaCurrentWhenActive="page"
+            class="tab gap-1.5 rounded-md"
           >
-            <lucide-icon name="folder" class="size-4"></lucide-icon>
+            <lucide-icon name="folder" class="size-3.5 shrink-0"></lucide-icon>
             Code
           </a>
           <a
             [routerLink]="['/', owner(), repoName(), 'branches']"
             routerLinkActive="tab-active"
-            class="tab gap-2 rounded-lg"
+            ariaCurrentWhenActive="page"
+            class="tab gap-1.5 rounded-md"
           >
-            <lucide-icon name="gitBranch" class="size-4"></lucide-icon>
+            <lucide-icon name="gitBranch" class="size-3.5 shrink-0"></lucide-icon>
             Branches
           </a>
           <a
             [routerLink]="['/', owner(), repoName(), 'commits', repo()?.defaultBranch ?? 'main']"
             routerLinkActive="tab-active"
             [routerLinkActiveOptions]="{ paths: 'subset', matrixParams: 'ignored' }"
-            class="tab gap-2 rounded-lg"
+            ariaCurrentWhenActive="page"
+            class="tab gap-1.5 rounded-md"
           >
-            <lucide-icon name="gitCommit" class="size-4"></lucide-icon>
+            <lucide-icon name="gitCommit" class="size-3.5 shrink-0"></lucide-icon>
             Commits
           </a>
           <a
             [routerLink]="['/', owner(), repoName(), 'pulls']"
             routerLinkActive="tab-active"
-            class="tab gap-2 rounded-lg"
+            ariaCurrentWhenActive="page"
+            class="tab gap-1.5 rounded-md"
           >
-            <lucide-icon name="gitPullRequest" class="size-4"></lucide-icon>
+            <lucide-icon name="gitPullRequest" class="size-3.5 shrink-0"></lucide-icon>
             Pull Requests
             @if (prCount() > 0) {
               <span class="badge-pill badge-pill--primary">{{ prCount() }}</span>
@@ -83,9 +87,10 @@
             <a
               [routerLink]="['/', owner(), repoName(), 'settings']"
               routerLinkActive="tab-active"
-              class="tab gap-2 rounded-lg"
+              ariaCurrentWhenActive="page"
+              class="tab gap-1.5 rounded-md"
             >
-              <lucide-icon name="settings" class="size-4"></lucide-icon>
+              <lucide-icon name="settings" class="size-3.5 shrink-0"></lucide-icon>
               Settings
             </a>
           }

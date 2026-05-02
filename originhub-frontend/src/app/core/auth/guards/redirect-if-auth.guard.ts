@@ -22,8 +22,14 @@ export const redirectIfAuthGuard = () => {
   const tokenService = inject(TokenService);
   const router = inject(Router);
 
-  if (tokenService.getAccessToken()) {
-    return router.createUrlTree(['/dashboard']);
+  const token = tokenService.getAccessToken();
+  if (!token) return true;
+
+  // Treat fully-expired sessions as logged out
+  if (tokenService.isExpired() && tokenService.isRefreshExpired()) {
+    tokenService.clearTokens();
+    return true;
   }
-  return true;
+
+  return router.createUrlTree(['/dashboard']);
 };

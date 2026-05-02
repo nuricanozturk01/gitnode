@@ -1,26 +1,35 @@
-@import 'highlight.js/styles/github-dark.css';
+@import 'highlight.js/styles/github.css';
 
-td :global(.hljs-keyword) {
+[data-blob-syntax='light'] .hljs {
+  background: transparent;
+}
+
+[data-blob-syntax='dark'] .hljs {
+  color: #c9d1d9;
+  background: transparent;
+}
+
+[data-blob-syntax='dark'] td .hljs-keyword {
   color: #ff7b72;
 }
-td :global(.hljs-string) {
+[data-blob-syntax='dark'] td .hljs-string {
   color: #a5d6ff;
 }
-td :global(.hljs-comment) {
+[data-blob-syntax='dark'] td .hljs-comment {
   color: #8b949e;
 }
-td :global(.hljs-number) {
+[data-blob-syntax='dark'] td .hljs-number {
   color: #79c0ff;
 }
-td :global(.hljs-function) {
+[data-blob-syntax='dark'] td .hljs-function {
   color: #d2a8ff;
 }
-td :global(.hljs-title) {
+[data-blob-syntax='dark'] td .hljs-title {
   color: #d2a8ff;
 }
-td :global(.hljs-type) {
+[data-blob-syntax='dark'] td .hljs-type {
   color: #ffa657;
 }
-td :global(.hljs-built_in) {
+[data-blob-syntax='dark'] td .hljs-built_in {
   color: #ffa657;
 }

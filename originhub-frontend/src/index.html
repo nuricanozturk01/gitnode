@@ -1,7 +1,20 @@
 <!doctype html>
-<html lang="en" data-theme="OriginHub">
+<html lang="en" data-theme="originhub">
   <head>
     <meta charset="utf-8" />
+    <script>
+      (function () {
+        var k = 'originhub-theme';
+        var allowed = { originhub: 1, 'originhub-light': 1 };
+        try {
+          var t = localStorage.getItem(k);
+          if (t && allowed[t]) {
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t === 'originhub-light' ? 'light' : 'dark';
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>OriginHub — Self-hosted Git</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,11 +22,5 @@
   </head>
   <body>
     <app-root></app-root>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
   </body>
 </html>

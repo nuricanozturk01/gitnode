@@ -20,6 +20,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { TokenService } from '../../core/auth/services/token.service';
+import { ThemeService } from '../../core/theme/theme.service';
 import { UserService } from '../../core/user/services/user.service';
 import type { User } from '../../domain/auth/models/user.model';
 
@@ -34,6 +35,7 @@ export class NavbarComponent {
   private readonly authService = inject(AuthService);
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
+  readonly theme = inject(ThemeService);
 
   readonly menuOpen = signal(false);
   readonly isLoggedIn = this.tokenService.isLoggedIn;

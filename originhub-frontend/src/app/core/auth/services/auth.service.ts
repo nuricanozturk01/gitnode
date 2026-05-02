@@ -31,41 +31,83 @@ export class AuthService {
   private readonly tokenService = inject(TokenService);
 
   private readonly api = `${environment.apiUrl}`;
+  private logoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.initSession();
+  }
+
+  private initSession(): void {
+    if (!this.tokenService.getAccessToken()) return;
+    if (this.tokenService.isRefreshExpired()) {
+      this.tokenService.clearTokens();
+      return;
+    }
+    this.scheduleAutoLogout();
+  }
+
+  private scheduleAutoLogout(): void {
+    this.cancelAutoLogout();
+    const refreshExpiresAt = this.tokenService.getRefreshExpiresAt();
+    if (!refreshExpiresAt) return;
+    const delay = refreshExpiresAt - Date.now();
+    if (delay <= 0) {
+      void this.logout();
+      return;
+    }
+    this.logoutTimer = setTimeout(() => void this.logout(), delay);
+  }
+
+  private cancelAutoLogout(): void {
+    if (this.logoutTimer !== null) {
+      clearTimeout(this.logoutTimer);
+      this.logoutTimer = null;
+    }
+  }
 
   async login(form: LoginForm): Promise<TokenResponse> {
     const res = await firstValueFrom(this.http.post<TokenResponse>(`${this.api}/api/auth/login`, form));
     this.tokenService.saveTokens(res);
+    this.scheduleAutoLogout();
     return res;
   }
 
   async register(form: RegisterForm): Promise<TokenResponse> {
     const res = await firstValueFrom(this.http.post<TokenResponse>(`${this.api}/api/auth/register`, form));
     this.tokenService.saveTokens(res);
+    this.scheduleAutoLogout();
     return res;
   }
 
   async logout(): Promise<void> {
+    this.cancelAutoLogout();
     this.tokenService.clearTokens();
     this.router.navigate(['/login']);
   }
 
-  loginOauth(token: string, refresh_token: string, username: string) {
-    const tokens = {
-      token: token,
+  loginOauth(token: string, refresh_token: string, username: string): void {
+    const tokens: TokenResponse = {
+      token,
       refreshToken: refresh_token,
-      expiresIn: 0,
-      username: username,
-    } as TokenResponse;
+      expiresIn: 1800,
+      username,
+    };
     this.tokenService.saveTokens(tokens);
+    this.scheduleAutoLogout();
   }
 
   async refreshToken(): Promise<TokenResponse> {
     const refresh = this.tokenService.getRefreshToken();
     if (!refresh) throw new Error('No refresh token');
+    if (this.tokenService.isRefreshExpired()) {
+      this.tokenService.clearTokens();
+      throw new Error('Refresh token expired');
+    }
     const res = await firstValueFrom(
       this.http.post<TokenResponse>(`${this.api}/api/auth/refresh-token`, { refreshToken: refresh }),
     );
     this.tokenService.saveTokens(res);
+    this.scheduleAutoLogout();
     return res;
   }
 }

@@ -1,4 +1,4 @@
-<section class="repo-panel overflow-hidden">
+<section class="repo-panel overflow-hidden" [attr.data-blob-syntax]="blobSyntaxTheme()">
   <div class="repo-toolbar space-y-3 px-4 py-3">
     <app-repo-breadcrumb
       [owner]="owner()"

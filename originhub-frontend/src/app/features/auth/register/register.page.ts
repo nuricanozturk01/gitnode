@@ -15,8 +15,9 @@
 ///
 
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/services/auth.service';
@@ -32,6 +33,7 @@ import { ToastService } from '../../../core/toast/toast.service';
 export class RegisterPage {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(false);
@@ -51,9 +53,12 @@ export class RegisterPage {
     try {
       await this.authService.register(this.form.getRawValue());
       this.toast.success('Account created successfully');
-      window.location.href = '/dashboard';
+      void this.router.navigate(['/dashboard']);
     } catch (e) {
-      const msg = (e as Error).message ?? 'Registration failed';
+      const msg =
+        e instanceof HttpErrorResponse
+          ? (e.error?.message ?? e.statusText ?? 'Registration failed')
+          : ((e as Error).message ?? 'Registration failed');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {

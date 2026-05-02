@@ -3,19 +3,19 @@
 }
 
 .hero-btn-outline {
-  border-color: oklch(var(--bc) / 0.3);
+  border-color: color-mix(in oklch, var(--color-base-content) 22%, var(--color-base-300));
 }
 .hero-btn-outline:hover {
-  border-color: oklch(var(--p));
-  background: oklch(var(--p) / 0.1);
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
 }
 
 .hero-gradient {
   background: linear-gradient(
     135deg,
-    oklch(0.72 0.15 166 / 0.08) 0%,
+    color-mix(in oklch, var(--color-primary) 10%, transparent) 0%,
     transparent 50%,
-    oklch(0.72 0.15 166 / 0.04) 100%
+    color-mix(in oklch, var(--color-primary) 5%, transparent) 100%
   );
 }
 
@@ -26,7 +26,7 @@
 }
 .feature-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px oklch(0.72 0.15 166 / 0.15);
+  box-shadow: 0 12px 40px color-mix(in oklch, var(--color-primary) 18%, transparent);
 }
 
 .code-snippet {
@@ -36,5 +36,5 @@
 }
 
 .glow {
-  box-shadow: 0 0 60px oklch(0.72 0.15 166 / 0.2);
+  box-shadow: 0 0 60px color-mix(in oklch, var(--color-primary) 22%, transparent);
 }

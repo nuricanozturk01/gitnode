@@ -53,6 +53,8 @@ import {
   Layers,
   BookOpen,
   Home,
+  Sun,
+  Moon,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -94,4 +96,6 @@ export const LUCIDE_ICONS = {
   Layers,
   BookOpen,
   Home,
+  Sun,
+  Moon,
 };

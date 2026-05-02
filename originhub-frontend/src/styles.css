@@ -1,6 +1,8 @@
 @import 'tailwindcss';
 @plugin 'daisyui' {
-  themes: originhub --default;
+  themes:
+    originhub --default,
+    originhub-light;
 }
 @plugin 'daisyui/theme' {
   name: 'originhub';
@@ -27,10 +29,39 @@
   --color-error: oklch(0.55 0.12 25);
   --color-error-content: oklch(0.98 0.01 25);
 }
+@plugin 'daisyui/theme' {
+  name: 'originhub-light';
+  default: false;
+  color-scheme: light;
+  /* Softer than paper-white: layered cool gray (hue 250) so panels don’t glare */
+  --color-base-100: oklch(97% 0.014 250);
+  --color-base-200: oklch(93.5% 0.02 250);
+  --color-base-300: oklch(87% 0.026 250);
+  --color-base-content: oklch(31% 0.038 250);
+  --color-primary: oklch(0.48 0.14 166);
+  --color-primary-content: oklch(0.985 0.012 166);
+  --color-secondary: oklch(0.42 0.12 166);
+  --color-secondary-content: oklch(0.985 0.012 166);
+  --color-accent: oklch(0.48 0.14 166);
+  --color-accent-content: oklch(0.985 0.012 166);
+  --color-neutral: oklch(0.45 0.028 250);
+  --color-neutral-content: oklch(0.985 0.008 250);
+  --color-info: oklch(0.48 0.14 166);
+  --color-info-content: oklch(0.985 0.012 166);
+  --color-success: oklch(0.45 0.16 145);
+  --color-success-content: oklch(0.985 0.012 145);
+  --color-warning: oklch(0.55 0.16 85);
+  --color-warning-content: oklch(0.2 0.04 85);
+  --color-error: oklch(0.48 0.14 25);
+  --color-error-content: oklch(0.985 0.012 25);
+}
 
 @theme {
-  --font-sans: 'IBM Plex Sans', 'Segoe UI', sans-serif;
-  --font-mono: 'DM Mono', 'JetBrains Mono', monospace;
+  /* GitHub-style UI stack (system fonts, no webfont) */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji';
+  --font-mono: ui-monospace, 'SFMono-Regular', 'SF Mono', menlo, consolas, 'Liberation Mono', monospace;
 }
 
 * {
@@ -43,6 +74,7 @@ body {
   min-height: 100%;
 }
 
+/* 18px root: readable app UI; `1rem` utilities inherit this (GitHub-like system stack above) */
 html {
   font-size: 18px;
 }
@@ -50,14 +82,15 @@ html {
 body {
   background-color: var(--color-base-200);
   background-image:
-    linear-gradient(oklch(0.72 0.15 166 / 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, oklch(0.72 0.15 166 / 0.04) 1px, transparent 1px);
+    linear-gradient(color-mix(in oklch, var(--color-primary) 5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-primary) 5%, transparent) 1px, transparent 1px);
   background-size: 24px 24px;
   color: var(--color-base-content);
   font-family: var(--font-sans);
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .app-shell {
@@ -114,13 +147,13 @@ a:not(.btn):hover {
 .input,
 .textarea,
 .select {
-  background-color: oklch(0.12 0.02 250) !important;
-  border: 1px solid oklch(0.28 0.02 250) !important;
+  background-color: var(--color-base-100) !important;
+  border: 1px solid var(--color-base-300) !important;
   color: var(--color-base-content) !important;
 }
 .input::placeholder,
 .textarea::placeholder {
-  color: oklch(0.5 0.02 250);
+  color: color-mix(in oklch, var(--color-base-content) 45%, var(--color-base-300));
 }
 .input:focus,
 .textarea:focus,
@@ -139,13 +172,20 @@ a:not(.btn):hover {
 }
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px oklch(0.72 0.15 166 / 0.3);
+  box-shadow: 0 4px 12px color-mix(in oklch, var(--color-primary) 30%, transparent);
 }
 .btn-outline {
   border-width: 1.5px;
 }
 
 .readme-content {
+  --text-primary: var(--color-base-content);
+  --text-secondary: color-mix(in oklch, var(--color-base-content) 88%, var(--color-base-100));
+  --text-muted: color-mix(in oklch, var(--color-base-content) 62%, var(--color-base-200));
+  --text-link: var(--color-primary);
+  --border-default: var(--color-base-300);
+  --border-emphasis: color-mix(in oklch, var(--color-primary) 55%, var(--color-base-300));
+  --bg-tertiary: var(--color-base-200);
   color: var(--text-primary);
 }
 
@@ -256,43 +296,43 @@ a:not(.btn):hover {
   letter-spacing: 0.02em;
 }
 .badge-pill--neutral {
-  background: oklch(0.25 0.02 250 / 0.6);
-  color: oklch(0.7 0.02 250);
-  border: 1px solid oklch(0.28 0.02 250);
+  background: color-mix(in oklch, var(--color-base-300) 65%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 85%, var(--color-base-100));
+  border: 1px solid var(--color-base-300);
 }
 .badge-pill--primary {
-  background: oklch(0.72 0.15 166 / 0.15);
+  background: color-mix(in oklch, var(--color-primary) 18%, transparent);
   color: var(--color-primary);
-  border: 1px solid oklch(0.72 0.15 166 / 0.3);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 35%, var(--color-base-300));
 }
 .badge-pill--success {
-  background: oklch(0.65 0.2 145 / 0.15);
+  background: color-mix(in oklch, var(--color-success) 18%, transparent);
   color: var(--color-success);
-  border: 1px solid oklch(0.65 0.2 145 / 0.3);
+  border: 1px solid color-mix(in oklch, var(--color-success) 35%, var(--color-base-300));
 }
 .badge-pill--error {
-  background: oklch(0.55 0.12 25 / 0.15);
+  background: color-mix(in oklch, var(--color-error) 18%, transparent);
   color: var(--color-error);
-  border: 1px solid oklch(0.55 0.12 25 / 0.3);
+  border: 1px solid color-mix(in oklch, var(--color-error) 35%, var(--color-base-300));
 }
 .badge-pill--count {
-  background: oklch(0.25 0.02 250 / 0.5);
-  color: oklch(0.65 0.02 250);
+  background: color-mix(in oklch, var(--color-base-300) 55%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 78%, var(--color-base-100));
   min-width: 1.25rem;
   justify-content: center;
 }
 .badge-pill--draft {
-  background: oklch(0.25 0.02 250 / 0.5);
-  color: oklch(0.6 0.02 250);
-  border: 1px solid oklch(0.28 0.02 250);
+  background: color-mix(in oklch, var(--color-base-300) 55%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, var(--color-base-100));
+  border: 1px solid var(--color-base-300);
 }
 .badge-pill--permission {
-  background: oklch(0.72 0.15 166 / 0.1);
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
   color: var(--color-primary);
   font-family: var(--font-mono);
   font-size: 0.6875rem;
 }
 .badge-pill--topic {
-  background: oklch(0.72 0.15 166 / 0.12);
+  background: color-mix(in oklch, var(--color-primary) 14%, transparent);
   color: var(--color-primary);
 }

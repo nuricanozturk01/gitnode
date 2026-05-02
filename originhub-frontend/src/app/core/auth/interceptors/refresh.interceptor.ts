@@ -36,17 +36,17 @@ export const refreshInterceptor: HttpInterceptorFn = (req, next) => {
         req.url.includes('/auth/refresh-token');
 
       if (error.status === HttpStatusCode.Unauthorized && !isAuthUrl) {
+        if (tokenService.isRefreshExpired()) {
+          tokenService.clearTokens();
+          router.navigate(['/login']);
+          return throwError(() => error);
+        }
+
         const doRefresh = () => {
           if (!refreshInProgress) {
-            refreshInProgress = authService
-              .refreshToken()
-              .then((tokens) => {
-                tokenService.saveTokens(tokens);
-                return tokens;
-              })
-              .finally(() => {
-                refreshInProgress = null;
-              });
+            refreshInProgress = authService.refreshToken().finally(() => {
+              refreshInProgress = null;
+            });
           }
           return refreshInProgress;
         };

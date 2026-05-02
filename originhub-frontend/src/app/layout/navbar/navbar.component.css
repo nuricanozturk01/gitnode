@@ -1,3 +1,12 @@
 :host {
   display: block;
 }
+
+/* Logo sits flush in the brand link — no filled chip; PNG alpha shows through */
+.navbar-logo-mark {
+  line-height: 0;
+}
+
+.navbar-logo-mark img {
+  display: block;
+}

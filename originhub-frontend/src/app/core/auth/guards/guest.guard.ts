@@ -22,9 +22,15 @@ export const guestGuard = () => {
   const tokenService = inject(TokenService);
   const router = inject(Router);
 
-  if (!tokenService.getAccessToken()) {
+  const token = tokenService.getAccessToken();
+  if (!token) return true;
+
+  // Treat fully-expired sessions as logged out
+  if (tokenService.isExpired() && tokenService.isRefreshExpired()) {
+    tokenService.clearTokens();
     return true;
   }
+
   router.navigate(['/dashboard']);
   return false;
 };

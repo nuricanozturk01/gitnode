@@ -17,6 +17,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/services/auth.service';
@@ -65,7 +66,10 @@ export class LoginPage implements OnInit {
       this.toast.success('Login successful');
       this.router.navigate(['/dashboard']);
     } catch (e) {
-      const msg = (e as Error).message ?? 'Login failed';
+      const msg =
+        e instanceof HttpErrorResponse
+          ? (e.error?.message ?? e.statusText ?? 'Login failed')
+          : ((e as Error).message ?? 'Login failed');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {

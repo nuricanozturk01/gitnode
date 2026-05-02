@@ -22,9 +22,17 @@ export const authGuard = () => {
   const tokenService = inject(TokenService);
   const router = inject(Router);
 
-  if (tokenService.getAccessToken()) {
-    return true;
+  if (!tokenService.getAccessToken()) {
+    router.navigate(['/login']);
+    return false;
   }
-  router.navigate(['/login']);
-  return false;
+
+  // Both tokens expired — session is fully dead
+  if (tokenService.isExpired() && tokenService.isRefreshExpired()) {
+    tokenService.clearTokens();
+    router.navigate(['/login']);
+    return false;
+  }
+
+  return true;
 };

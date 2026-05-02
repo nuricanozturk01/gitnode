@@ -25,6 +25,7 @@ import { environment } from '../../../../environments/environment';
 import type { BlobResponse } from '../../../domain/repository/models/blob-response.model';
 import type { BreadcrumbItem } from '../shared/repo-breadcrumb.component';
 import { RepoBreadcrumbComponent } from '../shared/repo-breadcrumb.component';
+import { ThemeService } from '../../../core/theme/theme.service';
 import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
 import hljs from 'highlight.js';
 
@@ -44,6 +45,9 @@ export class BlobPage implements OnDestroy {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly appTheme = inject(ThemeService);
+
+  readonly blobSyntaxTheme = computed(() => (this.appTheme.isDark() ? 'dark' : 'light'));
 
   readonly blob = signal<BlobResponse | null>(null);
   readonly loading = signal(true);

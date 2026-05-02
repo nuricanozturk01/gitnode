@@ -11,24 +11,24 @@
 }
 
 .step-block {
-  background: oklch(var(--b1));
-  border: 1px solid oklch(var(--b3));
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
   border-radius: 0.75rem;
   padding: 1.25rem 1.5rem;
 }
 
 .code-block {
-  background: oklch(var(--b3) / 0.5);
-  border: 1px solid oklch(var(--b3));
+  background: color-mix(in oklch, var(--color-base-300) 45%, var(--color-base-100));
+  border: 1px solid var(--color-base-300);
   border-radius: 0.5rem;
   overflow: hidden;
 }
 
 .code-block pre {
-  font-family: 'DM Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875rem;
   line-height: 1.6;
-  color: oklch(var(--bc) / 0.9);
+  color: color-mix(in oklch, var(--color-base-content) 92%, var(--color-base-100));
 }
 
 .code-block code {
@@ -36,7 +36,7 @@
 }
 
 .prose-docs a {
-  color: oklch(var(--p));
+  color: var(--color-primary);
   text-decoration: none;
 }
 
@@ -45,6 +45,6 @@
 }
 
 .prose-docs code {
-  font-family: 'DM Mono', 'Fira Code', 'Consolas', monospace;
+  font-family: var(--font-mono);
   font-size: 0.875em;
 }

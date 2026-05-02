@@ -20,13 +20,23 @@ import type { TokenResponse } from '../../../domain/auth/ports/auth.port';
 const ACCESS_KEY = 'token';
 const REFRESH_KEY = 'refresh_token';
 const EXPIRES_KEY = 'expires_at';
+const REFRESH_EXPIRES_KEY = 'refresh_expires_at';
 const USERNAME_KEY = 'username';
+
+const ACCESS_TOKEN_TTL_SECONDS = 1800; // 30 minutes
+const REFRESH_TOKEN_TTL_SECONDS = 3600; // 1 hour
 
 @Injectable({ providedIn: 'root' })
 export class TokenService {
-  private readonly _loggedIn = signal(!!localStorage.getItem(ACCESS_KEY));
+  private readonly _loggedIn = signal(this._hasValidSession());
 
   readonly isLoggedIn = computed(() => this._loggedIn());
+
+  private _hasValidSession(): boolean {
+    if (!localStorage.getItem(ACCESS_KEY)) return false;
+    const refreshExpires = localStorage.getItem(REFRESH_EXPIRES_KEY);
+    return !!refreshExpires && Date.now() < parseInt(refreshExpires, 10);
+  }
 
   getAccessToken(): string | null {
     return localStorage.getItem(ACCESS_KEY);
@@ -40,12 +50,19 @@ export class TokenService {
     return localStorage.getItem(USERNAME_KEY);
   }
 
+  getRefreshExpiresAt(): number | null {
+    const val = localStorage.getItem(REFRESH_EXPIRES_KEY);
+    return val ? parseInt(val, 10) : null;
+  }
+
   saveTokens(tokens: TokenResponse): void {
-    const expiresIn = tokens.expiresIn ?? 3600;
+    const expiresIn = tokens.expiresIn ?? ACCESS_TOKEN_TTL_SECONDS;
     const expiresAt = Date.now() + expiresIn * 1000;
+    const refreshExpiresAt = Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000;
     localStorage.setItem(ACCESS_KEY, tokens.token);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
     localStorage.setItem(EXPIRES_KEY, String(expiresAt));
+    localStorage.setItem(REFRESH_EXPIRES_KEY, String(refreshExpiresAt));
     if (tokens.username) {
       localStorage.setItem(USERNAME_KEY, tokens.username);
     }
@@ -56,12 +73,18 @@ export class TokenService {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(EXPIRES_KEY);
+    localStorage.removeItem(REFRESH_EXPIRES_KEY);
     localStorage.removeItem(USERNAME_KEY);
     this._loggedIn.set(false);
   }
 
   isExpired(): boolean {
     const expires = localStorage.getItem(EXPIRES_KEY);
+    return !expires || Date.now() >= parseInt(expires, 10);
+  }
+
+  isRefreshExpired(): boolean {
+    const expires = localStorage.getItem(REFRESH_EXPIRES_KEY);
     return !expires || Date.now() >= parseInt(expires, 10);
   }
 }

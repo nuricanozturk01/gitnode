@@ -15,6 +15,7 @@
 ///
 
 import { Component, inject, signal, computed, effect, NgZone } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -103,7 +104,7 @@ export class PrDetailPage {
   readonly generalComments = computed(() => this.comments().filter((c) => !c.filePath && !c.lineNumber));
 
   constructor() {
-    this.route.params.subscribe(() => this.loadData());
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => this.loadData());
     if (this.tokenService.isLoggedIn()) {
       this.userService
         .getMe()

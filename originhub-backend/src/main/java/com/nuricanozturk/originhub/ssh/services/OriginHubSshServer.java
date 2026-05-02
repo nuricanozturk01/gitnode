@@ -117,35 +117,36 @@ public class OriginHubSshServer {
   private static byte @NonNull [] toSshWireFormat(final @NonNull PublicKey key) throws IOException {
 
     final var baos = new ByteArrayOutputStream();
-    final var dos = new DataOutputStream(baos);
 
-    switch (key) {
-      case final RSAPublicKey rsa -> {
-        writeString(dos, "ssh-rsa");
-        writeBytes(dos, rsa.getPublicExponent().toByteArray());
-        writeBytes(dos, rsa.getModulus().toByteArray());
+    try (final var dos = new DataOutputStream(baos)) {
+
+      switch (key) {
+        case final RSAPublicKey rsa -> {
+          writeString(dos, "ssh-rsa");
+          writeBytes(dos, rsa.getPublicExponent().toByteArray());
+          writeBytes(dos, rsa.getModulus().toByteArray());
+        }
+        case final EdDSAPublicKey ed -> {
+          writeString(dos, "ssh-ed25519");
+          writeBytes(dos, ed.getAbyte());
+        }
+        case final ECPublicKey ec -> {
+          final var curveName = resolveCurveName(ec);
+          writeString(dos, "ecdsa-sha2-" + curveName);
+          writeString(dos, curveName);
+          final var point = ec.getW();
+          final var x = toUnsignedBytes(point.getAffineX().toByteArray());
+          final var y = toUnsignedBytes(point.getAffineY().toByteArray());
+          final var uncompressed = new byte[1 + x.length + y.length];
+          uncompressed[0] = EC_POINT_UNCOMPRESSED_PREFIX;
+          System.arraycopy(x, 0, uncompressed, 1, x.length);
+          System.arraycopy(y, 0, uncompressed, 1 + x.length, y.length);
+          writeBytes(dos, uncompressed);
+        }
+        default -> throw new IOException("Unsupported key type: " + key.getClass().getName());
       }
-      case final EdDSAPublicKey ed -> {
-        writeString(dos, "ssh-ed25519");
-        writeBytes(dos, ed.getAbyte());
-      }
-      case final ECPublicKey ec -> {
-        final var curveName = resolveCurveName(ec);
-        writeString(dos, "ecdsa-sha2-" + curveName);
-        writeString(dos, curveName);
-        final var point = ec.getW();
-        final var x = toUnsignedBytes(point.getAffineX().toByteArray());
-        final var y = toUnsignedBytes(point.getAffineY().toByteArray());
-        final var uncompressed = new byte[1 + x.length + y.length];
-        uncompressed[0] = EC_POINT_UNCOMPRESSED_PREFIX;
-        System.arraycopy(x, 0, uncompressed, 1, x.length);
-        System.arraycopy(y, 0, uncompressed, 1 + x.length, y.length);
-        writeBytes(dos, uncompressed);
-      }
-      default -> throw new IOException("Unsupported key type: " + key.getClass().getName());
     }
 
-    dos.flush();
     return baos.toByteArray();
   }
 

@@ -15,6 +15,7 @@
 ///
 
 import { Component, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { RepoService } from '../../../core/repo/services/repo.service';
@@ -43,7 +44,7 @@ export class RepoLayoutComponent {
   readonly prCount = signal(0);
 
   constructor() {
-    this.route.params.subscribe(() => this.loadRepo());
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => this.loadRepo());
   }
 
   private async loadRepo(): Promise<void> {

@@ -15,6 +15,7 @@
 ///
 
 import { Component, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -47,7 +48,7 @@ export class CommitDetailPage {
   readonly defaultBranch = this.repoContext.defaultBranch;
 
   constructor() {
-    this.route.params.subscribe(() => this.loadCommit());
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => this.loadCommit());
   }
 
   private async loadCommit(): Promise<void> {

@@ -14,9 +14,11 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, SecurityContext } from '@angular/core';
+import { Component, inject, signal, computed, SecurityContext, OnDestroy } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { FileSizePipe } from '../../../shared/pipes/file-size.pipe';
 import { BranchService } from '../../../core/branch/services/branch.service';
@@ -37,7 +39,7 @@ import { ToastService } from '../../../core/toast/toast.service';
   templateUrl: './repo-home.page.html',
   styleUrl: './repo-home.page.css',
 })
-export class RepoHomePage {
+export class RepoHomePage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
@@ -64,6 +66,7 @@ export class RepoHomePage {
 
   readonly cloneDialogOpen = signal(false);
   readonly copied = signal<'https' | 'ssh' | null>(null);
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly owner = computed(() => this.route.snapshot.parent?.paramMap.get('owner') ?? '');
   readonly repoName = computed(() => this.route.snapshot.parent?.paramMap.get('repo') ?? '');
@@ -71,9 +74,16 @@ export class RepoHomePage {
   readonly sshCloneUrl = computed(() => `ssh://${environment.gitUrl}/${this.owner()}/${this.repoName()}.git`);
 
   constructor() {
-    this.route.params.subscribe(() => {
+    this.route.params.pipe(takeUntilDestroyed()).subscribe(() => {
       this.loadData();
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.copiedTimer !== null) {
+      clearTimeout(this.copiedTimer);
+      this.copiedTimer = null;
+    }
   }
 
   private async loadData(): Promise<void> {
@@ -108,17 +118,12 @@ export class RepoHomePage {
   }
 
   private loadTreeOnce(owner: string, repo: string, branch: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.http.get<TreeResponse>(`${environment.apiUrl}/api/repos/${owner}/${repo}/tree/${branch}`).subscribe({
-        next: (data) => {
-          this.tree.set(data.entries ?? []);
-          resolve();
-        },
-        error: (err) => {
-          this.tree.set([]);
-          reject(err);
-        },
-      });
+    return firstValueFrom(
+      this.http.get<TreeResponse>(`${environment.apiUrl}/api/repos/${owner}/${repo}/tree/${branch}`),
+    ).then((data) => {
+      this.tree.set(data.entries ?? []);
+    }).catch(() => {
+      this.tree.set([]);
     });
   }
 
@@ -131,25 +136,22 @@ export class RepoHomePage {
     this.readmeHtml.set(null);
   }
 
-  private tryFetchReadme(owner: string, repo: string, branch: string, filename: string): Promise<boolean> {
-    return new Promise((resolve) => {
-      this.http
-        .get<BlobResponse>(`${environment.apiUrl}/api/repos/${owner}/${repo}/blob/${branch}/${filename}`)
-        .subscribe({
-          next: async (data) => {
-            if (data.isBinary || !data.content) {
-              resolve(false);
-              return;
-            }
-            const raw = decodeBase64Utf8(data.content);
-            const html = await marked.parse(raw);
-            const sanitized = this.sanitizer.sanitize(SecurityContext.HTML, html) ?? '';
-            this.readmeHtml.set(this.sanitizer.bypassSecurityTrustHtml(sanitized));
-            resolve(true);
-          },
-          error: () => resolve(false),
-        });
-    });
+  private async tryFetchReadme(owner: string, repo: string, branch: string, filename: string): Promise<boolean> {
+    try {
+      const data = await firstValueFrom(
+        this.http.get<BlobResponse>(`${environment.apiUrl}/api/repos/${owner}/${repo}/blob/${branch}/${filename}`),
+      );
+      if (data.isBinary || !data.content) {
+        return false;
+      }
+      const raw = decodeBase64Utf8(data.content);
+      const html = await marked.parse(raw);
+      const sanitized = this.sanitizer.sanitize(SecurityContext.HTML, html) ?? '';
+      this.readmeHtml.set(this.sanitizer.bypassSecurityTrustHtml(sanitized));
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   onBranchChange(branchName: string): void {
@@ -175,9 +177,17 @@ export class RepoHomePage {
 
   copyText(value: string, type: 'https' | 'ssh'): void {
     navigator.clipboard.writeText(value);
-    this.copied.set(type);
     this.toast.success('Copied to clipboard');
-    setTimeout(() => this.copied.set(null), 2000);
+    this.scheduleCopied(type);
+  }
+
+  private scheduleCopied(type: 'https' | 'ssh'): void {
+    this.copied.set(type);
+    if (this.copiedTimer !== null) clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => {
+      this.copied.set(null);
+      this.copiedTimer = null;
+    }, 2000);
   }
 
   openCloneDialog(): void {

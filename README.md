@@ -249,7 +249,7 @@ Edit the variables at the top of the `Makefile` before running — at minimum se
 
 OriginHub is under active development. Here's what's planned:
 
-- [ ] HTTPS Git support
+- [X] HTTPS Git support
 - [X] ~~Public repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [X] ~~Fork and star repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [ ] Actions — CI/CD (self-hosted runner)

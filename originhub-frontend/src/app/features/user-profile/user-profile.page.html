@@ -1,52 +1,234 @@
 <div class="bg-base-200 min-h-screen">
-  <div class="mx-auto max-w-5xl px-4 py-8 sm:px-6 md:py-12 lg:px-8">
-    @if (user(); as u) {
-    <div class="flex flex-col gap-8 md:flex-row">
-      <div class="shrink-0 md:w-64">
-        <div class="mb-4">
-          <app-avatar
-            [avatarUrl]="u.avatarUrl"
-            [email]="u.email"
-            [username]="u.username"
-            [fallback]="u.username.charAt(0).toUpperCase()"
-            size="2xl"
-          />
-        </div>
-        <h1 class="text-base-content text-2xl font-bold">{{ u.displayName }}</h1>
-        <p class="text-base-content/60">@{{ u.username }}</p>
-      </div>
-
-      <div class="min-w-0 flex-1">
-        <h2 class="text-base-content mb-4 text-lg font-semibold">Repositories</h2>
-
-        <div class="space-y-3">
-          @for (repo of repos(); track repo.id) {
-          <a
-            [routerLink]="['/', repo.owner.username, repo.name]"
-            class="card bg-base-100 border-base-300 hover:border-primary/50 border shadow-sm transition-colors"
-          >
-            <div class="card-body flex-row items-center gap-4 py-4">
-              <div class="bg-primary/20 text-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
-                <lucide-icon name="bookOpen" class="size-5"></lucide-icon>
-              </div>
-              <div class="min-w-0 flex-1">
-                <h3 class="text-base-content truncate font-semibold">{{ repo.name }}</h3>
-                @if (repo.description) {
-                <p class="text-base-content/70 line-clamp-1 text-sm">{{ repo.description }}</p>
-                }
-                <div class="text-base-content/60 mt-1 flex gap-4 text-xs">
-                  <span>{{ repo.updatedAt | relativeTime }}</span>
-                </div>
-              </div>
+  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
+    @if (loading()) {
+    <div class="profile-skeleton space-y-8" aria-busy="true" aria-label="Loading profile">
+      <div class="repo-panel overflow-hidden p-6 md:p-8">
+        <div class="flex flex-col gap-6 md:flex-row md:items-start">
+          <div class="skeleton mx-auto size-28 shrink-0 rounded-full md:mx-0 md:size-32"></div>
+          <div class="min-w-0 flex-1 space-y-4">
+            <div class="skeleton mx-auto h-9 max-w-xs rounded-lg md:mx-0"></div>
+            <div class="skeleton mx-auto h-5 max-w-48 rounded md:mx-0"></div>
+            <div class="flex flex-wrap justify-center gap-2 md:justify-start">
+              <div class="skeleton h-8 w-24 rounded-full"></div>
+              <div class="skeleton h-8 w-24 rounded-full"></div>
             </div>
-          </a>
-          }
+          </div>
         </div>
+      </div>
+      <div class="space-y-3">
+        <div class="skeleton h-10 w-full rounded-lg"></div>
+        <div class="skeleton rounded-box h-24 w-full"></div>
+        <div class="skeleton rounded-box h-24 w-full"></div>
       </div>
     </div>
+    } @else if (user(); as u) {
+    <div class="space-y-8">
+      <nav class="text-base-content/70 flex flex-wrap items-center gap-2 text-sm">
+        <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+          <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+          Dashboard
+        </a>
+        <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+        <span class="text-base-content font-medium">{{ u.username }}</span>
+      </nav>
+
+      <header class="repo-panel profile-hero relative overflow-hidden p-6 md:p-8">
+        <div
+          class="from-primary/50 via-primary to-primary/50 pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r"
+        ></div>
+        <div class="flex flex-col gap-6 md:flex-row md:items-start md:gap-8">
+          <div class="flex shrink-0 justify-center md:justify-start">
+            <div class="profile-avatar-wrap">
+              <app-avatar
+                [avatarUrl]="u.avatarUrl"
+                [email]="u.email"
+                [username]="u.username"
+                [fallback]="u.username.charAt(0).toUpperCase()"
+                [alt]="'Avatar for ' + u.displayName"
+                size="2xl"
+              />
+            </div>
+          </div>
+          <div class="min-w-0 flex-1 text-center md:text-left">
+            <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">{{ u.displayName }}</h1>
+            <p class="text-base-content/65 mt-1 font-mono text-sm md:text-base">&#64;{{ u.username }}</p>
+
+            <div
+              class="border-base-300/80 bg-base-200/50 mt-5 flex flex-wrap items-center justify-center gap-2 rounded-xl border px-3 py-3 md:justify-start"
+              role="group"
+              aria-label="Repository summary"
+            >
+              <span class="badge-pill badge-pill--primary gap-1">
+                <lucide-icon name="bookOpen" class="size-3.5"></lucide-icon>
+                {{ repoStats().total }} {{ repoStats().total === 1 ? 'repository' : 'repositories' }}
+              </span>
+              @if (repoStats().public > 0) {
+              <span class="badge-pill badge-pill--neutral">{{ repoStats().public }} public</span>
+              } @if (repoStats().private > 0) {
+              <span class="badge-pill badge-pill--neutral">{{ repoStats().private }} private</span>
+              } @if (repoStats().archived > 0) {
+              <span class="badge-pill badge-pill--draft">{{ repoStats().archived }} archived</span>
+              }
+            </div>
+
+            @if (isOwnProfile()) {
+            <div class="mt-5 flex flex-wrap items-center justify-center gap-2 md:justify-start">
+              <a routerLink="/settings" class="btn btn-primary btn-sm gap-2">
+                <lucide-icon name="settings" class="size-4"></lucide-icon>
+                Account settings
+              </a>
+              <a routerLink="/new" class="btn btn-outline btn-sm border-base-300 gap-2">
+                <lucide-icon name="plus" class="size-4"></lucide-icon>
+                New repository
+              </a>
+            </div>
+            }
+          </div>
+        </div>
+      </header>
+
+      <section class="space-y-4" aria-labelledby="profile-repos-heading">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 id="profile-repos-heading" class="text-base-content text-lg font-semibold">Repositories</h2>
+            <p class="text-base-content/60 mt-0.5 text-sm">
+              @if (repoQuery().trim()) { {{ filteredRepos().length }} matching } @else { {{ repoStats().total }} total }
+            </p>
+          </div>
+          <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+            <label class="input input-bordered border-base-300 flex w-full items-center gap-2 sm:max-w-xs">
+              <lucide-icon name="search" class="text-base-content/45 size-4 shrink-0"></lucide-icon>
+              <input
+                type="search"
+                class="grow bg-transparent outline-none"
+                placeholder="Find a repository…"
+                autocomplete="off"
+                [value]="repoQuery()"
+                (input)="onSearchInput($event)"
+              />
+            </label>
+            <div class="join w-full sm:w-auto" role="group" aria-label="Sort repositories">
+              <button
+                type="button"
+                class="btn btn-sm join-item flex-1 sm:flex-none"
+                [class.btn-primary]="sortBy() === 'updated'"
+                [class.btn-ghost]="sortBy() !== 'updated'"
+                (click)="setSort('updated')"
+              >
+                Updated
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm join-item flex-1 sm:flex-none"
+                [class.btn-primary]="sortBy() === 'name'"
+                [class.btn-ghost]="sortBy() !== 'name'"
+                (click)="setSort('name')"
+              >
+                Name
+              </button>
+            </div>
+          </div>
+        </div>
+
+        @if (repos().length === 0) {
+        <div class="repo-panel">
+          <div class="flex flex-col items-center px-6 py-14 text-center">
+            <lucide-icon name="bookOpen" class="text-base-content/35 mb-4 size-14"></lucide-icon>
+            <h3 class="text-base-content text-lg font-semibold">No public repositories</h3>
+            <p class="text-base-content/65 mt-2 max-w-md text-sm">
+              @if (isOwnProfile()) { Create a repository to share code and collaborate. } @else { This user has no
+              repositories visible to you. }
+            </p>
+            @if (isOwnProfile()) {
+            <a routerLink="/new" class="btn btn-primary btn-sm mt-6 gap-2">
+              <lucide-icon name="plus" class="size-4"></lucide-icon>
+              Create repository
+            </a>
+            }
+          </div>
+        </div>
+        } @else if (filteredRepos().length === 0) {
+        <div class="repo-panel">
+          <div class="flex flex-col items-center px-6 py-12 text-center">
+            <lucide-icon name="search" class="text-base-content/35 mb-3 size-10"></lucide-icon>
+            <p class="text-base-content font-medium">No repositories match “{{ repoQuery().trim() }}”</p>
+            <button type="button" class="btn btn-ghost btn-sm mt-3" (click)="repoQuery.set('')">Clear search</button>
+          </div>
+        </div>
+        } @else {
+        <ul class="space-y-3" role="list">
+          @for (repo of filteredRepos(); track repo.id) {
+          <li>
+            <a
+              [routerLink]="['/', repo.owner.username, repo.name]"
+              class="repo-panel profile-repo-card group border-base-300 hover:border-primary/45 flex no-underline transition-[border-color,box-shadow] duration-200 hover:shadow-md"
+            >
+              <div class="flex w-full flex-col gap-3 p-4 sm:flex-row sm:items-start sm:gap-4 sm:p-5">
+                <div
+                  class="bg-primary/15 text-primary flex size-11 shrink-0 items-center justify-center rounded-xl sm:size-12"
+                >
+                  <lucide-icon name="bookOpen" class="size-5 sm:size-6"></lucide-icon>
+                </div>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-base-content group-hover:text-primary font-semibold transition-colors">
+                      {{ repo.owner.username }}<span class="text-base-content/45 font-normal">/</span>{{ repo.name }}
+                    </h3>
+                    @if (repo.isPrivate) {
+                    <span class="badge-pill badge-pill--neutral gap-0.5">
+                      <lucide-icon name="lock" class="size-3"></lucide-icon>
+                      Private
+                    </span>
+                    } @if (repo.isArchived) {
+                    <span class="badge-pill badge-pill--draft">Archived</span>
+                    }
+                  </div>
+                  @if (repo.description) {
+                  <p class="text-base-content/70 mt-1 line-clamp-2 text-sm">{{ repo.description }}</p>
+                  } @if (repo.topics.length) {
+                  <div class="mt-2 flex flex-wrap gap-1">
+                    @for (topic of repo.topics.slice(0, 5); track topic) {
+                    <span class="badge-pill badge-pill--topic">{{ topic }}</span>
+                    } @if (repo.topics.length > 5) {
+                    <span class="text-base-content/50 text-xs">+{{ repo.topics.length - 5 }}</span>
+                    }
+                  </div>
+                  }
+                  <div class="text-base-content/55 mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                    <span class="inline-flex items-center gap-1">
+                      <lucide-icon name="gitBranch" class="size-3.5"></lucide-icon>
+                      {{ repo.defaultBranch }}
+                    </span>
+                    <span>Updated {{ repo.updatedAt | relativeTime }}</span>
+                  </div>
+                </div>
+                <div class="text-base-content/30 hidden shrink-0 self-center sm:block">
+                  <lucide-icon
+                    name="chevronRight"
+                    class="size-5 transition-transform group-hover:translate-x-0.5"
+                  ></lucide-icon>
+                </div>
+              </div>
+            </a>
+          </li>
+          }
+        </ul>
+        }
+      </section>
+    </div>
     } @else {
-    <div class="py-16 text-center">
-      <p class="text-base-content/70">User not found.</p>
+    <div class="repo-panel">
+      <div class="flex flex-col items-center px-6 py-16 text-center">
+        <lucide-icon name="user" class="text-base-content/30 mb-4 size-14"></lucide-icon>
+        <h1 class="text-base-content text-xl font-bold">User not found</h1>
+        <p class="text-base-content/65 mt-2 max-w-sm text-sm">
+          We couldn’t load this profile. The username may be wrong or the account may be unavailable.
+        </p>
+        <a routerLink="/dashboard" class="btn btn-primary btn-sm mt-6 gap-2">
+          <lucide-icon name="home" class="size-4"></lucide-icon>
+          Back to dashboard
+        </a>
+      </div>
     </div>
     }
   </div>

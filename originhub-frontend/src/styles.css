@@ -93,6 +93,37 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Wordmark: primary + base-content, both themes; tight lockup reads as one brand */
+.originhub-mark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.originhub-mark__origin {
+  color: var(--color-primary);
+  font-weight: 800;
+}
+
+.originhub-mark__hub {
+  color: var(--color-base-content);
+  font-weight: 700;
+}
+
+a:hover .originhub-mark__origin,
+a:focus-visible .originhub-mark__origin {
+  color: color-mix(in oklch, var(--color-primary) 88%, var(--color-base-content));
+}
+
+a:hover .originhub-mark__hub,
+a:focus-visible .originhub-mark__hub {
+  color: color-mix(in oklch, var(--color-base-content) 88%, var(--color-primary));
+}
+
 .app-shell {
   background-color: transparent;
 }

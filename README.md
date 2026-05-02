@@ -180,6 +180,7 @@ server"*, OriginHub is for you.
 ### Option 1 — Docker Run (Manual)
 
 ```bash
+SECRET=$(openssl rand -base64 64 | tr -d '\n')
 docker network create originhub
 docker run -d \
   --name originhub-postgres \
@@ -196,7 +197,7 @@ docker run -d \
   -e SPRING_DATASOURCE_URL=jdbc:postgresql://originhub-postgres:5432/originhub \
   -e SPRING_DATASOURCE_USERNAME=admin \
   -e SPRING_DATASOURCE_PASSWORD=admin123 \
-  -e ORIGINHUB_JWT_SECRET=your_secret_here \
+  -e "ORIGINHUB_JWT_SECRET=$SECRET" \
   -e ORIGINHUB_GIT_REPO__ROOT=/data/repos \
   -e SPRING_PROFILES_ACTIVE=os \
   -v originhub-repos:/data/repos \

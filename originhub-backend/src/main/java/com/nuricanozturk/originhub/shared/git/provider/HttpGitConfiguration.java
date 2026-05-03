@@ -45,6 +45,8 @@ import org.springframework.context.annotation.Configuration;
 @ConditionalOnProperty(name = "originhub.http.enabled", havingValue = "true")
 public class HttpGitConfiguration {
 
+  private static final int HTTP_GIT_FILTER_ORDER = -102;
+
   @Value("${originhub.git.repo-root}")
   private String repoRoot;
 
@@ -96,7 +98,7 @@ public class HttpGitConfiguration {
     final var filter = new HttpGitAuthenticationFilter(tenantRepository);
     final var registration = new FilterRegistrationBean<>(filter);
     registration.addUrlPatterns("/git/*");
-    registration.setOrder(1);
+    registration.setOrder(HTTP_GIT_FILTER_ORDER);
 
     return registration;
   }
@@ -117,21 +119,27 @@ public class HttpGitConfiguration {
 
       try {
         final var auth = httpRequest.getHeader("Authorization");
+        log.debug(
+            "HTTP Git request: {} {} - Auth header present: {}",
+            httpRequest.getMethod(),
+            httpRequest.getRequestURI(),
+            auth != null);
 
         if (auth != null && auth.startsWith("Basic ")) {
           this.authenticate(auth);
+          log.debug("HTTP Git auth passed for: {}", httpRequest.getRequestURI());
           chain.doFilter(request, response);
         } else {
           httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
           httpResponse.setHeader("WWW-Authenticate", "Basic realm=\"OriginHub\"");
           httpResponse.getWriter().write("Unauthorized");
-          log.debug("HTTP Git request without auth");
+          log.debug("HTTP Git request without auth: {}", httpRequest.getRequestURI());
         }
       } catch (final IllegalArgumentException ex) {
         httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         httpResponse.setHeader("WWW-Authenticate", "Basic realm=\"OriginHub\"");
         httpResponse.getWriter().write("Unauthorized: " + ex.getMessage());
-        log.warn("HTTP Git auth failed: {}", ex.getMessage());
+        log.warn("HTTP Git auth failed for {}: {}", httpRequest.getRequestURI(), ex.getMessage());
       }
     }
 

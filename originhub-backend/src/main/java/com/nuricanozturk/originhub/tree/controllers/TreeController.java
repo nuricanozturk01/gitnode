@@ -15,7 +15,7 @@
  */
 package com.nuricanozturk.originhub.tree.controllers;
 
-import com.nuricanozturk.originhub.repo.services.RepoService;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.tree.dtos.BlobResponse;
 import com.nuricanozturk.originhub.tree.dtos.TreeResponse;

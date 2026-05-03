@@ -124,6 +124,13 @@ export class RepoHomePage implements OnDestroy {
       if (!this.selectedBranch()) {
         this.selectedBranch.set(branchForTree);
       }
+
+      const hasCommits = branchesData.some((b) => b.lastCommitSha !== '');
+      if (!hasCommits) {
+        this.isEmpty.set(true);
+        return;
+      }
+
       await this.loadTreeOnce(owner, repo, branchForTree);
       await this.loadReadme(owner, repo, branchForTree);
     } catch {

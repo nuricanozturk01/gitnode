@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.repo.mappers;
+package com.nuricanozturk.originhub.shared.repo.mappers;
 
-import com.nuricanozturk.originhub.repo.dtos.RepoInfo;
-import com.nuricanozturk.originhub.repo.dtos.TenantRepoInfo;
+import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
+import com.nuricanozturk.originhub.shared.repo.dtos.TenantRepoInfo;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import org.jspecify.annotations.NonNull;

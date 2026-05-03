@@ -58,6 +58,16 @@ import {
   Tag,
   Download,
   Filter,
+  Server,
+  Sparkles,
+  Workflow,
+  Kanban,
+  Package,
+  Webhook,
+  ArrowLeftRight,
+  StickyNote,
+  ShieldCheck,
+  Rocket,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -104,4 +114,14 @@ export const LUCIDE_ICONS = {
   Tag,
   Download,
   Filter,
+  Server,
+  Sparkles,
+  Workflow,
+  Kanban,
+  Package,
+  Webhook,
+  ArrowLeftRight,
+  StickyNote,
+  ShieldCheck,
+  Rocket,
 };

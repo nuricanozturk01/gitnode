@@ -15,11 +15,11 @@
  */
 package com.nuricanozturk.originhub.repo.controllers;
 
-import com.nuricanozturk.originhub.repo.dtos.RepoForm;
-import com.nuricanozturk.originhub.repo.dtos.RepoInfo;
-import com.nuricanozturk.originhub.repo.services.RepoService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
+import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
 import com.nuricanozturk.originhub.shared.repo.events.RepoRenamedEvent;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

@@ -94,4 +94,17 @@ export class PullRequestsPage implements OnInit {
         return 'badge-pill--neutral';
     }
   }
+
+  statusLabel(status: string): string {
+    switch (status) {
+      case 'OPEN':
+        return 'Open';
+      case 'MERGED':
+        return 'Merged';
+      case 'CLOSED':
+        return 'Closed';
+      default:
+        return status;
+    }
+  }
 }

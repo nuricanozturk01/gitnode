@@ -1,151 +1,567 @@
-<div class="landing min-h-screen">
-  <section class="relative overflow-hidden py-20 sm:py-28 lg:py-36">
+<main class="landing text-base-content relative min-h-screen w-full min-w-0 overflow-x-hidden">
+  <!-- Hero -->
+  <section class="landing-hero-surface relative overflow-x-hidden pt-12 pb-12 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
+    <div class="landing-hero-grid pointer-events-none absolute inset-0 opacity-[0.35]"></div>
     <div class="hero-gradient pointer-events-none absolute inset-0"></div>
-    <div class="relative mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-4xl text-center">
-        <div class="mb-8 flex w-full flex-wrap items-center justify-center gap-3 sm:gap-4">
-          <img src="/icon.png" alt="" class="size-23 shrink-0 object-contain" width="92" height="92" decoding="async" />
-          <span class="originhub-mark text-5xl leading-none sm:text-6xl lg:text-7xl">
-            <span class="originhub-mark__origin">Origin</span><span class="originhub-mark__hub">Hub</span>
-          </span>
-        </div>
-        <h1 class="text-base-content mb-6 text-4xl leading-tight font-bold sm:text-5xl lg:text-6xl">
-          Your code.
-          <span class="text-primary">Your infrastructure.</span>
-        </h1>
-        <p class="text-base-content/70 mx-auto mb-10 max-w-2xl text-lg leading-relaxed sm:text-xl">
-          OriginHub is a modern, self-hosted Git platform. Host repositories, collaborate with pull requests, and run
-          CI/CD workflows — all on your own servers. No vendor lock-in. Full control.
-        </p>
-        <div class="hero-actions flex flex-wrap justify-center gap-3 sm:gap-4">
-          <a routerLink="/register" class="btn btn-primary btn-lg glow gap-2">
-            <lucide-icon name="plus" class="size-5"></lucide-icon>
-            Get Started
+    <div
+      class="landing-hero-ray pointer-events-none absolute top-0 h-[min(60vh,420px)] w-[min(100vw,420px)] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2 sm:right-0 sm:left-auto sm:h-[min(70vh,520px)] sm:w-[min(90vw,640px)] sm:translate-x-0"
+    ></div>
+
+    <div class="relative mx-auto max-w-7xl min-w-0 px-3 sm:px-6 lg:px-8">
+      <div class="grid min-w-0 items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
+        <div class="max-w-full min-w-0 lg:max-w-none">
+          <a
+            routerLink="/"
+            class="mb-4 flex max-w-full min-w-0 flex-wrap items-center gap-2.5 no-underline outline-offset-4 transition-opacity hover:opacity-90 focus-visible:opacity-100 sm:mb-5 sm:inline-flex sm:flex-nowrap sm:gap-3"
+            aria-label="OriginHub home"
+          >
+            <img
+              src="/icon.png"
+              alt=""
+              width="56"
+              height="56"
+              class="size-11 shrink-0 object-contain sm:size-14"
+              decoding="async"
+            />
+            <span class="originhub-mark min-w-0 text-2xl leading-none sm:text-3xl sm:leading-none md:text-4xl">
+              <span class="originhub-mark__origin">Origin</span><span class="originhub-mark__hub">Hub</span>
+            </span>
           </a>
-          <a routerLink="/login" class="btn btn-outline btn-lg hero-btn-outline gap-2"> Sign In </a>
-          <a routerLink="/docs" class="btn btn-outline btn-lg hero-btn-outline gap-2">
-            <lucide-icon name="bookOpen" class="size-5"></lucide-icon>
-            Docs
-          </a>
-        </div>
-      </div>
-    </div>
-  </section>
 
-  <section class="bg-base-200/50 py-12">
-    <div class="mx-auto max-w-4xl px-6">
-      <div class="mb-4 flex items-center gap-2 px-2">
-        <div class="badge badge-primary badge-outline badge-sm">Git Setup</div>
-        <span class="font-mono text-xs opacity-60">nuricanozturk.com</span>
-      </div>
-
-      <div class="mockup-code bg-base-100 border-base-300 border shadow-2xl before:opacity-40">
-        <pre data-prefix=">"><code>git clone https://api.nuricanozturk.com/git/owner/repo</code></pre>
-        <pre data-prefix=">"><code>git clone ssh://git&#64;api.nuricanozturk.com:2222/owner/repo.git</code></pre>
-        <pre
-          data-prefix=">"
-          class="text-warning"
-        ><code>cd <span class="text-base-content italic opacity-80">#your_project</span></code></pre>
-        <pre
-          data-prefix=">"
-          class="text-success"
-        ><code>git push origin <span class="text-base-content italic opacity-80">#your_branch</span></code></pre>
-      </div>
-
-      <p class="text-base-content/50 mt-4 text-center text-sm">
-        Press <kbd class="kbd kbd-sm">Cmd</kbd> + <kbd class="kbd kbd-sm">C</kbd> to copy the commands.
-      </p>
-    </div>
-  </section>
-
-  <section class="py-20 sm:py-28">
-    <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
-      <div class="mb-16 text-center">
-        <h2 class="text-base-content mb-4 text-3xl font-bold sm:text-4xl">Everything you need</h2>
-        <p class="text-base-content/70 mx-auto max-w-2xl text-lg">
-          A complete Git experience, designed for teams who value privacy and control.
-        </p>
-      </div>
-
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 lg:gap-8">
-        <div class="feature-card bg-base-100 border-base-300 rounded-xl border p-6 lg:p-8">
-          <div class="bg-primary/20 mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
-            <lucide-icon name="folder" class="text-primary size-6"></lucide-icon>
+          <div
+            class="border-base-300/80 bg-base-100/60 text-base-content/80 mb-5 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm sm:mb-6 sm:px-3 sm:text-xs md:text-sm"
+          >
+            <lucide-icon
+              name="sparkles"
+              class="text-primary size-3.5 shrink-0 sm:size-4"
+              aria-hidden="true"
+            ></lucide-icon>
+            <span class="min-w-0 leading-snug">Self-hosted Git · HTTPS &amp; SSH</span>
           </div>
-          <h3 class="text-base-content mb-2 text-xl font-semibold">Repository hosting</h3>
-          <p class="text-base-content/70">
-            Unlimited public and private repositories. Clone via HTTPS or SSH. Full Git protocol support.
-          </p>
-        </div>
 
-        <div class="feature-card bg-base-100 border-base-300 rounded-xl border p-6 lg:p-8">
-          <div class="bg-primary/20 mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
-            <lucide-icon name="gitPullRequest" class="text-primary size-6"></lucide-icon>
+          <h1 class="text-3xl leading-[1.1] font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+            Your code.
+            <span class="text-primary"> Your infrastructure.</span>
+          </h1>
+
+          <p
+            class="text-base-content/70 mt-4 max-w-lg text-sm leading-relaxed text-pretty sm:mt-5 sm:text-base sm:leading-relaxed md:text-lg"
+          >
+            OriginHub is a modern Git platform you run yourself. Repositories, pull requests, and a familiar web
+            experience — without giving up custody of your source.
+          </p>
+
+          <div
+            class="mt-6 flex w-full min-w-0 flex-col gap-2.5 sm:mt-8 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3 md:gap-4"
+          >
+            <a
+              routerLink="/register"
+              class="btn btn-primary btn-lg glow w-full shrink-0 gap-2 px-6 shadow-lg sm:w-auto sm:min-w-[10rem]"
+            >
+              <lucide-icon name="plus" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
+              Get started
+            </a>
+            <a
+              routerLink="/login"
+              class="btn btn-lg hero-btn-outline bg-base-100/40 w-full shrink-0 gap-2 border px-6 backdrop-blur-sm sm:w-auto sm:min-w-[8.5rem]"
+            >
+              Sign in
+            </a>
+            <a
+              routerLink="/docs"
+              class="btn btn-ghost btn-lg text-base-content/80 hover:text-primary w-full shrink-0 gap-2 sm:w-auto sm:px-4"
+            >
+              <lucide-icon name="bookOpen" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
+              Documentation
+            </a>
           </div>
-          <h3 class="text-base-content mb-2 text-xl font-semibold">Pull requests</h3>
-          <p class="text-base-content/70">
-            Code review workflow with pull requests. Discuss changes, request reviews, merge when ready.
-          </p>
-        </div>
 
-        <div class="feature-card bg-base-100 border-base-300 rounded-xl border p-6 lg:p-8">
-          <div class="mb-4 flex items-start justify-between">
-            <div class="bg-primary/20 flex h-12 w-12 items-center justify-center rounded-lg">
-              <lucide-icon name="play" class="text-primary size-6"></lucide-icon>
+          <dl
+            class="border-base-300/60 mt-8 grid max-w-full min-w-0 grid-cols-3 gap-2 border-t pt-6 text-center sm:mt-10 sm:max-w-lg sm:gap-4 sm:pt-8 sm:text-left"
+          >
+            <div class="sm:border-base-300/50 sm:pr-4 sm:first:pl-0">
+              <dt class="text-base-content/50 text-[10px] font-semibold tracking-wider uppercase sm:text-xs">
+                Transport
+              </dt>
+              <dd class="mt-1 text-xs font-medium sm:text-sm">HTTP(S) + SSH</dd>
             </div>
-            <div class="badge-pill badge-pill--primary">Coming Soon</div>
-          </div>
-
-          <h3 class="text-base-content mb-2 text-xl font-semibold text-balance">CI/CD Workflows</h3>
-
-          <p class="text-base-content/70">
-            Run builds, tests, and deployments. Define workflows in YAML. Integrate with your stack.
-          </p>
+            <div class="sm:border-base-300/50 sm:border-l sm:px-4">
+              <dt class="text-base-content/50 text-[10px] font-semibold tracking-wider uppercase sm:text-xs">
+                Hosting
+              </dt>
+              <dd class="mt-1 text-xs font-medium sm:text-sm">Your servers</dd>
+            </div>
+            <div class="sm:border-base-300/50 sm:border-l sm:pl-4">
+              <dt class="text-base-content/50 text-[10px] font-semibold tracking-wider uppercase sm:text-xs">Model</dt>
+              <dd class="mt-1 text-xs font-medium sm:text-sm">Open &amp; in-house</dd>
+            </div>
+          </dl>
         </div>
 
-        <div class="feature-card bg-base-100 border-base-300 rounded-xl border p-6 lg:p-8">
-          <div class="bg-primary/20 mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
-            <lucide-icon name="shield" class="text-primary size-6"></lucide-icon>
+        <!-- Hero preview -->
+        <div class="landing-hero-preview relative w-full max-w-full min-w-0 lg:max-w-none lg:justify-self-end">
+          <div
+            class="border-base-300/70 from-base-100/90 to-base-200/40 relative mx-auto w-full max-w-full overflow-hidden rounded-2xl border bg-gradient-to-br p-1 shadow-2xl ring-1 ring-black/5 backdrop-blur-md dark:ring-white/10"
+          >
+            <div
+              class="border-base-300/60 bg-base-200/30 flex min-w-0 items-center gap-2 rounded-t-xl border-b px-3 py-2.5 sm:px-4 sm:py-3"
+              role="presentation"
+            >
+              <span class="flex shrink-0 gap-1.5" aria-hidden="true">
+                <span class="bg-error/70 size-2.5 rounded-full"></span>
+                <span class="bg-warning/70 size-2.5 rounded-full"></span>
+                <span class="bg-success/60 size-2.5 rounded-full"></span>
+              </span>
+              <span
+                class="text-base-content/45 ml-0 min-w-0 truncate font-mono text-[10px] tracking-wide sm:ml-1 sm:text-[11px]"
+                >originhub — quick clone</span
+              >
+            </div>
+            <div class="space-y-3 p-3 sm:space-y-4 sm:p-5">
+              <div>
+                <div class="mb-1.5 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                  <span class="text-base-content/55 shrink-0 text-[10px] font-semibold tracking-wider uppercase"
+                    >HTTPS</span
+                  >
+                  <span class="badge badge-ghost badge-xs shrink-0 font-normal opacity-80">Basic auth</span>
+                </div>
+                <p
+                  class="code-snippet border-base-300/80 bg-base-300/25 text-base-content/90 rounded-lg border px-2.5 py-2 font-mono text-[10px] leading-relaxed break-words sm:px-3 sm:py-2.5 sm:text-[11px] sm:leading-relaxed md:text-xs"
+                >
+                  {{ httpsCloneCommand() }}
+                </p>
+              </div>
+              <div>
+                <div class="mb-1.5 flex min-w-0 flex-wrap items-center justify-between gap-2">
+                  <span class="text-base-content/55 shrink-0 text-[10px] font-semibold tracking-wider uppercase"
+                    >SSH</span
+                  >
+                  <span class="badge badge-ghost badge-xs shrink-0 font-normal opacity-80">Deploy keys</span>
+                </div>
+                <p
+                  class="code-snippet border-base-300/80 bg-base-300/25 text-base-content/90 rounded-lg border px-2.5 py-2 font-mono text-[10px] leading-relaxed break-words sm:px-3 sm:py-2.5 sm:text-[11px] sm:leading-relaxed md:text-xs"
+                >
+                  {{ sshCloneCommand() }}
+                </p>
+              </div>
+              <p class="text-base-content/45 text-[10px] leading-snug sm:text-[11px]">
+                URLs follow your environment config. Replace <span class="font-mono opacity-80">owner/repo</span> with a
+                real repository path.
+              </p>
+            </div>
           </div>
-          <h3 class="text-base-content mb-2 text-xl font-semibold">Self-hosted</h3>
-          <p class="text-base-content/70">
-            Your data stays on your servers. No cloud dependency. Deploy on-premises or your own VPS.
-          </p>
-        </div>
-
-        <div class="feature-card bg-base-100 border-base-300 rounded-xl border p-6 lg:p-8">
-          <div class="bg-primary/20 mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
-            <lucide-icon name="fileText" class="text-primary size-6"></lucide-icon>
-          </div>
-          <h3 class="text-base-content mb-2 text-xl font-semibold">Code browser</h3>
-          <p class="text-base-content/70">
-            Browse files, view diffs, read code in the browser. Syntax highlighting and blame view.
-          </p>
-        </div>
-
-        <div class="feature-card bg-base-100 border-base-300 rounded-xl border p-6 lg:p-8">
-          <div class="bg-primary/20 mb-4 flex h-12 w-12 items-center justify-center rounded-lg">
-            <lucide-icon name="gitBranch" class="text-primary size-6"></lucide-icon>
-          </div>
-          <h3 class="text-base-content mb-2 text-xl font-semibold">Branch management</h3>
-          <p class="text-base-content/70">
-            Create branches, protect main, enforce merge rules. Full Git branching model support.
-          </p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="border-base-300/50 border-t py-20 sm:py-28">
-    <div class="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-      <h2 class="text-base-content mb-4 text-3xl font-bold sm:text-4xl">Ready to host your own Git?</h2>
-      <p class="text-base-content/70 mb-8 text-lg">
-        Deploy OriginHub on your infrastructure. Open source. No subscriptions. Full control.
-      </p>
-      <a routerLink="/register" class="btn btn-primary btn-lg gap-2">
-        <lucide-icon name="plus" class="size-5"></lucide-icon>
-        Create your account
-      </a>
+  <!-- Quick start -->
+  <section
+    class="border-base-300/50 bg-base-200/40 relative border-y py-10 sm:py-16"
+    aria-labelledby="landing-quickstart-heading"
+  >
+    <div class="mx-auto max-w-4xl min-w-0 px-3 sm:px-6 lg:px-8">
+      <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h2 id="landing-quickstart-heading" class="text-2xl font-bold tracking-tight sm:text-3xl">
+            Clone in one step
+          </h2>
+          <p class="text-base-content/65 mt-1 max-w-xl text-sm sm:text-base">
+            Smart HTTP on your API origin, or Git over SSH. Copy the line that matches how you authenticate.
+          </p>
+        </div>
+        <a routerLink="/docs" class="btn btn-outline btn-sm shrink-0 gap-2 self-start sm:self-auto">
+          Full setup guide
+          <lucide-icon name="arrowRight" class="size-3.5" aria-hidden="true"></lucide-icon>
+        </a>
+      </div>
+
+      <div
+        class="landing-code-shell border-base-300/80 bg-base-100 max-w-full overflow-hidden rounded-2xl border shadow-xl"
+      >
+        <div
+          class="border-base-300/60 bg-base-200/40 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-3 sm:px-4"
+        >
+          <span class="text-base-content/50 flex items-center gap-2 text-xs font-medium">
+            <lucide-icon name="server" class="size-3.5 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
+            Terminal
+          </span>
+          <span class="text-base-content/40 font-mono text-[10px] sm:text-xs">example · replace owner/repo</span>
+        </div>
+        <ul class="divide-base-300/60 min-w-0 divide-y font-mono text-xs sm:text-sm">
+          <li
+            class="landing-code-row flex min-w-0 flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+          >
+            <code class="code-snippet text-primary/90 order-2 max-w-full min-w-0 break-all sm:order-1"
+              >{{ httpsCloneCommand() }}</code
+            >
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm order-1 shrink-0 gap-1.5 self-end sm:order-2 sm:self-auto"
+              (click)="copyCloneCommand(httpsCloneCommand(), 'https')"
+            >
+              @if (copied() === 'https') {
+              <lucide-icon name="checkCircle" class="text-success size-4" aria-hidden="true"></lucide-icon>
+              Copied } @else {
+              <lucide-icon name="copy" class="size-4 opacity-70" aria-hidden="true"></lucide-icon>
+              Copy }
+            </button>
+          </li>
+          <li
+            class="landing-code-row flex min-w-0 flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+          >
+            <code class="code-snippet text-base-content/85 order-2 max-w-full min-w-0 break-all sm:order-1"
+              >{{ sshCloneCommand() }}</code
+            >
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm order-1 shrink-0 gap-1.5 self-end sm:order-2 sm:self-auto"
+              (click)="copyCloneCommand(sshCloneCommand(), 'ssh')"
+            >
+              @if (copied() === 'ssh') {
+              <lucide-icon name="checkCircle" class="text-success size-4" aria-hidden="true"></lucide-icon>
+              Copied } @else {
+              <lucide-icon name="copy" class="size-4 opacity-70" aria-hidden="true"></lucide-icon>
+              Copy }
+            </button>
+          </li>
+        </ul>
+        <div
+          class="border-base-300/50 bg-base-200/25 text-base-content/55 border-t px-3 py-3 text-center text-[11px] leading-snug sm:px-4 sm:text-xs"
+        >
+          HTTPS: use your OriginHub username and password when Git prompts. SSH: add a public key under Settings.
+        </div>
+      </div>
     </div>
   </section>
-</div>
+
+  <!-- Features -->
+  <section class="py-12 sm:py-24" aria-labelledby="landing-features-heading">
+    <div class="mx-auto max-w-7xl min-w-0 px-3 sm:px-6 lg:px-8">
+      <div class="mx-auto mb-10 max-w-2xl text-center sm:mb-12 lg:mb-16">
+        <h2 id="landing-features-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">Everything you need</h2>
+        <p class="text-base-content/65 mt-3 text-sm text-pretty sm:text-base sm:text-lg">
+          A cohesive experience for teams that want GitHub-like workflows without the SaaS footprint.
+        </p>
+      </div>
+
+      <div class="grid min-w-0 auto-rows-fr grid-cols-1 gap-3 sm:gap-4 md:grid-cols-6 md:gap-5">
+        <article
+          class="feature-card feature-card--lift border-base-300/70 from-base-100 to-base-200/30 group relative min-w-0 overflow-hidden rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-4 lg:p-8"
+        >
+          <div
+            class="from-primary/12 pointer-events-none absolute -top-16 -right-16 h-48 w-48 rounded-full bg-gradient-to-br to-transparent blur-2xl"
+          ></div>
+          <div class="relative flex h-full flex-col">
+            <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+              <lucide-icon name="folder" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Repository hosting</h3>
+            <p class="text-base-content/70 mt-2 max-w-prose flex-1 text-sm leading-relaxed sm:text-base">
+              Public and private bare repositories on your own disks — with the same owner/repo layout you expect from
+              hosted Git.
+            </p>
+            <div class="mt-5 flex flex-wrap gap-2">
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Private</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Public</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Bare repos</span>
+            </div>
+          </div>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 group flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="gitPullRequest" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Pull requests</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Review diffs, discuss changes, and merge when the team is ready.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="shield" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Self-hosted</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Your data stays on your metal or your cloud account — not someone else’s multi-tenant graph.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="fileText" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Code browser</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Browse trees, read blobs, and follow history in the browser with a focused UI.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="gitBranch" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Branch management</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Create branches, set defaults, and keep mainline history understandable.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 from-base-100 to-base-200/25 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="link" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">HTTP &amp; HTTPS Git</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Smart Git over the same origin as your API (<span class="font-mono text-xs opacity-90">/git/…</span>).
+            Clone, fetch, and push with your account via HTTP Basic — TLS-ready when you terminate HTTPS in front.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">JGit</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Smart HTTP</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Basic auth</span>
+          </div>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 from-base-100 to-base-200/25 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="keyRound" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">SSH Git</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Native Git over SSH with deploy keys and per-account keys. Works with standard
+            <span class="font-mono text-xs opacity-90">git&#64;host:repo</span> URLs and your
+            <code class="text-xs opacity-90">~/.ssh/config</code> aliases.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">JGit</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">MINA SSHD</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">ED25519</span>
+          </div>
+        </article>
+
+        <!-- Roadmap: coming soon -->
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="workflow" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">OriginHub Actions</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Event-driven workflows on your own runners — triggers, secrets, and reusable steps without leaving your
+            infrastructure.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="kanban" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Project management</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Boards, milestones, and lightweight planning tied to branches and pull requests.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="package" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Package management</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            First-party registries and proxies for Maven, npm, PyPI, Docker, NuGet, Cargo, and Helm — versioned next to
+            your repos.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="users" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Teams &amp; organizations</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Shared ownership, org-level policies, and collaboration patterns that scale past single-user accounts.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="webhook" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Webhooks</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Signed delivery to your services for pushes, PR events, releases, and more — with retries and visibility.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="arrowLeftRight" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Repository transfer &amp; import</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Move repos between accounts and bootstrap from GitHub or GitLab with guided, resumable imports.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="stickyNote" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Code snippets</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Gist-style shares for one-off scripts and notes — revisioned, embeddable, and scoped to who can see them.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="shieldCheck" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Two-factor authentication</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            TOTP-based 2FA for accounts and enforced policies for sensitive organizations.
+          </p>
+        </article>
+
+        <article
+          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="mb-3 flex items-start justify-between gap-2">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="rocket" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <span class="badge-coming-soon shrink-0">Coming soon</span>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Tags &amp; releases</h3>
+          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Annotated tags, release notes, and downloadable assets aligned with your Git tags and CI output.
+          </p>
+        </article>
+
+        <article
+          class="feature-card border-base-300/60 from-base-200/40 to-base-100/80 relative flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-gradient-to-r p-4 sm:p-6 md:col-span-6 md:flex-row md:items-center md:gap-6 md:p-8 lg:gap-8"
+        >
+          <div class="flex flex-1 items-start gap-4">
+            <div
+              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+            >
+              <lucide-icon name="play" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <div>
+              <div class="flex flex-wrap items-center gap-2">
+                <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">CI/CD workflows</h3>
+                <span class="badge-coming-soon">Coming soon</span>
+              </div>
+              <p class="text-base-content/65 mt-2 max-w-3xl text-sm leading-relaxed sm:text-base">
+                Run builds and tests from YAML pipelines wired to your repos — planned as the next major layer on top of
+                Git and reviews.
+              </p>
+            </div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="border-base-300/40 relative border-t py-12 sm:py-24" aria-labelledby="landing-cta-heading">
+    <div class="landing-cta-glow pointer-events-none absolute inset-0 opacity-40"></div>
+    <div class="relative mx-auto max-w-3xl min-w-0 px-3 text-center sm:px-6">
+      <h2 id="landing-cta-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">
+        Ready to host your own Git?
+      </h2>
+      <p class="text-base-content/65 mx-auto mt-4 max-w-lg text-sm text-pretty sm:text-base sm:text-lg">
+        Deploy OriginHub where you already run services. No per-seat tax — capacity is yours to size.
+      </p>
+      <div
+        class="mt-8 flex w-full min-w-0 flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3"
+      >
+        <a
+          routerLink="/register"
+          class="btn btn-primary btn-lg glow w-full shrink-0 gap-2 px-8 shadow-lg sm:w-auto sm:min-w-[12rem]"
+        >
+          <lucide-icon name="plus" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
+          Create your account
+        </a>
+        <a
+          routerLink="/login"
+          class="btn btn-lg hero-btn-outline bg-base-100/50 w-full shrink-0 gap-2 border px-8 backdrop-blur-sm sm:w-auto"
+        >
+          I already have an account
+        </a>
+      </div>
+    </div>
+  </section>
+</main>

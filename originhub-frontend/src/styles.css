@@ -206,17 +206,88 @@ a:not(.btn):hover {
   border-color: var(--color-primary) !important;
 }
 
+/* Buttons: shared motion (no layout shift / nudge), readable ghost hovers */
+.btn {
+  transition-property: background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 0.12s;
+  transition-timing-function: ease-out;
+}
+.btn:hover:not(:disabled),
+.btn:focus-visible:not(:disabled) {
+  transform: none;
+}
+.btn:active:not(:disabled) {
+  transform: none;
+}
+
 .btn-primary {
   font-weight: 600;
   padding-inline: 1.25rem;
-  transition:
-    transform 0.15s,
-    box-shadow 0.15s;
 }
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px color-mix(in oklch, var(--color-primary) 30%, transparent);
+  box-shadow: 0 2px 14px color-mix(in oklch, var(--color-primary) 28%, transparent);
 }
+.btn-primary:active:not(:disabled) {
+  box-shadow: 0 1px 8px color-mix(in oklch, var(--color-primary) 22%, transparent);
+}
+
+.btn-outline:hover:not(:disabled) {
+  box-shadow: none;
+}
+
+/* Ghost / icon buttons: subtle hover — no heavy box, no thick outline on mouse hover */
+.btn.btn-ghost {
+  border-color: transparent;
+  box-shadow: none;
+}
+.btn.btn-ghost:hover:not(:disabled) {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: color-mix(in oklch, var(--color-base-content) 6%, var(--color-base-100));
+  color: var(--color-base-content);
+}
+.btn.btn-ghost:active:not(:disabled) {
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background-color: color-mix(in oklch, var(--color-base-content) 10%, var(--color-base-100));
+}
+
+/* Keyboard only: slim ring (avoid the “thick frame” look on mouse hover) */
+.btn.btn-ghost:focus-visible:not(:disabled) {
+  border-color: transparent !important;
+  box-shadow: none !important;
+  outline: 2px solid color-mix(in oklch, var(--color-primary) 55%, transparent);
+  outline-offset: 2px;
+  background-color: color-mix(in oklch, var(--color-base-content) 6%, var(--color-base-100));
+}
+.btn.btn-ghost:focus-visible:hover:not(:disabled) {
+  outline: none !important;
+}
+
+.btn.btn-ghost.text-error:hover:not(:disabled) {
+  background-color: color-mix(in oklch, var(--color-error) 10%, var(--color-base-100));
+  color: var(--color-error);
+  border-color: transparent !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+.btn.btn-ghost.text-error:active:not(:disabled) {
+  background-color: color-mix(in oklch, var(--color-error) 14%, var(--color-base-100));
+  border-color: transparent !important;
+  outline: none !important;
+}
+.btn.btn-ghost.text-error:focus-visible:not(:disabled) {
+  outline: 2px solid color-mix(in oklch, var(--color-error) 55%, transparent);
+  outline-offset: 2px;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+.btn.btn-ghost.text-error:focus-visible:hover:not(:disabled) {
+  outline: none !important;
+}
+
 .btn-outline {
   border-width: 1.5px;
 }
@@ -378,4 +449,40 @@ a:not(.btn):hover {
 .badge-pill--topic {
   background: color-mix(in oklch, var(--color-primary) 14%, transparent);
   color: var(--color-primary);
+}
+
+/* Landing / roadmap: polished “Coming soon” chip (both themes) */
+.badge-coming-soon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  border-radius: 9999px;
+  padding: 0.2rem 0.72rem 0.18rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: linear-gradient(
+    155deg,
+    color-mix(in oklch, var(--color-primary) 26%, var(--color-base-100)) 0%,
+    color-mix(in oklch, var(--color-primary) 11%, var(--color-base-100)) 55%,
+    color-mix(in oklch, var(--color-primary) 6%, var(--color-base-200)) 100%
+  );
+  border: 1px solid color-mix(in oklch, var(--color-primary) 48%, var(--color-base-300));
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 16%, transparent),
+    0 1px 2px color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+.badge-coming-soon::before {
+  content: '';
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  background: color-mix(in oklch, var(--color-primary) 75%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-primary) 22%, var(--color-base-100));
 }

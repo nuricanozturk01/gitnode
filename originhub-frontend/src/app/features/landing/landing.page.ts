@@ -14,9 +14,11 @@
 /// limitations under the License.
 ///
 
-import { Component } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { environment } from '../../../environments/environment';
+import { ToastService } from '../../core/toast/toast.service';
 
 @Component({
   selector: 'app-landing',
@@ -25,4 +27,35 @@ import { LucideAngularModule } from 'lucide-angular';
   templateUrl: './landing.page.html',
   styleUrl: './landing.page.css',
 })
-export class LandingPage {}
+export class LandingPage implements OnDestroy {
+  private readonly toast = inject(ToastService);
+  readonly copied = signal<'https' | 'ssh' | null>(null);
+  private copiedTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Example HTTPS smart-Git clone (matches configured `apiUrl`). */
+  readonly httpsCloneCommand = computed(() => {
+    const base = environment.apiUrl.replace(/\/$/, '');
+    return `git clone ${base}/git/owner/repo`;
+  });
+
+  /** Example SSH clone from configured `gitUrl`. */
+  readonly sshCloneCommand = computed(() => `git clone ssh://${environment.gitUrl}/owner/repo.git`);
+
+  ngOnDestroy(): void {
+    if (this.copiedTimer !== null) {
+      clearTimeout(this.copiedTimer);
+      this.copiedTimer = null;
+    }
+  }
+
+  copyCloneCommand(value: string, kind: 'https' | 'ssh'): void {
+    void navigator.clipboard.writeText(value);
+    this.toast.success('Copied to clipboard');
+    this.copied.set(kind);
+    if (this.copiedTimer !== null) clearTimeout(this.copiedTimer);
+    this.copiedTimer = setTimeout(() => {
+      this.copied.set(null);
+      this.copiedTimer = null;
+    }, 2000);
+  }
+}

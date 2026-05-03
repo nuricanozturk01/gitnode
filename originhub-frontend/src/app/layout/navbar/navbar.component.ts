@@ -37,7 +37,6 @@ export class NavbarComponent {
   private readonly userService = inject(UserService);
   readonly theme = inject(ThemeService);
 
-  readonly menuOpen = signal(false);
   readonly isLoggedIn = this.tokenService.isLoggedIn;
 
   readonly user = signal<User | null>(null);
@@ -74,10 +73,6 @@ export class NavbarComponent {
         });
       }
     }
-  }
-
-  toggleMenu(): void {
-    this.menuOpen.update((v) => !v);
   }
 
   async logout(): Promise<void> {

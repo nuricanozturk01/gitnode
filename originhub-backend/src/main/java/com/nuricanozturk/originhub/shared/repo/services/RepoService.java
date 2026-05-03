@@ -13,16 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.repo.services;
+package com.nuricanozturk.originhub.shared.repo.services;
 
-import com.nuricanozturk.originhub.repo.dtos.RepoForm;
-import com.nuricanozturk.originhub.repo.dtos.RepoInfo;
-import com.nuricanozturk.originhub.repo.mappers.RepoMapper;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
+import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.events.RepoCreatedEvent;
 import com.nuricanozturk.originhub.shared.repo.events.RepoDeletedEvent;
+import com.nuricanozturk.originhub.shared.repo.mappers.RepoMapper;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;

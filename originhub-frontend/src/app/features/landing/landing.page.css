@@ -13,28 +13,97 @@
 .hero-gradient {
   background: linear-gradient(
     135deg,
-    color-mix(in oklch, var(--color-primary) 10%, transparent) 0%,
-    transparent 50%,
-    color-mix(in oklch, var(--color-primary) 5%, transparent) 100%
+    color-mix(in oklch, var(--color-primary) 12%, transparent) 0%,
+    transparent 42%,
+    color-mix(in oklch, var(--color-primary) 6%, transparent) 100%
   );
+}
+
+.landing-hero-surface {
+  isolation: isolate;
+}
+
+.landing-hero-grid {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 20%, transparent 75%);
+}
+
+.landing-hero-ray {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--color-primary) 22%, transparent),
+    transparent 100%
+  );
+  filter: blur(40px);
+  opacity: 0.55;
+}
+
+.landing-hero-preview {
+  max-width: 28rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-preview {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.landing-code-shell {
+  box-shadow:
+    0 1px 0 color-mix(in oklch, var(--color-base-content) 6%, transparent),
+    0 24px 48px -24px color-mix(in oklch, var(--color-base-content) 25%, transparent);
+}
+
+.landing-code-row code {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .landing-code-row code {
+    font-size: 0.875rem;
+  }
 }
 
 .feature-card {
   transition:
-    transform 0.2s,
-    box-shadow 0.2s;
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px color-mix(in oklch, var(--color-primary) 18%, transparent);
+
+.feature-card--lift:hover {
+  transform: none;
+  box-shadow:
+    0 12px 40px -12px color-mix(in oklch, var(--color-primary) 20%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--color-primary) 12%, var(--color-base-300));
+  border-color: color-mix(in oklch, var(--color-primary) 28%, var(--color-base-300));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-card,
+  .feature-card--lift:hover {
+    transition: none;
+  }
 }
 
 .code-snippet {
-  font-family: var(--font-mono);
+  font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 0.875rem;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
 
 .glow {
   box-shadow: 0 0 60px color-mix(in oklch, var(--color-primary) 22%, transparent);
+}
+
+.landing-cta-glow {
+  background: radial-gradient(
+    ellipse 70% 80% at 50% 100%,
+    color-mix(in oklch, var(--color-primary) 18%, transparent),
+    transparent 55%
+  );
 }

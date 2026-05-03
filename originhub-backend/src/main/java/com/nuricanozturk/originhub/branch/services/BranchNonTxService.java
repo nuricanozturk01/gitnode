@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyEx
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -108,6 +109,10 @@ public class BranchNonTxService {
 
       final var refs = gitRepo.getRefDatabase().getRefsByPrefix(Constants.R_HEADS);
 
+      if (refs.isEmpty()) {
+        return this.unbornBranchList(gitRepo, repo.getDefaultBranch());
+      }
+
       final var comparator =
           comparing((BranchInfo b) -> b.isDefault() ? 0 : 1).thenComparing(BranchInfo::name);
 
@@ -116,6 +121,29 @@ public class BranchNonTxService {
           .sorted(comparator)
           .toList();
     }
+  }
+
+  private @NonNull List<BranchInfo> unbornBranchList(
+      final @NonNull Repository gitRepo, final @NonNull String defaultBranch) throws IOException {
+
+    final var head = gitRepo.getRefDatabase().findRef(Constants.HEAD);
+
+    if (head == null || !head.isSymbolic()) {
+      return List.of();
+    }
+
+    final var branchName = head.getTarget().getName().replace(Constants.R_HEADS, "");
+
+    return List.of(
+        BranchInfo.builder()
+            .name(branchName)
+            .lastCommitSha("")
+            .lastCommitShortSha("")
+            .lastCommitMessage("")
+            .lastCommitAuthor("")
+            .lastCommitDate(Instant.EPOCH)
+            .isDefault(branchName.equals(defaultBranch))
+            .build());
   }
 
   public @NonNull BranchInfo get(

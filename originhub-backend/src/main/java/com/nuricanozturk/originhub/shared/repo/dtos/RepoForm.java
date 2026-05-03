@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.repo.dtos;
+package com.nuricanozturk.originhub.shared.repo.dtos;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;

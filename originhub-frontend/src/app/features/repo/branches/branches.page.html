@@ -55,7 +55,9 @@
           </a>
           <span class="line-clamp-2">{{ b.lastCommitMessage }}</span>
           <span class="text-base-content/60 text-xs">{{ b.lastCommitAuthor }}</span>
-          <span class="text-base-content/60 text-xs">{{ b.lastCommitDate | relativeTime }}</span>
+          <span class="text-base-content/60 text-xs">
+            @if (b.lastCommitSha) { {{ b.lastCommitDate | relativeTime }} } @else { No commits yet }
+          </span>
         </div>
         @if (!b.isDefault && canEdit()) {
         <div class="card-actions mt-3 justify-end">

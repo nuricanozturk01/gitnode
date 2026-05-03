@@ -75,6 +75,19 @@ export class PrDetailPage {
   readonly merging = signal(false);
   readonly mergeError = signal<string | null>(null);
 
+  readonly mergeActionLabel = computed(() => {
+    switch (this.mergeStrategy()) {
+      case 'MERGE_COMMIT':
+        return 'Merge';
+      case 'SQUASH':
+        return 'Squash and merge';
+      case 'REBASE':
+        return 'Rebase and merge';
+      default:
+        return 'Merge';
+    }
+  });
+
   readonly replyingToLine = signal<{
     filePath: string;
     lineNumber: number;
@@ -241,6 +254,19 @@ export class PrDetailPage {
     }
   }
 
+  statusLabel(status: string): string {
+    switch (status) {
+      case 'OPEN':
+        return 'Open';
+      case 'MERGED':
+        return 'Merged';
+      case 'CLOSED':
+        return 'Closed';
+      default:
+        return status;
+    }
+  }
+
   changeTypeLabel(type: string): string {
     const labels: Record<string, string> = {
       ADD: 'added',
@@ -403,9 +429,8 @@ export class PrDetailPage {
       this.pr.set(updated);
       this.toast.success('Pull request merged');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Merge failed';
-      this.mergeError.set(msg);
-      this.toast.error(msg);
+      this.mergeError.set(err.error);
+      this.toast.error(err.error);
     } finally {
       this.merging.set(false);
     }

@@ -13,17 +13,35 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.repo.dtos;
+package com.nuricanozturk.originhub.shared.repo.dtos;
 
 import java.io.Serializable;
+import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 @AllArgsConstructor
 @Getter
-public class TenantRepoInfo implements Serializable {
+public class RepoInfo implements Serializable {
   private final UUID id;
-  private final String username;
-  private final String avatarUrl;
+  private final TenantRepoInfo owner;
+  private final String name;
+  private final String description;
+  private final boolean isPrivate;
+  private final boolean isArchived;
+  private final String defaultBranch;
+  private final Set<String> topics;
+  private final Instant createdAt;
+  private final Instant updatedAt;
+
+  @AllArgsConstructor
+  @Getter
+  public static class RepoDto implements Serializable {
+    private final UUID id;
+    private final String name;
+    private final String description;
+    private final Instant createdAt;
+  }
 }

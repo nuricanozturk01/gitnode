@@ -157,6 +157,15 @@ public class RepoService {
     return this.repoMapper.toDto(repo);
   }
 
+  public void assertUserCanAccessRepo(
+      final @NonNull UUID tenantId, final @NonNull String owner, final @NonNull String repoName) {
+
+    final var tenant = this.getTenantById(tenantId);
+    final var repoOwner = this.getTenantByUsername(owner);
+
+    this.checkIsRepoOwnerOrAdmin(tenant, repoOwner);
+  }
+
   private void checkIsRepoOwnerOrAdmin(
       final @NonNull Tenant tenant, final @NonNull Tenant repoOwner) {
 

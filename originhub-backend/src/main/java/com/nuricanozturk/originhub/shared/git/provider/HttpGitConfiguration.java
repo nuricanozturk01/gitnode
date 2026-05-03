@@ -27,6 +27,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Base64;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -124,7 +125,7 @@ public class HttpGitConfiguration {
           httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
           httpResponse.setHeader("WWW-Authenticate", "Basic realm=\"OriginHub\"");
           httpResponse.getWriter().write("Unauthorized");
-          log.warn("HTTP Git request without auth");
+          log.debug("HTTP Git request without auth");
         }
       } catch (final IllegalArgumentException ex) {
         httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -144,7 +145,7 @@ public class HttpGitConfiguration {
           throw new IllegalArgumentException("Invalid Basic auth format");
         }
 
-        final var username = parts[0];
+        final var username = parts[0].toLowerCase(Locale.getDefault());
         final var password = parts[1];
 
         final var tenant =
@@ -159,6 +160,7 @@ public class HttpGitConfiguration {
         final var hash = DigestUtils.sha256Hex(password + tenant.getSalt());
 
         if (!hash.equals(tenant.getHash())) {
+          log.warn("HTTP Git password mismatch for user: {}", username);
           throw new IllegalArgumentException("Invalid password");
         }
 

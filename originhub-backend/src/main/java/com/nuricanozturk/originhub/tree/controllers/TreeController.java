@@ -15,6 +15,8 @@
  */
 package com.nuricanozturk.originhub.tree.controllers;
 
+import com.nuricanozturk.originhub.repo.services.RepoService;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.tree.dtos.BlobResponse;
 import com.nuricanozturk.originhub.tree.dtos.TreeResponse;
 import com.nuricanozturk.originhub.tree.services.TreeNonTxService;
@@ -30,6 +32,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -47,6 +50,7 @@ public class TreeController {
   private static final @NonNull String RAW = "raw";
 
   private final @NonNull TreeNonTxService treeNonTxService;
+  private final @NonNull RepoService repoService;
 
   @GetMapping({"/tree/{branch}", "/tree/{branch}/**"})
   public @NonNull ResponseEntity<@NonNull TreeResponse> getTree(
@@ -103,6 +107,10 @@ public class TreeController {
       @PathVariable final @NonNull String repo,
       @PathVariable final @NonNull String branch)
       throws IOException {
+
+    final var currentUser =
+        (Tenant) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    this.repoService.assertUserCanAccessRepo(currentUser.getId(), owner, repo);
 
     this.treeNonTxService.assertBranchExists(owner, repo, branch);
 

@@ -21,7 +21,6 @@ import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
@@ -58,7 +57,7 @@ public class RepoMigrationService {
       this.cloneAndMoveRepo(owner, repoName, tmpDir, targetPath, accessToken);
       this.createRepo(tenant, repoName);
     } catch (final Exception e) {
-      this.gitProvider.deleteRepo(owner, repoName);
+      this.gitProvider.deleteRepo(tenant.getUsername(), repoName);
       throw e;
     } finally {
       if (Files.exists(tmpDir)) {
@@ -104,11 +103,13 @@ public class RepoMigrationService {
             .call()) {
 
       git.remoteRemove().setRemoteName("origin").call();
+
     } catch (final Exception e) {
-      log.debug("Error: {]", e);
+      log.error("Clone failed for {}/{}: {}", owner, repoName, e.getMessage(), e);
+      throw new IOException("Failed to clone repository: " + cloneUrl, e); // ← fırlat
     }
 
-    FileSystemUtils.deleteRecursively(targetPath);
-    Files.move(tmpDir, targetPath, StandardCopyOption.REPLACE_EXISTING);
+    FileSystemUtils.copyRecursively(tmpDir, targetPath);
+    FileSystemUtils.deleteRecursively(tmpDir);
   }
 }

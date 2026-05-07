@@ -17,9 +17,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import type { RepoForm } from '../../../domain/repository/models/repo-form.model';
 import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
+import type { RepoPage } from '../../../domain/repository/models/repo-page.model';
 
 @Injectable({ providedIn: 'root' })
 export class RepoService {
@@ -36,12 +38,12 @@ export class RepoService {
     return firstValueFrom(this.http.get<RepoInfo>(`${this.api}/${owner}/${repo}`));
   }
 
-  listUserRepos(owner: string): Promise<RepoInfo[]> {
-    return firstValueFrom(this.http.get<RepoInfo[]>(`${this.api}/${owner}`));
+  listUserRepos(owner: string, page = 0): Promise<RepoPage> {
+    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/${owner}`, { params: { page } }));
   }
 
   listCollaboratorRepos(): Promise<RepoInfo[]> {
-    return firstValueFrom(this.http.get<RepoInfo[]>(`${this.api}/collaborator-repos`));
+    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/collaborator-repos`).pipe(map((r) => r.content)));
   }
 
   update(owner: string, repo: string, form: RepoForm): Promise<RepoInfo> {

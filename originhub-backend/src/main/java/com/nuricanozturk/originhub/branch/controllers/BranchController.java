@@ -15,10 +15,10 @@
  */
 package com.nuricanozturk.originhub.branch.controllers;
 
-import com.nuricanozturk.originhub.branch.dtos.BranchForm;
-import com.nuricanozturk.originhub.branch.dtos.BranchInfo;
 import com.nuricanozturk.originhub.branch.dtos.DefaultBranchForm;
 import com.nuricanozturk.originhub.branch.services.BranchNonTxService;
+import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
+import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;

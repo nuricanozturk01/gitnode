@@ -17,8 +17,9 @@ package com.nuricanozturk.originhub.branch.services;
 
 import static java.util.Comparator.comparing;
 
-import com.nuricanozturk.originhub.branch.dtos.BranchForm;
-import com.nuricanozturk.originhub.branch.dtos.BranchInfo;
+import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
+import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
+import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -34,21 +35,22 @@ import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class BranchNonTxService {
+@NullMarked
+public class BranchNonTxService implements BranchProtocolService {
 
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
 
-  private final @NonNull BranchTxService branchTxService;
-  private final @NonNull GitProvider gitProvider;
+  private final BranchTxService branchTxService;
+  private final GitProvider gitProvider;
 
-  public @NonNull BranchInfo create(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull BranchForm form)
+  @Override
+  public BranchInfo create(final String owner, final String repoName, final BranchForm form)
       throws IOException {
 
     // source -> branch (main -> delete_feature_branch)
@@ -63,8 +65,8 @@ public class BranchNonTxService {
     }
   }
 
-  public void delete(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String branchName)
+  @Override
+  public void delete(final String owner, final String repoName, final String branchName)
       throws IOException {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
@@ -81,8 +83,8 @@ public class BranchNonTxService {
     }
   }
 
-  public void setDefaultBranch(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String branchName)
+  @Override
+  public void setDefaultBranch(final String owner, final String repoName, final String branchName)
       throws IOException {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
@@ -99,8 +101,8 @@ public class BranchNonTxService {
     this.branchTxService.updateDefaultBranch(repo.getId(), branchName);
   }
 
-  public @NonNull List<BranchInfo> getAll(
-      final @NonNull String owner, final @NonNull String repoName) throws IOException {
+  @Override
+  public List<BranchInfo> getAll(final String owner, final String repoName) throws IOException {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
 
@@ -123,8 +125,23 @@ public class BranchNonTxService {
     }
   }
 
-  private @NonNull List<BranchInfo> unbornBranchList(
-      final @NonNull Repository gitRepo, final @NonNull String defaultBranch) throws IOException {
+  @Override
+  public BranchInfo get(final String owner, final String repoName, final String branchName)
+      throws IOException {
+
+    final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
+
+    try (final var gitRepo = this.gitProvider.open(owner, repoName);
+        final var walk = new RevWalk(gitRepo)) {
+
+      final var ref = this.getBranchRef(gitRepo, branchName);
+
+      return this.buildBranchInfo(walk, ref, repo.getDefaultBranch());
+    }
+  }
+
+  private List<BranchInfo> unbornBranchList(final Repository gitRepo, final String defaultBranch)
+      throws IOException {
 
     final var head = gitRepo.getRefDatabase().findRef(Constants.HEAD);
 
@@ -146,25 +163,8 @@ public class BranchNonTxService {
             .build());
   }
 
-  public @NonNull BranchInfo get(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String branchName)
-      throws IOException {
-
-    final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
-
-    try (final var gitRepo = this.gitProvider.open(owner, repoName);
-        final var walk = new RevWalk(gitRepo)) {
-
-      final var ref = this.getBranchRef(gitRepo, branchName);
-
-      return this.buildBranchInfo(walk, ref, repo.getDefaultBranch());
-    }
-  }
-
   private RefUpdate.Result createNewBranch(
-      final @NonNull Repository gitRepo,
-      final @NonNull String newBranchName,
-      final @NonNull String sourceBranch)
+      final Repository gitRepo, final String newBranchName, final String sourceBranch)
       throws IOException {
 
     // source sha
@@ -177,8 +177,8 @@ public class BranchNonTxService {
     return refUpdate.update();
   }
 
-  private RefUpdate.Result deleteBranch(
-      final @NonNull Repository gitRepo, final @NonNull String branchName) throws IOException {
+  private RefUpdate.Result deleteBranch(final Repository gitRepo, final String branchName)
+      throws IOException {
 
     final var refUpdate = gitRepo.updateRef(Constants.R_HEADS + branchName);
     refUpdate.setForceUpdate(true); // Delete non merged branch
@@ -186,16 +186,16 @@ public class BranchNonTxService {
     return refUpdate.delete();
   }
 
-  private RefUpdate.Result updateDefaultBranch(
-      final @NonNull Repository gitRepo, final @NonNull String branchName) throws IOException {
+  private RefUpdate.Result updateDefaultBranch(final Repository gitRepo, final String branchName)
+      throws IOException {
 
     final var headUpdate = gitRepo.updateRef(Constants.HEAD, true);
 
     return headUpdate.link(Constants.R_HEADS + branchName);
   }
 
-  private @NonNull ObjectId getSourceObjectId(
-      final @NonNull Repository gitRepo, final @NonNull String sourceBranch) throws IOException {
+  private ObjectId getSourceObjectId(final Repository gitRepo, final String sourceBranch)
+      throws IOException {
 
     final var sourceObjectId = gitRepo.resolve(sourceBranch);
 
@@ -206,8 +206,7 @@ public class BranchNonTxService {
     return sourceObjectId;
   }
 
-  private @NonNull Ref getBranchRef(final @NonNull Repository gitRepo, final @NonNull String name)
-      throws IOException {
+  private Ref getBranchRef(final Repository gitRepo, final String name) throws IOException {
 
     final var ref = gitRepo.findRef(Constants.R_HEADS + name);
 
@@ -218,15 +217,14 @@ public class BranchNonTxService {
     return ref;
   }
 
-  private void checkBranchExists(final @NonNull Repository gitRepo, final @NonNull String name)
-      throws IOException {
+  private void checkBranchExists(final Repository gitRepo, final String name) throws IOException {
 
     if (gitRepo.findRef(Constants.R_HEADS + name) != null) {
       throw new ItemAlreadyExistsException("branchAlreadyExists: " + name);
     }
   }
 
-  private void checkBranchNonExists(final @NonNull Repository gitRepo, final @NonNull String name)
+  private void checkBranchNonExists(final Repository gitRepo, final String name)
       throws IOException {
 
     if (gitRepo.findRef(Constants.R_HEADS + name) == null) {
@@ -255,16 +253,15 @@ public class BranchNonTxService {
     }
   }
 
-  private void checkDefaultBranch(
-      final @NonNull String branchName, final @NonNull String defaultBranch) {
+  private void checkDefaultBranch(final String branchName, final String defaultBranch) {
 
     if (branchName.equals(defaultBranch)) {
       throw new ErrorOccurredException("defaultBranchCannotDelete: " + branchName);
     }
   }
 
-  private @NonNull BranchInfo buildBranchInfo(
-      final @NonNull RevWalk walk, final @NonNull Ref ref, final @NonNull String defaultBranch) {
+  private BranchInfo buildBranchInfo(
+      final RevWalk walk, final Ref ref, final String defaultBranch) {
 
     try {
 

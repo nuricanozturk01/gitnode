@@ -47,6 +47,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RepoService unit tests")
@@ -290,18 +293,21 @@ class RepoServiceTest {
   }
 
   @Test
-  @DisplayName("findAllByOwner returns mapped list")
+  @DisplayName("findAllByOwner returns mapped page")
   void findAllByOwner_returnsMappedList() {
     Repo r1 = new Repo();
     r1.setId(UUID.randomUUID());
     r1.setName("a");
     RepoInfo i1 = createRepoInfo(r1.getId(), "a");
-    when(repoRepository.findAllByOwnerUsername("owner")).thenReturn(List.of(r1));
+    PageRequest pageable = PageRequest.of(0, 10);
+    when(repoRepository.findAllByOwnerUsername("owner", pageable))
+        .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
     when(repoMapper.toDto(r1)).thenReturn(i1);
 
-    List<RepoInfo> result = repoService.findAllByOwner("owner");
+    Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable);
 
-    assertThat(result).singleElement().isSameAs(i1);
+    assertThat(result.getContent()).singleElement().isSameAs(i1);
+    assertThat(result.getTotalElements()).isEqualTo(1);
   }
 
   @Test

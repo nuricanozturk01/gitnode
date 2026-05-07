@@ -26,11 +26,12 @@ import com.nuricanozturk.originhub.shared.repo.mappers.RepoMapper;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -142,11 +143,10 @@ public class RepoService {
     this.eventPublisher.publishEvent(new RepoDeletedEvent(owner, repoName));
   }
 
-  public @NonNull List<RepoInfo> findAllByOwner(final @NonNull String owner) {
+  public @NonNull Page<RepoInfo> findAllByOwner(
+      final @NonNull String owner, final @NonNull Pageable pageable) {
 
-    final var repos = this.repoRepository.findAllByOwnerUsername(owner);
-
-    return repos.stream().map(this.repoMapper::toDto).toList();
+    return this.repoRepository.findAllByOwnerUsername(owner, pageable).map(this.repoMapper::toDto);
   }
 
   public @NonNull RepoInfo findByOwnerAndName(

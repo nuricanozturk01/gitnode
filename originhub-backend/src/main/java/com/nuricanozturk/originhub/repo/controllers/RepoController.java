@@ -16,15 +16,17 @@
 package com.nuricanozturk.originhub.repo.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
 import com.nuricanozturk.originhub.shared.repo.events.RepoRenamedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -68,10 +70,11 @@ public class RepoController {
   }
 
   @GetMapping("/{owner}")
-  public @NonNull ResponseEntity<List<RepoInfo>> listUserRepos(@PathVariable final String owner) {
+  public @NonNull ResponseEntity<PageResponse<RepoInfo>> listUserRepos(
+      @PathVariable final String owner, @PageableDefault(size = 10) final Pageable pageable) {
 
-    final var repos = this.repoService.findAllByOwner(owner);
-    return ResponseEntity.ok(repos);
+    final var repos = this.repoService.findAllByOwner(owner, pageable);
+    return ResponseEntity.ok(PageResponse.from(repos));
   }
 
   @DeleteMapping("/{owner}/{repo}")

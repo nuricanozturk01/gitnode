@@ -26,7 +26,7 @@ import type { ToastType } from '../../../core/toast/toast.service';
     <div
       role="alert"
       [class]="alertClass()"
-      class="flex max-w-sm min-w-0 items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all"
+      class="flex w-80 min-w-0 items-start gap-3 rounded-xl border px-4 py-3 shadow-lg transition-all"
     >
       @if (type() === 'success') {
         <div class="bg-success/10 flex size-9 shrink-0 items-center justify-center rounded-lg">
@@ -37,7 +37,7 @@ import type { ToastType } from '../../../core/toast/toast.service';
           <lucide-icon name="xCircle" class="text-error size-5"></lucide-icon>
         </div>
       }
-      <span class="min-w-0 flex-1 py-0.5 text-sm font-medium">{{ message() }}</span>
+      <span class="min-w-0 flex-1 py-0.5 text-sm font-medium break-words">{{ message() }}</span>
       <button
         type="button"
         class="btn btn-ghost btn-xs btn-circle shrink-0 opacity-70 hover:opacity-100"

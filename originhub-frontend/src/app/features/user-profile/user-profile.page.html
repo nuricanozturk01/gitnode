@@ -62,9 +62,7 @@
                 <lucide-icon name="bookOpen" class="size-3.5"></lucide-icon>
                 {{ repoStats().total }} {{ repoStats().total === 1 ? 'repository' : 'repositories' }}
               </span>
-              @if (repoStats().public > 0) {
-              <span class="badge-pill badge-pill--neutral">{{ repoStats().public }} public</span>
-              } @if (repoStats().private > 0) {
+              @if (repoStats().private > 0) {
               <span class="badge-pill badge-pill--neutral">{{ repoStats().private }} private</span>
               } @if (repoStats().archived > 0) {
               <span class="badge-pill badge-pill--draft">{{ repoStats().archived }} archived</span>
@@ -258,6 +256,28 @@
           </li>
           }
         </ul>
+        } @if (totalPages() > 1) {
+        <div class="mt-4 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            class="btn btn-outline btn-sm border-base-300"
+            [disabled]="currentPage() === 0"
+            (click)="goToPage(currentPage() - 1)"
+          >
+            <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+            Prev
+          </button>
+          <span class="text-base-content/60 text-sm">{{ currentPage() + 1 }} / {{ totalPages() }}</span>
+          <button
+            type="button"
+            class="btn btn-outline btn-sm border-base-300"
+            [disabled]="currentPage() === totalPages() - 1"
+            (click)="goToPage(currentPage() + 1)"
+          >
+            Next
+            <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+          </button>
+        </div>
         }
       </section>
     </div>

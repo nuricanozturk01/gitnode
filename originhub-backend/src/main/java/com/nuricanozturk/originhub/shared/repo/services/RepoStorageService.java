@@ -13,16 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.repo.services;
+package com.nuricanozturk.originhub.shared.repo.services;
 
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.shared.repo.events.RepoInitRollbackRequestedEvent;
 import com.nuricanozturk.originhub.shared.repo.events.RepoRenameRollbackRequstedEvent;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -110,6 +112,14 @@ public class RepoStorageService {
     } catch (final IOException ex) {
       log.error("IOException Occurred while deleting a {} repos.", username);
       throw new ErrorOccurredException("IO Exception Occurred: " + ex.getMessage());
+    }
+  }
+
+  public void deleteDirectory(final Path path) throws IOException {
+
+    try (var walk = Files.walk(path)) {
+
+      walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
     }
   }
 }

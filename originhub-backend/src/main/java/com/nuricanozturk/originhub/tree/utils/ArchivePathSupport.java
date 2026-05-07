@@ -16,8 +16,10 @@
 package com.nuricanozturk.originhub.tree.utils;
 
 import java.util.Set;
+import lombok.experimental.UtilityClass;
 import org.jspecify.annotations.NonNull;
 
+@UtilityClass
 public final class ArchivePathSupport {
 
   private static final char MIN_PRINTABLE_ASCII = 0x20;
@@ -26,8 +28,6 @@ public final class ArchivePathSupport {
   private static final String DOUBLE_DASH = "--";
   private static final String SINGLE_DASH = "-";
   private static final String FALLBACK_NAME = "archive";
-
-  private ArchivePathSupport() {}
 
   public static @NonNull String attachmentFileName(
       final @NonNull String owner, final @NonNull String repo, final @NonNull String branch) {

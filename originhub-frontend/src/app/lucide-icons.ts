@@ -20,6 +20,7 @@ import {
   GitBranch,
   GitCommit,
   ChevronDown,
+  ChevronLeft,
   Menu,
   X,
   Search,
@@ -68,6 +69,7 @@ import {
   StickyNote,
   ShieldCheck,
   Rocket,
+  CircleHelp,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -76,6 +78,7 @@ export const LUCIDE_ICONS = {
   GitBranch,
   GitCommit,
   ChevronDown,
+  ChevronLeft,
   Menu,
   X,
   Search,
@@ -124,4 +127,5 @@ export const LUCIDE_ICONS = {
   StickyNote,
   ShieldCheck,
   Rocket,
+  CircleHelp,
 };

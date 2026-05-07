@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -34,6 +36,9 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
       @NonNull String repoOwner, @NonNull String repoName);
 
   @NonNull List<Repo> findAllByOwnerUsername(@NonNull String ownerUsername);
+
+  @NonNull Page<Repo> findAllByOwnerUsername(
+      @NonNull String ownerUsername, @NonNull Pageable pageable);
 
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")

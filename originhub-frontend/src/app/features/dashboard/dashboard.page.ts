@@ -44,13 +44,19 @@ export class DashboardPage {
   readonly repoQuery = signal('');
   readonly sortBy = signal<RepoListSort>('updated');
   readonly selectedTopics = signal<string[]>([]);
+  readonly currentPage = signal(0);
+  readonly totalPages = signal(0);
+  readonly ownedTotalElements = signal(0);
+
+  private allCollaboratorRepos: DashboardRepo[] = [];
 
   readonly stats = computed(() => {
-    const list = this.repos();
+    const owned = this.ownedTotalElements();
+    const collaborator = this.allCollaboratorRepos.length;
     return {
-      total: list.length,
-      owned: list.filter((i) => !i.isCollaborator).length,
-      collaborator: list.filter((i) => i.isCollaborator).length,
+      total: owned + collaborator,
+      owned,
+      collaborator,
     };
   });
 
@@ -103,6 +109,26 @@ export class DashboardPage {
     this.selectedTopics.set([]);
   }
 
+  async goToPage(page: number): Promise<void> {
+    const username = this.tokenService.getUsername();
+    if (!username) return;
+    this.loading.set(true);
+    try {
+      const ownedPage = await this.repoService.listUserRepos(username, page);
+      this.currentPage.set(page);
+      this.totalPages.set(ownedPage.totalPages);
+      this.ownedTotalElements.set(ownedPage.totalElements);
+      const ownedIds = new Set(ownedPage.content.map((r) => r.id));
+      const merged: DashboardRepo[] = [
+        ...ownedPage.content.map((r) => ({ repo: r, isCollaborator: false })),
+        ...this.allCollaboratorRepos.filter((c) => !ownedIds.has(c.repo.id)),
+      ];
+      this.patchReposAndLoading(merged, false);
+    } catch {
+      this.loading.set(false);
+    }
+  }
+
   private async loadRepos(): Promise<void> {
     if (!this.tokenService.getAccessToken()) {
       this.patchReposAndLoading([], false);
@@ -122,14 +148,20 @@ export class DashboardPage {
     }
 
     try {
-      const [owned, collaborator] = await Promise.all([
-        this.repoService.listUserRepos(username),
+      const [ownedPage, collaborator] = await Promise.all([
+        this.repoService.listUserRepos(username, 0),
         this.repoService.listCollaboratorRepos().catch(() => []),
       ]);
-      const ownedIds = new Set(owned.map((r) => r.id));
+      this.currentPage.set(0);
+      this.totalPages.set(ownedPage.totalPages);
+      this.ownedTotalElements.set(ownedPage.totalElements);
+      const ownedIds = new Set(ownedPage.content.map((r) => r.id));
+      this.allCollaboratorRepos = collaborator
+        .filter((r) => !ownedIds.has(r.id))
+        .map((r) => ({ repo: r, isCollaborator: true }));
       const merged: DashboardRepo[] = [
-        ...owned.map((r) => ({ repo: r, isCollaborator: false })),
-        ...collaborator.filter((r) => !ownedIds.has(r.id)).map((r) => ({ repo: r, isCollaborator: true })),
+        ...ownedPage.content.map((r) => ({ repo: r, isCollaborator: false })),
+        ...this.allCollaboratorRepos,
       ];
       this.patchReposAndLoading(merged, false);
     } catch {

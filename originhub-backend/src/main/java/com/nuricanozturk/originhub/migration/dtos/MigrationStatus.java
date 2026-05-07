@@ -13,17 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.branch.dtos;
+package com.nuricanozturk.originhub.migration.dtos;
 
-import java.time.Instant;
-import lombok.Builder;
-
-@Builder
-public record BranchInfo(
-    String name,
-    String lastCommitSha,
-    String lastCommitShortSha,
-    String lastCommitMessage,
-    String lastCommitAuthor,
-    Instant lastCommitDate,
-    boolean isDefault) {}
+public enum MigrationStatus {
+  PENDING,
+  IN_PROGRESS,
+  COMPLETED,
+  FAILED
+}

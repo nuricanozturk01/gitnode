@@ -53,6 +53,9 @@ export class UserProfilePage {
   readonly repoQuery = signal('');
   readonly sortBy = signal<RepoListSort>('updated');
   readonly selectedTopics = signal<string[]>([]);
+  readonly currentPage = signal(0);
+  readonly totalPages = signal(0);
+  readonly totalElements = signal(0);
 
   private readonly profileParams = paramMapSignal(this.route);
   readonly username = computed(() => this.profileParams().get('username') ?? '');
@@ -67,7 +70,7 @@ export class UserProfilePage {
   readonly repoStats = computed(() => {
     const list = this.repos();
     return {
-      total: list.length,
+      total: this.totalElements(),
       public: list.filter((r) => !r.isPrivate).length,
       private: list.filter((r) => r.isPrivate).length,
       archived: list.filter((r) => r.isArchived).length,
@@ -122,16 +125,36 @@ export class UserProfilePage {
     this.selectedTopics.set([]);
   }
 
+  async goToPage(page: number): Promise<void> {
+    const username = this.username();
+    if (!username) return;
+    this.loading.set(true);
+    try {
+      const reposPage = await this.repoService.listUserRepos(username, page);
+      this.currentPage.set(page);
+      this.totalPages.set(reposPage.totalPages);
+      this.totalElements.set(reposPage.totalElements);
+      this.repos.set(reposPage.content);
+    } catch {
+      this.repos.set([]);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
   private async loadData(): Promise<void> {
     const username = this.username();
     if (!username) return;
     this.loading.set(true);
     try {
-      const [profile, reposData] = await Promise.all([
+      const [profile, reposPage] = await Promise.all([
         this.userService.getPublicProfile(username),
-        this.repoService.listUserRepos(username),
+        this.repoService.listUserRepos(username, 0),
       ]);
-      this.repos.set(reposData);
+      this.currentPage.set(0);
+      this.totalPages.set(reposPage.totalPages);
+      this.totalElements.set(reposPage.totalElements);
+      this.repos.set(reposPage.content);
       this.user.set({
         id: '',
         username: profile.username,

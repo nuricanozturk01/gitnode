@@ -15,24 +15,26 @@
  */
 package com.nuricanozturk.originhub.branch.services;
 
+import com.nuricanozturk.originhub.shared.branch.services.BranchService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
-class BranchTxService {
+@NullMarked
+class BranchTxService implements BranchService {
 
-  private final @NonNull RepoRepository repoRepository;
+  private final RepoRepository repoRepository;
 
-  @NonNull Repo findRepoByOwnerAndRepoName(
-      final @NonNull String owner, final @NonNull String repoName) {
+  @Override
+  public Repo findRepoByOwnerAndRepoName(final String owner, final String repoName) {
 
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)
@@ -40,7 +42,8 @@ class BranchTxService {
   }
 
   @Transactional
-  public void updateDefaultBranch(final @NonNull UUID repoId, final @NonNull String branchName) {
+  @Override
+  public void updateDefaultBranch(final UUID repoId, final String branchName) {
 
     this.repoRepository.updateDefaultBranch(repoId, branchName);
   }

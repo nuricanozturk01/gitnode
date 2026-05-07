@@ -53,6 +53,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'migrate',
+    loadComponent: () => import('./features/migration/migrate-github.page').then((m) => m.MigrateGithubPage),
+    canActivate: [authGuard],
+  },
+  {
     path: 'settings',
     loadComponent: () => import('./features/user-settings/user-settings.page').then((m) => m.UserSettingsPage),
     canActivate: [authGuard],

@@ -1,0 +1,464 @@
+<div class="bg-base-200 min-h-screen">
+  @if (loading()) {
+  <div class="flex min-h-screen flex-col items-center justify-center">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+
+  } @else if (!task()) {
+  <div class="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+    <lucide-icon name="x" class="text-base-content/20 mb-4 size-12"></lucide-icon>
+    <p class="text-base-content/60">Task not found.</p>
+    <a [routerLink]="['/projects', projectCode]" class="btn btn-ghost btn-sm mt-4 gap-2">
+      <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+      Back to board
+    </a>
+  </div>
+
+  } @else { @let t = task()!;
+
+  <!-- Top bar -->
+  <div class="border-base-300 bg-base-100 sticky top-0 z-10 border-b px-4 py-3 sm:px-6">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-4">
+      <nav class="text-base-content/50 flex min-w-0 flex-1 items-center gap-1.5 text-sm">
+        <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
+        <lucide-icon name="chevronRight" class="text-base-content/30 size-3.5 shrink-0"></lucide-icon>
+        <a
+          [routerLink]="['/projects', projectCode]"
+          class="hover:text-base-content shrink-0 no-underline transition-colors"
+        >
+          <code class="bg-primary/10 text-primary rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
+            >{{ projectCode }}</code
+          >
+        </a>
+        <lucide-icon name="chevronRight" class="text-base-content/30 size-3.5 shrink-0"></lucide-icon>
+        <span class="text-base-content font-mono text-sm font-semibold">{{ t.code }}</span>
+      </nav>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <a [routerLink]="['/projects', projectCode]" class="btn btn-ghost btn-sm gap-1.5">
+          <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+          Board
+        </a>
+        <button type="button" class="btn btn-ghost btn-sm text-error hover:bg-error/10 gap-1.5" (click)="deleteTask()">
+          <lucide-icon name="x" class="size-4"></lucide-icon>
+          Delete
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout: content + sidebar -->
+  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="flex flex-col items-start gap-6 lg:flex-row">
+      <!-- Left: main content -->
+      <div class="flex min-w-0 flex-1 flex-col gap-5">
+        <!-- Title card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <!-- Code + type + status row -->
+          <div class="mb-3 flex flex-wrap items-center gap-2">
+            <span class="text-base-content/40 font-mono text-xs font-bold tracking-wider">{{ t.code }}</span>
+
+            @if (t.type === 'BUG') {
+            <span
+              class="text-error bg-error/10 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+            >
+              <lucide-icon name="alertTriangle" class="size-3.5"></lucide-icon>
+              Bug
+            </span>
+            } @else {
+            <span
+              class="text-base-content/50 bg-base-200 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+            >
+              <lucide-icon name="checkCircle" class="size-3.5"></lucide-icon>
+              Task
+            </span>
+            }
+
+            <div class="dropdown dropdown-bottom">
+              <div
+                tabindex="0"
+                role="button"
+                class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                [class.bg-success/10]="t.status === 'COMPLETED'"
+                [class.text-success]="t.status === 'COMPLETED'"
+                [class.bg-warning/10]="t.status === 'IN_PROGRESS'"
+                [class.text-warning]="t.status === 'IN_PROGRESS'"
+                [class.bg-base-200]="t.status === 'NOT_STARTED'"
+                [class.text-base-content/60]="t.status === 'NOT_STARTED'"
+              >
+                <span
+                  class="size-1.5 shrink-0 rounded-full"
+                  [class.bg-success]="t.status === 'COMPLETED'"
+                  [class.bg-warning]="t.status === 'IN_PROGRESS'"
+                  [class.bg-base-content/40]="t.status === 'NOT_STARTED'"
+                ></span>
+                {{ statusLabel(t.status) }}
+                <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
+              </div>
+              <ul
+                tabindex="0"
+                class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-44 rounded-xl border p-1 shadow-xl"
+              >
+                @for (status of statuses; track status) {
+                <li>
+                  <button type="button" class="flex items-center gap-2 text-sm" (click)="changeStatus(status)">
+                    <span
+                      class="size-2 rounded-full"
+                      [class.bg-success]="status === 'COMPLETED'"
+                      [class.bg-warning]="status === 'IN_PROGRESS'"
+                      [class.bg-base-content/30]="status === 'NOT_STARTED'"
+                    ></span>
+                    {{ statusLabel(status) }}
+                  </button>
+                </li>
+                }
+              </ul>
+            </div>
+          </div>
+
+          <!-- Title -->
+          @if (editingTitle()) {
+          <div class="mt-1 flex items-start gap-2">
+            <input
+              type="text"
+              class="input input-bordered flex-1 text-lg font-bold"
+              [value]="editTitle()"
+              (input)="editTitle.set($any($event.target).value)"
+              (keydown.enter)="saveTitle()"
+              (keydown.escape)="editingTitle.set(false)"
+            />
+            <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="saving()" (click)="saveTitle()">
+              @if (saving()) { <span class="loading loading-spinner loading-xs"></span> } @else { Save }
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm shrink-0" (click)="editingTitle.set(false)">
+              Cancel
+            </button>
+          </div>
+          } @else {
+          <h1
+            class="text-base-content hover:text-primary group flex cursor-pointer items-start gap-2 text-xl leading-snug font-bold transition-colors"
+            (click)="startEditTitle()"
+          >
+            <span>{{ t.title }}</span>
+            <lucide-icon
+              name="fileText"
+              class="text-base-content/20 group-hover:text-primary/50 mt-1 size-4 shrink-0 transition-colors"
+            ></lucide-icon>
+          </h1>
+          }
+        </div>
+
+        <!-- Description card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base-content text-sm font-semibold">Description</h2>
+            @if (!editingDesc()) {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-base-content/40 hover:text-base-content gap-1"
+              (click)="startEditDesc()"
+            >
+              <lucide-icon name="fileText" class="size-3.5"></lucide-icon>
+              Edit
+            </button>
+            }
+          </div>
+          @if (editingDesc()) {
+          <div class="flex flex-col gap-3">
+            <textarea
+              class="textarea textarea-bordered w-full text-sm leading-relaxed"
+              rows="6"
+              placeholder="Add a description…"
+              [value]="editDesc()"
+              (input)="editDesc.set($any($event.target).value)"
+            ></textarea>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveDesc()">
+                @if (saving()) { <span class="loading loading-spinner loading-xs"></span> } @else { Save }
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="editingDesc.set(false)">Cancel</button>
+            </div>
+          </div>
+          } @else if (t.description) {
+          <p class="text-base-content/70 text-sm leading-relaxed whitespace-pre-wrap">{{ t.description }}</p>
+          } @else {
+          <button
+            type="button"
+            class="text-base-content/30 hover:text-base-content/50 w-full text-left text-sm italic transition-colors"
+            (click)="startEditDesc()"
+          >
+            No description. Click to add one…
+          </button>
+          }
+        </div>
+
+        <!-- Branch / PR card -->
+        @if (t.branchName || t.linkedPr) {
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <h2 class="text-base-content mb-3 text-sm font-semibold">Development</h2>
+          <div class="flex flex-col gap-3">
+            @if (t.branchName) {
+            <div class="bg-base-200/50 flex items-center gap-3 rounded-xl p-3 text-sm">
+              <lucide-icon name="gitBranch" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+              <div class="flex min-w-0 flex-col gap-0.5">
+                <span class="text-base-content/40 text-xs font-medium">Branch</span>
+                <code class="text-base-content truncate font-mono text-xs">{{ t.branchName }}</code>
+              </div>
+            </div>
+            } @if (t.linkedPr) {
+            <div class="bg-base-200/50 flex items-center gap-3 rounded-xl p-3 text-sm">
+              <lucide-icon
+                name="gitPullRequest"
+                class="size-4 shrink-0"
+                [class.text-success]="t.linkedPr.status === 'MERGED'"
+                [class.text-primary]="t.linkedPr.status === 'OPEN'"
+                [class.text-base-content/40]="t.linkedPr.status === 'CLOSED'"
+              ></lucide-icon>
+              <div class="flex min-w-0 flex-col gap-0.5">
+                <span class="text-base-content/40 text-xs font-medium">Pull request</span>
+                <span class="text-base-content truncate text-sm font-medium"
+                  >#{{ t.linkedPr.number }} {{ t.linkedPr.title }}</span
+                >
+              </div>
+              <span
+                class="badge badge-sm ml-auto shrink-0"
+                [class.badge-success]="t.linkedPr.status === 'MERGED'"
+                [class.badge-primary]="t.linkedPr.status === 'OPEN'"
+                [class.badge-ghost]="t.linkedPr.status === 'CLOSED'"
+                >{{ t.linkedPr.status }}</span
+              >
+            </div>
+            }
+          </div>
+        </div>
+        }
+
+        <!-- Subtasks card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <h2 class="text-base-content text-sm font-semibold">Subtasks</h2>
+              @if (t.subtasks.length > 0) {
+              <div class="flex items-center gap-1.5">
+                <span class="text-base-content/50 text-xs"
+                  >{{ t.subtasks.filter(s => s.status === 'COMPLETED').length }}/{{ t.subtasks.length }}</span
+                >
+                <div class="bg-base-200 h-1.5 w-20 overflow-hidden rounded-full">
+                  <div
+                    class="bg-success h-full rounded-full transition-all duration-300"
+                    [style.width.%]="(t.subtasks.filter(s => s.status === 'COMPLETED').length / t.subtasks.length) * 100"
+                  ></div>
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+
+          @if (t.subtasks.length > 0) {
+          <ul class="divide-base-200 -mx-1 mb-4 flex flex-col divide-y">
+            @for (subtask of t.subtasks; track subtask.id) {
+            <li class="group flex items-center gap-3 px-1 py-2.5">
+              <input
+                type="checkbox"
+                class="checkbox checkbox-sm checkbox-primary shrink-0"
+                [checked]="subtask.status === 'COMPLETED'"
+                (change)="toggleSubtask(subtask)"
+              />
+              <span
+                class="flex-1 text-sm leading-snug transition-colors"
+                [class.line-through]="subtask.status === 'COMPLETED'"
+                [class.text-base-content/35]="subtask.status === 'COMPLETED'"
+                [class.text-base-content]="subtask.status !== 'COMPLETED'"
+                >{{ subtask.title }}</span
+              >
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs text-base-content/20 hover:text-error hover:bg-error/10 size-6 shrink-0 p-0 opacity-0 transition-all group-hover:opacity-100"
+                (click)="deleteSubtask(subtask)"
+              >
+                <lucide-icon name="x" class="size-3.5"></lucide-icon>
+              </button>
+            </li>
+            }
+          </ul>
+          }
+
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              class="input input-bordered input-sm flex-1 text-sm"
+              placeholder="Add a subtask…"
+              [value]="newSubtaskTitle()"
+              (input)="newSubtaskTitle.set($any($event.target).value)"
+              (keydown.enter)="addSubtask()"
+            />
+            <button
+              type="button"
+              class="btn btn-primary btn-sm gap-1"
+              [disabled]="addingSubtask() || !newSubtaskTitle().trim()"
+              (click)="addSubtask()"
+            >
+              @if (addingSubtask()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              } @else {
+              <lucide-icon name="plus" class="size-4"></lucide-icon>
+              } Add
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: sidebar -->
+      <aside class="flex w-full shrink-0 flex-col gap-4 lg:w-64">
+        <!-- Properties -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-4 shadow-sm">
+          <h3 class="text-base-content/40 mb-3 text-xs font-semibold tracking-wider uppercase">Properties</h3>
+          <div class="flex flex-col gap-3">
+            <!-- Status -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Status</span>
+              <div class="dropdown dropdown-end">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                  [class.bg-success/10]="t.status === 'COMPLETED'"
+                  [class.text-success]="t.status === 'COMPLETED'"
+                  [class.bg-warning/10]="t.status === 'IN_PROGRESS'"
+                  [class.text-warning]="t.status === 'IN_PROGRESS'"
+                  [class.bg-base-200]="t.status === 'NOT_STARTED'"
+                  [class.text-base-content/60]="t.status === 'NOT_STARTED'"
+                >
+                  <span
+                    class="size-1.5 shrink-0 rounded-full"
+                    [class.bg-success]="t.status === 'COMPLETED'"
+                    [class.bg-warning]="t.status === 'IN_PROGRESS'"
+                    [class.bg-base-content/40]="t.status === 'NOT_STARTED'"
+                  ></span>
+                  {{ statusLabel(t.status) }}
+                  <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-44 rounded-xl border p-1 shadow-xl"
+                >
+                  @for (s of statuses; track s) {
+                  <li><button type="button" class="text-sm" (click)="changeStatus(s)">{{ statusLabel(s) }}</button></li>
+                  }
+                </ul>
+              </div>
+            </div>
+
+            <!-- Type -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Type</span>
+              <div class="dropdown dropdown-end">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="bg-base-200 text-base-content/60 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                >
+                  @if (t.type === 'BUG') {
+                  <lucide-icon name="alertTriangle" class="text-error size-3"></lucide-icon>
+                  <span class="text-error">Bug</span>
+                  } @else {
+                  <lucide-icon name="checkCircle" class="size-3"></lucide-icon>
+                  Task }
+                  <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-32 rounded-xl border p-1 shadow-xl"
+                >
+                  @for (tp of types; track tp) {
+                  <li>
+                    <button type="button" class="text-sm" (click)="changeType(tp)">
+                      {{ tp === 'BUG' ? 'Bug' : 'Task' }}
+                    </button>
+                  </li>
+                  }
+                </ul>
+              </div>
+            </div>
+
+            <!-- Column -->
+            @if (columns().length > 0) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Column</span>
+              <div class="dropdown dropdown-end">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="bg-base-200 text-base-content/60 inline-flex max-w-32 cursor-pointer items-center gap-1.5 truncate rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                >
+                  <span class="truncate">{{ columnName(t.boardColumnId) }}</span>
+                  <lucide-icon name="chevronDown" class="size-3 shrink-0"></lucide-icon>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-48 rounded-xl border p-1 shadow-xl"
+                >
+                  @for (col of columns(); track col.id) {
+                  <li><button type="button" class="text-sm" (click)="moveToColumn(col.id)">{{ col.name }}</button></li>
+                  }
+                </ul>
+              </div>
+            </div>
+            }
+
+            <!-- Assignee -->
+            @if (t.assignee) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Assignee</span>
+              <span class="text-base-content bg-base-200 max-w-32 truncate rounded-lg px-2 py-1 text-xs font-semibold"
+                >{{ t.assignee.name }}</span
+              >
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-4 shadow-sm">
+          <h3 class="text-base-content/40 mb-3 text-xs font-semibold tracking-wider uppercase">Timeline</h3>
+          <div class="flex flex-col gap-2">
+            @if (t.createdAt) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/40 text-xs">Created</span>
+              <span class="text-base-content/60 text-xs">{{ t.createdAt | relativeTime }}</span>
+            </div>
+            } @if (t.updatedAt) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/40 text-xs">Updated</span>
+              <span class="text-base-content/60 text-xs">{{ t.updatedAt | relativeTime }}</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Subtask summary (if any) -->
+        @if (t.subtasks.length > 0) {
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-4 shadow-sm">
+          <h3 class="text-base-content/40 mb-3 text-xs font-semibold tracking-wider uppercase">Progress</h3>
+          <div class="mb-1.5 flex items-center gap-2">
+            <div class="bg-base-200 h-2 flex-1 overflow-hidden rounded-full">
+              <div
+                class="bg-success h-full rounded-full transition-all duration-300"
+                [style.width.%]="(t.subtasks.filter(s => s.status === 'COMPLETED').length / t.subtasks.length) * 100"
+              ></div>
+            </div>
+            <span class="text-base-content/50 shrink-0 text-xs font-medium tabular-nums">
+              {{ t.subtasks.filter(s => s.status === 'COMPLETED').length }}/{{ t.subtasks.length }}
+            </span>
+          </div>
+          <p class="text-base-content/40 text-xs">
+            {{ t.subtasks.filter(s => s.status === 'COMPLETED').length === t.subtasks.length ? 'All subtasks complete' :
+            t.subtasks.filter(s => s.status !== 'COMPLETED').length + ' remaining' }}
+          </p>
+        </div>
+        }
+      </aside>
+    </div>
+  </div>
+  }
+</div>

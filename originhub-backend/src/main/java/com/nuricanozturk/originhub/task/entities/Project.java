@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.repo.entities;
+package com.nuricanozturk.originhub.task.entities;
 
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
@@ -26,7 +26,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,13 +34,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "repositories")
-public class Repo {
+@Table(name = "projects")
+public class Project {
+
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   @Column(name = "id", nullable = false)
@@ -52,30 +51,22 @@ public class Repo {
   @JoinColumn(name = "owner_id", nullable = false)
   private Tenant owner;
 
-  @Column(name = "name", nullable = false, length = 100)
+  @Column(name = "name", nullable = false, length = 120)
   private String name;
 
   @Column(name = "description", length = Integer.MAX_VALUE)
   private String description;
 
-  @ColumnDefault("false")
-  @Column(name = "is_archived")
-  private boolean isArchived;
+  @Column(name = "code_prefix", nullable = false, length = 10)
+  private String codePrefix;
 
-  @ColumnDefault("'main'")
-  @Column(name = "default_branch")
-  private String defaultBranch;
-
-  @Column(name = "topics")
-  private Set<String> topics;
+  @ColumnDefault("0")
+  @Column(name = "task_seq", nullable = false)
+  private long taskSeq;
 
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;
-
-  @Nullable
-  @Column(name = "project_id")
-  private UUID projectId;
 
   @UpdateTimestamp
   @Column(name = "updated_at")

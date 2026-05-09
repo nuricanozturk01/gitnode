@@ -256,11 +256,11 @@ OriginHub is under active development. Here's what's planned:
 - [X] ~~Public repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [X] ~~Fork and star repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [ ] Actions — CI/CD (self-hosted runner)
-- [ ] Team collaboration & organization support
-- [ ] Project board (Kanban) integrated with repositories
+- [X] ~~Team collaboration & organization support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
+- [X] Project board (Kanban) integrated with repositories
 - [ ] Webhooks
+- [ ] Repo Issues
 - [X] ~~Custom domain support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
-- [ ] Repository transfer (between accounts, and auto-import from GitHub / GitLab)
 - [ ] Code snippets (Gist-like)
 - [ ] Two-factor authentication (TOTP)
 - [ ] Tags and releases

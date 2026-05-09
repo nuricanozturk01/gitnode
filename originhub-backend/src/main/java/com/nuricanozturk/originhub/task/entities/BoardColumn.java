@@ -13,9 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.repo.entities;
+package com.nuricanozturk.originhub.task.entities;
 
-import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -26,7 +25,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,13 +33,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "repositories")
-public class Repo {
+@Table(name = "board_columns")
+public class BoardColumn {
+
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   @Column(name = "id", nullable = false)
@@ -49,33 +47,22 @@ public class Repo {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "owner_id", nullable = false)
-  private Tenant owner;
+  @JoinColumn(name = "board_id", nullable = false)
+  private Board board;
 
-  @Column(name = "name", nullable = false, length = 100)
+  @Column(name = "name", nullable = false, length = 120)
   private String name;
 
-  @Column(name = "description", length = Integer.MAX_VALUE)
-  private String description;
+  @ColumnDefault("0")
+  @Column(name = "position", nullable = false)
+  private int position;
 
-  @ColumnDefault("false")
-  @Column(name = "is_archived")
-  private boolean isArchived;
-
-  @ColumnDefault("'main'")
-  @Column(name = "default_branch")
-  private String defaultBranch;
-
-  @Column(name = "topics")
-  private Set<String> topics;
+  @Column(name = "color", length = 20)
+  private String color;
 
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;
-
-  @Nullable
-  @Column(name = "project_id")
-  private UUID projectId;
 
   @UpdateTimestamp
   @Column(name = "updated_at")

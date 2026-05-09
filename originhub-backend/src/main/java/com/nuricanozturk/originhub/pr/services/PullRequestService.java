@@ -35,6 +35,8 @@ import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
+import com.nuricanozturk.originhub.shared.pr.events.PullRequestCreatedEvent;
+import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -70,6 +72,7 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,6 +90,7 @@ public class PullRequestService {
   private final @NonNull TenantRepository tenantRepository;
   private final @NonNull GitProvider gitProvider;
   private final @NonNull PrMapper prMapper;
+  private final @NonNull ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public @NonNull PrDetail create(
@@ -109,7 +113,10 @@ public class PullRequestService {
 
       final var pr = this.prMapper.buildPr(form, repo, author, sourceSha, nextNumber);
 
-      return this.toDetail(this.prRepository.save(pr));
+      final var saved = this.prRepository.save(pr);
+      this.eventPublisher.publishEvent(
+          new PullRequestCreatedEvent(saved.getId(), repo.getId(), form.getSourceBranch()));
+      return this.toDetail(saved);
     }
   }
 
@@ -156,6 +163,9 @@ public class PullRequestService {
     pr.setClosedAt(Instant.now());
 
     this.prRepository.save(pr);
+    this.eventPublisher.publishEvent(
+        new PullRequestStatusChangedEvent(
+            pr.getId(), repo.getId(), pr.getSourceBranch(), PrStatus.CLOSED.name()));
   }
 
   @Transactional
@@ -187,7 +197,11 @@ public class PullRequestService {
     pr.setMergeSha(mergeSha);
     pr.setMergedAt(Instant.now());
 
-    return this.toDetail(this.prRepository.save(pr));
+    final var saved = this.prRepository.save(pr);
+    this.eventPublisher.publishEvent(
+        new PullRequestStatusChangedEvent(
+            saved.getId(), repo.getId(), saved.getSourceBranch(), PrStatus.MERGED.name()));
+    return this.toDetail(saved);
   }
 
   public @NonNull List<PrInfo> getAll(

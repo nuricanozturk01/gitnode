@@ -64,6 +64,22 @@ export const routes: Routes = [
   },
 
   {
+    path: 'projects',
+    loadComponent: () => import('./features/project/projects/projects.page').then((m) => m.ProjectsPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'projects/:projectCode',
+    loadComponent: () => import('./features/project/board/board.page').then((m) => m.BoardPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'projects/:projectCode/tasks/:taskCode',
+    loadComponent: () => import('./features/project/task-detail/task-detail.page').then((m) => m.TaskDetailPage),
+    canActivate: [authGuard],
+  },
+
+  {
     path: ':username',
     loadComponent: () => import('./features/user-profile/user-profile.page').then((m) => m.UserProfilePage),
     canActivate: [authGuard],

@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.repo.entities;
+package com.nuricanozturk.originhub.task.entities;
 
+import com.nuricanozturk.originhub.pr.entities.PullRequest;
+import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,7 +28,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,13 +36,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
 @Entity
-@Table(name = "repositories")
-public class Repo {
+@Table(name = "tasks")
+public class Task {
+
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   @Column(name = "id", nullable = false)
@@ -49,33 +50,56 @@ public class Repo {
 
   @ManyToOne(fetch = FetchType.LAZY, optional = false)
   @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "owner_id", nullable = false)
-  private Tenant owner;
+  @JoinColumn(name = "project_id", nullable = false)
+  private Project project;
 
-  @Column(name = "name", nullable = false, length = 100)
-  private String name;
+  @ManyToOne(fetch = FetchType.LAZY, optional = false)
+  @OnDelete(action = OnDeleteAction.CASCADE)
+  @JoinColumn(name = "board_column_id", nullable = false)
+  private BoardColumn boardColumn;
+
+  @Column(name = "code", nullable = false, length = 40)
+  private String code;
+
+  @Column(name = "title", nullable = false, length = 255)
+  private String title;
 
   @Column(name = "description", length = Integer.MAX_VALUE)
   private String description;
 
-  @ColumnDefault("false")
-  @Column(name = "is_archived")
-  private boolean isArchived;
+  @ColumnDefault("'TASK'")
+  @Column(name = "type", nullable = false, length = 20)
+  private String type;
 
-  @ColumnDefault("'main'")
-  @Column(name = "default_branch")
-  private String defaultBranch;
+  @ColumnDefault("'NOT_STARTED'")
+  @Column(name = "status", nullable = false, length = 20)
+  private String status;
 
-  @Column(name = "topics")
-  private Set<String> topics;
+  @ColumnDefault("0")
+  @Column(name = "position", nullable = false)
+  private int position;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
+  @JoinColumn(name = "assignee_id")
+  private Tenant assignee;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
+  @JoinColumn(name = "branch_repo_id")
+  private Repo branchRepo;
+
+  @Column(name = "branch_name", length = 255)
+  private String branchName;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
+  @JoinColumn(name = "linked_pr_id")
+  private PullRequest linkedPr;
 
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;
-
-  @Nullable
-  @Column(name = "project_id")
-  private UUID projectId;
 
   @UpdateTimestamp
   @Column(name = "updated_at")

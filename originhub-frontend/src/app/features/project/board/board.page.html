@@ -1,0 +1,466 @@
+<div class="bg-base-200 flex min-h-screen flex-col">
+  <!-- Top bar -->
+  <div class="border-base-300 bg-base-100 border-b px-4 py-3 sm:px-6">
+    <div class="mx-auto flex max-w-full flex-wrap items-center gap-4">
+      <!-- Breadcrumb -->
+      <nav class="text-base-content/50 flex min-w-0 items-center gap-1.5 text-sm">
+        <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
+        <lucide-icon name="chevronRight" class="size-3.5 shrink-0"></lucide-icon>
+        <span class="flex min-w-0 items-center gap-1.5">
+          <span class="text-base-content truncate font-semibold">{{ project()?.name ?? projectCode }}</span>
+          @if (project()) {
+          <code class="bg-primary/10 text-primary shrink-0 rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold">
+            {{ project()!.codePrefix }}
+          </code>
+          }
+        </span>
+      </nav>
+      <div class="flex-1"></div>
+      @if (boards().length > 0 && selectedBoard()) {
+      <button type="button" class="btn btn-ghost btn-sm gap-1.5" (click)="showAddColumnModal.set(true)">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        Add column
+      </button>
+      <button type="button" class="btn btn-ghost btn-sm text-error gap-1.5" (click)="deleteBoard(selectedBoard()!)">
+        <lucide-icon name="trash2" class="size-4"></lucide-icon>
+        Delete board
+      </button>
+      }
+      <button type="button" class="btn btn-primary btn-sm gap-1.5" (click)="showCreateBoardModal.set(true)">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        New board
+      </button>
+    </div>
+  </div>
+
+  <!-- Board tabs -->
+  @if (!loading() && boards().length > 0) {
+  <div class="border-base-300 bg-base-100 border-b px-4 sm:px-6">
+    <div class="flex gap-0 overflow-x-auto">
+      @for (board of boards(); track board.id) {
+      <button
+        type="button"
+        class="border-b-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap transition-colors focus:outline-none"
+        [class.border-primary]="selectedBoardId() === board.id"
+        [class.text-primary]="selectedBoardId() === board.id"
+        [class.border-transparent]="selectedBoardId() !== board.id"
+        [class.text-base-content]="selectedBoardId() !== board.id"
+        (click)="selectBoard(board.id)"
+      >
+        {{ board.name }}
+      </button>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Board content -->
+  <div class="flex-1 overflow-auto">
+    @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-24">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <p class="text-base-content/60 mt-4 text-sm">Loading board…</p>
+    </div>
+
+    } @else if (boards().length === 0) {
+    <div class="mx-auto max-w-sm px-4 py-24 text-center">
+      <div
+        class="bg-primary/10 text-primary ring-primary/20 mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl ring-1"
+      >
+        <lucide-icon name="kanban" class="size-10"></lucide-icon>
+      </div>
+      <h2 class="text-base-content text-xl font-bold">No boards yet</h2>
+      <p class="text-base-content/60 mt-2 text-sm">Create a board to organize tasks into columns.</p>
+      <button type="button" class="btn btn-primary mt-8 gap-2" (click)="showCreateBoardModal.set(true)">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        Create board
+      </button>
+    </div>
+
+    } @else if (selectedBoard()) { @let board = selectedBoard()!; @if (board.columns.length === 0) {
+    <div class="mx-auto max-w-sm px-4 py-24 text-center">
+      <p class="text-base-content/60 mb-4 text-sm">No columns yet. Add a column to get started.</p>
+      <button type="button" class="btn btn-outline btn-sm gap-1.5" (click)="showAddColumnModal.set(true)">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        Add column
+      </button>
+    </div>
+    } @else {
+    <div class="flex items-start gap-4 p-4 pb-8 sm:p-6" style="min-width: max-content; min-height: calc(100vh - 112px)">
+      @for (column of board.columns; track column.id) {
+      <!-- Column wrapper — draggable for column reorder -->
+      <div
+        class="flex w-72 shrink-0 flex-col overflow-visible rounded-2xl border transition-all duration-150"
+        [class.opacity-40]="draggedColumnId() === column.id"
+        [class.ring-2]="dragOverColumnHeaderId() === column.id"
+        [class.ring-primary]="dragOverColumnHeaderId() === column.id"
+        [class.border-primary]="dragOverColumnId() === column.id"
+        [class.border-base-300]="dragOverColumnId() !== column.id && dragOverColumnHeaderId() !== column.id"
+        [class.bg-primary/5]="dragOverColumnId() === column.id"
+        [class.bg-base-100]="dragOverColumnId() !== column.id"
+        [class.shadow-md]="dragOverColumnId() === column.id"
+        [class.shadow-sm]="dragOverColumnId() !== column.id"
+        draggable="true"
+        (dragstart)="onColumnDragStart($event, column)"
+        (dragend)="onColumnDragEnd($event)"
+      >
+        <!-- Column top color accent -->
+        @if (columnColor(column)) {
+        <div class="h-1 w-full rounded-t-2xl" [style.background]="columnColor(column)"></div>
+        }
+
+        <!-- Column header — drop zone for column reorder -->
+        <div
+          class="border-base-300/60 flex cursor-grab items-center justify-between border-b px-3 py-2.5 select-none active:cursor-grabbing"
+          (dragover)="onColumnHeaderDragOver($event, column.id)"
+          (dragleave)="onColumnHeaderDragLeave($event, column.id)"
+          (drop)="onColumnDrop($event, column.id)"
+        >
+          <div class="flex min-w-0 items-center gap-2">
+            <lucide-icon name="gripVertical" class="text-base-content/25 size-3.5 shrink-0"></lucide-icon>
+            <span class="text-base-content truncate text-sm font-semibold">{{ column.name }}</span>
+            <span
+              class="bg-base-200 text-base-content/60 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-medium tabular-nums"
+            >
+              {{ tasksByColumn(column.id).length }}
+            </span>
+          </div>
+          <div class="flex shrink-0 items-center gap-0.5">
+            <!-- Color picker trigger -->
+            <div class="relative">
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs hover:bg-base-200 flex size-7 items-center justify-center p-0"
+                (click)="colorPickerColumnId.set(colorPickerColumnId() === column.id ? null : column.id); $event.stopPropagation()"
+                title="Set column color"
+              >
+                @if (columnColor(column)) {
+                <span
+                  class="border-base-content/20 size-3 rounded-full border"
+                  [style.background]="columnColor(column)"
+                ></span>
+                } @else {
+                <lucide-icon name="palette" class="text-base-content/40 size-3.5"></lucide-icon>
+                }
+              </button>
+
+              <!-- Color palette popover -->
+              @if (colorPickerColumnId() === column.id) {
+              <div
+                class="bg-base-100 border-base-300 absolute top-8 right-0 z-50 w-52 rounded-xl border p-3 shadow-xl"
+                (click)="$event.stopPropagation()"
+              >
+                <p class="text-base-content/50 mb-2 text-xs font-medium tracking-wide uppercase">Column color</p>
+                <div class="mb-2 grid grid-cols-6 gap-1.5">
+                  @for (c of columnColors; track c.token) {
+                  <button
+                    type="button"
+                    class="size-6 rounded-full border-2 transition-all hover:scale-110"
+                    [style.background]="c.hex"
+                    [class.border-base-content]="column.color === c.token"
+                    [class.border-transparent]="column.color !== c.token"
+                    [title]="c.label"
+                    (click)="setColumnColor(column, c.token)"
+                  ></button>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-base-content/50 w-full gap-1.5"
+                  (click)="setColumnColor(column, null)"
+                >
+                  <lucide-icon name="x" class="size-3"></lucide-icon>
+                  Remove color
+                </button>
+              </div>
+              }
+            </div>
+
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs hover:bg-base-200 size-7 p-0"
+              (click)="openCreateTask(column.id); $event.stopPropagation()"
+              title="Add task"
+            >
+              <lucide-icon name="plus" class="size-3.5"></lucide-icon>
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs hover:bg-error/10 hover:text-error text-base-content/40 size-7 p-0"
+              (click)="deleteColumn(board, column); $event.stopPropagation()"
+              title="Delete column"
+            >
+              <lucide-icon name="x" class="size-3.5"></lucide-icon>
+            </button>
+          </div>
+        </div>
+
+        <!-- Task list — drop zone for tasks -->
+        <div
+          class="flex min-h-12 flex-col gap-1 p-2"
+          (dragover)="onColumnDragOver($event, column.id)"
+          (dragleave)="onColumnDragLeave($event, column.id)"
+          (drop)="onDrop($event, column.id)"
+        >
+          @for (task of tasksByColumn(column.id); track task.id; let i = $index) {
+          <!-- Drop indicator: before this task -->
+          @if (showIndicator(column.id, i)) {
+          <div class="bg-primary pointer-events-none mx-1 my-0.5 h-0.5 w-full rounded-full"></div>
+          }
+
+          <a
+            [routerLink]="['/projects', projectCode, 'tasks', task.code]"
+            class="group border-base-200 bg-base-100 hover:border-primary/30 block cursor-grab rounded-xl border p-3 no-underline shadow-sm transition-all duration-150 select-none hover:-translate-y-px hover:shadow-md active:cursor-grabbing"
+            draggable="true"
+            (dragstart)="onTaskDragStart($event, task)"
+            (dragend)="onTaskDragEnd($event)"
+            (dragover)="onTaskDragOver($event, column.id, i)"
+          >
+            <!-- Top row: code + type badge -->
+            <div class="mb-1.5 flex items-center justify-between gap-2">
+              <span class="text-base-content/40 font-mono text-xs font-medium">{{ task.code }}</span>
+              <div class="flex items-center gap-1.5">
+                @if (task.type === 'BUG') {
+                <span
+                  class="text-error bg-error/10 inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium"
+                >
+                  <lucide-icon name="alertTriangle" class="size-3"></lucide-icon>
+                  Bug
+                </span>
+                }
+                <span class="text-base-content/50 inline-flex items-center gap-1 text-xs">
+                  <span class="size-2 shrink-0 rounded-full" [class]="statusDotClass(task.status)"></span>
+                  {{ statusLabel(task.status) }}
+                </span>
+              </div>
+            </div>
+
+            <!-- Title -->
+            <p
+              class="text-base-content group-hover:text-primary line-clamp-2 text-sm leading-snug font-medium transition-colors"
+            >
+              {{ task.title }}
+            </p>
+
+            <!-- Footer: subtasks + branch/pr -->
+            @if (task.subtaskCount > 0 || task.branchName || task.hasLinkedPr) {
+            <div class="mt-2.5 flex flex-wrap items-center gap-2.5">
+              @if (task.subtaskCount > 0) {
+              <span
+                class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs"
+                [class.bg-success/10]="task.completedSubtaskCount === task.subtaskCount"
+                [class.text-success]="task.completedSubtaskCount === task.subtaskCount"
+                [class.bg-base-200]="task.completedSubtaskCount !== task.subtaskCount"
+                [class.text-base-content/50]="task.completedSubtaskCount !== task.subtaskCount"
+              >
+                <lucide-icon name="checkCircle" class="size-3"></lucide-icon>
+                {{ task.completedSubtaskCount }}/{{ task.subtaskCount }}
+              </span>
+              } @if (task.branchName) {
+              <span class="text-base-content/40 inline-flex items-center gap-1 text-xs">
+                <lucide-icon name="gitBranch" class="size-3"></lucide-icon>
+                <span class="max-w-24 truncate">{{ task.branchName }}</span>
+              </span>
+              } @if (task.hasLinkedPr) {
+              <span class="text-base-content/40 inline-flex items-center gap-1 text-xs">
+                <lucide-icon name="gitPullRequest" class="size-3"></lucide-icon>
+                PR
+              </span>
+              }
+            </div>
+            }
+          </a>
+          }
+
+          <!-- Drop indicator: after last task -->
+          @if (showIndicator(column.id, tasksByColumn(column.id).length)) {
+          <div class="bg-primary pointer-events-none mx-1 my-0.5 h-0.5 w-full rounded-full"></div>
+          }
+
+          <!-- Add task button -->
+          <button
+            type="button"
+            class="border-base-300 text-base-content/40 hover:border-primary/40 hover:text-primary hover:bg-primary/5 mt-1 flex w-full items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm transition-colors"
+            (click)="openCreateTask(column.id)"
+          >
+            <lucide-icon name="plus" class="size-4 shrink-0"></lucide-icon>
+            Add task
+          </button>
+        </div>
+      </div>
+      }
+
+      <!-- Add column inline -->
+      <button
+        type="button"
+        class="border-base-300 text-base-content/40 hover:border-primary/40 hover:text-primary hover:bg-primary/5 mt-0 flex w-72 shrink-0 items-center gap-2 self-start rounded-2xl border border-dashed px-4 py-3 text-sm transition-colors"
+        (click)="showAddColumnModal.set(true)"
+      >
+        <lucide-icon name="plus" class="size-4 shrink-0"></lucide-icon>
+        Add column
+      </button>
+    </div>
+    } }
+  </div>
+</div>
+
+<!-- Close color picker on backdrop click -->
+@if (colorPickerColumnId()) {
+<div class="fixed inset-0 z-40" (click)="colorPickerColumnId.set(null)"></div>
+}
+
+<!-- Create board modal -->
+@if (showCreateBoardModal()) {
+<div class="modal modal-open">
+  <div class="modal-box max-w-sm">
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm btn-circle absolute top-2 right-2"
+      (click)="showCreateBoardModal.set(false)"
+    >
+      <lucide-icon name="x" class="size-4"></lucide-icon>
+    </button>
+    <h3 class="mb-4 text-lg font-bold">New board</h3>
+    <label class="form-control w-full">
+      <div class="label">
+        <span class="label-text font-medium">Board name <span class="text-error">*</span></span>
+      </div>
+      <input
+        type="text"
+        class="input input-bordered w-full"
+        placeholder="e.g. Sprint 1"
+        [value]="newBoardName()"
+        (input)="newBoardName.set($any($event.target).value)"
+        (keydown.enter)="createBoard()"
+        maxlength="120"
+       
+      />
+    </label>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" (click)="showCreateBoardModal.set(false)">Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="creatingBoard() || !newBoardName().trim()"
+        (click)="createBoard()"
+      >
+        @if (creatingBoard()) { <span class="loading loading-spinner loading-sm"></span> } Create
+      </button>
+    </div>
+  </div>
+  <div class="modal-backdrop" (click)="showCreateBoardModal.set(false)"></div>
+</div>
+}
+
+<!-- Add column modal -->
+@if (showAddColumnModal()) {
+<div class="modal modal-open">
+  <div class="modal-box max-w-sm">
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm btn-circle absolute top-2 right-2"
+      (click)="showAddColumnModal.set(false)"
+    >
+      <lucide-icon name="x" class="size-4"></lucide-icon>
+    </button>
+    <h3 class="mb-4 text-lg font-bold">Add column</h3>
+    <label class="form-control w-full">
+      <div class="label">
+        <span class="label-text font-medium">Column name <span class="text-error">*</span></span>
+      </div>
+      <input
+        type="text"
+        class="input input-bordered w-full"
+        placeholder="e.g. In Review"
+        [value]="newColumnName()"
+        (input)="newColumnName.set($any($event.target).value)"
+        (keydown.enter)="addColumn()"
+        maxlength="120"
+       
+      />
+    </label>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" (click)="showAddColumnModal.set(false)">Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="creatingColumn() || !newColumnName().trim()"
+        (click)="addColumn()"
+      >
+        @if (creatingColumn()) { <span class="loading loading-spinner loading-sm"></span> } Add
+      </button>
+    </div>
+  </div>
+  <div class="modal-backdrop" (click)="showAddColumnModal.set(false)"></div>
+</div>
+}
+
+<!-- Create task modal -->
+@if (showCreateTaskModal()) {
+<div class="modal modal-open">
+  <div class="modal-box max-w-md">
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm btn-circle absolute top-2 right-2"
+      (click)="showCreateTaskModal.set(false)"
+    >
+      <lucide-icon name="x" class="size-4"></lucide-icon>
+    </button>
+    <h3 class="mb-4 text-lg font-bold">New task</h3>
+    <div class="flex flex-col gap-4">
+      <label class="form-control w-full">
+        <div class="label">
+          <span class="label-text font-medium">Title <span class="text-error">*</span></span>
+        </div>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          placeholder="Task title"
+          [value]="newTaskTitle()"
+          (input)="newTaskTitle.set($any($event.target).value)"
+          (keydown.enter)="createTask()"
+          maxlength="255"
+         
+        />
+      </label>
+      <label class="form-control w-full">
+        <div class="label"><span class="label-text font-medium">Type</span></div>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="btn btn-sm flex-1 gap-2"
+            [class.btn-primary]="newTaskType() === 'TASK'"
+            [class.btn-ghost]="newTaskType() !== 'TASK'"
+            (click)="newTaskType.set('TASK')"
+          >
+            <lucide-icon name="checkCircle" class="size-4"></lucide-icon>
+            Task
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm flex-1 gap-2"
+            [class.btn-error]="newTaskType() === 'BUG'"
+            [class.btn-ghost]="newTaskType() !== 'BUG'"
+            (click)="newTaskType.set('BUG')"
+          >
+            <lucide-icon name="alertTriangle" class="size-4"></lucide-icon>
+            Bug
+          </button>
+        </div>
+      </label>
+    </div>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" (click)="showCreateTaskModal.set(false)">Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="creatingTask() || !newTaskTitle().trim()"
+        (click)="createTask()"
+      >
+        @if (creatingTask()) { <span class="loading loading-spinner loading-sm"></span> } Create task
+      </button>
+    </div>
+  </div>
+  <div class="modal-backdrop" (click)="showCreateTaskModal.set(false)"></div>
+</div>
+}

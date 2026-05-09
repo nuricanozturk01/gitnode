@@ -70,6 +70,9 @@ import {
   ShieldCheck,
   Rocket,
   CircleHelp,
+  GripVertical,
+  Palette,
+  Trash2,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -128,4 +131,7 @@ export const LUCIDE_ICONS = {
   ShieldCheck,
   Rocket,
   CircleHelp,
+  GripVertical,
+  Palette,
+  Trash2,
 };

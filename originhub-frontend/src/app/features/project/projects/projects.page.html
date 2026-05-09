@@ -1,0 +1,170 @@
+<div class="bg-base-200 min-h-screen">
+  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Projects</h1>
+        <p class="text-base-content/55 mt-1 text-sm">Manage your kanban projects and boards.</p>
+      </div>
+      <button type="button" class="btn btn-primary shrink-0 gap-2" (click)="openCreateModal()">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        New project
+      </button>
+    </div>
+
+    @if (loading()) {
+    <div class="flex flex-col items-center justify-center py-24">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <p class="text-base-content/60 mt-4 text-sm">Loading projects…</p>
+    </div>
+
+    } @else if (projects().length === 0) {
+    <div class="border-base-300 bg-base-100 rounded-2xl border p-12 text-center shadow-sm">
+      <div
+        class="bg-primary/10 text-primary ring-primary/20 mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl ring-1"
+      >
+        <lucide-icon name="kanban" class="size-10"></lucide-icon>
+      </div>
+      <h2 class="text-base-content text-xl font-bold">No projects yet</h2>
+      <p class="text-base-content/55 mx-auto mt-2 max-w-sm text-sm">
+        Create your first project to start tracking tasks with a kanban board.
+      </p>
+      <button type="button" class="btn btn-primary mt-8 gap-2" (click)="openCreateModal()">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        Create project
+      </button>
+    </div>
+
+    } @else {
+    <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      @for (project of projects(); track project.id) {
+      <div
+        class="group bg-base-100 border-base-300 relative flex flex-col overflow-hidden rounded-2xl border shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+      >
+        <!-- Color accent top bar -->
+        <div class="from-primary/60 via-primary to-primary/60 h-0.5 bg-gradient-to-r"></div>
+
+        <div class="flex flex-1 flex-col gap-3 p-4">
+          <!-- Top: prefix badge + actions -->
+          <div class="flex items-start justify-between gap-2">
+            <a [routerLink]="['/projects', project.codePrefix]" class="min-w-0 flex-1 no-underline">
+              <code class="bg-primary/10 text-primary rounded-lg px-2 py-1 font-mono text-xs font-bold">
+                {{ project.codePrefix }}
+              </code>
+              <h2
+                class="text-base-content group-hover:text-primary mt-2 truncate text-sm leading-snug font-semibold transition-colors"
+              >
+                {{ project.name }}
+              </h2>
+              @if (project.description) {
+              <p class="text-base-content/50 mt-1 line-clamp-2 text-xs leading-relaxed">{{ project.description }}</p>
+              }
+            </a>
+
+            <!-- Delete action (visible on hover) -->
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-base-content/30 hover:text-error hover:bg-error/10 size-7 shrink-0 p-0 opacity-0 transition-all duration-150 group-hover:opacity-100"
+              (click)="deleteProject(project)"
+              title="Delete project"
+            >
+              <lucide-icon name="x" class="size-3.5"></lucide-icon>
+            </button>
+          </div>
+
+          <!-- Footer stats -->
+          <div class="text-base-content/40 border-base-200 mt-auto flex items-center gap-3 border-t pt-1 text-xs">
+            <span class="inline-flex items-center gap-1">
+              <lucide-icon name="layers" class="size-3.5"></lucide-icon>
+              {{ project.taskSeq }} task{{ project.taskSeq !== 1 ? 's' : '' }}
+            </span>
+            @if (project.updatedAt) {
+            <span class="ml-auto">{{ project.updatedAt | relativeTime }}</span>
+            }
+          </div>
+        </div>
+      </div>
+      }
+    </div>
+    }
+  </div>
+</div>
+
+<!-- Create project modal -->
+@if (showCreateModal()) {
+<div class="modal modal-open">
+  <div class="modal-box max-w-md">
+    <button type="button" class="btn btn-ghost btn-sm btn-circle absolute top-2 right-2" (click)="closeCreateModal()">
+      <lucide-icon name="x" class="size-4"></lucide-icon>
+    </button>
+    <div class="mb-5">
+      <h3 class="text-lg font-bold">New project</h3>
+      <p class="text-base-content/55 mt-0.5 text-sm">Create a project to organize your work into boards.</p>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium">Project name <span class="text-error">*</span></span>
+        </div>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          placeholder="My Project"
+          [value]="form().name"
+          (input)="onNameInput($event)"
+          maxlength="120"
+        />
+      </label>
+
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium">Code prefix <span class="text-error">*</span></span>
+          <span class="label-text-alt text-base-content/40 font-mono">e.g. PROJ</span>
+        </div>
+        <input
+          type="text"
+          class="input input-bordered w-full font-mono tracking-widest uppercase"
+          placeholder="PROJ"
+          [value]="form().codePrefix"
+          (input)="onPrefixInput($event)"
+          maxlength="10"
+        />
+        <div class="label pt-1">
+          <span class="label-text-alt text-base-content/40"
+            >Uppercase letters and digits, starting with a letter. Used as task code prefix (e.g. PROJ-1).</span
+          >
+        </div>
+      </label>
+
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium"
+            >Description <span class="text-base-content/40 font-normal">(optional)</span></span
+          >
+        </div>
+        <textarea
+          class="textarea textarea-bordered w-full text-sm"
+          placeholder="Short description of this project…"
+          rows="2"
+          [value]="form().description ?? ''"
+          (input)="onDescInput($event)"
+        ></textarea>
+      </label>
+    </div>
+
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" (click)="closeCreateModal()">Cancel</button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="creating() || !form().name.trim() || !form().codePrefix.trim()"
+        (click)="submitCreate()"
+      >
+        @if (creating()) { <span class="loading loading-spinner loading-sm"></span> } Create project
+      </button>
+    </div>
+  </div>
+  <div class="modal-backdrop" (click)="closeCreateModal()"></div>
+</div>
+}

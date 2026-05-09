@@ -124,14 +124,44 @@
 </section>
 
 @if (readmeHtml()) {
-<section class="repo-panel mt-6 overflow-hidden">
+<section class="repo-panel readme-panel mt-6 overflow-hidden">
   <div class="repo-toolbar flex items-center gap-2 px-4 py-3">
     <lucide-icon name="fileText" class="text-base-content/60 size-4"></lucide-icon>
     <span class="text-base-content text-sm font-medium">README.md</span>
   </div>
-  <div class="prose prose-invert readme-content max-w-none p-6" [innerHTML]="readmeHtml()"></div>
+  <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+  <div
+    class="readme-markdown-body readme-content px-4 py-6 sm:px-10 sm:py-8"
+    [innerHTML]="readmeHtml()"
+    (click)="onReadmeImageClick($event)"
+  ></div>
 </section>
-} } @if (cloneDialogOpen()) {
+} } @if (readmeImageLightboxOpen() && readmeImageLightboxSrc(); as lightboxSrc) {
+<div
+  class="readme-image-lightbox fixed inset-0 z-[200] flex items-center justify-center bg-black/88 p-4 sm:p-10 backdrop-blur-[2px]"
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+  [attr.aria-label]="readmeImageLightboxAlt() || 'Image preview'"
+  (click)="onReadmeLightboxBackdropClick($event)"
+  (keydown.enter)="closeReadmeImageLightbox()"
+  (keydown.space)="closeReadmeImageLightbox(); $event.preventDefault()"
+>
+  <button
+    type="button"
+    class="btn btn-circle btn-ghost text-base-100 hover:bg-white/15 absolute right-2 top-2 z-10 border border-white/25 sm:right-4 sm:top-4"
+    (click)="closeReadmeImageLightbox(); $event.stopPropagation()"
+    aria-label="Close image preview"
+  >
+    <lucide-icon name="x" class="size-6"></lucide-icon>
+  </button>
+  <img
+    [src]="lightboxSrc"
+    [alt]="readmeImageLightboxAlt() ?? ''"
+    class="max-h-[calc(100vh-2rem)] max-w-[calc(100vw-2rem)] rounded-lg object-contain shadow-2xl ring-1 ring-white/15"
+  />
+</div>
+} @if (cloneDialogOpen()) {
 <div
   class="modal modal-open"
   role="button"

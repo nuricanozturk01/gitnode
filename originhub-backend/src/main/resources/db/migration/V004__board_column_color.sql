@@ -1,2 +1,0 @@
-ALTER TABLE board_columns
-  ADD COLUMN IF NOT EXISTS color VARCHAR(20);

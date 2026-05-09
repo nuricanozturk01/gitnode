@@ -16,6 +16,14 @@
         </span>
       </nav>
       <div class="flex-1"></div>
+      <a
+        [routerLink]="['/projects', projectCode, 'settings']"
+        class="btn btn-ghost btn-sm gap-1.5"
+        title="Project settings"
+      >
+        <lucide-icon name="settings" class="size-4"></lucide-icon>
+        Settings
+      </a>
       @if (boards().length > 0 && selectedBoard()) {
       <button type="button" class="btn btn-ghost btn-sm gap-1.5" (click)="showAddColumnModal.set(true)">
         <lucide-icon name="plus" class="size-4"></lucide-icon>
@@ -102,7 +110,7 @@
         [class.shadow-sm]="dragOverColumnId() !== column.id"
         draggable="true"
         (dragstart)="onColumnDragStart($event, column)"
-        (dragend)="onColumnDragEnd($event)"
+        (dragend)="onColumnDragEnd()"
       >
         <!-- Column top color accent -->
         @if (columnColor(column)) {

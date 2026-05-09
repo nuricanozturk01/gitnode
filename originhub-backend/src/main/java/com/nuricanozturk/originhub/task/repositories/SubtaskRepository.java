@@ -33,4 +33,7 @@ public interface SubtaskRepository extends JpaRepository<Subtask, UUID> {
   int countByTaskId(@NonNull UUID taskId);
 
   int countByTaskIdAndStatus(@NonNull UUID taskId, @NonNull String status);
+
+  @NonNull Optional<Subtask> findByBranchRepoIdAndBranchName(
+      @NonNull UUID branchRepoId, @NonNull String branchName);
 }

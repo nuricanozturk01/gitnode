@@ -24,9 +24,13 @@ import org.jspecify.annotations.Nullable;
 @Builder
 public record SubtaskInfo(
     @NonNull UUID id,
+    @NonNull String code,
     @NonNull String title,
     @Nullable String description,
     @NonNull String status,
     int position,
+    @Nullable String branchName,
+    @Nullable UUID branchRepoId,
+    @Nullable LinkedPrInfo linkedPr,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

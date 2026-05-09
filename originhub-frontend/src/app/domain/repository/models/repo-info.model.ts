@@ -34,6 +34,10 @@ export interface RepoInfo {
   defaultBranch: string;
   /** May be null/omitted from API for older rows. */
   topics?: string[] | null;
+  /** When true, the PR head branch is removed after a successful merge. */
+  deleteHeadBranchOnPrMerge?: boolean;
+  /** When true, the PR head branch is removed when the PR is closed without merging. */
+  deleteHeadBranchOnPrClose?: boolean;
   createdAt: string;
   updatedAt: string;
 }

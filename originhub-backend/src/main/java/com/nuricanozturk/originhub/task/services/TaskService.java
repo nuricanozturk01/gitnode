@@ -253,14 +253,21 @@ public class TaskService {
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
 
+    this.taskRepository.incrementSubtaskSeq(task.getId());
+    final var taskWithSeq =
+        this.taskRepository
+            .findById(task.getId())
+            .orElseThrow(() -> new ItemNotFoundException("Task not found"));
+
     final var subtask = new Subtask();
-    subtask.setTask(task);
+    subtask.setTask(taskWithSeq);
+    subtask.setCode("SUB-" + taskWithSeq.getSubtaskSeq());
     subtask.setTitle(form.getTitle());
     subtask.setDescription(form.getDescription());
     subtask.setStatus(TaskStatus.NOT_STARTED.name());
     subtask.setPosition(form.getPosition());
 
-    return this.projectMapper.toSubtaskInfo(this.subtaskRepository.save(subtask));
+    return this.toSubtaskInfo(this.subtaskRepository.save(subtask));
   }
 
   @Transactional
@@ -291,7 +298,50 @@ public class TaskService {
       subtask.setPosition(form.getPosition());
     }
 
-    return this.projectMapper.toSubtaskInfo(this.subtaskRepository.save(subtask));
+    return this.toSubtaskInfo(this.subtaskRepository.save(subtask));
+  }
+
+  @Transactional
+  public @NonNull BranchInfo createBranchForSubtask(
+      final @NonNull String ownerUsername,
+      final @NonNull String projectCode,
+      final @NonNull String taskCode,
+      final @NonNull UUID subtaskId,
+      final @NonNull CreateBranchFromTaskForm form)
+      throws IOException {
+
+    final var project = this.projectService.findProject(ownerUsername, projectCode);
+    final var task = this.findTask(project.getId(), taskCode);
+    final var subtask = this.findSubtask(subtaskId, task.getId());
+
+    if (subtask.getBranchName() != null) {
+      throw new ErrorOccurredException(
+          "Subtask already has a linked branch: " + subtask.getBranchName());
+    }
+
+    final var repo =
+        this.repoRepository
+            .findByOwnerUsernameAndName(form.getRepoOwner(), form.getRepoName())
+            .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
+
+    final var branchName =
+        form.getBranchName() != null && !form.getBranchName().isBlank()
+            ? form.getBranchName().trim()
+            : this.slugify(task.getCode() + "." + subtask.getCode() + "-" + subtask.getTitle());
+
+    final var branchForm = new BranchForm();
+    branchForm.setName(branchName);
+    branchForm.setSourceBranch(form.getSourceBranch());
+
+    final var created =
+        this.branchProtocolService.create(form.getRepoOwner(), form.getRepoName(), branchForm);
+
+    subtask.setBranchRepo(repo);
+    subtask.setBranchName(branchName);
+    subtask.setStatus(TaskStatus.IN_PROGRESS.name());
+    this.subtaskRepository.save(subtask);
+
+    return created;
   }
 
   @Transactional
@@ -311,19 +361,31 @@ public class TaskService {
   public void linkPullRequest(
       final @NonNull UUID repoId, final @NonNull String sourceBranch, final @NonNull UUID prId) {
 
-    this.taskRepository
+    final var pr =
+        this.prRepository
+            .findById(prId)
+            .orElseThrow(() -> new ItemNotFoundException("Pull request not found"));
+
+    final var taskOpt = this.taskRepository.findByBranchRepoIdAndBranchName(repoId, sourceBranch);
+    if (taskOpt.isPresent()) {
+      final var task = taskOpt.get();
+      task.setLinkedPr(pr);
+      if (task.getStatus().equals(TaskStatus.NOT_STARTED.name())) {
+        task.setStatus(TaskStatus.IN_PROGRESS.name());
+      }
+      this.taskRepository.save(task);
+      return;
+    }
+
+    this.subtaskRepository
         .findByBranchRepoIdAndBranchName(repoId, sourceBranch)
         .ifPresent(
-            task -> {
-              final var pr =
-                  this.prRepository
-                      .findById(prId)
-                      .orElseThrow(() -> new ItemNotFoundException("Pull request not found"));
-              task.setLinkedPr(pr);
-              if (task.getStatus().equals(TaskStatus.NOT_STARTED.name())) {
-                task.setStatus(TaskStatus.IN_PROGRESS.name());
+            subtask -> {
+              subtask.setLinkedPr(pr);
+              if (subtask.getStatus().equals(TaskStatus.NOT_STARTED.name())) {
+                subtask.setStatus(TaskStatus.IN_PROGRESS.name());
               }
-              this.taskRepository.save(task);
+              this.subtaskRepository.save(subtask);
             });
   }
 
@@ -333,13 +395,27 @@ public class TaskService {
       final @NonNull String sourceBranch,
       final @NonNull String prStatus) {
 
-    this.taskRepository
+    if (!"MERGED".equals(prStatus)) {
+      return;
+    }
+
+    final var taskOpt = this.taskRepository.findByBranchRepoIdAndBranchName(repoId, sourceBranch);
+    if (taskOpt.isPresent()) {
+      final var task = taskOpt.get();
+      if (task.getProject().isSyncTaskStatusOnPrMerge()) {
+        task.setStatus(TaskStatus.COMPLETED.name());
+        this.taskRepository.save(task);
+      }
+      return;
+    }
+
+    this.subtaskRepository
         .findByBranchRepoIdAndBranchName(repoId, sourceBranch)
         .ifPresent(
-            task -> {
-              if ("MERGED".equals(prStatus)) {
-                task.setStatus(TaskStatus.COMPLETED.name());
-                this.taskRepository.save(task);
+            subtask -> {
+              if (subtask.getTask().getProject().isSyncTaskStatusOnPrMerge()) {
+                subtask.setStatus(TaskStatus.COMPLETED.name());
+                this.subtaskRepository.save(subtask);
               }
             });
   }
@@ -347,9 +423,25 @@ public class TaskService {
   private @NonNull TaskDetail toDetail(final @NonNull Task task) {
     final var subtasks =
         this.subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId()).stream()
-            .map(this.projectMapper::toSubtaskInfo)
+            .map(this::toSubtaskInfo)
             .toList();
     return this.taskMapper.toDetail(task, this.buildLinkedPrInfo(task.getLinkedPr()), subtasks);
+  }
+
+  private @NonNull SubtaskInfo toSubtaskInfo(final @NonNull Subtask subtask) {
+    return SubtaskInfo.builder()
+        .id(subtask.getId())
+        .code(subtask.getCode())
+        .title(subtask.getTitle())
+        .description(subtask.getDescription())
+        .status(subtask.getStatus())
+        .position(subtask.getPosition())
+        .branchName(subtask.getBranchName())
+        .branchRepoId(subtask.getBranchRepo() != null ? subtask.getBranchRepo().getId() : null)
+        .linkedPr(this.buildLinkedPrInfo(subtask.getLinkedPr()))
+        .createdAt(subtask.getCreatedAt())
+        .updatedAt(subtask.getUpdatedAt())
+        .build();
   }
 
   private @Nullable LinkedPrInfo buildLinkedPrInfo(final @Nullable PullRequest pr) {

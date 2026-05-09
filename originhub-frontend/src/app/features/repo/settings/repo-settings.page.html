@@ -1,6 +1,6 @@
 <div class="repo-settings">
   <p class="text-base-content/65 mb-5 text-sm sm:mb-6">
-    Manage this repository’s name, description, topics, and destructive actions.
+    Manage repository details, pull request automation, and destructive actions.
   </p>
 
   <div
@@ -20,6 +20,19 @@
     >
       <lucide-icon name="settings" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
       General
+    </button>
+    <button
+      type="button"
+      role="tab"
+      id="repo-settings-tab-pull-requests"
+      class="tab flex-1 gap-2 rounded-md sm:flex-none"
+      [class.tab-active]="activeTab() === 'pullRequests'"
+      [attr.aria-selected]="activeTab() === 'pullRequests'"
+      aria-controls="repo-settings-panel-pull-requests"
+      (click)="setTab('pullRequests')"
+    >
+      <lucide-icon name="gitPullRequest" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+      Pull requests
     </button>
     <button
       type="button"
@@ -140,6 +153,86 @@
             (click)="saveGeneral()"
           >
             @if (savingGeneral()) {
+            <span class="loading loading-spinner loading-sm"></span>
+            Saving… } @else { Save changes }
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+  } @if (activeTab() === 'pullRequests') {
+  <div
+    id="repo-settings-panel-pull-requests"
+    role="tabpanel"
+    aria-labelledby="repo-settings-tab-pull-requests"
+    class="repo-settings-panels"
+  >
+    <section class="repo-panel repo-settings-section relative overflow-hidden">
+      <div
+        class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+      ></div>
+      <div class="p-5 sm:p-6">
+        <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+          <lucide-icon name="gitPullRequest" class="text-primary size-5 shrink-0"></lucide-icon>
+          Pull requests
+        </h2>
+        <p class="text-base-content/65 mt-1 text-sm">
+          Optional cleanup of the <span class="font-medium">head branch</span> (source branch) after a pull request
+          ends. Your default branch is never deleted.
+        </p>
+
+        <div class="settings-stack mt-6">
+          <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
+            <input
+              id="repo-delete-branch-on-merge"
+              type="checkbox"
+              class="checkbox checkbox-primary mt-0.5"
+              [checked]="deleteHeadBranchOnPrMerge()"
+              (change)="onPullMergeToggle($any($event.target).checked)"
+            />
+            <div class="min-w-0 flex-1">
+              <label class="cursor-pointer font-medium" for="repo-delete-branch-on-merge">
+                Delete head branch when a pull request is merged
+              </label>
+              <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+                After a successful merge, removes the PR’s source branch from this repository. Useful for keeping the
+                branch list tidy.
+              </p>
+            </div>
+          </div>
+
+          <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
+            <input
+              id="repo-delete-branch-on-close"
+              type="checkbox"
+              class="checkbox checkbox-primary mt-0.5"
+              [checked]="deleteHeadBranchOnPrClose()"
+              (change)="onPullCloseToggle($any($event.target).checked)"
+            />
+            <div class="min-w-0 flex-1">
+              <label class="cursor-pointer font-medium" for="repo-delete-branch-on-close">
+                Delete head branch when a pull request is closed
+              </label>
+              <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+                When a PR is closed without merging, removes the source branch. Turn this on only if you do not need
+                that branch for follow-up work.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        @if (pullSettingsError()) {
+        <p class="text-error settings-field-hint mt-4" role="alert">{{ pullSettingsError() }}</p>
+        }
+
+        <div class="mt-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            class="btn btn-primary min-h-11 px-5"
+            [disabled]="savingPullSettings()"
+            (click)="savePullSettings()"
+          >
+            @if (savingPullSettings()) {
             <span class="loading loading-spinner loading-sm"></span>
             Saving… } @else { Save changes }
           </button>

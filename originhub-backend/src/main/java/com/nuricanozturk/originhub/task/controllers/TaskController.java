@@ -107,6 +107,20 @@ public class TaskController {
         .body(this.taskService.createBranch(owner, projectCode, taskCode, form));
   }
 
+  @PostMapping("/{taskCode}/subtasks/{subtaskId}/branch")
+  public @NonNull ResponseEntity<BranchInfo> createBranchForSubtask(
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String projectCode,
+      @PathVariable final @NonNull String taskCode,
+      @PathVariable final @NonNull UUID subtaskId,
+      @Valid @RequestBody final @NonNull CreateBranchFromTaskForm form)
+      throws IOException {
+
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(
+            this.taskService.createBranchForSubtask(owner, projectCode, taskCode, subtaskId, form));
+  }
+
   @PostMapping("/{taskCode}/subtasks")
   public @NonNull ResponseEntity<SubtaskInfo> createSubtask(
       @PathVariable final @NonNull String owner,

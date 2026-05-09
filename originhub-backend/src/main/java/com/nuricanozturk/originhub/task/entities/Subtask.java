@@ -15,6 +15,8 @@
  */
 package com.nuricanozturk.originhub.task.entities;
 
+import com.nuricanozturk.originhub.pr.entities.PullRequest;
+import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -50,6 +52,9 @@ public class Subtask {
   @JoinColumn(name = "task_id", nullable = false)
   private Task task;
 
+  @Column(name = "code", nullable = false, length = 20)
+  private String code;
+
   @Column(name = "title", nullable = false, length = 255)
   private String title;
 
@@ -63,6 +68,19 @@ public class Subtask {
   @ColumnDefault("0")
   @Column(name = "position", nullable = false)
   private int position;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
+  @JoinColumn(name = "branch_repo_id")
+  private Repo branchRepo;
+
+  @Column(name = "branch_name", length = 255)
+  private String branchName;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
+  @JoinColumn(name = "linked_pr_id")
+  private PullRequest linkedPr;
 
   @CreationTimestamp
   @Column(name = "created_at")

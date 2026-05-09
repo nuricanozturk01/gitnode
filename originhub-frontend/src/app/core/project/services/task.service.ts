@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 import type {
   TaskInfo,
   TaskDetail,
@@ -46,9 +47,24 @@ export class TaskService {
     projectCode: string,
     taskCode: string,
     form: CreateBranchFromTaskForm,
-  ): Promise<{ name: string }> {
+  ): Promise<BranchInfo> {
     return firstValueFrom(
-      this.http.post<{ name: string }>(`${this.base(owner, projectCode)}/${taskCode}/branch`, form),
+      this.http.post<BranchInfo>(`${this.base(owner, projectCode)}/${taskCode}/branch`, form),
+    );
+  }
+
+  createBranchForSubtask(
+    owner: string,
+    projectCode: string,
+    taskCode: string,
+    subtaskId: string,
+    form: CreateBranchFromTaskForm,
+  ): Promise<BranchInfo> {
+    return firstValueFrom(
+      this.http.post<BranchInfo>(
+        `${this.base(owner, projectCode)}/${taskCode}/subtasks/${subtaskId}/branch`,
+        form,
+      ),
     );
   }
 

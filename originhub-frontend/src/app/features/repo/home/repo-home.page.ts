@@ -14,7 +14,15 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, SecurityContext, OnDestroy } from '@angular/core';
+import {
+  Component,
+  HostListener,
+  inject,
+  signal,
+  computed,
+  SecurityContext,
+  OnDestroy,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -32,6 +40,9 @@ import type { BlobResponse } from '../../../domain/repository/models/blob-respon
 import { decodeBase64Utf8 } from '../shared/utils/encoding';
 import { ToastService } from '../../../core/toast/toast.service';
 import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
+import { postProcessReadmeHtml } from '../shared/readme-markdown.utils';
+
+marked.use({ gfm: true, breaks: false });
 
 @Component({
   selector: 'app-repo-home',
@@ -54,6 +65,13 @@ export class RepoHomePage implements OnDestroy {
   readonly isEmpty = signal(false);
   readonly selectedBranch = signal('');
   readonly readmeHtml = signal<SafeHtml | null>(null);
+
+  /** Fullscreen preview for README images (blob or absolute URLs). */
+  readonly readmeImageLightboxOpen = signal(false);
+  readonly readmeImageLightboxSrc = signal<string | null>(null);
+  readonly readmeImageLightboxAlt = signal<string | null>(null);
+
+  private readonly readmeObjectUrls: string[] = [];
 
   readonly branch = computed(() => {
     const sel = this.selectedBranch();
@@ -99,6 +117,45 @@ export class RepoHomePage implements OnDestroy {
       clearTimeout(this.copiedTimer);
       this.copiedTimer = null;
     }
+    this.closeReadmeImageLightbox();
+    this.clearReadmeObjectUrls();
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onDocumentEscape(event: Event): void {
+    if (!this.readmeImageLightboxOpen()) return;
+    event.preventDefault();
+    this.closeReadmeImageLightbox();
+  }
+
+  onReadmeImageClick(event: MouseEvent): void {
+    const t = event.target;
+    if (!(t instanceof Element)) return;
+    const img = t.closest('img');
+    if (!img || !(img instanceof HTMLImageElement) || !img.src) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.readmeImageLightboxSrc.set(img.currentSrc || img.src);
+    this.readmeImageLightboxAlt.set(img.alt?.trim() ? img.alt : null);
+    this.readmeImageLightboxOpen.set(true);
+  }
+
+  closeReadmeImageLightbox(): void {
+    this.readmeImageLightboxOpen.set(false);
+    this.readmeImageLightboxSrc.set(null);
+    this.readmeImageLightboxAlt.set(null);
+  }
+
+  onReadmeLightboxBackdropClick(event: MouseEvent): void {
+    if (event.target !== event.currentTarget) return;
+    this.closeReadmeImageLightbox();
+  }
+
+  private clearReadmeObjectUrls(): void {
+    for (const u of this.readmeObjectUrls) {
+      URL.revokeObjectURL(u);
+    }
+    this.readmeObjectUrls.length = 0;
   }
 
   private async loadData(): Promise<void> {
@@ -154,12 +211,14 @@ export class RepoHomePage implements OnDestroy {
   }
 
   private async loadReadme(owner: string, repo: string, branch: string): Promise<void> {
+    this.closeReadmeImageLightbox();
+    this.clearReadmeObjectUrls();
+    this.readmeHtml.set(null);
     const candidates = ['README.md'];
     for (const candidate of candidates) {
       const found = await this.tryFetchReadme(owner, repo, branch, candidate);
       if (found) return;
     }
-    this.readmeHtml.set(null);
   }
 
   private async tryFetchReadme(owner: string, repo: string, branch: string, filename: string): Promise<boolean> {
@@ -173,9 +232,19 @@ export class RepoHomePage implements OnDestroy {
       const raw = decodeBase64Utf8(data.content);
       const html = await marked.parse(raw);
       const sanitized = this.sanitizer.sanitize(SecurityContext.HTML, html) ?? '';
-      this.readmeHtml.set(this.sanitizer.bypassSecurityTrustHtml(sanitized));
+      const processed = await postProcessReadmeHtml(sanitized, {
+        readmePath: filename,
+        owner,
+        repo,
+        branch,
+        apiUrl: environment.apiUrl,
+        http: this.http,
+        registerObjectUrl: (u) => this.readmeObjectUrls.push(u),
+      });
+      this.readmeHtml.set(this.sanitizer.bypassSecurityTrustHtml(processed));
       return true;
     } catch {
+      this.clearReadmeObjectUrls();
       return false;
     }
   }

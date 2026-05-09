@@ -18,11 +18,9 @@ package com.nuricanozturk.originhub.task.mappers;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnInfo;
 import com.nuricanozturk.originhub.task.dtos.BoardInfo;
 import com.nuricanozturk.originhub.task.dtos.ProjectInfo;
-import com.nuricanozturk.originhub.task.dtos.SubtaskInfo;
 import com.nuricanozturk.originhub.task.entities.Board;
 import com.nuricanozturk.originhub.task.entities.BoardColumn;
 import com.nuricanozturk.originhub.task.entities.Project;
-import com.nuricanozturk.originhub.task.entities.Subtask;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
 import org.mapstruct.BeanMapping;
@@ -35,11 +33,6 @@ public interface ProjectMapper {
 
   @BeanMapping(builder = @Builder())
   @NonNull ProjectInfo toInfo(@NonNull Project project);
-
-  @BeanMapping(builder = @Builder())
-  @NonNull SubtaskInfo toSubtaskInfo(@NonNull Subtask subtask);
-
-  @NonNull List<SubtaskInfo> toSubtaskInfoList(@NonNull List<Subtask> subtasks);
 
   default @NonNull BoardColumnInfo toBoardColumnInfo(final @NonNull BoardColumn column) {
     return BoardColumnInfo.builder()

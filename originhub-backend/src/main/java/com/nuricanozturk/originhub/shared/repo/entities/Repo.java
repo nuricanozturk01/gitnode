@@ -66,6 +66,14 @@ public class Repo {
   @Column(name = "default_branch")
   private String defaultBranch;
 
+  @ColumnDefault("false")
+  @Column(name = "delete_head_branch_on_pr_merge", nullable = false)
+  private boolean deleteHeadBranchOnPrMerge;
+
+  @ColumnDefault("false")
+  @Column(name = "delete_head_branch_on_pr_close", nullable = false)
+  private boolean deleteHeadBranchOnPrClose;
+
   @Column(name = "topics")
   private Set<String> topics;
 

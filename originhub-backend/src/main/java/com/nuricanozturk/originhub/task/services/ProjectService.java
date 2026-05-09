@@ -70,6 +70,7 @@ public class ProjectService {
     project.setDescription(form.getDescription());
     project.setCodePrefix(form.getCodePrefix());
     project.setTaskSeq(0);
+    project.setSyncTaskStatusOnPrMerge(true);
 
     return this.projectMapper.toInfo(this.projectRepository.save(project));
   }
@@ -99,6 +100,10 @@ public class ProjectService {
 
     if (form.getDescription() != null) {
       project.setDescription(form.getDescription());
+    }
+
+    if (form.getSyncTaskStatusOnPrMerge() != null) {
+      project.setSyncTaskStatusOnPrMerge(form.getSyncTaskStatusOnPrMerge());
     }
 
     return this.projectMapper.toInfo(this.projectRepository.save(project));

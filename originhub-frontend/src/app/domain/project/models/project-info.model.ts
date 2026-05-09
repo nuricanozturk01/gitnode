@@ -4,6 +4,7 @@ export interface ProjectInfo {
   description: string | null;
   codePrefix: string;
   taskSeq: number;
+  syncTaskStatusOnPrMerge: boolean;
   createdAt: string | null;
   updatedAt: string | null;
 }
@@ -17,4 +18,5 @@ export interface ProjectForm {
 export interface ProjectUpdateForm {
   name?: string;
   description?: string;
+  syncTaskStatusOnPrMerge?: boolean;
 }

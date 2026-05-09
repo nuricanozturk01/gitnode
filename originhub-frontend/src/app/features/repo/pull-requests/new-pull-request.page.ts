@@ -81,6 +81,25 @@ export class NewPullRequestPage {
     } finally {
       this.loading.set(false);
     }
+
+    this.applyQueryParamsForBranches();
+  }
+
+  private applyQueryParamsForBranches(): void {
+    const q = this.route.snapshot.queryParamMap;
+    const head = q.get('head') ?? q.get('compare');
+    const base = q.get('base') ?? q.get('target');
+    const list = this.branches();
+    if (head && list.some((b) => b.name === head)) {
+      this.sourceBranch.set(head);
+    }
+    if (base && list.some((b) => b.name === base)) {
+      this.targetBranch.set(base);
+    }
+    const titleQ = q.get('title');
+    if (titleQ) {
+      this.title.set(titleQ);
+    }
   }
 
   async onSubmit(): Promise<void> {

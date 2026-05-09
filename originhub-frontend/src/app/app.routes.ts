@@ -69,13 +69,19 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'projects/:projectCode',
-    loadComponent: () => import('./features/project/board/board.page').then((m) => m.BoardPage),
+    path: 'projects/:projectCode/settings',
+    loadComponent: () =>
+      import('./features/project/project-settings/project-settings.page').then((m) => m.ProjectSettingsPage),
     canActivate: [authGuard],
   },
   {
     path: 'projects/:projectCode/tasks/:taskCode',
     loadComponent: () => import('./features/project/task-detail/task-detail.page').then((m) => m.TaskDetailPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'projects/:projectCode',
+    loadComponent: () => import('./features/project/board/board.page').then((m) => m.BoardPage),
     canActivate: [authGuard],
   },
 

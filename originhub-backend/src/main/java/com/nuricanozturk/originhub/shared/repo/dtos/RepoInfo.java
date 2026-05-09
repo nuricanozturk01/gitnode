@@ -33,6 +33,8 @@ public class RepoInfo implements Serializable {
   private final boolean isArchived;
   private final String defaultBranch;
   private final Set<String> topics;
+  private final boolean deleteHeadBranchOnPrMerge;
+  private final boolean deleteHeadBranchOnPrClose;
   private final Instant createdAt;
   private final Instant updatedAt;
 

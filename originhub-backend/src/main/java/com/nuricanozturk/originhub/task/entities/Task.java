@@ -79,6 +79,10 @@ public class Task {
   @Column(name = "position", nullable = false)
   private int position;
 
+  @ColumnDefault("0")
+  @Column(name = "subtask_seq", nullable = false)
+  private long subtaskSeq;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @OnDelete(action = OnDeleteAction.SET_NULL)
   @JoinColumn(name = "assignee_id")

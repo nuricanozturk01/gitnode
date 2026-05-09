@@ -22,4 +22,5 @@ public record PullRequestStatusChangedEvent(
     @NonNull UUID prId,
     @NonNull UUID repoId,
     @NonNull String sourceBranch,
+    @NonNull String targetBranch,
     @NonNull String newStatus) {}

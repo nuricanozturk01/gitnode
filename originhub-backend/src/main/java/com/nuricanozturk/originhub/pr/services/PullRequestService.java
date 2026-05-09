@@ -165,7 +165,11 @@ public class PullRequestService {
     this.prRepository.save(pr);
     this.eventPublisher.publishEvent(
         new PullRequestStatusChangedEvent(
-            pr.getId(), repo.getId(), pr.getSourceBranch(), PrStatus.CLOSED.name()));
+            pr.getId(),
+            repo.getId(),
+            pr.getSourceBranch(),
+            pr.getTargetBranch(),
+            PrStatus.CLOSED.name()));
   }
 
   @Transactional
@@ -200,7 +204,11 @@ public class PullRequestService {
     final var saved = this.prRepository.save(pr);
     this.eventPublisher.publishEvent(
         new PullRequestStatusChangedEvent(
-            saved.getId(), repo.getId(), saved.getSourceBranch(), PrStatus.MERGED.name()));
+            saved.getId(),
+            repo.getId(),
+            saved.getSourceBranch(),
+            saved.getTargetBranch(),
+            PrStatus.MERGED.name()));
     return this.toDetail(saved);
   }
 

@@ -64,6 +64,10 @@ public class Project {
   @Column(name = "task_seq", nullable = false)
   private long taskSeq;
 
+  @ColumnDefault("true")
+  @Column(name = "sync_task_status_on_pr_merge", nullable = false)
+  private boolean syncTaskStatusOnPrMerge = true;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;

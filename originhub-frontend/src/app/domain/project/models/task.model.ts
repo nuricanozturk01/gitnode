@@ -18,10 +18,14 @@ export interface LinkedPrInfo {
 
 export interface SubtaskInfo {
   id: string;
+  code: string;
   title: string;
   description: string | null;
   status: TaskStatus;
   position: number;
+  branchName: string | null;
+  branchRepoId: string | null;
+  linkedPr: LinkedPrInfo | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

@@ -29,4 +29,6 @@ public class ProjectUpdateForm {
   private String name;
 
   private String description;
+
+  private Boolean syncTaskStatusOnPrMerge;
 }

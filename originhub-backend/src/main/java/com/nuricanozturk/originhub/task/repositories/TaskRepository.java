@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -44,4 +45,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 
   @NonNull Optional<Task> findByBranchRepoIdAndBranchName(
       @NonNull UUID branchRepoId, @NonNull String branchName);
+
+  @Modifying
+  @Query("UPDATE Task t SET t.subtaskSeq = t.subtaskSeq + 1 WHERE t.id = :taskId")
+  void incrementSubtaskSeq(@NonNull UUID taskId);
 }

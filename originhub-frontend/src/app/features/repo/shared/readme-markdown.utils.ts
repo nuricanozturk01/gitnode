@@ -65,7 +65,13 @@ export function isExternalOrSpecialUrl(spec: string): boolean {
   return false;
 }
 
-export function buildRawFileUrl(apiBase: string, owner: string, repo: string, branch: string, repoRelativePath: string): string {
+export function buildRawFileUrl(
+  apiBase: string,
+  owner: string,
+  repo: string,
+  branch: string,
+  repoRelativePath: string,
+): string {
   const root = apiBase.replace(/\/$/, '');
   const segments = repoRelativePath
     .split('/')

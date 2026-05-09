@@ -48,9 +48,7 @@ export class TaskService {
     taskCode: string,
     form: CreateBranchFromTaskForm,
   ): Promise<BranchInfo> {
-    return firstValueFrom(
-      this.http.post<BranchInfo>(`${this.base(owner, projectCode)}/${taskCode}/branch`, form),
-    );
+    return firstValueFrom(this.http.post<BranchInfo>(`${this.base(owner, projectCode)}/${taskCode}/branch`, form));
   }
 
   createBranchForSubtask(
@@ -61,10 +59,7 @@ export class TaskService {
     form: CreateBranchFromTaskForm,
   ): Promise<BranchInfo> {
     return firstValueFrom(
-      this.http.post<BranchInfo>(
-        `${this.base(owner, projectCode)}/${taskCode}/subtasks/${subtaskId}/branch`,
-        form,
-      ),
+      this.http.post<BranchInfo>(`${this.base(owner, projectCode)}/${taskCode}/subtasks/${subtaskId}/branch`, form),
     );
   }
 

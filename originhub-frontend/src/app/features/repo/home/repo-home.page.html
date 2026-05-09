@@ -138,7 +138,7 @@
 </section>
 } } @if (readmeImageLightboxOpen() && readmeImageLightboxSrc(); as lightboxSrc) {
 <div
-  class="readme-image-lightbox fixed inset-0 z-[200] flex items-center justify-center bg-black/88 p-4 sm:p-10 backdrop-blur-[2px]"
+  class="readme-image-lightbox fixed inset-0 z-[200] flex items-center justify-center bg-black/88 p-4 backdrop-blur-[2px] sm:p-10"
   role="dialog"
   aria-modal="true"
   tabindex="-1"
@@ -149,7 +149,7 @@
 >
   <button
     type="button"
-    class="btn btn-circle btn-ghost text-base-100 hover:bg-white/15 absolute right-2 top-2 z-10 border border-white/25 sm:right-4 sm:top-4"
+    class="btn btn-circle btn-ghost text-base-100 absolute top-2 right-2 z-10 border border-white/25 hover:bg-white/15 sm:top-4 sm:right-4"
     (click)="closeReadmeImageLightbox(); $event.stopPropagation()"
     aria-label="Close image preview"
   >

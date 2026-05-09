@@ -32,6 +32,9 @@ export class LandingPage implements OnDestroy {
   readonly copied = signal<'https' | 'ssh' | null>(null);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
+  /** Public source repository (releases & clone). */
+  readonly githubRepoUrl = 'https://github.com/nuricanozturk01/originhub';
+
   /** Example HTTPS smart-Git clone (matches configured `apiUrl`). */
   readonly httpsCloneCommand = computed(() => {
     const base = environment.apiUrl.replace(/\/$/, '');

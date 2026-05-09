@@ -208,8 +208,8 @@
           </p>
           @if (linkedRepos().length === 0) {
           <p class="text-base-content/50 mb-4 text-xs leading-relaxed">
-            No repositories are linked to this project yet — the branch dialog will list repositories you can access. Link
-            repos to the project for shorter lists.
+            No repositories are linked to this project yet — the branch dialog will list repositories you can access.
+            Link repos to the project for shorter lists.
           </p>
           }
           <button type="button" class="btn btn-primary btn-sm gap-2" (click)="openCreateBranchModal()">
@@ -235,8 +235,7 @@
               }
             </div>
 
-            @if (t.linkedPr) {
-            @if (devRepo) {
+            @if (t.linkedPr) { @if (devRepo) {
             <a
               [routerLink]="['/', devRepo.ownerUsername, devRepo.name, 'pulls', t.linkedPr.number]"
               class="bg-base-200/50 hover:bg-base-200 flex items-center gap-3 rounded-xl p-3 text-sm no-underline transition-colors"
@@ -299,8 +298,7 @@
                 {{ t.linkedPr.status }}
               </span>
             </div>
-            }
-            } @else {
+            } } @else {
             <div class="flex flex-col gap-2">
               @if (devRepo) {
               <button type="button" class="btn btn-outline btn-sm w-fit gap-2" (click)="openNewPullRequest(t)">
@@ -317,8 +315,8 @@
               </p>
               } @else {
               <p class="text-base-content/50 text-xs leading-relaxed">
-                Open a pull request from branch <code class="font-mono">{{ t.branchName }}</code> in the repository where
-                it was created. If this project lists that repo, link it to the project so shortcuts appear here.
+                Open a pull request from branch <code class="font-mono">{{ t.branchName }}</code> in the repository
+                where it was created. If this project lists that repo, link it to the project so shortcuts appear here.
               </p>
               }
             </div>
@@ -350,8 +348,7 @@
 
           @if (t.subtasks.length > 0) {
           <ul class="divide-base-200 -mx-1 mb-4 flex flex-col divide-y">
-            @for (subtask of t.subtasks; track subtask.id) {
-            @let subRepo = repoForSubtask(subtask);
+            @for (subtask of t.subtasks; track subtask.id) { @let subRepo = repoForSubtask(subtask);
             <li class="group flex flex-col gap-2 px-1 py-2.5">
               <div class="flex items-center gap-3">
                 <input
@@ -362,7 +359,8 @@
                 />
                 <div class="min-w-0 flex-1">
                   <div class="mb-0.5 flex flex-wrap items-center gap-2">
-                    <code class="text-base-content/50 bg-base-200 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+                    <code
+                      class="text-base-content/50 bg-base-200 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
                       >{{ subtask.code }}</code
                     >
                   </div>
@@ -415,8 +413,7 @@
                   <lucide-icon name="gitPullRequest" class="size-3.5"></lucide-icon>
                   Open PR
                 </button>
-                }
-                }
+                } }
               </div>
             </li>
             }
@@ -612,11 +609,7 @@
         <lucide-icon name="x" class="size-4"></lucide-icon>
       </button>
       <h3 class="mb-1 text-lg font-bold">
-        @if (branchModalTarget() === 'subtask') {
-        Create branch for subtask
-        } @else {
-        Create branch
-        }
+        @if (branchModalTarget() === 'subtask') { Create branch for subtask } @else { Create branch }
       </h3>
       <p class="text-base-content/60 mb-4 font-mono text-sm">{{ ct.code }}</p>
 
@@ -657,7 +650,9 @@
             <span class="text-base-content/60 text-sm">Loading branches…</span>
           </div>
           } @else if (branchRefBranches().length === 0) {
-          <p class="text-base-content/50 text-sm" aria-labelledby="branch-source-label">No branches found for this repository.</p>
+          <p class="text-base-content/50 text-sm" aria-labelledby="branch-source-label">
+            No branches found for this repository.
+          </p>
           } @else {
           <select
             id="branch-source-select"
@@ -678,7 +673,7 @@
             <span class="label-text font-medium">New branch name <span class="text-error">*</span></span>
           </label>
           <div
-            class="border-base-300 flex w-full min-w-0 overflow-hidden rounded-lg border focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30"
+            class="border-base-300 focus-within:border-primary focus-within:ring-primary/30 flex w-full min-w-0 overflow-hidden rounded-lg border focus-within:ring-1"
           >
             <span
               class="bg-base-200 text-base-content/80 border-base-300 flex shrink-0 items-center border-r px-3 py-2 font-mono text-sm select-none"
@@ -695,7 +690,9 @@
               (input)="branchNameSuffix.set($any($event.target).value)"
             />
           </div>
-          <span class="label-text-alt text-base-content/50">Prefix is fixed to the task code; only the suffix is editable.</span>
+          <span class="label-text-alt text-base-content/50"
+            >Prefix is fixed to the task code; only the suffix is editable.</span
+          >
         </div>
         }
       </div>

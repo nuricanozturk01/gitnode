@@ -14,15 +14,7 @@
 /// limitations under the License.
 ///
 
-import {
-  Component,
-  HostListener,
-  inject,
-  signal,
-  computed,
-  SecurityContext,
-  OnDestroy,
-} from '@angular/core';
+import { Component, HostListener, inject, signal, computed, SecurityContext, OnDestroy } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';

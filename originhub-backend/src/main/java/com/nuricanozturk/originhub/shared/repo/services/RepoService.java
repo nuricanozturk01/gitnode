@@ -98,6 +98,12 @@ public class RepoService {
     if (form.getTopics() != null) {
       repo.setTopics(form.getTopics());
     }
+    if (form.getDeleteHeadBranchOnPrMerge() != null) {
+      repo.setDeleteHeadBranchOnPrMerge(form.getDeleteHeadBranchOnPrMerge());
+    }
+    if (form.getDeleteHeadBranchOnPrClose() != null) {
+      repo.setDeleteHeadBranchOnPrClose(form.getDeleteHeadBranchOnPrClose());
+    }
 
     final var updatedRepo = this.repoRepository.save(repo);
 

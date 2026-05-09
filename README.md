@@ -18,7 +18,7 @@
 
 <br/>
 
-[Features](#-features) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Screenshots](#-screenshots) · [Roadmap](#-roadmap) · [License](#-license)
+[Features](#-features) · [Demo](#-demo) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap) · [License](#-license)
 
 <br/>
 
@@ -40,49 +40,69 @@ server"*, OriginHub is for you.
 
 ---
 
+## 🎬 Demo
+
+<div align="center">
+
+<a href="https://youtu.be/mis1Za2800E"><img src="images/cover.png" alt="OriginHub walkthrough — play on YouTube" width="480" /></a>
+
+**[Watch on YouTube →](https://youtu.be/mis1Za2800E)**
+
+</div>
+
+---
+
 ## ✨ Features
 
-### 📁 Repository Management
+OriginHub covers the core Git hosting loop — repos, review, and browsing — plus lightweight **project boards** tied to
+your repositories.
+
+### 📁 Repository management
 
 - Create, clone, push, and pull repositories
-- Private-only repositories for maximum control
-- Topics and repository metadata
-- Git protocol over **SSH** (port `2222`)
+- Private repositories, descriptions, and **topics**
+- **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your
+  OriginHub host (same protocol support for the web UI and API)
+- **SSH** Git on a configurable port (default **2222** in Docker)
+- Per-repo **Settings**: general metadata, optional **auto-delete head branch** after PR merge or close
 
-### 🗂 Code Browsing
+### 📥 GitHub repository migration
 
-- File tree navigation with breadcrumb trail
-- Syntax-highlighted code viewer
-- Markdown README rendering
-- Raw file access
-- Commit history with diff viewer
+- **Migrate from GitHub** with a repository URL and **personal access token** (classic or fine-grained with repo read)
+- **Mirror clone** the Git history into your OriginHub account
+- Optionally migrate **pull requests** from GitHub in the same job
 
-### 🔀 Pull Requests
+### 🗂 Code browsing
 
-- Open, review, and merge pull requests
-- Three merge strategies: **Merge Commit**, **Squash**, **Rebase**
-- Inline and file-level code comments
-- Draft pull requests
-- Conversation timeline
+- File tree with breadcrumbs; blob viewer and **raw** file URLs
+- **Markdown README** on the repo home (images and relative links resolved like on GitHub)
+- Commit history and diffs
+
+### 🔀 Pull requests
+
+- Open, review, merge, or close PRs
+- Merge strategies: **merge commit**, **squash**, **rebase**
+- Draft PRs, inline discussion, file-level comments
+
+### 📋 Project management (Kanban)
+
+- **Projects** with **boards** and configurable **columns** (per-project)
+- **Tasks** and **subtasks** with types, status, assignee, and ordering
+- Create **Git branches** from a task or subtask (conventional branch names, e.g. `TASK-1` or `TASK-1.SUB-1-…`)
+- **Link** a branch’s pull request to the task or subtask; see PR status on the card
+- **Optional automation** (per project): when a linked PR is **merged**, mark the task or subtask **completed** — can be
+  turned off in **Project settings**
+- **Project settings** page for the above PR → status behaviour
 
 ### ⚡ Actions — CI/CD *(coming soon)*
 
-- YAML-based workflow definitions
-- Job and step execution with real-time log streaming (SSE)
-- Workflow run history with status filtering
-- Trigger on push, pull request, or manual dispatch
+- YAML workflows, job/step execution, SSE logs, run history, triggers (push / PR / manual)
 
 ### 🔐 Authentication
 
 - Username + password with JWT
-- OAuth2 via **Google**, **GitHub**, and **GitLab**
-- SSH key-based authentication
-
-### 👥 Team Collaboration *(coming soon)*
-
-- Repository collaborators with permission levels (`READ`, `WRITE`, `ADMIN`)
-- User profiles with activity feeds
-- Explore page to discover repositories
+- OAuth2: **Google**, **GitHub**, **GitLab**
+- SSH public keys for Git over SSH
 
 ---
 
@@ -99,77 +119,6 @@ server"*, OriginHub is for you.
 | Frontend   | Angular 21, TypeScript 5                        |
 | Styling    | Tailwind CSS 4, DaisyUI 5                       |
 | Container  | Docker (multi-stage build, single image)        |
-
----
-
-## 📸 Screenshots
-
-<table>
-  <tr>
-    <td align="center"><b>Landing</b></td>
-    <td align="center"><b>Dashboard</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/landing.png" alt="Landing" width="100%"/></td>
-    <td><img src="images/dashboard.png" alt="Dashboard" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Login</b></td>
-    <td align="center"><b>Register</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/login.png" alt="Login" width="100%"/></td>
-    <td><img src="images/register.png" alt="Register" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Repository</b></td>
-    <td align="center"><b>Repository (cont.)</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/repo-content.png" alt="Repository Content" width="100%"/></td>
-    <td><img src="images/repo-content-2.png" alt="Repository Content 2" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Commits</b></td>
-    <td align="center"><b>Commit Diffs</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/commits.png" alt="Commits" width="100%"/></td>
-    <td><img src="images/commit-diffs.png" alt="Commit Diffs" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>Branches</b></td>
-    <td align="center"><b>Pull Requests</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/branches.png" alt="Branches" width="100%"/></td>
-    <td><img src="images/pr-list.png" alt="Pull Requests" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>PR Detail</b></td>
-    <td align="center"><b>PR Detail (Files Changed)</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/pr-detail-1.png" alt="PR Detail" width="100%"/></td>
-    <td><img src="images/pr-detail-2.png" alt="PR Detail Files" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>PR Detail (Commits)</b></td>
-    <td align="center"><b>Profile</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/pr-detail-3.png" alt="PR Detail Commits" width="100%"/></td>
-    <td><img src="images/profile.png" alt="Profile" width="100%"/></td>
-  </tr>
-  <tr>
-    <td align="center"><b>User Settings</b></td>
-    <td align="center"><b>Repo Settings</b></td>
-  </tr>
-  <tr>
-    <td><img src="images/user-settings-1.png" alt="User Settings" width="100%"/></td>
-    <td><img src="images/repo-settings-1.png" alt="Repo Settings" width="100%"/></td>
-  </tr>
-</table>
 
 ---
 
@@ -209,7 +158,7 @@ docker run -d \
 ### Option 2 — Makefile
 
 ```bash
-git clone https://github.com/nuricanozturk/originhub.git
+git clone https://github.com/nuricanozturk01/originhub.git
 cd originhub
 make up
 ```
@@ -256,11 +205,11 @@ OriginHub is under active development. Here's what's planned:
 - [X] ~~Public repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [X] ~~Fork and star repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [ ] Actions — CI/CD (self-hosted runner)
-- [ ] Team collaboration & organization support
-- [ ] Project board (Kanban) integrated with repositories
+- [X] ~~Team collaboration & organization support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
+- [X] Project board (Kanban) integrated with repositories
 - [ ] Webhooks
+- [ ] Repo Issues
 - [X] ~~Custom domain support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
-- [ ] Repository transfer (between accounts, and auto-import from GitHub / GitLab)
 - [ ] Code snippets (Gist-like)
 - [ ] Two-factor authentication (TOTP)
 - [ ] Tags and releases

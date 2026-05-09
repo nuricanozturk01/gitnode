@@ -43,4 +43,12 @@ public class RepoForm {
   @Size(max = 6, message = "Maximum 6 topics allowed")
   private Set<@NotNull @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9\\-]+$") String>
       topics;
+
+  /** When non-null, updates whether the head branch is deleted after a PR is merged. */
+  private Boolean deleteHeadBranchOnPrMerge;
+
+  /**
+   * When non-null, updates whether the head branch is deleted when a PR is closed without merging.
+   */
+  private Boolean deleteHeadBranchOnPrClose;
 }

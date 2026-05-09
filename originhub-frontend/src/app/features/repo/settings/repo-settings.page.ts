@@ -39,7 +39,7 @@ export class RepoSettingsPage {
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
 
-  readonly activeTab = signal<'general' | 'danger'>('general');
+  readonly activeTab = signal<'general' | 'pullRequests' | 'danger'>('general');
 
   readonly generalName = signal('');
   readonly generalDescription = signal('');
@@ -47,6 +47,11 @@ export class RepoSettingsPage {
   readonly topicInput = signal('');
   readonly savingGeneral = signal(false);
   readonly generalError = signal<string | null>(null);
+
+  readonly deleteHeadBranchOnPrMerge = signal(false);
+  readonly deleteHeadBranchOnPrClose = signal(false);
+  readonly savingPullSettings = signal(false);
+  readonly pullSettingsError = signal<string | null>(null);
 
   private static readonly MAX_TOPICS = 6;
 
@@ -59,7 +64,10 @@ export class RepoSettingsPage {
   constructor() {
     effect(() => {
       const r = this.repo();
-      if (r && this.activeTab() === 'general') this.syncGeneralFromRepo();
+      const tab = this.activeTab();
+      if (!r) return;
+      if (tab === 'general') this.syncGeneralFromRepo();
+      if (tab === 'pullRequests') this.syncPullSettingsFromRepo();
     });
   }
 
@@ -71,6 +79,14 @@ export class RepoSettingsPage {
       const topics = r.topics;
       this.generalTopics.set(topics?.length ? [...topics] : []);
     }
+  }
+
+  private syncPullSettingsFromRepo(): void {
+    const r = this.repo();
+    if (!r) return;
+    this.deleteHeadBranchOnPrMerge.set(r.deleteHeadBranchOnPrMerge ?? false);
+    this.deleteHeadBranchOnPrClose.set(r.deleteHeadBranchOnPrClose ?? false);
+    this.pullSettingsError.set(null);
   }
 
   addTopic(): void {
@@ -95,9 +111,47 @@ export class RepoSettingsPage {
     }
   }
 
-  setTab(t: 'general' | 'danger'): void {
+  setTab(t: 'general' | 'pullRequests' | 'danger'): void {
     this.activeTab.set(t);
+    const r = this.repo();
+    if (!r) return;
     if (t === 'general') this.syncGeneralFromRepo();
+    if (t === 'pullRequests') this.syncPullSettingsFromRepo();
+  }
+
+  onPullMergeToggle(checked: boolean): void {
+    this.deleteHeadBranchOnPrMerge.set(checked);
+  }
+
+  onPullCloseToggle(checked: boolean): void {
+    this.deleteHeadBranchOnPrClose.set(checked);
+  }
+
+  async savePullSettings(): Promise<void> {
+    const owner = this.owner();
+    const repoName = this.repoName();
+    const r = this.repo();
+    if (!owner || !repoName || !r) return;
+    this.savingPullSettings.set(true);
+    this.pullSettingsError.set(null);
+    try {
+      const topics = r.topics?.length ? [...r.topics] : [];
+      const updated = await this.repoService.update(owner, repoName, {
+        name: r.name,
+        description: r.description ?? undefined,
+        topics,
+        deleteHeadBranchOnPrMerge: this.deleteHeadBranchOnPrMerge(),
+        deleteHeadBranchOnPrClose: this.deleteHeadBranchOnPrClose(),
+      });
+      this.repoContext.repo.set(updated);
+      this.toast.success('Pull request settings saved');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save settings';
+      this.pullSettingsError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.savingPullSettings.set(false);
+    }
   }
 
   async saveGeneral(): Promise<void> {

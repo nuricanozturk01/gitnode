@@ -292,6 +292,11 @@ a:not(.btn):hover {
   border-width: 1.5px;
 }
 
+.readme-panel .readme-markdown-body {
+  max-width: 1012px;
+  margin-inline: auto;
+}
+
 .readme-content {
   --text-primary: var(--color-base-content);
   --text-secondary: color-mix(in oklch, var(--color-base-content) 88%, var(--color-base-100));
@@ -301,6 +306,16 @@ a:not(.btn):hover {
   --border-emphasis: color-mix(in oklch, var(--color-primary) 55%, var(--color-base-300));
   --bg-tertiary: var(--color-base-200);
   color: var(--text-primary);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji';
+  font-size: 16px;
+  line-height: 1.5;
+  word-wrap: break-word;
+}
+
+.readme-content > :first-child {
+  margin-top: 0 !important;
 }
 
 .readme-content h1,
@@ -310,19 +325,51 @@ a:not(.btn):hover {
 .readme-content h5,
 .readme-content h6 {
   color: var(--text-primary);
-  border-bottom: 1px solid var(--border-default);
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
   padding-bottom: 0.3em;
-  margin-top: 1.5em;
-  margin-bottom: 0.75em;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.readme-content h1 {
+  font-size: 2em;
+  border-bottom-width: 1px;
+}
+
+.readme-content h2 {
+  font-size: 1.5em;
+}
+
+.readme-content h3 {
+  font-size: 1.25em;
+}
+
+.readme-content h4 {
+  font-size: 1em;
+}
+
+.readme-content h5,
+.readme-content h6 {
+  font-size: 0.875em;
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .readme-content p {
   color: var(--text-secondary);
+  margin-top: 0;
   margin-bottom: 1em;
 }
 
 .readme-content a {
   color: var(--text-link);
+  text-decoration: none;
+}
+
+.readme-content a:hover {
+  text-decoration: underline;
 }
 
 .readme-content code {
@@ -348,7 +395,8 @@ a:not(.btn):hover {
   background: none;
   border: none;
   padding: 0;
-  font-size: 14px;
+  font-size: 85%;
+  line-height: 1.45;
 }
 
 .readme-content blockquote {
@@ -392,7 +440,33 @@ a:not(.btn):hover {
 
 .readme-content img {
   max-width: 100%;
+  height: auto;
+  box-sizing: content-box;
+  background-color: var(--color-base-100);
   border-radius: 6px;
+  display: inline-block;
+  vertical-align: middle;
+  cursor: zoom-in;
+}
+
+.readme-content video {
+  max-width: 100%;
+}
+
+/* GFM task lists (when not stripped by sanitizer) */
+.readme-content ul.contains-task-list,
+.readme-content ol.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.readme-content li.task-list-item {
+  list-style-type: none;
+}
+
+.readme-content li.task-list-item input[type='checkbox'] {
+  margin: 0 0.4em 0.2em 0;
+  vertical-align: middle;
 }
 
 .readme-content hr {

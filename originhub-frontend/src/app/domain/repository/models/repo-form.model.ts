@@ -22,4 +22,6 @@ export interface RepoForm {
   name: string;
   description?: string;
   topics?: string[];
+  deleteHeadBranchOnPrMerge?: boolean;
+  deleteHeadBranchOnPrClose?: boolean;
 }

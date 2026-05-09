@@ -17,7 +17,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
-import { map } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import type { RepoForm } from '../../../domain/repository/models/repo-form.model';
 import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
@@ -38,12 +37,20 @@ export class RepoService {
     return firstValueFrom(this.http.get<RepoInfo>(`${this.api}/${owner}/${repo}`));
   }
 
-  listUserRepos(owner: string, page = 0): Promise<RepoPage> {
-    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/${owner}`, { params: { page } }));
+  listUserRepos(owner: string, page = 0, size?: number): Promise<RepoPage> {
+    const params: Record<string, string> = { page: String(page) };
+    if (size != null) {
+      params['size'] = String(size);
+    }
+    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/${owner}`, { params }));
   }
 
+  /**
+   * No backend route exists yet; avoids calling a non-existent URL. Use {@link listUserRepos} for the signed-in user's
+   * repositories.
+   */
   listCollaboratorRepos(): Promise<RepoInfo[]> {
-    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/collaborator-repos`).pipe(map((r) => r.content)));
+    return Promise.resolve([]);
   }
 
   update(owner: string, repo: string, form: RepoForm): Promise<RepoInfo> {
@@ -52,6 +59,12 @@ export class RepoService {
       description: form.description ?? null,
       topics: form.topics ?? [],
     };
+    if (form.deleteHeadBranchOnPrMerge !== undefined) {
+      body['deleteHeadBranchOnPrMerge'] = form.deleteHeadBranchOnPrMerge;
+    }
+    if (form.deleteHeadBranchOnPrClose !== undefined) {
+      body['deleteHeadBranchOnPrClose'] = form.deleteHeadBranchOnPrClose;
+    }
     return firstValueFrom(this.http.patch<RepoInfo>(`${this.api}/${owner}/${repo}`, body));
   }
 

@@ -25,12 +25,16 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface RepoRepository extends JpaRepository<Repo, UUID> {
 
   @NonNull Optional<Repo> findByOwnerIdAndName(@NonNull UUID ownerId, @NonNull String name);
+
+  @Query("SELECT r FROM Repo r JOIN FETCH r.owner WHERE r.id = :id")
+  @NonNull Optional<Repo> findByIdWithOwner(@Param("id") @NonNull UUID id);
 
   @NonNull Optional<Repo> findByOwnerUsernameAndName(
       @NonNull String repoOwner, @NonNull String repoName);
@@ -43,4 +47,14 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")
   void updateDefaultBranch(@NonNull UUID repoId, @NonNull String branchName);
+
+  @NonNull List<Repo> findAllByProjectId(@NonNull UUID projectId);
+
+  @Modifying
+  @Query("update Repo r set r.projectId = :projectId where r.id = :repoId")
+  void linkToProject(@NonNull UUID repoId, @NonNull UUID projectId);
+
+  @Modifying
+  @Query("update Repo r set r.projectId = null where r.id = :repoId")
+  void unlinkFromProject(@NonNull UUID repoId);
 }

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@ApplicationModule
+@ApplicationModule(type = ApplicationModule.Type.OPEN)
 package com.nuricanozturk.originhub.pr;
 
 import org.springframework.modulith.ApplicationModule;

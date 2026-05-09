@@ -51,6 +51,7 @@ public class GitHubMigrationService implements CloudMigrationService {
         switch (item) {
           case REPOSITORIES -> this.migrateRepository(job, accessToken, tenant);
           case PULL_REQUESTS -> this.migratePullRequests(job, accessToken, tenant);
+          default -> throw new UnsupportedOperationException("unsupportedItem");
         }
       }
 

@@ -374,6 +374,8 @@ class RepoServiceTest {
         false,
         "main",
         Set.of(),
+        false,
+        false,
         Instant.EPOCH,
         Instant.EPOCH);
   }

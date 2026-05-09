@@ -1,0 +1,58 @@
+<div class="bg-base-200 min-h-screen">
+  <div class="border-base-300 bg-base-100 border-b px-4 py-3 sm:px-6">
+    <div class="mx-auto flex max-w-2xl flex-wrap items-center gap-4">
+      <nav class="text-base-content/50 flex min-w-0 items-center gap-1.5 text-sm">
+        <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
+        <lucide-icon name="chevronRight" class="size-3.5 shrink-0"></lucide-icon>
+        <a
+          [routerLink]="['/projects', projectCode]"
+          class="hover:text-base-content shrink-0 no-underline transition-colors"
+        >
+          <span class="truncate font-semibold">{{ projectName() || projectCode }}</span>
+        </a>
+        <lucide-icon name="chevronRight" class="size-3.5 shrink-0"></lucide-icon>
+        <span class="text-base-content font-medium">Settings</span>
+      </nav>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+    @if (loading()) {
+    <div class="flex justify-center py-16">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+    } @else {
+    <div class="bg-base-100 border-base-300 rounded-2xl border p-6 shadow-sm">
+      <h1 class="text-base-content mb-1 text-xl font-bold">Project settings</h1>
+      <p class="text-base-content/60 mb-6 text-sm">Automation and integrations for this project.</p>
+
+      <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
+        <input
+          id="sync-pr-merge"
+          type="checkbox"
+          class="checkbox checkbox-primary mt-0.5"
+          [checked]="syncTaskStatusOnPrMerge()"
+          (change)="onSyncChange($any($event.target).checked)"
+        />
+        <div class="min-w-0 flex-1">
+          <label class="cursor-pointer font-medium" for="sync-pr-merge">Update task status when a PR is merged</label>
+          <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+            When enabled, merging a pull request linked to a task or subtask branch sets that item’s status to
+            <span class="font-medium">Completed</span>. Pull requests are still linked when this is off; only the
+            automatic status change is skipped.
+          </p>
+        </div>
+      </div>
+
+      <div class="mt-6 flex flex-wrap gap-2">
+        <button type="button" class="btn btn-primary btn-sm gap-2" [disabled]="saving()" (click)="save()">
+          @if (saving()) {
+          <span class="loading loading-spinner loading-sm"></span>
+          } Save changes
+        </button>
+        <a [routerLink]="['/projects', projectCode]" class="btn btn-ghost btn-sm">Back to board</a>
+      </div>
+    </div>
+    }
+  </div>
+</div>

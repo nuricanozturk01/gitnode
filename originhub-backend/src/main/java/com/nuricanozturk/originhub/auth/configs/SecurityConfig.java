@@ -22,6 +22,7 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -91,6 +92,8 @@ public class SecurityConfig {
     auth.requestMatchers("/actuator/**").permitAll();
     auth.requestMatchers("/public/**").permitAll();
     auth.requestMatchers("/git/**").permitAll();
+
+    auth.requestMatchers(HttpMethod.GET, "/api/snippets/**").permitAll();
 
     auth.requestMatchers("/api/**").authenticated();
     auth.anyRequest().permitAll();

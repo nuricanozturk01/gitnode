@@ -234,6 +234,7 @@ public class TreeNonTxService {
     }
   }
 
+  @SuppressWarnings("java:S135")
   private void walkInTree(
       final @NonNull TreeWalk treeWalk,
       final @NonNull List<TreeEntry> entries,

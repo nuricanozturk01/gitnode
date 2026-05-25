@@ -47,6 +47,7 @@ public class ProfileService {
   private final @NonNull TenantRepository tenantRepository;
   private final @NonNull TenantMapper tenantMapper;
   private final @NonNull ApplicationEventPublisher eventPublisher;
+  private static final String USER_NOT_FOUND = "userNotFound";
 
   @Transactional
   public @NonNull TenantInfo updateUsername(
@@ -55,7 +56,7 @@ public class ProfileService {
     final var tenant =
         this.tenantRepository
             .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
 
     final var oldUsername = tenant.getUsername().toLowerCase(Locale.getDefault());
     final var newUsername = form.getUsername().toLowerCase(Locale.getDefault());
@@ -80,7 +81,7 @@ public class ProfileService {
     final var tenant =
         this.tenantRepository
             .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
 
     tenant.setDisplayName(
         form.getDisplayName() != null && !form.getDisplayName().isBlank()
@@ -98,7 +99,7 @@ public class ProfileService {
     final var tenant =
         this.tenantRepository
             .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
 
     final var currentHash = DigestUtils.sha256Hex(form.getCurrentPassword() + tenant.getSalt());
 
@@ -118,7 +119,7 @@ public class ProfileService {
     final var tenantOpt = this.tenantRepository.findById(tenantId);
 
     if (tenantOpt.isEmpty()) {
-      throw new ItemNotFoundException("userNotFound");
+      throw new ItemNotFoundException(USER_NOT_FOUND);
     }
 
     final var tenant = tenantOpt.get();
@@ -135,7 +136,7 @@ public class ProfileService {
     final var tenant =
         this.tenantRepository
             .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
 
     return this.tenantMapper.toTenantInfo(tenant);
   }
@@ -145,7 +146,7 @@ public class ProfileService {
     final var tenant =
         this.tenantRepository
             .findByUsername(username)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
 
     final var displayName =
         tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername();

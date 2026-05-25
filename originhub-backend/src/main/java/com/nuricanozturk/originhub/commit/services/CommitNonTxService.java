@@ -315,7 +315,9 @@ public class CommitNonTxService {
         return new CommitStats(0, 0, diffs.size());
       }
 
-      int additions = 0, deletions = 0;
+      int additions = 0;
+      int deletions = 0;
+
       for (final var entry : diffs) {
         final var editList = formatter.toFileHeader(entry).toEditList();
         for (final var edit : editList) {

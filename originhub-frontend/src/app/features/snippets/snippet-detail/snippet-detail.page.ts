@@ -62,6 +62,7 @@ export class SnippetDetailPage implements OnInit {
   readonly theme = inject(ThemeService);
 
   readonly loading = signal(true);
+  readonly loadError = signal<string | null>(null);
   readonly snippet = signal<SnippetDetail | null>(null);
   readonly highlightedFiles = signal<HighlightedFile[]>([]);
 
@@ -96,6 +97,7 @@ export class SnippetDetailPage implements OnInit {
 
   private async loadAll(id: string): Promise<void> {
     this.loading.set(true);
+    this.loadError.set(null);
     try {
       const [detail, commentPage, revisionPage] = await Promise.all([
         this.snippetService.get(id),
@@ -112,8 +114,12 @@ export class SnippetDetailPage implements OnInit {
       this.revisionTotalPages.set(revisionPage.totalPages);
       await this.buildHighlights(detail);
     } catch {
-      this.toastService.error('Snippet not found or you do not have access.');
-      this.router.navigate(['/snippets']);
+      const message = 'Snippet not found or you do not have access.';
+      this.loadError.set(message);
+      this.toastService.error(message);
+      if (this.isLoggedIn()) {
+        this.router.navigate(['/snippets']);
+      }
     } finally {
       this.loading.set(false);
     }

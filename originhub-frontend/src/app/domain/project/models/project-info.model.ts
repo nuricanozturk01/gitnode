@@ -3,7 +3,7 @@ export interface ProjectInfo {
   name: string;
   description: string | null;
   codePrefix: string;
-  taskSeq: number;
+  taskCount: number;
   syncTaskStatusOnPrMerge: boolean;
   createdAt: string | null;
   updatedAt: string | null;

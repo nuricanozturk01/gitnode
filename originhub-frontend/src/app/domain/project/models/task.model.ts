@@ -7,6 +7,13 @@ export interface TaskAssignee {
   avatarUrl?: string | null;
 }
 
+export interface LinkedIssueInfo {
+  id: string;
+  number: number;
+  title: string;
+  status: string;
+}
+
 export interface LinkedPrInfo {
   id: string;
   number: number;
@@ -41,6 +48,7 @@ export interface TaskInfo {
   assignee: TaskAssignee | null;
   branchName: string | null;
   hasLinkedPr: boolean;
+  hasLinkedIssue: boolean;
   subtaskCount: number;
   completedSubtaskCount: number;
   createdAt: string | null;
@@ -60,6 +68,7 @@ export interface TaskDetail {
   branchName: string | null;
   branchRepoId: string | null;
   linkedPr: LinkedPrInfo | null;
+  linkedIssue: LinkedIssueInfo | null;
   subtasks: SubtaskInfo[];
   createdAt: string | null;
   updatedAt: string | null;
@@ -72,6 +81,7 @@ export interface TaskForm {
   type?: TaskType;
   assigneeId?: string;
   position?: number;
+  linkedIssueId?: string;
 }
 
 export interface TaskUpdateForm {
@@ -82,6 +92,8 @@ export interface TaskUpdateForm {
   type?: TaskType;
   assigneeId?: string;
   position?: number;
+  linkedIssueId?: string;
+  unlinkIssue?: boolean;
 }
 
 export interface SubtaskForm {

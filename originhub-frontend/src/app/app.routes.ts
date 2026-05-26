@@ -114,13 +114,11 @@ export const routes: Routes = [
   {
     path: ':username',
     loadComponent: () => import('./features/user-profile/user-profile.page').then((m) => m.UserProfilePage),
-    canActivate: [authGuard],
   },
 
   {
     path: ':owner/:repo',
     loadComponent: () => import('./features/repo/layout/repo-layout.component').then((m) => m.RepoLayoutComponent),
-    canActivate: [authGuard],
     children: [
       {
         path: '',
@@ -155,6 +153,19 @@ export const routes: Routes = [
             loadComponent: () => import('./features/repo/blob/blob.page').then((m) => m.BlobPage),
           },
         ],
+      },
+      {
+        path: 'issues',
+        loadComponent: () => import('./features/repo/issues/issues.page').then((m) => m.IssuesPage),
+      },
+      {
+        path: 'issues/new',
+        loadComponent: () => import('./features/repo/issues/new-issue.page').then((m) => m.NewIssuePage),
+        canActivate: [authGuard],
+      },
+      {
+        path: 'issues/:number',
+        loadComponent: () => import('./features/repo/issues/issue-detail.page').then((m) => m.IssueDetailPage),
       },
       {
         path: 'pulls',

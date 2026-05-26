@@ -245,8 +245,73 @@
     id="repo-settings-panel-danger"
     role="tabpanel"
     aria-labelledby="repo-settings-tab-danger"
-    class="repo-settings-panels"
+    class="repo-settings-panels space-y-4"
   >
+    <section class="repo-panel border-error/35 repo-settings-section-danger relative overflow-hidden">
+      <div class="bg-error/60 pointer-events-none absolute inset-x-0 top-0 h-0.5"></div>
+      <div class="p-5 sm:p-6">
+        <h2 class="text-error flex items-center gap-2 text-lg font-semibold">
+          <lucide-icon name="eye" class="size-5 shrink-0"></lucide-icon>
+          Visibility
+        </h2>
+        <p class="text-base-content/65 mt-1 text-sm">Change who can view this repository.</p>
+        <div class="mt-4 flex flex-col gap-2">
+          <label
+            class="border-base-300 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+            [class.border-error]="!generalIsPrivate()"
+            [class.bg-error/5]="!generalIsPrivate()"
+          >
+            <input
+              type="radio"
+              name="danger-visibility"
+              class="radio radio-error mt-0.5"
+              [checked]="!generalIsPrivate()"
+              (change)="generalIsPrivate.set(false)"
+            />
+            <div>
+              <div class="flex items-center gap-2 font-medium">
+                <lucide-icon name="globe" class="size-4"></lucide-icon>
+                Public
+              </div>
+              <p class="text-base-content/60 mt-0.5 text-xs">Anyone can view and clone this repository.</p>
+            </div>
+          </label>
+          <label
+            class="border-base-300 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+            [class.border-error]="generalIsPrivate()"
+            [class.bg-error/5]="generalIsPrivate()"
+          >
+            <input
+              type="radio"
+              name="danger-visibility"
+              class="radio radio-error mt-0.5"
+              [checked]="generalIsPrivate()"
+              (change)="generalIsPrivate.set(true)"
+            />
+            <div>
+              <div class="flex items-center gap-2 font-medium">
+                <lucide-icon name="lock" class="size-4"></lucide-icon>
+                Private
+              </div>
+              <p class="text-base-content/60 mt-0.5 text-xs">Only you can view and push to this repository.</p>
+            </div>
+          </label>
+        </div>
+        <div class="mt-4">
+          <button
+            type="button"
+            class="btn btn-error btn-outline min-h-11 px-5"
+            [disabled]="savingGeneral()"
+            (click)="saveVisibility()"
+          >
+            @if (savingGeneral()) {
+            <span class="loading loading-spinner loading-sm"></span>
+            Saving… } @else { Save visibility }
+          </button>
+        </div>
+      </div>
+    </section>
+
     <section class="repo-panel border-error/35 repo-settings-section-danger relative overflow-hidden">
       <div class="bg-error/60 pointer-events-none absolute inset-x-0 top-0 h-0.5"></div>
       <div class="p-5 sm:p-6">

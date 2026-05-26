@@ -1,18 +1,25 @@
 <!doctype html>
-<html lang="en" data-theme="originhub">
+<html lang="en" data-theme="originhub-light">
   <head>
     <meta charset="utf-8" />
     <script>
       (function () {
         var k = 'originhub-theme';
         var allowed = { originhub: 1, 'originhub-light': 1 };
+        var light = 'originhub-light';
         try {
           var t = localStorage.getItem(k);
           if (t && allowed[t]) {
             document.documentElement.setAttribute('data-theme', t);
-            document.documentElement.style.colorScheme = t === 'originhub-light' ? 'light' : 'dark';
+            document.documentElement.style.colorScheme = t === light ? 'light' : 'dark';
+          } else {
+            document.documentElement.setAttribute('data-theme', light);
+            document.documentElement.style.colorScheme = 'light';
           }
-        } catch (e) {}
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', light);
+          document.documentElement.style.colorScheme = 'light';
+        }
       })();
     </script>
     <title>OriginHub — Self-hosted Git</title>

@@ -28,6 +28,11 @@ export const repoOwnerGuard = (route: ActivatedRouteSnapshot) => {
 
   if (isOwner) return true;
 
+  if (!username) {
+    router.navigate(['/login']);
+    return false;
+  }
+
   const repo = route.parent?.paramMap.get('repo');
   router.navigate(owner && repo ? ['/', owner, repo] : ['/']);
   return false;

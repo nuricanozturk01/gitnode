@@ -1,12 +1,12 @@
 @import 'tailwindcss';
 @plugin 'daisyui' {
   themes:
-    originhub --default,
-    originhub-light;
+    originhub,
+    originhub-light --default;
 }
 @plugin 'daisyui/theme' {
   name: 'originhub';
-  default: true;
+  default: false;
   color-scheme: dark;
   --color-base-100: oklch(15% 0.02 250);
   --color-base-200: oklch(20% 0.02 250);
@@ -31,7 +31,7 @@
 }
 @plugin 'daisyui/theme' {
   name: 'originhub-light';
-  default: false;
+  default: true;
   color-scheme: light;
   /* Softer than paper-white: layered cool gray (hue 250) so panels don’t glare */
   --color-base-100: oklch(97% 0.014 250);

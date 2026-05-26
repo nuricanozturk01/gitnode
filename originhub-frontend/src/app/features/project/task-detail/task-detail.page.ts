@@ -1,12 +1,16 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { TaskService } from '../../../core/project/services/task.service';
 import { BoardService } from '../../../core/project/services/board.service';
 import { ProjectService } from '../../../core/project/services/project.service';
 import { BranchService } from '../../../core/branch/services/branch.service';
 import { RepoService } from '../../../core/repo/services/repo.service';
+import { IssueService } from '../../../core/issue/services/issue.service';
 import { TokenService } from '../../../core/auth/services/token.service';
+import { UserService } from '../../../core/user/services/user.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
@@ -26,7 +30,7 @@ interface BranchModalRepo {
 @Component({
   selector: 'app-task-detail',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
+  imports: [RouterLink, FormsModule, LucideAngularModule, RelativeTimePipe],
   templateUrl: './task-detail.page.html',
 })
 export class TaskDetailPage implements OnInit {
@@ -37,7 +41,9 @@ export class TaskDetailPage implements OnInit {
   private readonly projectService = inject(ProjectService);
   private readonly branchService = inject(BranchService);
   private readonly repoService = inject(RepoService);
+  private readonly issueService = inject(IssueService);
   private readonly tokenService = inject(TokenService);
+  private readonly userService = inject(UserService);
   private readonly toastService = inject(ToastService);
   private readonly confirmModal = inject(ConfirmModalService);
 
@@ -67,8 +73,17 @@ export class TaskDetailPage implements OnInit {
   readonly branchModalTarget = signal<'task' | 'subtask'>('task');
   readonly branchModalSubtaskId = signal<string | null>(null);
 
+  // link issue modal
+  readonly showLinkIssueModal = signal(false);
+  readonly linkIssueOwner = signal('');
+  readonly linkIssueRepo = signal('');
+  readonly linkIssueNumber = signal('');
+  readonly linkingIssue = signal(false);
+
+  private readonly ownerUsername = signal('');
+
   get owner(): string {
-    return this.tokenService.getUsername() ?? '';
+    return this.ownerUsername();
   }
 
   get projectCode(): string {
@@ -354,10 +369,47 @@ export class TaskDetailPage implements OnInit {
   readonly types: TaskType[] = ['TASK', 'BUG'];
 
   async ngOnInit(): Promise<void> {
+    await this.resolveOwner();
     await this.loadTask();
   }
 
+  private async resolveOwner(): Promise<void> {
+    let username = this.tokenService.getUsername();
+    if (!username) {
+      try {
+        const me = await this.userService.getMe();
+        username = me.username;
+        this.tokenService.persistUsernameIfMissing(username);
+      } catch {
+        username = null;
+      }
+    }
+    this.ownerUsername.set(username ?? '');
+  }
+
+  private apiErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof HttpErrorResponse) {
+      const body = err.error;
+      if (typeof body === 'string' && body.length > 0) {
+        return body;
+      }
+      if (body && typeof body === 'object' && 'message' in body && typeof body.message === 'string') {
+        return body.message;
+      }
+      return err.message || fallback;
+    }
+    if (err instanceof Error && err.message) {
+      return err.message;
+    }
+    return fallback;
+  }
+
   private async loadTask(): Promise<void> {
+    if (!this.owner) {
+      this.toastService.error('Could not resolve your account. Sign in again.');
+      this.loading.set(false);
+      return;
+    }
     this.loading.set(true);
     try {
       const [task, boards, linkedRepos] = await Promise.all([
@@ -404,16 +456,25 @@ export class TaskDetailPage implements OnInit {
   }
 
   async saveDesc(): Promise<void> {
-    const description = this.editDesc().trim() || undefined;
+    const description = this.editDesc().trim();
+    const current = (this.task()?.description ?? '').trim();
+    if (description === current) {
+      this.editingDesc.set(false);
+      return;
+    }
+    if (!this.owner) {
+      this.toastService.error('Could not resolve your account. Sign in again.');
+      return;
+    }
     this.saving.set(true);
     try {
       const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
-        description: description ?? '',
+        description,
       });
       this.task.set(updated);
       this.editingDesc.set(false);
-    } catch {
-      this.toastService.error('Failed to update description');
+    } catch (err) {
+      this.toastService.error(this.apiErrorMessage(err, 'Failed to update description'));
     } finally {
       this.saving.set(false);
     }
@@ -484,6 +545,69 @@ export class TaskDetailPage implements OnInit {
       this.task.update((t) => (t ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtask.id) } : t));
     } catch {
       this.toastService.error('Failed to delete subtask');
+    }
+  }
+
+  linkedIssueRoute(task: TaskDetail): string[] | null {
+    if (!task.linkedIssue) return null;
+    const repo = this.repoForTask(task);
+    if (repo) {
+      return ['/', repo.ownerUsername, repo.name, 'issues', String(task.linkedIssue.number)];
+    }
+    return null;
+  }
+
+  async unlinkIssue(): Promise<void> {
+    try {
+      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
+        unlinkIssue: true,
+      });
+      this.task.set(updated);
+    } catch {
+      this.toastService.error('Failed to unlink issue');
+    }
+  }
+
+  openLinkIssueModal(): void {
+    const first = this.linkedRepos()[0];
+    this.linkIssueOwner.set(first?.ownerUsername ?? this.owner);
+    this.linkIssueRepo.set(first?.name ?? '');
+    this.linkIssueNumber.set('');
+    this.showLinkIssueModal.set(true);
+  }
+
+  closeLinkIssueModal(): void {
+    this.showLinkIssueModal.set(false);
+  }
+
+  onLinkIssueBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.closeLinkIssueModal();
+    }
+  }
+
+  async submitLinkIssue(): Promise<void> {
+    const owner = this.linkIssueOwner().trim();
+    const repo = this.linkIssueRepo().trim();
+    const numStr = this.linkIssueNumber().trim();
+    const num = parseInt(numStr, 10);
+    if (!owner || !repo || !num || num <= 0) {
+      this.toastService.error('Enter a valid repo and issue number');
+      return;
+    }
+    this.linkingIssue.set(true);
+    try {
+      const issue = await this.issueService.get(owner, repo, num);
+      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
+        linkedIssueId: issue.id,
+      });
+      this.task.set(updated);
+      this.showLinkIssueModal.set(false);
+      this.toastService.success(`Linked to issue #${issue.number}`);
+    } catch {
+      this.toastService.error('Issue not found or could not link');
+    } finally {
+      this.linkingIssue.set(false);
     }
   }
 

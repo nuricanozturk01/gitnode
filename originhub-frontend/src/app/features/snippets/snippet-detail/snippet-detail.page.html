@@ -1,6 +1,19 @@
 @if (loading()) {
-<div class="bg-base-200 flex min-h-screen items-center justify-center">
-  <span class="loading loading-spinner loading-lg text-primary"></span>
+<div class="bg-base-200 flex min-h-[60vh] flex-col items-center justify-center gap-4 py-16">
+  <span class="loading loading-spinner loading-lg text-primary" aria-hidden="true"></span>
+  <p class="text-base-content/55 text-sm">Loading snippet…</p>
+</div>
+} @else if (loadError()) {
+<div class="bg-base-200 min-h-[60vh] px-4 py-16">
+  <div class="mx-auto max-w-lg text-center">
+    <p class="text-base-content text-lg font-semibold">Snippet unavailable</p>
+    <p class="text-base-content/55 mt-2 text-sm">{{ loadError() }}</p>
+    @if (isLoggedIn()) {
+    <a routerLink="/snippets" class="btn btn-primary btn-sm mt-6">Back to snippets</a>
+    } @else {
+    <a routerLink="/" class="btn btn-primary btn-sm mt-6">Back to home</a>
+    }
+  </div>
 </div>
 } @else if (snippet()) {
 <div class="bg-base-200 min-h-screen" [attr.data-blob-syntax]="blobSyntaxTheme()">

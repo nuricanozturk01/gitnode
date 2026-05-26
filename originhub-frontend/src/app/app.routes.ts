@@ -86,6 +86,32 @@ export const routes: Routes = [
   },
 
   {
+    path: 'snippets',
+    loadComponent: () => import('./features/snippets/snippets/snippets.page').then((m) => m.SnippetsPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'snippets/new',
+    loadComponent: () => import('./features/snippets/snippet-edit/snippet-edit.page').then((m) => m.SnippetEditPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'snippets/:snippetId/edit',
+    loadComponent: () => import('./features/snippets/snippet-edit/snippet-edit.page').then((m) => m.SnippetEditPage),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'snippets/:snippetId/revisions/:revisionId',
+    loadComponent: () =>
+      import('./features/snippets/snippet-revision/snippet-revision.page').then((m) => m.SnippetRevisionPage),
+  },
+  {
+    path: 'snippets/:snippetId',
+    loadComponent: () =>
+      import('./features/snippets/snippet-detail/snippet-detail.page').then((m) => m.SnippetDetailPage),
+  },
+
+  {
     path: ':username',
     loadComponent: () => import('./features/user-profile/user-profile.page').then((m) => m.UserProfilePage),
     canActivate: [authGuard],

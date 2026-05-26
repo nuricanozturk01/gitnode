@@ -486,6 +486,7 @@ public class TaskService {
     return type;
   }
 
+  @SuppressWarnings("java:S5850")
   private @NonNull String slugify(final @NonNull String input) {
     return input
         .toLowerCase()

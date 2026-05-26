@@ -46,6 +46,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.UUID;
@@ -107,8 +108,9 @@ public class PullRequestService {
 
       this.checkOpenPrRules(gitRepo, form, repo);
 
-      final var sourceRef = gitRepo.findRef(Constants.R_HEADS + form.getSourceBranch());
-      final var sourceSha = sourceRef.getObjectId().getName();
+      final var sourceRef =
+          Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + form.getSourceBranch()));
+      final var sourceSha = Objects.requireNonNull(sourceRef.getObjectId()).getName();
       final var nextNumber = this.prRepository.findMaxNumberByRepoId(repo.getId()) + 1;
 
       final var pr = this.prMapper.buildPr(form, repo, author, sourceSha, nextNumber);
@@ -343,8 +345,10 @@ public class PullRequestService {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
 
-      final var sourceRef = gitRepo.findRef(Constants.R_HEADS + pr.getSourceBranch());
-      final var targetRef = gitRepo.findRef(Constants.R_HEADS + pr.getTargetBranch());
+      final var sourceRef =
+          Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getSourceBranch()));
+      final var targetRef =
+          Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getTargetBranch()));
       final var sourceObjectId = sourceRef.getObjectId();
       final var targetObjectId = targetRef.getObjectId();
 
@@ -452,8 +456,10 @@ public class PullRequestService {
     try (final var gitRepo = this.gitProvider.open(owner, repoName);
         final var walk = new RevWalk(gitRepo)) {
 
-      final var sourceRef = gitRepo.findRef(Constants.R_HEADS + pr.getSourceBranch());
-      final var targetRef = gitRepo.findRef(Constants.R_HEADS + pr.getTargetBranch());
+      final var sourceRef =
+          Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getSourceBranch()));
+      final var targetRef =
+          Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getTargetBranch()));
       final var sourceCommit = walk.parseCommit(sourceRef.getObjectId());
       final var targetCommit = walk.parseCommit(targetRef.getObjectId());
       final var merger = (RecursiveMerger) MergeStrategy.RECURSIVE.newMerger(gitRepo, true);

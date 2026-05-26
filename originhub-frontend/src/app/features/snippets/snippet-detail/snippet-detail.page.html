@@ -1,0 +1,284 @@
+@if (loading()) {
+<div class="bg-base-200 flex min-h-screen items-center justify-center">
+  <span class="loading loading-spinner loading-lg text-primary"></span>
+</div>
+} @else if (snippet()) {
+<div class="bg-base-200 min-h-screen" [attr.data-blob-syntax]="blobSyntaxTheme()">
+  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
+    <!-- Breadcrumb -->
+    <div class="text-base-content/55 mb-4 flex items-center gap-2 text-sm">
+      <a routerLink="/snippets" class="text-primary hover:underline">Snippets</a>
+      <span>/</span>
+      <span class="text-base-content font-medium">{{ snippet()!.title }}</span>
+    </div>
+
+    <!-- Header card -->
+    <div class="bg-base-100 border-base-300 mb-6 rounded-2xl border p-5 shadow-sm">
+      <div class="flex flex-wrap items-start justify-between gap-4">
+        <div class="min-w-0 flex-1">
+          <div class="mb-1 flex flex-wrap items-center gap-2">
+            <h1 class="text-base-content text-xl font-bold">{{ snippet()!.title }}</h1>
+            @if (snippet()!.visibility === 'PRIVATE') {
+            <span class="badge-pill badge-pill--warning gap-1">
+              <lucide-icon name="lock" class="size-3"></lucide-icon>
+              Private
+            </span>
+            } @else {
+            <span class="badge-pill badge-pill--public gap-1">
+              <lucide-icon name="globe" class="size-3"></lucide-icon>
+              Public
+            </span>
+            }
+          </div>
+          @if (snippet()!.description) {
+          <p class="text-base-content/60 mt-1 text-sm">{{ snippet()!.description }}</p>
+          } @if (snippet()!.forkedFrom) {
+          <p class="text-base-content/40 mt-1 text-xs">
+            Forked from
+            <a [routerLink]="['/snippets', snippet()!.forkedFrom!.id]" class="text-primary hover:underline">
+              {{ snippet()!.forkedFrom!.owner.username }}/{{ snippet()!.forkedFrom!.title }}
+            </a>
+          </p>
+          }
+          <div class="text-base-content/40 mt-3 flex flex-wrap items-center gap-3 text-xs">
+            <a [routerLink]="['/', snippet()!.owner.username]" class="hover:text-primary no-underline">
+              {{ snippet()!.owner.username }}
+            </a>
+            <span>·</span>
+            <span>{{ snippet()!.createdAt | relativeTime }}</span>
+            <span>·</span>
+            <span class="flex items-center gap-1">
+              <lucide-icon name="file" class="size-3"></lucide-icon>
+              {{ snippet()!.fileCount }} file{{ snippet()!.fileCount !== 1 ? 's' : '' }}
+            </span>
+            <span class="flex items-center gap-1">
+              <lucide-icon name="git-fork" class="size-3"></lucide-icon>
+              {{ snippet()!.forkCount }}
+            </span>
+            <span class="flex items-center gap-1">
+              <lucide-icon name="message-circle" class="size-3"></lucide-icon>
+              {{ snippet()!.commentCount }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="copySnippetUrl()">
+            <lucide-icon name="link" class="size-4"></lucide-icon>
+            Copy link
+          </button>
+          @if (isLoggedIn() && !isOwner()) {
+          <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="fork()">
+            <lucide-icon name="git-fork" class="size-4"></lucide-icon>
+            Fork
+          </button>
+          } @if (isOwner()) {
+          <a [routerLink]="['/snippets', snippet()!.id, 'edit']" class="btn btn-ghost btn-sm gap-1">
+            <lucide-icon name="pencil" class="size-4"></lucide-icon>
+            Edit
+          </a>
+          <button type="button" class="btn btn-ghost btn-sm text-error gap-1" (click)="deleteSnippet()">
+            <lucide-icon name="trash-2" class="size-4"></lucide-icon>
+            Delete
+          </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="flex flex-col gap-6 lg:flex-row">
+      <!-- Files -->
+      <div class="flex min-w-0 flex-1 flex-col gap-4">
+        @for (hf of highlightedFiles(); track hf.file.id; let idx = $index) {
+        <div class="bg-base-100 border-base-300 overflow-hidden rounded-2xl border shadow-sm">
+          <!-- File header -->
+          <div class="border-base-300 flex items-center justify-between gap-2 border-b px-4 py-2.5">
+            <div class="flex min-w-0 items-center gap-2">
+              <button type="button" class="btn btn-ghost btn-xs btn-square" (click)="toggleCollapse(idx)">
+                <lucide-icon [name]="hf.collapsed ? 'chevron-right' : 'chevron-down'" class="size-4"></lucide-icon>
+              </button>
+              <lucide-icon name="file-code-2" class="text-primary size-4 shrink-0"></lucide-icon>
+              <span class="text-base-content truncate font-mono text-sm font-medium">{{ hf.file.filename }}</span>
+              @if (hf.language !== 'plaintext') {
+              <span class="bg-primary/10 text-primary shrink-0 rounded px-1.5 py-0.5 font-mono text-xs"
+                >{{ hf.language }}</span
+              >
+              }
+            </div>
+            <div class="flex shrink-0 items-center gap-1">
+              <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="copyToClipboard(hf.file.content)">
+                <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+                Copy
+              </button>
+              <a [href]="rawFileUrl(hf.file.id)" target="_blank" class="btn btn-ghost btn-xs gap-1 no-underline">
+                <lucide-icon name="external-link" class="size-3.5"></lucide-icon>
+                Raw
+              </a>
+            </div>
+          </div>
+
+          <!-- File content -->
+          @if (!hf.collapsed) { @if (hf.isMarkdown && hf.markdownHtml) {
+          <div class="prose prose-sm max-w-none p-5" [innerHTML]="hf.markdownHtml"></div>
+          } @else {
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse font-mono text-xs leading-5">
+              <tbody>
+                @for (line of hf.lines; track $index) {
+                <tr class="hover:bg-base-200/50">
+                  <td class="text-base-content/30 w-12 px-3 py-0 text-right select-none">{{ $index + 1 }}</td>
+                  <td class="px-4 py-0 whitespace-pre" [innerHTML]="line"></td>
+                </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          } }
+        </div>
+        }
+
+        <!-- Comments -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border shadow-sm">
+          <div class="border-base-300 border-b px-5 py-3">
+            <h2 class="text-base-content text-sm font-semibold">Comments ({{ commentTotalElements() }})</h2>
+          </div>
+
+          @if (loadingComments()) {
+          <div class="flex justify-center py-6">
+            <span class="loading loading-spinner loading-sm text-primary"></span>
+          </div>
+          } @else if (comments().length === 0) {
+          <p class="text-base-content/40 px-5 py-6 text-center text-sm">No comments yet.</p>
+          } @else {
+          <div class="divide-base-300 divide-y">
+            @for (comment of comments(); track comment.id) {
+            <div class="flex gap-3 px-5 py-4">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-base-content text-sm font-medium">{{ comment.author.username }}</span>
+                  <div class="text-base-content/40 flex items-center gap-2 text-xs">
+                    <span>{{ comment.createdAt | relativeTime }}</span>
+                    @if (canDeleteComment(comment)) {
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs btn-square text-error"
+                      (click)="deleteComment(comment.id)"
+                    >
+                      <lucide-icon name="trash-2" class="size-3.5"></lucide-icon>
+                    </button>
+                    }
+                  </div>
+                </div>
+                <p class="text-base-content/80 mt-1 text-sm whitespace-pre-wrap">{{ comment.body }}</p>
+              </div>
+            </div>
+            }
+          </div>
+          @if (commentTotalPages() > 1) {
+          <div class="border-base-300 flex items-center justify-center gap-3 border-t px-5 py-3">
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              [disabled]="commentPage() === 0"
+              (click)="loadCommentPage(commentPage() - 1)"
+            >
+              <lucide-icon name="chevron-left" class="size-3.5"></lucide-icon>
+            </button>
+            <span class="text-base-content/50 text-xs">{{ commentPage() + 1 }} / {{ commentTotalPages() }}</span>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              [disabled]="commentPage() >= commentTotalPages() - 1"
+              (click)="loadCommentPage(commentPage() + 1)"
+            >
+              <lucide-icon name="chevron-right" class="size-3.5"></lucide-icon>
+            </button>
+          </div>
+          } } @if (isLoggedIn()) {
+          <div class="border-base-300 border-t px-5 py-4">
+            <textarea
+              class="textarea textarea-bordered w-full text-sm"
+              rows="3"
+              placeholder="Leave a comment..."
+              [value]="commentBody()"
+              (input)="onCommentInput($event)"
+            ></textarea>
+            <div class="mt-2 flex justify-end">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                [disabled]="!commentBody().trim() || submittingComment()"
+                (click)="submitComment()"
+              >
+                @if (submittingComment()) {
+                <span class="loading loading-spinner loading-xs"></span>
+                } Comment
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Revisions sidebar -->
+      @if (revisions().length > 0 || revisionTotalPages() > 0) {
+      <div class="shrink-0 lg:w-60">
+        <div class="bg-base-100 border-base-300 rounded-2xl border shadow-sm">
+          <div class="border-base-300 border-b px-4 py-3">
+            <h2 class="text-base-content text-sm font-semibold">Revisions</h2>
+          </div>
+          @if (loadingRevisions()) {
+          <div class="flex justify-center py-4">
+            <span class="loading loading-spinner loading-sm text-primary"></span>
+          </div>
+          } @else {
+          <ul class="divide-base-300 divide-y">
+            @for (rev of revisions(); track rev.id; let i = $index) {
+            <li>
+              <a
+                [routerLink]="['/snippets', snippet()!.id, 'revisions', rev.id]"
+                class="hover:bg-base-200/60 block px-4 py-3 no-underline transition-colors"
+              >
+                <div class="flex items-center justify-between gap-1">
+                  <span class="text-primary font-mono text-xs">r{{ revisionPage() * 10 + i + 1 }}</span>
+                  @if (revisionPage() === 0 && i === 0) {
+                  <span class="badge-pill badge-pill--primary">latest</span>
+                  }
+                </div>
+                @if (rev.summary) {
+                <p class="text-base-content/70 mt-0.5 truncate text-xs">{{ rev.summary }}</p>
+                }
+                <p class="text-base-content/40 mt-0.5 text-xs">{{ rev.createdAt | relativeTime }}</p>
+              </a>
+            </li>
+            }
+          </ul>
+          @if (revisionTotalPages() > 1) {
+          <div class="border-base-300 flex items-center justify-center gap-2 border-t px-4 py-2">
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              [disabled]="revisionPage() === 0"
+              (click)="loadRevisionPage(revisionPage() - 1)"
+            >
+              <lucide-icon name="chevron-left" class="size-3.5"></lucide-icon>
+            </button>
+            <span class="text-base-content/50 text-xs">{{ revisionPage() + 1 }} / {{ revisionTotalPages() }}</span>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs"
+              [disabled]="revisionPage() >= revisionTotalPages() - 1"
+              (click)="loadRevisionPage(revisionPage() + 1)"
+            >
+              <lucide-icon name="chevron-right" class="size-3.5"></lucide-icon>
+            </button>
+          </div>
+          } }
+        </div>
+      </div>
+      }
+    </div>
+  </div>
+</div>
+}

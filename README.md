@@ -54,8 +54,7 @@ server"*, OriginHub is for you.
 
 ## ✨ Features
 
-OriginHub covers the core Git hosting loop — repos, review, and browsing — plus lightweight **project boards** tied to
-your repositories.
+OriginHub covers the core Git hosting loop — repos, review, and browsing — plus lightweight **project boards** and **code snippets** tied to your repositories.
 
 ### 📁 Repository management
 
@@ -93,6 +92,13 @@ your repositories.
 - **Optional automation** (per project): when a linked PR is **merged**, mark the task or subtask **completed** — can be
   turned off in **Project settings**
 - **Project settings** page for the above PR → status behaviour
+
+### 📝 Code snippets (Gist-like)
+
+- Create **public** or **private** snippets with syntax-highlighted code blocks
+- **Multi-file** support per snippet
+- Full **revision history** — track edits and diff between revisions
+- Manage all your snippets from the **Snippets** section in the app bar
 
 ### ⚡ Actions — CI/CD *(coming soon)*
 
@@ -210,7 +216,7 @@ OriginHub is under active development. Here's what's planned:
 - [ ] Webhooks
 - [ ] Repo Issues
 - [X] ~~Custom domain support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
-- [ ] Code snippets (Gist-like)
+- [X] Code snippets (Gist-like)
 - [ ] Two-factor authentication (TOTP)
 - [ ] Tags and releases
 - [ ] [Repsy](https://repsy.io) package management integration

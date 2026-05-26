@@ -73,6 +73,13 @@ import {
   GripVertical,
   Palette,
   Trash2,
+  FileCode2,
+  File,
+  GitFork,
+  Pencil,
+  ExternalLink,
+  Globe,
+  Upload,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -134,4 +141,11 @@ export const LUCIDE_ICONS = {
   GripVertical,
   Palette,
   Trash2,
+  FileCode2,
+  File,
+  GitFork,
+  Pencil,
+  ExternalLink,
+  Globe,
+  Upload,
 };

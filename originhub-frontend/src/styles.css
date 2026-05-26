@@ -524,6 +524,16 @@ a:not(.btn):hover {
   background: color-mix(in oklch, var(--color-primary) 14%, transparent);
   color: var(--color-primary);
 }
+.badge-pill--warning {
+  background: color-mix(in oklch, var(--color-warning) 18%, transparent);
+  color: color-mix(in oklch, var(--color-warning) 85%, var(--color-base-content));
+  border: 1px solid color-mix(in oklch, var(--color-warning) 35%, var(--color-base-300));
+}
+.badge-pill--public {
+  background: color-mix(in oklch, var(--color-success) 14%, transparent);
+  color: var(--color-success);
+  border: 1px solid color-mix(in oklch, var(--color-success) 30%, var(--color-base-300));
+}
 
 /* Landing / roadmap: polished “Coming soon” chip (both themes) */
 .badge-coming-soon {

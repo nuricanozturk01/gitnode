@@ -1,0 +1,157 @@
+@if (loading()) {
+<div class="bg-base-200 flex min-h-screen items-center justify-center">
+  <span class="loading loading-spinner loading-lg text-primary"></span>
+</div>
+} @else {
+<div class="bg-base-200 min-h-screen">
+  <div class="mx-auto max-w-4xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8">
+      <h1 class="text-base-content text-2xl font-bold tracking-tight">
+        {{ isEditMode() ? 'Edit snippet' : 'New snippet' }}
+      </h1>
+      <p class="text-base-content/55 mt-1 text-sm">
+        {{ isEditMode() ? 'Update your code snippet.' : 'Create a new code snippet to share.' }}
+      </p>
+    </div>
+
+    <div class="bg-base-100 border-base-300 flex flex-col gap-5 rounded-2xl border p-6 shadow-sm">
+      <!-- Title -->
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium">Title <span class="text-error">*</span></span>
+        </div>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          placeholder="My awesome snippet"
+          maxlength="200"
+          [value]="title()"
+          (input)="onTitleInput($event)"
+        />
+      </label>
+
+      <!-- Description -->
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium">Description</span>
+        </div>
+        <textarea
+          class="textarea textarea-bordered w-full"
+          rows="2"
+          placeholder="Optional description..."
+          [value]="description()"
+          (input)="onDescriptionInput($event)"
+        ></textarea>
+      </label>
+
+      <!-- Visibility -->
+      <div>
+        <p class="label-text mb-2 font-medium">Visibility</p>
+        <div class="flex gap-4">
+          <label class="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              class="radio radio-primary radio-sm"
+              name="visibility"
+              [checked]="visibility() === 'PUBLIC'"
+              (change)="onVisibilityChange('PUBLIC')"
+            />
+            <div>
+              <span class="text-sm font-medium">Public</span>
+              <p class="text-base-content/40 text-xs">Anyone can view this snippet</p>
+            </div>
+          </label>
+          <label class="flex cursor-pointer items-center gap-2">
+            <input
+              type="radio"
+              class="radio radio-primary radio-sm"
+              name="visibility"
+              [checked]="visibility() === 'PRIVATE'"
+              (change)="onVisibilityChange('PRIVATE')"
+            />
+            <div>
+              <span class="text-sm font-medium">Private</span>
+              <p class="text-base-content/40 text-xs">Only you can view this snippet</p>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Files -->
+      <div>
+        <p class="label-text mb-3 font-medium">Files</p>
+        <div class="flex flex-col gap-4">
+          @for (file of files(); track $index; let i = $index) {
+          <div class="border-base-300 overflow-hidden rounded-xl border">
+            <div class="bg-base-200/60 border-base-300 flex items-center gap-2 border-b px-3 py-2">
+              <lucide-icon name="file-code-2" class="text-primary size-4 shrink-0"></lucide-icon>
+              <input
+                type="text"
+                class="input input-xs input-ghost flex-1 font-mono focus:outline-none"
+                placeholder="filename.ext"
+                [value]="file.filename"
+                (input)="onFilenameInput(i, $event)"
+              />
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                (click)="uploadFile(i)"
+                title="Upload file from disk"
+              >
+                <lucide-icon name="upload" class="size-3.5"></lucide-icon>
+                Upload
+              </button>
+              @if (files().length > 1) {
+              <button type="button" class="btn btn-ghost btn-xs btn-square text-error" (click)="removeFile(i)">
+                <lucide-icon name="x" class="size-3.5"></lucide-icon>
+              </button>
+              }
+            </div>
+            <textarea
+              class="bg-base-100 min-h-32 w-full resize-none px-4 py-3 font-mono text-sm focus:outline-none"
+              placeholder="Paste your code here, or use the Upload button above..."
+              [value]="file.content"
+              (input)="onContentInput(i, $event)"
+              rows="12"
+            ></textarea>
+          </div>
+          }
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm mt-3 gap-2" (click)="addFile()">
+          <lucide-icon name="plus" class="size-4"></lucide-icon>
+          Add another file
+        </button>
+      </div>
+
+      <!-- Revision summary (edit mode only) -->
+      @if (isEditMode()) {
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium">Revision summary</span>
+          <span class="label-text-alt text-base-content/40">optional</span>
+        </div>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          placeholder="What changed?"
+          maxlength="255"
+          [value]="summary()"
+          (input)="onSummaryInput($event)"
+        />
+      </label>
+      }
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" class="btn btn-ghost" (click)="cancel()">Cancel</button>
+        <button type="button" class="btn btn-primary gap-2" [disabled]="saving()" (click)="save()">
+          @if (saving()) {
+          <span class="loading loading-spinner loading-xs"></span>
+          } {{ isEditMode() ? 'Update snippet' : 'Create snippet' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+}

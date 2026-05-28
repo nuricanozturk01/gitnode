@@ -19,6 +19,7 @@ import com.nuricanozturk.originhub.profile.dtos.ChangePasswordForm;
 import com.nuricanozturk.originhub.profile.dtos.TenantPublicProfileDto;
 import com.nuricanozturk.originhub.profile.dtos.TenantSearchResult;
 import com.nuricanozturk.originhub.profile.dtos.UpdateDisplayNameForm;
+import com.nuricanozturk.originhub.profile.dtos.UpdateProfileForm;
 import com.nuricanozturk.originhub.profile.dtos.UpdateUsernameForm;
 import com.nuricanozturk.originhub.profile.services.ProfileService;
 import com.nuricanozturk.originhub.profile.services.TenantSearchService;
@@ -84,6 +85,18 @@ public class ProfileController {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
     final var user = this.profileService.updateDisplayName(tenantId, form);
+
+    return ResponseEntity.ok(user);
+  }
+
+  @PatchMapping("/me/profile")
+  public @NonNull ResponseEntity<TenantInfo> updateProfile(
+      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody @NonNull UpdateProfileForm form) {
+
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
+
+    final var user = this.profileService.updateProfile(tenantId, form);
 
     return ResponseEntity.ok(user);
   }

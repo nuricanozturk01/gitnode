@@ -34,6 +34,7 @@ public record TaskInfo(
     @Nullable AuthorInfo assignee,
     @Nullable String branchName,
     boolean hasLinkedPr,
+    boolean hasLinkedIssue,
     int subtaskCount,
     int completedSubtaskCount,
     @Nullable Instant createdAt,

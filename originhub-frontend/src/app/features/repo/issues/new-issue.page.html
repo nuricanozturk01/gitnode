@@ -1,0 +1,61 @@
+<div class="mx-auto max-w-3xl">
+  <div class="mb-6 flex items-center gap-3">
+    <a
+      [routerLink]="['/', owner(), repoName(), 'issues']"
+      class="text-base-content/60 hover:text-base-content flex items-center gap-1.5 text-sm transition-colors"
+    >
+      <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+      Back to issues
+    </a>
+  </div>
+
+  <div class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-4">
+      <h2 class="text-base-content text-lg font-semibold">New issue</h2>
+    </div>
+
+    <div class="p-4 sm:p-6">
+      <form class="flex flex-col gap-4" (ngSubmit)="submit()">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-base-content text-sm font-medium" for="issue-title">Title</label>
+          <input
+            id="issue-title"
+            type="text"
+            class="input input-bordered w-full"
+            placeholder="Issue title"
+            [ngModel]="title()"
+            (ngModelChange)="title.set($event)"
+            name="title"
+            required
+            maxlength="255"
+          />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-base-content text-sm font-medium" for="issue-description">
+            Description
+            <span class="text-base-content/45 font-normal">(optional)</span>
+          </label>
+          <textarea
+            id="issue-description"
+            class="textarea textarea-bordered w-full"
+            rows="8"
+            placeholder="Describe the issue..."
+            [ngModel]="description()"
+            (ngModelChange)="description.set($event)"
+            name="description"
+          ></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2">
+          <a [routerLink]="['/', owner(), repoName(), 'issues']" class="btn btn-ghost btn-sm"> Cancel </a>
+          <button type="submit" class="btn btn-primary btn-sm gap-2" [disabled]="!canSubmit()">
+            @if (submitting()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } Submit new issue
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

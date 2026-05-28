@@ -31,6 +31,12 @@ public interface RepoMapper {
       target = "topics",
       expression =
           "java(repo.getTopics() != null ? repo.getTopics() : java.util.Collections.emptySet())")
+  /**
+   * Lombok exposes {@code isPrivate()} as bean property {@code private}; MapStruct would otherwise
+   * default to false.
+   */
+  @Mapping(target = "isPrivate", source = "private")
+  @Mapping(target = "isArchived", source = "archived")
   @NonNull RepoInfo toDto(@NonNull Repo repo);
 
   default TenantRepoInfo mapOwner(final Tenant owner) {

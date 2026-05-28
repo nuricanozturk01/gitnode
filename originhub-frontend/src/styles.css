@@ -1,12 +1,12 @@
 @import 'tailwindcss';
 @plugin 'daisyui' {
   themes:
-    originhub --default,
-    originhub-light;
+    originhub,
+    originhub-light --default;
 }
 @plugin 'daisyui/theme' {
   name: 'originhub';
-  default: true;
+  default: false;
   color-scheme: dark;
   --color-base-100: oklch(15% 0.02 250);
   --color-base-200: oklch(20% 0.02 250);
@@ -31,7 +31,7 @@
 }
 @plugin 'daisyui/theme' {
   name: 'originhub-light';
-  default: false;
+  default: true;
   color-scheme: light;
   /* Softer than paper-white: layered cool gray (hue 250) so panels don’t glare */
   --color-base-100: oklch(97% 0.014 250);
@@ -312,6 +312,9 @@ a:not(.btn):hover {
   font-size: 16px;
   line-height: 1.5;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .readme-content > :first-child {
@@ -408,7 +411,10 @@ a:not(.btn):hover {
 }
 
 .readme-content table {
-  width: 100%;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin-bottom: 1em;
 }

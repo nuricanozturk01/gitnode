@@ -87,6 +87,40 @@
             <p class="label-text-alt text-base-content/60 mt-1 px-1">Max 6 topics. Letters, numbers, hyphens only.</p>
           </div>
 
+          <div class="form-control">
+            <span class="label">
+              <span class="label-text">Visibility</span>
+            </span>
+            <div class="flex flex-col gap-2">
+              <label
+                class="border-base-300 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+                [class.border-primary]="!form.get('isPrivate')?.value"
+              >
+                <input type="radio" formControlName="isPrivate" [value]="false" class="radio radio-primary mt-0.5" />
+                <div>
+                  <div class="flex items-center gap-2 font-medium">
+                    <lucide-icon name="globe" class="size-4"></lucide-icon>
+                    Public
+                  </div>
+                  <p class="text-base-content/60 mt-0.5 text-xs">Anyone can view and clone this repository.</p>
+                </div>
+              </label>
+              <label
+                class="border-base-300 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
+                [class.border-primary]="form.get('isPrivate')?.value"
+              >
+                <input type="radio" formControlName="isPrivate" [value]="true" class="radio radio-primary mt-0.5" />
+                <div>
+                  <div class="flex items-center gap-2 font-medium">
+                    <lucide-icon name="lock" class="size-4"></lucide-icon>
+                    Private
+                  </div>
+                  <p class="text-base-content/60 mt-0.5 text-xs">Only you can view and push to this repository.</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
           <button type="submit" class="btn btn-primary w-full" [disabled]="form.invalid || loading()">
             @if (loading()) {
             <span class="loading loading-spinner loading-sm"></span>

@@ -53,6 +53,7 @@ export class CreateRepoPage {
     ],
     description: ['', [Validators.maxLength(500)]],
     topics: [[] as string[]],
+    isPrivate: [true],
   });
 
   addTopic(): void {
@@ -88,6 +89,7 @@ export class CreateRepoPage {
         name: raw.name,
         description: raw.description || undefined,
         topics: raw.topics.length > 0 ? raw.topics : undefined,
+        isPrivate: raw.isPrivate,
       });
       this.toast.success('Repository created successfully');
       this.router.navigate(['/', repo.owner.username, repo.name]);

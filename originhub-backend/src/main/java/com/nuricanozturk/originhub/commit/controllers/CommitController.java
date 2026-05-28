@@ -16,17 +16,21 @@
 package com.nuricanozturk.originhub.commit.controllers;
 
 import com.nuricanozturk.originhub.commit.services.CommitNonTxService;
+import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitDetail;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
 import com.nuricanozturk.originhub.shared.commit.dtos.PagedResult;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,6 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommitController {
 
   private final @NonNull CommitNonTxService commitNonTxService;
+  private final @NonNull JwtUtils jwtUtils;
+  private final @NonNull RepoService repoService;
 
   @GetMapping
   public ResponseEntity<@NonNull PagedResult<@NonNull CommitInfo>> getCommits(
@@ -44,11 +50,13 @@ public class CommitController {
       @PathVariable final @NonNull String repo,
       @RequestParam(defaultValue = "master") final @NonNull String branch,
       @RequestParam(defaultValue = "0") final int page,
-      @RequestParam(defaultValue = "20") final int size)
+      @RequestParam(defaultValue = "20") final int size,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var commits = this.commitNonTxService.getCommits(owner, repo, branch, page, size);
-
     return ResponseEntity.ok(commits);
   }
 
@@ -56,11 +64,13 @@ public class CommitController {
   public @NonNull ResponseEntity<@NonNull CommitDetail> getCommit(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String sha)
+      @PathVariable final @NonNull String sha,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var commit = this.commitNonTxService.getCommit(owner, repo, sha);
-
     return ResponseEntity.ok(commit);
   }
 
@@ -68,11 +78,13 @@ public class CommitController {
   public @NonNull ResponseEntity<@NonNull List<@NonNull FileDiff>> getCommitDiff(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String sha)
+      @PathVariable final @NonNull String sha,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var diff = this.commitNonTxService.getCommitDiff(owner, repo, sha);
-
     return ResponseEntity.ok(diff);
   }
 }

@@ -62,18 +62,24 @@ public class RepoController {
 
   @GetMapping("/{owner}/{repo}")
   public @NonNull ResponseEntity<RepoInfo> getRepo(
-      @PathVariable final String owner, @PathVariable final String repo) {
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
-    final var repoInfo = this.repoService.findByOwnerAndName(owner, repo);
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    final var repoInfo = this.repoService.findByOwnerAndName(owner, repo, requesterId);
 
     return ResponseEntity.ok(repoInfo);
   }
 
   @GetMapping("/{owner}")
   public @NonNull ResponseEntity<PageResponse<RepoInfo>> listUserRepos(
-      @PathVariable final String owner, @PageableDefault(size = 10) final Pageable pageable) {
+      @PathVariable final String owner,
+      @PageableDefault final Pageable pageable,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
-    final var repos = this.repoService.findAllByOwner(owner, pageable);
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    final var repos = this.repoService.findAllByOwner(owner, pageable, requesterId);
     return ResponseEntity.ok(PageResponse.from(repos));
   }
 

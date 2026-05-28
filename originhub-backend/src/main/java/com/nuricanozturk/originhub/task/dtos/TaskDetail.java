@@ -37,6 +37,7 @@ public record TaskDetail(
     @Nullable String branchName,
     @Nullable UUID branchRepoId,
     @Nullable LinkedPrInfo linkedPr,
+    @Nullable LinkedIssueInfo linkedIssue,
     @NonNull List<SubtaskInfo> subtasks,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

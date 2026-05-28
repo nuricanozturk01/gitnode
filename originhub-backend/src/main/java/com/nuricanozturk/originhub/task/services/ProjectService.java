@@ -29,6 +29,7 @@ import com.nuricanozturk.originhub.task.dtos.ProjectUpdateForm;
 import com.nuricanozturk.originhub.task.entities.Project;
 import com.nuricanozturk.originhub.task.mappers.ProjectMapper;
 import com.nuricanozturk.originhub.task.repositories.ProjectRepository;
+import com.nuricanozturk.originhub.task.repositories.TaskRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,7 @@ public class ProjectService {
   private final @NonNull RepoRepository repoRepository;
   private final @NonNull PrRepository prRepository;
   private final @NonNull ProjectMapper projectMapper;
+  private final @NonNull TaskRepository taskRepository;
 
   @Transactional
   public @NonNull ProjectInfo create(
@@ -72,18 +74,21 @@ public class ProjectService {
     project.setTaskSeq(0);
     project.setSyncTaskStatusOnPrMerge(true);
 
-    return this.projectMapper.toInfo(this.projectRepository.save(project));
+    final var saved = this.projectRepository.save(project);
+    return this.projectMapper.toInfo(saved, this.taskRepository.countByProjectId(saved.getId()));
   }
 
   public @NonNull List<ProjectInfo> getAll(final @NonNull String ownerUsername) {
     return this.projectRepository.findAllByOwnerUsernameOrderByCreatedAtDesc(ownerUsername).stream()
-        .map(this.projectMapper::toInfo)
+        .map(p -> this.projectMapper.toInfo(p, this.taskRepository.countByProjectId(p.getId())))
         .toList();
   }
 
   public @NonNull ProjectInfo get(
       final @NonNull String ownerUsername, final @NonNull String codePrefix) {
-    return this.projectMapper.toInfo(this.findProject(ownerUsername, codePrefix));
+    final var project = this.findProject(ownerUsername, codePrefix);
+    return this.projectMapper.toInfo(
+        project, this.taskRepository.countByProjectId(project.getId()));
   }
 
   @Transactional
@@ -106,7 +111,9 @@ public class ProjectService {
       project.setSyncTaskStatusOnPrMerge(form.getSyncTaskStatusOnPrMerge());
     }
 
-    return this.projectMapper.toInfo(this.projectRepository.save(project));
+    final var updated = this.projectRepository.save(project);
+    return this.projectMapper.toInfo(
+        updated, this.taskRepository.countByProjectId(updated.getId()));
   }
 
   @Transactional

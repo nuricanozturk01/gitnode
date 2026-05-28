@@ -293,18 +293,42 @@ class RepoServiceTest {
   }
 
   @Test
-  @DisplayName("findAllByOwner returns mapped page")
-  void findAllByOwner_returnsMappedList() {
+  @DisplayName("findAllByOwner returns public repos only when requester is anonymous")
+  void findAllByOwner_returnsMappedList_forAnonymous() {
     Repo r1 = new Repo();
     r1.setId(UUID.randomUUID());
     r1.setName("a");
+    r1.setPrivate(false);
     RepoInfo i1 = createRepoInfo(r1.getId(), "a");
     PageRequest pageable = PageRequest.of(0, 10);
+    when(repoRepository.findAllByOwnerUsernameAndIsPrivateFalse("owner", pageable))
+        .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
+    when(repoMapper.toDto(r1)).thenReturn(i1);
+
+    Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, null);
+
+    assertThat(result.getContent()).singleElement().isSameAs(i1);
+    assertThat(result.getTotalElements()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("findAllByOwner returns all repos when requester is owner")
+  void findAllByOwner_returnsAllRepos_forOwner() {
+    UUID ownerId = UUID.randomUUID();
+    Tenant ownerTenant = new Tenant();
+    ownerTenant.setId(ownerId);
+    Repo r1 = new Repo();
+    r1.setId(UUID.randomUUID());
+    r1.setName("private-repo");
+    r1.setPrivate(true);
+    RepoInfo i1 = createRepoInfo(r1.getId(), "private-repo");
+    PageRequest pageable = PageRequest.of(0, 10);
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
     when(repoRepository.findAllByOwnerUsername("owner", pageable))
         .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
     when(repoMapper.toDto(r1)).thenReturn(i1);
 
-    Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable);
+    Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, ownerId);
 
     assertThat(result.getContent()).singleElement().isSameAs(i1);
     assertThat(result.getTotalElements()).isEqualTo(1);
@@ -316,23 +340,63 @@ class RepoServiceTest {
     when(repoRepository.findByOwnerUsernameAndName("owner", "missing"))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> repoService.findByOwnerAndName("owner", "missing"))
+    assertThatThrownBy(() -> repoService.findByOwnerAndName("owner", "missing", null))
         .isInstanceOf(ItemNotFoundException.class)
         .hasMessageContaining("repoNotFound");
   }
 
   @Test
-  @DisplayName("findByOwnerAndName returns RepoInfo when found")
-  void findByOwnerAndName_returnsRepoInfo_whenFound() {
+  @DisplayName("findByOwnerAndName returns RepoInfo for public repo without auth")
+  void findByOwnerAndName_returnsRepoInfo_whenPublicAndAnonymous() {
     Repo repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("my-repo");
+    repo.setPrivate(false);
     RepoInfo expected = createRepoInfo(repo.getId(), "my-repo");
     when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
         .thenReturn(Optional.of(repo));
     when(repoMapper.toDto(repo)).thenReturn(expected);
 
-    RepoInfo result = repoService.findByOwnerAndName("owner", "my-repo");
+    RepoInfo result = repoService.findByOwnerAndName("owner", "my-repo", null);
+
+    assertThat(result).isSameAs(expected);
+  }
+
+  @Test
+  @DisplayName("findByOwnerAndName throws AccessNotAllowedException for private repo without auth")
+  void findByOwnerAndName_throws_whenPrivateAndAnonymous() {
+    Repo repo = new Repo();
+    repo.setId(UUID.randomUUID());
+    repo.setName("secret");
+    repo.setPrivate(true);
+    when(repoRepository.findByOwnerUsernameAndName("owner", "secret"))
+        .thenReturn(Optional.of(repo));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> repoService.findByOwnerAndName("owner", "secret", null))
+        .isInstanceOf(
+            com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException
+                .class)
+        .hasMessageContaining("repoAccessDenied");
+  }
+
+  @Test
+  @DisplayName("findByOwnerAndName returns RepoInfo for private repo when requester is owner")
+  void findByOwnerAndName_returnsRepoInfo_whenPrivateAndOwner() {
+    UUID ownerId = UUID.randomUUID();
+    Tenant ownerTenant = new Tenant();
+    ownerTenant.setId(ownerId);
+    Repo repo = new Repo();
+    repo.setId(UUID.randomUUID());
+    repo.setName("private-repo");
+    repo.setPrivate(true);
+    RepoInfo expected = createRepoInfo(repo.getId(), "private-repo");
+    when(repoRepository.findByOwnerUsernameAndName("owner", "private-repo"))
+        .thenReturn(Optional.of(repo));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(repoMapper.toDto(repo)).thenReturn(expected);
+
+    RepoInfo result = repoService.findByOwnerAndName("owner", "private-repo", ownerId);
 
     assertThat(result).isSameAs(expected);
   }

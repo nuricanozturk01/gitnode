@@ -44,6 +44,11 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   @NonNull Page<Repo> findAllByOwnerUsername(
       @NonNull String ownerUsername, @NonNull Pageable pageable);
 
+  @NonNull Page<Repo> findAllByOwnerUsernameAndIsPrivateFalse(
+      @NonNull String ownerUsername, @NonNull Pageable pageable);
+
+  boolean existsByOwnerUsernameAndName(@NonNull String ownerUsername, @NonNull String name);
+
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")
   void updateDefaultBranch(@NonNull UUID repoId, @NonNull String branchName);

@@ -219,6 +219,7 @@ export class BoardPage implements OnInit {
         assignee: detail.assignee,
         branchName: detail.branchName,
         hasLinkedPr: !!detail.linkedPr,
+        hasLinkedIssue: !!detail.linkedIssue,
         subtaskCount: detail.subtasks.length,
         completedSubtaskCount: detail.subtasks.filter((s) => s.status === 'COMPLETED').length,
         createdAt: detail.createdAt,

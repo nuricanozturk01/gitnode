@@ -203,23 +203,20 @@ Edit the variables at the top of the `Makefile` before running — at minimum se
 
 ## 🗺 Roadmap
 
-OriginHub is under active development. Here's what's planned:
+OriginHub is under active development. Here's what's planned:gi
 
 - [X] HTTPS Git support
 - [X] Github Repo Migration
-- [ ] Gitlab Repo Migration
-- [X] ~~Public repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
-- [X] ~~Fork and star repositories~~ **(This is a opensource project, not cloud. This feature unnecessary)**
-- [ ] Actions — CI/CD (self-hosted runner)
-- [X] ~~Team collaboration & organization support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [X] Project board (Kanban) integrated with repositories
-- [ ] Webhooks
-- [ ] Repo Issues
-- [X] ~~Custom domain support~~ **(This is a opensource project, not cloud. This feature unnecessary)**
 - [X] Code snippets (Gist-like)
+- [X] Repo Issues
+- [X] Public repositories
+- [X] Public Profile and ReadMe
+- [ ] Webhooks
 - [ ] Two-factor authentication (TOTP)
+- [ ] Actions — CI/CD
+- [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Tags and releases
-- [ ] [Repsy](https://repsy.io) package management integration
 
 ---
 

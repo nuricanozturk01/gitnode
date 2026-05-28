@@ -62,10 +62,25 @@ export class UserService {
   getPublicProfile(username: string): Promise<UserPublicProfile> {
     return firstValueFrom(this.http.get<UserPublicProfile>(`${this.api}/${encodeURIComponent(username)}`));
   }
+
+  updateProfile(form: UpdateProfileForm): Promise<User> {
+    return firstValueFrom(this.http.patch<User>(`${this.api}/me/profile`, form));
+  }
 }
 
 export interface UserPublicProfile {
   username: string;
   displayName: string;
   avatarUrl: string | null;
+  bio: string | null;
+  website: string | null;
+  location: string | null;
+  profileReadme: string | null;
+}
+
+export interface UpdateProfileForm {
+  bio?: string | null;
+  website?: string | null;
+  location?: string | null;
+  profileReadme?: string | null;
 }

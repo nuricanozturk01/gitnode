@@ -40,4 +40,6 @@ public class TaskForm {
   private UUID assigneeId;
 
   private int position = 0;
+
+  private UUID linkedIssueId;
 }

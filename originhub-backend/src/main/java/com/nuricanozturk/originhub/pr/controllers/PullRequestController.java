@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.pr.services.PullRequestService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
@@ -50,6 +51,7 @@ public class PullRequestController {
 
   private final @NonNull PullRequestService prService;
   private final @NonNull JwtUtils tokenService;
+  private final @NonNull RepoService repoService;
 
   @PostMapping
   public @NonNull ResponseEntity<PrDetail> create(
@@ -60,9 +62,8 @@ public class PullRequestController {
       throws IOException {
 
     final var authorId = this.tokenService.extractUserId(authHeader);
-
+    this.repoService.assertUserCanAccessRepo(authorId, owner, repo);
     final var createdPr = this.prService.create(owner, repo, authorId, form);
-
     return ResponseEntity.status(HttpStatus.CREATED).body(createdPr);
   }
 
@@ -71,10 +72,12 @@ public class PullRequestController {
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
       @PathVariable final int number,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
       @Valid @RequestBody final @NonNull PrUpdateForm form) {
 
+    final var requesterId = this.tokenService.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var updatedPr = this.prService.update(owner, repo, number, form);
-
     return ResponseEntity.ok(updatedPr);
   }
 
@@ -82,10 +85,12 @@ public class PullRequestController {
   public @NonNull ResponseEntity<Void> close(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number) {
+      @PathVariable final int number,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
 
+    final var requesterId = this.tokenService.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     this.prService.close(owner, repo, number);
-
     return ResponseEntity.noContent().build();
   }
 
@@ -99,9 +104,8 @@ public class PullRequestController {
       throws IOException {
 
     final var mergedById = this.tokenService.extractUserId(authHeader);
-
+    this.repoService.assertUserCanAccessRepo(mergedById, owner, repo);
     final var mergedPr = this.prService.merge(owner, repo, number, mergedById, form);
-
     return ResponseEntity.ok(mergedPr);
   }
 
@@ -109,10 +113,12 @@ public class PullRequestController {
   public @NonNull ResponseEntity<List<PrInfo>> getAll(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @RequestParam(defaultValue = "OPEN") final @NonNull String status) {
+      @RequestParam(defaultValue = "OPEN") final @NonNull String status,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var prs = this.prService.getAll(owner, repo, status);
-
     return ResponseEntity.ok(prs);
   }
 
@@ -120,10 +126,12 @@ public class PullRequestController {
   public @NonNull ResponseEntity<PrDetail> get(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number) {
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var pr = this.prService.get(owner, repo, number);
-
     return ResponseEntity.ok(pr);
   }
 
@@ -131,11 +139,13 @@ public class PullRequestController {
   public @NonNull ResponseEntity<List<CommitInfo>> getPrCommits(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number)
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var prCommits = this.prService.getPrCommits(owner, repo, number);
-
     return ResponseEntity.ok(prCommits);
   }
 
@@ -143,11 +153,13 @@ public class PullRequestController {
   public @NonNull ResponseEntity<List<FileDiff>> getPrDiff(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number)
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var diffs = this.prService.getPrDiff(owner, repo, number);
-
     return ResponseEntity.ok(diffs);
   }
 }

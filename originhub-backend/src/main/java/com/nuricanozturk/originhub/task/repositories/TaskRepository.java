@@ -41,12 +41,37 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
       """)
   List<Task> findAllByProjectIdOrderByPositionAsc(@NonNull UUID projectId);
 
-  @NonNull Optional<Task> findByProjectIdAndCode(@NonNull UUID projectId, @NonNull String code);
+  @NonNull
+  @Query(
+"""
+      SELECT t FROM Task t
+      JOIN FETCH t.boardColumn
+      LEFT JOIN FETCH t.assignee
+      LEFT JOIN FETCH t.branchRepo
+      LEFT JOIN FETCH t.linkedPr
+      WHERE t.project.id = :projectId AND t.code = :code
+""")
+  Optional<Task> findByProjectIdAndCode(@NonNull UUID projectId, @NonNull String code);
 
   @NonNull Optional<Task> findByBranchRepoIdAndBranchName(
       @NonNull UUID branchRepoId, @NonNull String branchName);
 
+  @NonNull
+  @Query(
+"""
+      SELECT t FROM Task t
+      JOIN FETCH t.project
+      WHERE t.linkedIssueId = :issueId
+""")
+  List<Task> findByLinkedIssueId(@NonNull UUID issueId);
+
+  long countByProjectId(@NonNull UUID projectId);
+
   @Modifying
   @Query("UPDATE Task t SET t.subtaskSeq = t.subtaskSeq + 1 WHERE t.id = :taskId")
   void incrementSubtaskSeq(@NonNull UUID taskId);
+
+  @Modifying
+  @Query("UPDATE Task t SET t.linkedIssueId = null WHERE t.linkedIssueId = :issueId")
+  void clearLinkedIssueId(@NonNull UUID issueId);
 }

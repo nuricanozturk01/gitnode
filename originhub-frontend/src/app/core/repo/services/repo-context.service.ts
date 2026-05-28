@@ -25,6 +25,8 @@ export class RepoContextService {
   readonly repo = signal<RepoInfo | null>(null);
   readonly defaultBranch = computed(() => this.repo()?.defaultBranch ?? 'main');
 
+  readonly isLoggedIn = computed(() => this.tokenService.isLoggedIn());
+
   readonly canEdit = computed(() => {
     const r = this.repo();
     const u = this.tokenService.getUsername();

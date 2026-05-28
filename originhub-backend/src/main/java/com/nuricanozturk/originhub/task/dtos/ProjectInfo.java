@@ -27,7 +27,7 @@ public record ProjectInfo(
     @NonNull String name,
     @Nullable String description,
     @NonNull String codePrefix,
-    long taskSeq,
+    long taskCount,
     boolean syncTaskStatusOnPrMerge,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

@@ -101,6 +101,9 @@ public class Task {
   @JoinColumn(name = "linked_pr_id")
   private PullRequest linkedPr;
 
+  @Column(name = "linked_issue_id")
+  private UUID linkedIssueId;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;

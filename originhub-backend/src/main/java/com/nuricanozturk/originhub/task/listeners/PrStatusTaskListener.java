@@ -41,6 +41,7 @@ public class PrStatusTaskListener {
         event.prId(),
         event.repoId(),
         event.sourceBranch());
+
     this.taskService.linkPullRequest(event.repoId(), event.sourceBranch(), event.prId());
   }
 
@@ -53,6 +54,7 @@ public class PrStatusTaskListener {
         event.repoId(),
         event.sourceBranch(),
         event.newStatus());
+
     this.taskService.updateTaskStatusForPr(event.repoId(), event.sourceBranch(), event.newStatus());
   }
 }

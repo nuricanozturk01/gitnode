@@ -76,7 +76,7 @@
           <div class="text-base-content/40 border-base-200 mt-auto flex items-center gap-3 border-t pt-1 text-xs">
             <span class="inline-flex items-center gap-1">
               <lucide-icon name="layers" class="size-3.5"></lucide-icon>
-              {{ project.taskSeq }} task{{ project.taskSeq !== 1 ? 's' : '' }}
+              {{ project.taskCount }} task{{ project.taskCount !== 1 ? 's' : '' }}
             </span>
             @if (project.updatedAt) {
             <span class="ml-auto">{{ project.updatedAt | relativeTime }}</span>
@@ -131,9 +131,11 @@
           maxlength="10"
         />
         <div class="label pt-1">
-          <span class="label-text-alt text-base-content/40"
-            >Uppercase letters and digits, starting with a letter. Used as task code prefix (e.g. PROJ-1).</span
+          <span
+            class="label-text-alt text-base-content/40 block overflow-hidden wrap-break-word text-ellipsis whitespace-normal"
           >
+            Uppercase letters and digits, starting with a letter. Used as task code prefix (e.g. PROJ-1).
+          </span>
         </div>
       </label>
 

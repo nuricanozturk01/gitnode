@@ -325,6 +325,155 @@
           }
         </div>
 
+        <!-- Linked Issue card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-base-content text-sm font-semibold">Linked Issue</h3>
+            @if (t.linkedIssue) {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-error opacity-60 hover:opacity-100"
+              (click)="unlinkIssue()"
+            >
+              <lucide-icon name="x" class="size-3.5"></lucide-icon>
+              Unlink
+            </button>
+            }
+          </div>
+          @if (t.linkedIssue) { @let issueRoute = linkedIssueRoute(t);
+          <div class="bg-base-200/50 flex items-center gap-3 rounded-xl p-3 text-sm">
+            <lucide-icon
+              name="circleDot"
+              class="size-4 shrink-0"
+              [class.text-success]="t.linkedIssue.status === 'OPEN'"
+              [class.text-base-content/40]="t.linkedIssue.status === 'CLOSED'"
+            ></lucide-icon>
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span class="text-base-content/40 text-xs font-medium">Issue</span>
+              @if (issueRoute) {
+              <a
+                [routerLink]="issueRoute"
+                class="text-base-content hover:text-primary truncate text-sm font-medium transition-colors"
+                >#{{ t.linkedIssue.number }} {{ t.linkedIssue.title }}</a
+              >
+              } @else {
+              <span class="text-base-content truncate text-sm font-medium"
+                >#{{ t.linkedIssue.number }} {{ t.linkedIssue.title }}</span
+              >
+              }
+            </div>
+            <span
+              class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
+              [class.bg-success/10]="t.linkedIssue.status === 'OPEN'"
+              [class.text-success]="t.linkedIssue.status === 'OPEN'"
+              [class.bg-base-200]="t.linkedIssue.status === 'CLOSED'"
+              [class.text-base-content/60]="t.linkedIssue.status === 'CLOSED'"
+            >
+              <span
+                class="size-1.5 shrink-0 rounded-full"
+                [class.bg-success]="t.linkedIssue.status === 'OPEN'"
+                [class.bg-base-content/40]="t.linkedIssue.status === 'CLOSED'"
+              ></span>
+              {{ t.linkedIssue.status }}
+            </span>
+          </div>
+          } @else {
+          <div class="text-base-content/50 flex flex-col gap-2 text-sm">
+            <p class="text-xs leading-relaxed">Link this task to a repository issue to track the problem it solves.</p>
+            <button type="button" class="btn btn-outline btn-sm w-fit gap-2" (click)="openLinkIssueModal()">
+              <lucide-icon name="link" class="size-3.5"></lucide-icon>
+              Link an issue
+            </button>
+          </div>
+          }
+        </div>
+
+        <!-- Link Issue Modal -->
+        @if (showLinkIssueModal()) {
+        <div
+          class="bg-base-300/60 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="link-issue-modal-title"
+          tabindex="-1"
+          (click)="onLinkIssueBackdropClick($event)"
+          (keydown.escape)="closeLinkIssueModal()"
+        >
+          <div class="bg-base-100 border-base-300 w-full max-w-sm rounded-2xl border p-6 shadow-2xl">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 id="link-issue-modal-title" class="text-base-content text-base font-semibold">Link an issue</h3>
+              <button type="button" class="btn btn-ghost btn-sm btn-square" (click)="closeLinkIssueModal()">
+                <lucide-icon name="x" class="size-4"></lucide-icon>
+              </button>
+            </div>
+            <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-1">
+                <label for="link-issue-owner" class="text-base-content/70 text-xs font-medium">Repository owner</label>
+                <input
+                  id="link-issue-owner"
+                  type="text"
+                  class="input input-bordered input-sm bg-base-200 w-full cursor-not-allowed font-mono"
+                  [value]="linkIssueOwner()"
+                  readonly
+                />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="link-issue-repo" class="text-base-content/70 text-xs font-medium">Repository</label>
+                <select
+                  id="link-issue-repo"
+                  class="select select-bordered select-sm w-full font-mono"
+                  [ngModel]="linkIssueRepo()"
+                  (ngModelChange)="onLinkIssueRepoChange($event)"
+                >
+                  <option value="" disabled>Select repository</option>
+                  @for (repo of linkIssueRepos(); track repo.name) {
+                  <option [value]="repo.name">{{ repo.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="link-issue-number" class="text-base-content/70 text-xs font-medium">Issue</label>
+                @if (linkIssueLoadingIssues()) {
+                <div class="flex items-center gap-2 py-1">
+                  <span class="loading loading-spinner loading-xs"></span>
+                  <span class="text-base-content/50 text-xs">Loading issues…</span>
+                </div>
+                } @else {
+                <select
+                  id="link-issue-number"
+                  class="select select-bordered select-sm w-full"
+                  [ngModel]="linkIssueNumber()"
+                  (ngModelChange)="linkIssueNumber.set($event ? +$event : null)"
+                  [disabled]="!linkIssueRepo() || linkIssueIssues().length === 0"
+                >
+                  <option [value]="null">
+                    @if (!linkIssueRepo()) { Select a repository first } @else if (linkIssueIssues().length === 0) { No
+                    open issues } @else { Select issue }
+                  </option>
+                  @for (issue of linkIssueIssues(); track issue.id) {
+                  <option [value]="issue.number">#{{ issue.number }} — {{ issue.title }}</option>
+                  }
+                </select>
+                }
+              </div>
+              <div class="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm flex-1 gap-2"
+                  [disabled]="linkingIssue() || linkIssueNumber() === null"
+                  (click)="submitLinkIssue()"
+                >
+                  @if (linkingIssue()) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                  } Link issue
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="closeLinkIssueModal()">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+
         <!-- Subtasks card -->
         <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
           <div class="mb-4 flex items-center justify-between">

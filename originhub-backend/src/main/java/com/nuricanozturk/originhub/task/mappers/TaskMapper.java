@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.task.mappers;
 
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
+import com.nuricanozturk.originhub.task.dtos.LinkedIssueInfo;
 import com.nuricanozturk.originhub.task.dtos.LinkedPrInfo;
 import com.nuricanozturk.originhub.task.dtos.SubtaskInfo;
 import com.nuricanozturk.originhub.task.dtos.TaskDetail;
@@ -44,6 +45,7 @@ public interface TaskMapper {
         .assignee(this.toAuthorInfo(task.getAssignee()))
         .branchName(task.getBranchName())
         .hasLinkedPr(task.getLinkedPr() != null)
+        .hasLinkedIssue(task.getLinkedIssueId() != null)
         .subtaskCount(subtaskCount)
         .completedSubtaskCount(completedSubtaskCount)
         .createdAt(task.getCreatedAt())
@@ -54,6 +56,7 @@ public interface TaskMapper {
   default @NonNull TaskDetail toDetail(
       final @NonNull Task task,
       final @Nullable LinkedPrInfo linkedPr,
+      final @Nullable LinkedIssueInfo linkedIssue,
       final @NonNull List<SubtaskInfo> subtasks) {
     return TaskDetail.builder()
         .id(task.getId())
@@ -68,6 +71,7 @@ public interface TaskMapper {
         .branchName(task.getBranchName())
         .branchRepoId(task.getBranchRepo() != null ? task.getBranchRepo().getId() : null)
         .linkedPr(linkedPr)
+        .linkedIssue(linkedIssue)
         .subtasks(subtasks)
         .createdAt(task.getCreatedAt())
         .updatedAt(task.getUpdatedAt())

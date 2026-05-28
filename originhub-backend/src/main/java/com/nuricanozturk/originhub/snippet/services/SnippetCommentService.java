@@ -28,7 +28,7 @@ import com.nuricanozturk.originhub.snippet.repositories.SnippetCommentRepository
 import com.nuricanozturk.originhub.snippet.repositories.SnippetRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -38,27 +38,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class SnippetCommentService {
 
-  private final @NonNull SnippetCommentRepository commentRepository;
-  private final @NonNull SnippetRepository snippetRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull SnippetMapper snippetMapper;
+  private static final String ERR_SNIPPET_NOT_FOUND = "snippetNotFound";
 
-  public @NonNull PageResponse<SnippetCommentInfo> listComments(
-      final @NonNull UUID snippetId,
-      final @Nullable UUID callerId,
-      final int page,
-      final int size) {
+  private final SnippetCommentRepository commentRepository;
+  private final SnippetRepository snippetRepository;
+  private final TenantRepository tenantRepository;
+  private final SnippetMapper snippetMapper;
+
+  public PageResponse<SnippetCommentInfo> listComments(
+      final UUID snippetId, final @Nullable UUID callerId, final int page, final int size) {
 
     final var snippet =
         this.snippetRepository
             .findByIdWithOwner(snippetId)
-            .orElseThrow(() -> new ItemNotFoundException("snippetNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
     if (snippet.getVisibility() == Visibility.PRIVATE
         && (callerId == null || !callerId.equals(snippet.getOwner().getId()))) {
-      throw new ItemNotFoundException("snippetNotFound");
+      throw new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND);
     }
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
@@ -69,19 +69,17 @@ public class SnippetCommentService {
   }
 
   @Transactional
-  public @NonNull SnippetCommentInfo addComment(
-      final @NonNull UUID tenantId,
-      final @NonNull UUID snippetId,
-      final @NonNull SnippetCommentForm form) {
+  public SnippetCommentInfo addComment(
+      final UUID tenantId, final UUID snippetId, final SnippetCommentForm form) {
 
     final var snippet =
         this.snippetRepository
             .findByIdWithOwner(snippetId)
-            .orElseThrow(() -> new ItemNotFoundException("snippetNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
     if (snippet.getVisibility() == Visibility.PRIVATE
         && !tenantId.equals(snippet.getOwner().getId())) {
-      throw new ItemNotFoundException("snippetNotFound");
+      throw new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND);
     }
 
     final var author =
@@ -101,13 +99,12 @@ public class SnippetCommentService {
   }
 
   @Transactional
-  public void deleteComment(
-      final @NonNull UUID tenantId, final @NonNull UUID snippetId, final @NonNull UUID commentId) {
+  public void deleteComment(final UUID tenantId, final UUID snippetId, final UUID commentId) {
 
     final var snippet =
         this.snippetRepository
             .findByIdWithOwner(snippetId)
-            .orElseThrow(() -> new ItemNotFoundException("snippetNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
     final var comment =
         this.commentRepository

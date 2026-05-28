@@ -43,6 +43,8 @@ public class RepoService {
   /** Initial branch name for new repositories; not client-configurable. */
   public static final @NonNull String NEW_REPO_DEFAULT_BRANCH = "main";
 
+  public static final @NonNull String ERR_REPO_NOT_FOUND = "repoNotFound";
+
   private final @NonNull RepoRepository repoRepository;
   private final @NonNull TenantRepository tenantRepository;
   private final @NonNull RepoMapper repoMapper;
@@ -65,6 +67,7 @@ public class RepoService {
     repoObj.setDescription(form.getDescription());
     repoObj.setDefaultBranch(NEW_REPO_DEFAULT_BRANCH);
     repoObj.setTopics(form.getTopics());
+    repoObj.setPrivate(form.getIsPrivate() == null || form.getIsPrivate());
 
     final var repo = this.repoRepository.save(repoObj);
 
@@ -88,7 +91,7 @@ public class RepoService {
     final var repo =
         this.repoRepository
             .findByOwnerIdAndName(repoOwner.getId(), repoName)
-            .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     if (!form.getName().equals(repo.getName())) {
       repo.setName(form.getName());
@@ -97,6 +100,9 @@ public class RepoService {
     repo.setDescription(form.getDescription());
     if (form.getTopics() != null) {
       repo.setTopics(form.getTopics());
+    }
+    if (form.getIsPrivate() != null) {
+      repo.setPrivate(form.getIsPrivate());
     }
     if (form.getDeleteHeadBranchOnPrMerge() != null) {
       repo.setDeleteHeadBranchOnPrMerge(form.getDeleteHeadBranchOnPrMerge());
@@ -142,7 +148,7 @@ public class RepoService {
     final var repo =
         this.repoRepository
             .findByOwnerIdAndName(tenantId, repoName)
-            .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     this.repoRepository.deleteById(repo.getId());
 
@@ -150,26 +156,68 @@ public class RepoService {
   }
 
   public @NonNull Page<RepoInfo> findAllByOwner(
-      final @NonNull String owner, final @NonNull Pageable pageable) {
+      final @NonNull String owner,
+      final @NonNull Pageable pageable,
+      final @org.jspecify.annotations.Nullable UUID requesterId) {
 
-    return this.repoRepository.findAllByOwnerUsername(owner, pageable).map(this.repoMapper::toDto);
+    final var ownerTenant = this.tenantRepository.findByUsername(owner);
+    final boolean isOwner =
+        requesterId != null
+            && ownerTenant.isPresent()
+            && ownerTenant.get().getId().equals(requesterId);
+
+    if (isOwner || (requesterId != null && this.isAdmin(requesterId))) {
+      return this.repoRepository
+          .findAllByOwnerUsername(owner, pageable)
+          .map(this.repoMapper::toDto);
+    }
+
+    return this.repoRepository
+        .findAllByOwnerUsernameAndIsPrivateFalse(owner, pageable)
+        .map(this.repoMapper::toDto);
   }
 
   public @NonNull RepoInfo findByOwnerAndName(
-      final @NonNull String owner, final @NonNull String repoName) {
+      final @NonNull String owner,
+      final @NonNull String repoName,
+      final @org.jspecify.annotations.Nullable UUID requesterId) {
 
     final var repo = this.findByOwnerUsernameAndName(owner, repoName);
+
+    if (repo.isPrivate()) {
+      final var ownerTenant = this.tenantRepository.findByUsername(owner);
+      final boolean isOwner =
+          requesterId != null
+              && ownerTenant.isPresent()
+              && ownerTenant.get().getId().equals(requesterId);
+      final boolean isAdmin = requesterId != null && this.isAdmin(requesterId);
+      if (!isOwner && !isAdmin) {
+        throw new AccessNotAllowedException("repoAccessDenied");
+      }
+    }
 
     return this.repoMapper.toDto(repo);
   }
 
   public void assertUserCanAccessRepo(
-      final @NonNull UUID tenantId, final @NonNull String owner, final @NonNull String repoName) {
+      final @org.jspecify.annotations.Nullable UUID tenantId,
+      final @NonNull String owner,
+      final @NonNull String repoName) {
 
-    final var tenant = this.getTenantById(tenantId);
-    final var repoOwner = this.getTenantByUsername(owner);
+    final var repo = this.findByOwnerUsernameAndName(owner, repoName);
 
-    this.checkIsRepoOwnerOrAdmin(tenant, repoOwner);
+    if (repo.isPrivate()) {
+      if (tenantId == null) {
+        throw new AccessNotAllowedException("repoAccessDenied");
+      }
+      final var tenant = this.getTenantById(tenantId);
+      final var repoOwner = this.getTenantByUsername(owner);
+      this.checkIsRepoOwnerOrAdmin(tenant, repoOwner);
+    }
+  }
+
+  private boolean isAdmin(final @NonNull UUID tenantId) {
+    return this.tenantRepository.findById(tenantId).map(Tenant::isAdmin).orElse(false);
   }
 
   private void checkIsRepoOwnerOrAdmin(
@@ -201,6 +249,6 @@ public class RepoService {
 
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)
-        .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+        .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
   }
 }

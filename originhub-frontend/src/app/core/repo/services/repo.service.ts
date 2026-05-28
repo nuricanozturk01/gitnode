@@ -30,11 +30,11 @@ export class RepoService {
 
   create(form: RepoForm): Promise<RepoInfo> {
     const body = this.toCreateBody(form);
-    return firstValueFrom(this.http.post<RepoInfo>(this.api, body));
+    return firstValueFrom(this.http.post<RepoInfo>(this.api, body)).then((r) => this.normalizeRepo(r));
   }
 
   getRepo(owner: string, repo: string): Promise<RepoInfo> {
-    return firstValueFrom(this.http.get<RepoInfo>(`${this.api}/${owner}/${repo}`));
+    return firstValueFrom(this.http.get<RepoInfo>(`${this.api}/${owner}/${repo}`)).then((r) => this.normalizeRepo(r));
   }
 
   listUserRepos(owner: string, page = 0, size?: number): Promise<RepoPage> {
@@ -42,7 +42,10 @@ export class RepoService {
     if (size != null) {
       params['size'] = String(size);
     }
-    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/${owner}`, { params }));
+    return firstValueFrom(this.http.get<RepoPage>(`${this.api}/${owner}`, { params })).then((page) => ({
+      ...page,
+      content: page.content.map((r) => this.normalizeRepo(r as RepoInfo & { private?: boolean })),
+    }));
   }
 
   /**
@@ -59,23 +62,40 @@ export class RepoService {
       description: form.description ?? null,
       topics: form.topics ?? [],
     };
+    if (form.isPrivate !== undefined) {
+      body['isPrivate'] = form.isPrivate;
+    }
     if (form.deleteHeadBranchOnPrMerge !== undefined) {
       body['deleteHeadBranchOnPrMerge'] = form.deleteHeadBranchOnPrMerge;
     }
     if (form.deleteHeadBranchOnPrClose !== undefined) {
       body['deleteHeadBranchOnPrClose'] = form.deleteHeadBranchOnPrClose;
     }
-    return firstValueFrom(this.http.patch<RepoInfo>(`${this.api}/${owner}/${repo}`, body));
+    return firstValueFrom(this.http.patch<RepoInfo>(`${this.api}/${owner}/${repo}`, body)).then((r) =>
+      this.normalizeRepo(r),
+    );
   }
 
   delete(owner: string, repo: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.api}/${owner}/${repo}`));
   }
 
+  /** Normalize visibility; prefer explicit `isPrivate`, then Jackson's `private` bean name. */
+  private normalizeRepo(raw: RepoInfo & { private?: boolean }): RepoInfo {
+    let isPrivate: boolean | undefined;
+    if (typeof raw.isPrivate === 'boolean') {
+      isPrivate = raw.isPrivate;
+    } else if (typeof raw.private === 'boolean') {
+      isPrivate = raw.private;
+    }
+    return isPrivate === undefined ? raw : { ...raw, isPrivate };
+  }
+
   private toCreateBody(form: RepoForm): Record<string, unknown> {
     const body: Record<string, unknown> = {
       name: form.name,
       description: form.description ?? null,
+      isPrivate: form.isPrivate ?? true,
     };
     if (form.topics && form.topics.length > 0) {
       body['topics'] = Array.isArray(form.topics) ? form.topics : [...form.topics];

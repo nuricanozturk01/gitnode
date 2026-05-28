@@ -44,6 +44,7 @@ export class RepoSettingsPage {
   readonly generalName = signal('');
   readonly generalDescription = signal('');
   readonly generalTopics = signal<string[]>([]);
+  readonly generalIsPrivate = signal(true);
   readonly topicInput = signal('');
   readonly savingGeneral = signal(false);
   readonly generalError = signal<string | null>(null);
@@ -68,6 +69,7 @@ export class RepoSettingsPage {
       if (!r) return;
       if (tab === 'general') this.syncGeneralFromRepo();
       if (tab === 'pullRequests') this.syncPullSettingsFromRepo();
+      if (tab === 'danger') this.syncVisibilityFromRepo();
     });
   }
 
@@ -78,6 +80,13 @@ export class RepoSettingsPage {
       this.generalDescription.set(r.description ?? '');
       const topics = r.topics;
       this.generalTopics.set(topics?.length ? [...topics] : []);
+    }
+  }
+
+  private syncVisibilityFromRepo(): void {
+    const r = this.repo();
+    if (r) {
+      this.generalIsPrivate.set(r.isPrivate);
     }
   }
 
@@ -117,6 +126,7 @@ export class RepoSettingsPage {
     if (!r) return;
     if (t === 'general') this.syncGeneralFromRepo();
     if (t === 'pullRequests') this.syncPullSettingsFromRepo();
+    if (t === 'danger') this.syncVisibilityFromRepo();
   }
 
   onPullMergeToggle(checked: boolean): void {
@@ -183,12 +193,47 @@ export class RepoSettingsPage {
       this.generalDescription.set(updated.description ?? '');
       const ut = updated.topics;
       this.generalTopics.set(ut?.length ? [...ut] : []);
+      this.generalIsPrivate.set(updated.isPrivate);
       if (updated.name !== repo) {
         await this.router.navigate(['/', owner, updated.name, 'settings']);
       }
       this.toast.success('Repository settings updated');
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to update repository';
+      this.generalError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.savingGeneral.set(false);
+    }
+  }
+
+  async saveVisibility(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const r = this.repo();
+    if (!owner || !repo || !r) return;
+    const ok = await this.confirmModal.confirm(
+      `Change visibility to ${this.generalIsPrivate() ? 'Private' : 'Public'}?`,
+      this.generalIsPrivate()
+        ? 'Only you will be able to view and clone this repository.'
+        : 'Anyone will be able to view and clone this repository.',
+      { confirmLabel: 'Save', variant: 'primary' },
+    );
+    if (!ok) return;
+    this.savingGeneral.set(true);
+    this.generalError.set(null);
+    try {
+      const updated = await this.repoService.update(owner, repo, {
+        name: r.name,
+        description: r.description ?? undefined,
+        topics: r.topics?.length ? [...r.topics] : [],
+        isPrivate: this.generalIsPrivate(),
+      });
+      this.repoContext.repo.set(updated);
+      this.generalIsPrivate.set(updated.isPrivate);
+      this.toast.success('Visibility updated');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update visibility';
       this.generalError.set(msg);
       this.toast.error(msg);
     } finally {

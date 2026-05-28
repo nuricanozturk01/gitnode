@@ -75,6 +75,18 @@
               Commits
             </a>
             <a
+              [routerLink]="['/', owner(), repoName(), 'issues']"
+              routerLinkActive="tab-active"
+              ariaCurrentWhenActive="page"
+              class="tab gap-1.5 rounded-md"
+            >
+              <lucide-icon name="circleDot" class="size-3.5 shrink-0"></lucide-icon>
+              Issues
+              @if (issueCount() > 0) {
+                <span class="badge-pill badge-pill--primary">{{ issueCount() }}</span>
+              }
+            </a>
+            <a
               [routerLink]="['/', owner(), repoName(), 'pulls']"
               routerLinkActive="tab-active"
               ariaCurrentWhenActive="page"

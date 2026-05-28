@@ -5,7 +5,7 @@
 
   <groupId>com.nuricanozturk</groupId>
   <artifactId>originhub-parent</artifactId>
-  <version>1.0.6-SNAPSHOT</version>
+  <version>1.0.7-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <properties>
@@ -92,6 +92,7 @@
 
   <modules>
     <module>originhub-backend</module>
+    <module>originhub-actions</module>
   </modules>
 
   <build>

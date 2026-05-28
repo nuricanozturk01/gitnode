@@ -36,9 +36,12 @@ export const refreshInterceptor: HttpInterceptorFn = (req, next) => {
         req.url.includes('/auth/refresh-token');
 
       if (error.status === HttpStatusCode.Unauthorized && !isAuthUrl) {
+        const hadSession = !!tokenService.getAccessToken() || !!tokenService.getRefreshToken();
         if (tokenService.isRefreshExpired()) {
-          tokenService.clearTokens();
-          router.navigate(['/login']);
+          if (hadSession) {
+            tokenService.clearTokens();
+            router.navigate(['/login']);
+          }
           return throwError(() => error);
         }
 

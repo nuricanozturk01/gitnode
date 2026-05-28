@@ -1,19 +1,30 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { TaskService } from '../../../core/project/services/task.service';
 import { BoardService } from '../../../core/project/services/board.service';
 import { ProjectService } from '../../../core/project/services/project.service';
 import { BranchService } from '../../../core/branch/services/branch.service';
 import { RepoService } from '../../../core/repo/services/repo.service';
+import { IssueService } from '../../../core/issue/services/issue.service';
 import { TokenService } from '../../../core/auth/services/token.service';
+import { UserService } from '../../../core/user/services/user.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
-import type { TaskDetail, SubtaskInfo, TaskStatus, TaskType } from '../../../domain/project/models/task.model';
+import type {
+  TaskDetail,
+  SubtaskInfo,
+  TaskStatus,
+  TaskType,
+  TaskUpdateForm,
+} from '../../../domain/project/models/task.model';
 import type { BoardColumnInfo } from '../../../domain/project/models/board-info.model';
 import type { ProjectRepoInfo } from '../../../domain/project/models/project-repo-info.model';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
+import type { IssueInfo } from '../../../domain/repository/models/issue.model';
 
 /** Repo row for the create-branch modal (linked project repos or collaborator list). */
 interface BranchModalRepo {
@@ -26,7 +37,7 @@ interface BranchModalRepo {
 @Component({
   selector: 'app-task-detail',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
+  imports: [RouterLink, FormsModule, LucideAngularModule, RelativeTimePipe],
   templateUrl: './task-detail.page.html',
 })
 export class TaskDetailPage implements OnInit {
@@ -37,7 +48,9 @@ export class TaskDetailPage implements OnInit {
   private readonly projectService = inject(ProjectService);
   private readonly branchService = inject(BranchService);
   private readonly repoService = inject(RepoService);
+  private readonly issueService = inject(IssueService);
   private readonly tokenService = inject(TokenService);
+  private readonly userService = inject(UserService);
   private readonly toastService = inject(ToastService);
   private readonly confirmModal = inject(ConfirmModalService);
 
@@ -67,8 +80,20 @@ export class TaskDetailPage implements OnInit {
   readonly branchModalTarget = signal<'task' | 'subtask'>('task');
   readonly branchModalSubtaskId = signal<string | null>(null);
 
+  // link issue modal
+  readonly showLinkIssueModal = signal(false);
+  readonly linkIssueOwner = signal('');
+  readonly linkIssueRepo = signal('');
+  readonly linkIssueNumber = signal<number | null>(null);
+  readonly linkIssueRepos = signal<{ name: string; ownerUsername: string }[]>([]);
+  readonly linkIssueIssues = signal<IssueInfo[]>([]);
+  readonly linkIssueLoadingIssues = signal(false);
+  readonly linkingIssue = signal(false);
+
+  private readonly ownerUsername = signal('');
+
   get owner(): string {
-    return this.tokenService.getUsername() ?? '';
+    return this.ownerUsername();
   }
 
   get projectCode(): string {
@@ -354,10 +379,47 @@ export class TaskDetailPage implements OnInit {
   readonly types: TaskType[] = ['TASK', 'BUG'];
 
   async ngOnInit(): Promise<void> {
+    await this.resolveOwner();
     await this.loadTask();
   }
 
+  private async resolveOwner(): Promise<void> {
+    let username = this.tokenService.getUsername();
+    if (!username) {
+      try {
+        const me = await this.userService.getMe();
+        username = me.username;
+        this.tokenService.persistUsernameIfMissing(username);
+      } catch {
+        username = null;
+      }
+    }
+    this.ownerUsername.set(username ?? '');
+  }
+
+  private apiErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof HttpErrorResponse) {
+      const body = err.error;
+      if (typeof body === 'string' && body.length > 0) {
+        return body;
+      }
+      if (body && typeof body === 'object' && 'message' in body && typeof body.message === 'string') {
+        return body.message;
+      }
+      return err.message || fallback;
+    }
+    if (err instanceof Error && err.message) {
+      return err.message;
+    }
+    return fallback;
+  }
+
   private async loadTask(): Promise<void> {
+    if (!this.owner) {
+      this.toastService.error('Could not resolve your account. Sign in again.');
+      this.loading.set(false);
+      return;
+    }
     this.loading.set(true);
     try {
       const [task, boards, linkedRepos] = await Promise.all([
@@ -388,7 +450,11 @@ export class TaskDetailPage implements OnInit {
     }
     this.saving.set(true);
     try {
-      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, { title });
+      const taskUpdateForm: TaskUpdateForm = {
+        title: title,
+      };
+
+      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, taskUpdateForm);
       this.task.set(updated);
       this.editingTitle.set(false);
     } catch {
@@ -404,16 +470,25 @@ export class TaskDetailPage implements OnInit {
   }
 
   async saveDesc(): Promise<void> {
-    const description = this.editDesc().trim() || undefined;
+    const description = this.editDesc().trim();
+    const current = (this.task()?.description ?? '').trim();
+    if (description === current) {
+      this.editingDesc.set(false);
+      return;
+    }
+    if (!this.owner) {
+      this.toastService.error('Could not resolve your account. Sign in again.');
+      return;
+    }
     this.saving.set(true);
     try {
       const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
-        description: description ?? '',
+        description,
       });
       this.task.set(updated);
       this.editingDesc.set(false);
-    } catch {
-      this.toastService.error('Failed to update description');
+    } catch (err) {
+      this.toastService.error(this.apiErrorMessage(err, 'Failed to update description'));
     } finally {
       this.saving.set(false);
     }
@@ -484,6 +559,110 @@ export class TaskDetailPage implements OnInit {
       this.task.update((t) => (t ? { ...t, subtasks: t.subtasks.filter((s) => s.id !== subtask.id) } : t));
     } catch {
       this.toastService.error('Failed to delete subtask');
+    }
+  }
+
+  linkedIssueRoute(task: TaskDetail): string[] | null {
+    if (!task.linkedIssue) return null;
+    const repo = this.repoForTask(task);
+    if (repo) {
+      return ['/', repo.ownerUsername, repo.name, 'issues', String(task.linkedIssue.number)];
+    }
+    return null;
+  }
+
+  async unlinkIssue(): Promise<void> {
+    try {
+      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
+        unlinkIssue: true,
+      });
+      this.task.set(updated);
+    } catch {
+      this.toastService.error('Failed to unlink issue');
+    }
+  }
+
+  async openLinkIssueModal(): Promise<void> {
+    this.linkIssueNumber.set(null);
+    this.linkIssueIssues.set([]);
+    this.linkIssueRepos.set([]);
+    this.showLinkIssueModal.set(true);
+
+    let repos = this.linkedRepos().map((r) => ({ name: r.name, ownerUsername: r.ownerUsername }));
+    if (repos.length === 0 && this.owner) {
+      try {
+        const page = await this.repoService.listUserRepos(this.owner, 0, 200);
+        repos = page.content.map((r) => ({ name: r.name, ownerUsername: r.owner?.username ?? this.owner }));
+      } catch {
+        repos = [];
+      }
+    }
+    this.linkIssueRepos.set(repos);
+
+    const first = repos[0];
+    if (first) {
+      this.linkIssueOwner.set(first.ownerUsername);
+      this.linkIssueRepo.set(first.name);
+      void this.loadIssuesForRepo(first.ownerUsername, first.name);
+    } else {
+      this.linkIssueOwner.set(this.owner);
+      this.linkIssueRepo.set('');
+    }
+  }
+
+  async onLinkIssueRepoChange(repoName: string): Promise<void> {
+    const repo = this.linkIssueRepos().find((r) => r.name === repoName);
+    this.linkIssueOwner.set(repo?.ownerUsername ?? this.owner);
+    this.linkIssueRepo.set(repoName);
+    this.linkIssueNumber.set(null);
+    this.linkIssueIssues.set([]);
+    if (repoName) {
+      await this.loadIssuesForRepo(this.linkIssueOwner(), repoName);
+    }
+  }
+
+  private async loadIssuesForRepo(owner: string, repo: string): Promise<void> {
+    this.linkIssueLoadingIssues.set(true);
+    try {
+      const page = await this.issueService.getAll(owner, repo, 'OPEN', 0);
+      this.linkIssueIssues.set(page.content);
+    } catch {
+      this.linkIssueIssues.set([]);
+    } finally {
+      this.linkIssueLoadingIssues.set(false);
+    }
+  }
+
+  closeLinkIssueModal(): void {
+    this.showLinkIssueModal.set(false);
+  }
+
+  onLinkIssueBackdropClick(event: MouseEvent): void {
+    if (event.target === event.currentTarget) {
+      this.closeLinkIssueModal();
+    }
+  }
+
+  async submitLinkIssue(): Promise<void> {
+    const num = this.linkIssueNumber();
+    const issue = this.linkIssueIssues().find((i) => i.number === num);
+    if (!issue) {
+      this.toastService.error('Select a valid issue');
+      return;
+    }
+    this.linkingIssue.set(true);
+    try {
+      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
+        linkedIssueId: issue.id,
+        unlinkIssue: false,
+      });
+      this.task.set(updated);
+      this.showLinkIssueModal.set(false);
+      this.toastService.success(`Linked to issue #${issue.number}`);
+    } catch {
+      this.toastService.error('Could not link issue');
+    } finally {
+      this.linkingIssue.set(false);
     }
   }
 

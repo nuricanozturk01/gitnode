@@ -80,6 +80,13 @@ import {
   ExternalLink,
   Globe,
   Upload,
+  CircleAlert,
+  CircleDot,
+  UserRound,
+  Eye,
+  LayoutDashboard,
+  UserPen,
+  FilePlus,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -148,4 +155,11 @@ export const LUCIDE_ICONS = {
   ExternalLink,
   Globe,
   Upload,
+  CircleAlert,
+  CircleDot,
+  UserRound,
+  Eye,
+  LayoutDashboard,
+  UserPen,
+  FilePlus,
 };

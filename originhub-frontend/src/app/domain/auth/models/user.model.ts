@@ -20,6 +20,10 @@ export interface User {
   email: string;
   displayName: string;
   avatarUrl: string | null;
+  bio: string | null;
+  website: string | null;
+  location: string | null;
+  profileReadme: string | null;
   isAdmin: boolean;
   createdAt: string;
   updatedAt: string;

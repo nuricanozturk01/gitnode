@@ -115,7 +115,7 @@ public class RepoMigrationService {
 
     try {
       Files.move(tmpDir, targetPath);
-    } catch (final Exception e) {
+    } catch (final Exception _) {
       FileSystemUtils.copyRecursively(tmpDir, targetPath);
       FileSystemUtils.deleteRecursively(tmpDir);
     }

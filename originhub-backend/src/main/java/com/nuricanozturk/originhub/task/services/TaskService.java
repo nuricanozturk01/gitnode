@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.task.services;
 
+import com.nuricanozturk.originhub.issue.api.IssueQueryService;
 import com.nuricanozturk.originhub.pr.entities.PullRequest;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
@@ -25,6 +26,7 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundE
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.task.dtos.CreateBranchFromTaskForm;
+import com.nuricanozturk.originhub.task.dtos.LinkedIssueInfo;
 import com.nuricanozturk.originhub.task.dtos.LinkedPrInfo;
 import com.nuricanozturk.originhub.task.dtos.SubtaskForm;
 import com.nuricanozturk.originhub.task.dtos.SubtaskInfo;
@@ -37,7 +39,6 @@ import com.nuricanozturk.originhub.task.entities.Subtask;
 import com.nuricanozturk.originhub.task.entities.Task;
 import com.nuricanozturk.originhub.task.entities.TaskStatus;
 import com.nuricanozturk.originhub.task.entities.TaskType;
-import com.nuricanozturk.originhub.task.mappers.ProjectMapper;
 import com.nuricanozturk.originhub.task.mappers.TaskMapper;
 import com.nuricanozturk.originhub.task.repositories.BoardColumnRepository;
 import com.nuricanozturk.originhub.task.repositories.ProjectRepository;
@@ -65,9 +66,9 @@ public class TaskService {
   private final @NonNull RepoRepository repoRepository;
   private final @NonNull TenantRepository tenantRepository;
   private final @NonNull PrRepository prRepository;
+  private final @NonNull IssueQueryService issueQueryService;
   private final @NonNull ProjectService projectService;
   private final @NonNull TaskMapper taskMapper;
-  private final @NonNull ProjectMapper projectMapper;
   private final @NonNull BranchProtocolService branchProtocolService;
 
   @Transactional
@@ -108,6 +109,15 @@ public class TaskService {
               .findById(form.getAssigneeId())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
       task.setAssignee(assignee);
+    }
+
+    if (form.getLinkedIssueId() != null) {
+      @SuppressWarnings("unused")
+      final var ignored =
+          this.issueQueryService
+              .findById(form.getLinkedIssueId())
+              .orElseThrow(() -> new ItemNotFoundException("Issue not found"));
+      task.setLinkedIssueId(form.getLinkedIssueId());
     }
 
     return this.toDetail(this.taskRepository.save(task));
@@ -162,7 +172,8 @@ public class TaskService {
       task.setTitle(form.getTitle());
     }
     if (form.getDescription() != null) {
-      task.setDescription(form.getDescription());
+      final var desc = form.getDescription();
+      task.setDescription(desc.isBlank() ? null : desc);
     }
     if (form.getStatus() != null) {
       task.setStatus(this.validateStatus(form.getStatus()));
@@ -189,6 +200,16 @@ public class TaskService {
               .findById(form.getAssigneeId())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
       task.setAssignee(assignee);
+    }
+    if (form.isUnlinkIssue()) {
+      task.setLinkedIssueId(null);
+    } else if (form.getLinkedIssueId() != null) {
+      @SuppressWarnings("unused")
+      final var ignored =
+          this.issueQueryService
+              .findById(form.getLinkedIssueId())
+              .orElseThrow(() -> new ItemNotFoundException("Issue not found"));
+      task.setLinkedIssueId(form.getLinkedIssueId());
     }
   }
 
@@ -228,12 +249,7 @@ public class TaskService {
             ? form.getBranchName()
             : this.slugify(task.getCode() + "-" + task.getTitle());
 
-    final var branchForm = new BranchForm();
-    branchForm.setName(branchName);
-    branchForm.setSourceBranch(form.getSourceBranch());
-
-    final var created =
-        this.branchProtocolService.create(form.getRepoOwner(), form.getRepoName(), branchForm);
+    final var created = this.createBranch(branchName, form);
 
     task.setBranchRepo(repo);
     task.setBranchName(branchName);
@@ -329,12 +345,7 @@ public class TaskService {
             ? form.getBranchName().trim()
             : this.slugify(task.getCode() + "." + subtask.getCode() + "-" + subtask.getTitle());
 
-    final var branchForm = new BranchForm();
-    branchForm.setName(branchName);
-    branchForm.setSourceBranch(form.getSourceBranch());
-
-    final var created =
-        this.branchProtocolService.create(form.getRepoOwner(), form.getRepoName(), branchForm);
+    final var created = this.createBranch(branchName, form);
 
     subtask.setBranchRepo(repo);
     subtask.setBranchName(branchName);
@@ -425,7 +436,11 @@ public class TaskService {
         this.subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId()).stream()
             .map(this::toSubtaskInfo)
             .toList();
-    return this.taskMapper.toDetail(task, this.buildLinkedPrInfo(task.getLinkedPr()), subtasks);
+    return this.taskMapper.toDetail(
+        task,
+        this.buildLinkedPrInfo(task.getLinkedPr()),
+        this.buildLinkedIssueInfo(task.getLinkedIssueId()),
+        subtasks);
   }
 
   private @NonNull SubtaskInfo toSubtaskInfo(final @NonNull Subtask subtask) {
@@ -456,6 +471,34 @@ public class TaskService {
         .sourceBranch(pr.getSourceBranch())
         .targetBranch(pr.getTargetBranch())
         .build();
+  }
+
+  private @Nullable LinkedIssueInfo buildLinkedIssueInfo(final @Nullable UUID issueId) {
+    if (issueId == null) {
+      return null;
+    }
+    return this.issueQueryService
+        .findById(issueId)
+        .map(
+            d ->
+                LinkedIssueInfo.builder()
+                    .id(d.id())
+                    .number(d.number())
+                    .title(d.title())
+                    .status(d.status())
+                    .build())
+        .orElse(null);
+  }
+
+  private @NonNull BranchInfo createBranch(
+      final @NonNull String branchName, final @NonNull CreateBranchFromTaskForm form)
+      throws IOException {
+
+    final var branchForm = new BranchForm();
+    branchForm.setName(branchName);
+    branchForm.setSourceBranch(form.getSourceBranch());
+
+    return this.branchProtocolService.create(form.getRepoOwner(), form.getRepoName(), branchForm);
   }
 
   private @NonNull Task findTask(final @NonNull UUID projectId, final @NonNull String taskCode) {

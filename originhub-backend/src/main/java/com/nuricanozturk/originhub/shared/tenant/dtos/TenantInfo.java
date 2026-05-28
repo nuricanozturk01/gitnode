@@ -29,6 +29,10 @@ public class TenantInfo implements Serializable {
   private final String email;
   private final String displayName;
   private final String avatarUrl;
+  private final String bio;
+  private final String website;
+  private final String location;
+  private final String profileReadme;
   private final boolean isAdmin;
   private final Instant createdAt;
   private final Instant updatedAt;

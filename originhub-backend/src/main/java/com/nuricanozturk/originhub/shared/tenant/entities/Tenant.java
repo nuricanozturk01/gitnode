@@ -59,6 +59,18 @@ public class Tenant {
   @Column(name = "password_recovery_code", length = 300)
   private String passwordRecoveryCode;
 
+  @Column(name = "bio", length = 300)
+  private String bio;
+
+  @Column(name = "website", length = 500)
+  private String website;
+
+  @Column(name = "location", length = 100)
+  private String location;
+
+  @Column(name = "profile_readme", columnDefinition = "TEXT")
+  private String profileReadme;
+
   @Column(name = "is_admin")
   private boolean isAdmin;
 

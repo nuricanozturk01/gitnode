@@ -25,4 +25,8 @@ public class TenantPublicProfileDto implements Serializable {
   private final String username;
   private final String displayName;
   private final String avatarUrl;
+  private final String bio;
+  private final String website;
+  private final String location;
+  private final String profileReadme;
 }

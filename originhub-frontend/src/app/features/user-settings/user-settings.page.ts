@@ -14,8 +14,9 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { SshKeyService } from '../../core/ssh/services/ssh-key.service';
@@ -28,7 +29,7 @@ import type { SshKeyInfo } from '../../domain/ssh/models/ssh-key-info.model';
 @Component({
   selector: 'app-user-settings',
   standalone: true,
-  imports: [LucideAngularModule, FormsModule, RouterLink],
+  imports: [LucideAngularModule, FormsModule, RouterLink, MarkdownPipe],
   templateUrl: './user-settings.page.html',
   styleUrl: './user-settings.page.css',
 })
@@ -39,7 +40,7 @@ export class UserSettingsPage {
   private readonly userService = inject(UserService);
   readonly tokenService = inject(TokenService);
 
-  readonly activeTab = signal<'profile' | 'security' | 'ssh'>('profile');
+  readonly activeTab = signal<'profile' | 'security' | 'ssh' | 'danger'>('profile');
 
   readonly username = signal('');
   readonly savingUsername = signal(false);
@@ -48,6 +49,19 @@ export class UserSettingsPage {
   readonly displayName = signal('');
   readonly savingDisplayName = signal(false);
   readonly displayNameError = signal<string | null>(null);
+
+  readonly bio = signal('');
+  readonly website = signal('');
+  readonly location = signal('');
+  readonly profileReadme = signal('');
+  readonly savingProfile = signal(false);
+  readonly profileError = signal<string | null>(null);
+
+  readonly readmeModalOpen = signal(false);
+  readonly readmeModalTab = signal<'edit' | 'preview'>('edit');
+  readonly readmeDraft = signal('');
+
+  readonly readmePreviewEmpty = computed(() => !this.readmeDraft().trim());
 
   readonly currentPassword = signal('');
   readonly newPassword = signal('');
@@ -71,13 +85,17 @@ export class UserSettingsPage {
     try {
       const user = await this.userService.getMe();
       this.username.set(user.username ?? '');
-      this.displayName.set((user as { displayName?: string }).displayName ?? '');
+      this.displayName.set(user.displayName ?? '');
+      this.bio.set(user.bio ?? '');
+      this.website.set(user.website ?? '');
+      this.location.set(user.location ?? '');
+      this.profileReadme.set(user.profileReadme ?? '');
     } catch {
       // ignore
     }
   }
 
-  setTab(t: 'profile' | 'security' | 'ssh'): void {
+  setTab(t: 'profile' | 'security' | 'ssh' | 'danger'): void {
     this.activeTab.set(t);
     if (t === 'ssh') this.loadSshKeys();
     if (t === 'profile') {
@@ -89,6 +107,45 @@ export class UserSettingsPage {
       this.currentPassword.set('');
       this.newPassword.set('');
       this.passwordError.set(null);
+      const u = this.tokenService.getUsername();
+      if (u) this.username.set(u);
+      this.usernameError.set(null);
+    }
+  }
+
+  openReadmeModal(): void {
+    this.readmeDraft.set(this.profileReadme());
+    this.readmeModalTab.set('edit');
+    this.readmeModalOpen.set(true);
+  }
+
+  closeReadmeModal(): void {
+    this.readmeModalOpen.set(false);
+  }
+
+  applyReadme(): void {
+    this.profileReadme.set(this.readmeDraft());
+    this.readmeModalOpen.set(false);
+    void this.saveProfile();
+  }
+
+  async saveProfile(): Promise<void> {
+    this.savingProfile.set(true);
+    this.profileError.set(null);
+    try {
+      await this.userService.updateProfile({
+        bio: this.bio().trim() || null,
+        website: this.website().trim() || null,
+        location: this.location().trim() || null,
+        profileReadme: this.profileReadme().trim() || null,
+      });
+      this.toast.success('Profile updated');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to update profile';
+      this.profileError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.savingProfile.set(false);
     }
   }
 

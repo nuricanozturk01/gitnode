@@ -113,3 +113,30 @@
   color: color-mix(in oklch, var(--color-base-content) 55%, var(--color-base-100));
   border-color: var(--color-base-300);
 }
+
+/* ── README modal tabs ─────────────────────────────────── */
+.readme-modal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+.readme-modal-tab:hover {
+  color: var(--color-base-content);
+}
+.readme-modal-tab--active {
+  color: var(--color-base-content);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}

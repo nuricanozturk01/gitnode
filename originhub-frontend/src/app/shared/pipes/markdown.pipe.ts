@@ -14,17 +14,20 @@
 /// limitations under the License.
 ///
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  displayName: string;
-  avatarUrl: string | null;
-  bio: string | null;
-  website: string | null;
-  location: string | null;
-  profileReadme: string | null;
-  isAdmin: boolean;
-  createdAt: string;
-  updatedAt: string;
+import { Pipe, PipeTransform } from '@angular/core';
+import { marked } from 'marked';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { inject } from '@angular/core';
+
+marked.use({ gfm: true, breaks: false });
+
+@Pipe({ name: 'markdown', standalone: true })
+export class MarkdownPipe implements PipeTransform {
+  private readonly sanitizer = inject(DomSanitizer);
+
+  transform(value: string | null | undefined): SafeHtml {
+    if (!value) return '';
+    const html = marked.parse(value, { async: false }) as string;
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
 }

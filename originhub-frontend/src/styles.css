@@ -312,6 +312,9 @@ a:not(.btn):hover {
   font-size: 16px;
   line-height: 1.5;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .readme-content > :first-child {
@@ -408,7 +411,10 @@ a:not(.btn):hover {
 }
 
 .readme-content table {
-  width: 100%;
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
   border-collapse: collapse;
   margin-bottom: 1em;
 }

@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.profile.services;
 import com.nuricanozturk.originhub.profile.dtos.ChangePasswordForm;
 import com.nuricanozturk.originhub.profile.dtos.TenantPublicProfileDto;
 import com.nuricanozturk.originhub.profile.dtos.UpdateDisplayNameForm;
+import com.nuricanozturk.originhub.profile.dtos.UpdateProfileForm;
 import com.nuricanozturk.originhub.profile.dtos.UpdateUsernameForm;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -142,6 +143,25 @@ public class ProfileService {
     return this.tenantMapper.toTenantInfo(tenant);
   }
 
+  @Transactional
+  public @NonNull TenantInfo updateProfile(
+      final @NonNull UUID tenantId, final @NonNull UpdateProfileForm form) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    tenant.setBio(trimOrNull(form.getBio()));
+    tenant.setWebsite(trimOrNull(form.getWebsite()));
+    tenant.setLocation(trimOrNull(form.getLocation()));
+    tenant.setProfileReadme(blankOrNull(form.getProfileReadme()));
+
+    final var saved = this.tenantRepository.save(tenant);
+
+    return this.tenantMapper.toTenantInfo(saved);
+  }
+
   public @NonNull TenantPublicProfileDto getPublicProfile(final @NonNull String username) {
 
     final var tenant =
@@ -154,7 +174,14 @@ public class ProfileService {
 
     final var avatarUrl = resolveAvatarUrl(tenant.getAvatarUrl(), tenant.getEmail());
 
-    return new TenantPublicProfileDto(tenant.getUsername(), displayName, avatarUrl);
+    return new TenantPublicProfileDto(
+        tenant.getUsername(),
+        displayName,
+        avatarUrl,
+        tenant.getBio(),
+        tenant.getWebsite(),
+        tenant.getLocation(),
+        tenant.getProfileReadme());
   }
 
   private static @NonNull String resolveAvatarUrl(
@@ -167,5 +194,13 @@ public class ProfileService {
     final var hash = DigestUtils.md5Hex(email.trim().toLowerCase(java.util.Locale.getDefault()));
 
     return "https://www.gravatar.com/avatar/" + hash + "?d=identicon";
+  }
+
+  private static String trimOrNull(final String value) {
+    return value != null && !value.isBlank() ? value.trim() : null;
+  }
+
+  private static String blankOrNull(final String value) {
+    return value != null && !value.isBlank() ? value : null;
   }
 }

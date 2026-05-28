@@ -13,27 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.tenant.dtos;
+package com.nuricanozturk.originhub.profile.dtos;
 
-import java.io.Serializable;
-import java.time.Instant;
-import java.util.UUID;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
-@AllArgsConstructor
 @Getter
-public class TenantInfo implements Serializable {
-  private final UUID id;
-  private final String username;
-  private final String email;
-  private final String displayName;
-  private final String avatarUrl;
-  private final String bio;
-  private final String website;
-  private final String location;
-  private final String profileReadme;
-  private final boolean isAdmin;
-  private final Instant createdAt;
-  private final Instant updatedAt;
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class UpdateProfileForm {
+
+  @Size(max = 300)
+  private String bio;
+
+  @Size(max = 500)
+  private String website;
+
+  @Size(max = 100)
+  private String location;
+
+  private String profileReadme;
 }

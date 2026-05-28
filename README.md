@@ -211,12 +211,12 @@ OriginHub is under active development. Here's what's planned:gi
 - [X] Code snippets (Gist-like)
 - [X] Repo Issues
 - [X] Public repositories
-- [X] Public Profile
+- [X] Public Profile and ReadMe
+- [ ] Webhooks
+- [ ] Two-factor authentication (TOTP)
 - [ ] Actions — CI/CD
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Tags and releases
-- [ ] Webhooks
-- [ ] Two-factor authentication (TOTP)
 
 ---
 

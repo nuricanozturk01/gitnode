@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import com.nuricanozturk.originhub.profile.dtos.ChangePasswordForm;
 import com.nuricanozturk.originhub.profile.dtos.TenantPublicProfileDto;
 import com.nuricanozturk.originhub.profile.dtos.UpdateDisplayNameForm;
+import com.nuricanozturk.originhub.profile.dtos.UpdateProfileForm;
 import com.nuricanozturk.originhub.profile.dtos.UpdateUsernameForm;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -95,7 +96,18 @@ class ProfileServiceTest {
     tenant.setUsername("OldUser");
     TenantInfo expectedInfo =
         new TenantInfo(
-            tenantId, "newuser", "e@e.com", "newuser", null, false, Instant.EPOCH, Instant.EPOCH);
+            tenantId,
+            "newuser",
+            "e@e.com",
+            "newuser",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            Instant.EPOCH,
+            Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     when(tenantRepository.existsByUsername("newuser")).thenReturn(false);
     when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
@@ -132,7 +144,19 @@ class ProfileServiceTest {
     tenant.setId(tenantId);
     tenant.setDisplayName("Old");
     TenantInfo expected =
-        new TenantInfo(tenantId, "u", "e@e.com", "u", null, false, Instant.EPOCH, Instant.EPOCH);
+        new TenantInfo(
+            tenantId,
+            "u",
+            "e@e.com",
+            "u",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            Instant.EPOCH,
+            Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
     when(tenantMapper.toTenantInfo(any(Tenant.class))).thenReturn(expected);
@@ -153,7 +177,18 @@ class ProfileServiceTest {
     when(tenantMapper.toTenantInfo(any(Tenant.class)))
         .thenReturn(
             new TenantInfo(
-                tenantId, "u", "e@e.com", "My Name", null, false, Instant.EPOCH, Instant.EPOCH));
+                tenantId,
+                "u",
+                "e@e.com",
+                "My Name",
+                null,
+                null,
+                null,
+                null,
+                null,
+                false,
+                Instant.EPOCH,
+                Instant.EPOCH));
 
     profileService.updateDisplayName(tenantId, new UpdateDisplayNameForm("  My Name  "));
 
@@ -254,7 +289,18 @@ class ProfileServiceTest {
     tenant.setId(tenantId);
     TenantInfo expected =
         new TenantInfo(
-            tenantId, "u", "e@e.com", "Display", null, false, Instant.EPOCH, Instant.EPOCH);
+            tenantId,
+            "u",
+            "e@e.com",
+            "Display",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            Instant.EPOCH,
+            Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     when(tenantMapper.toTenantInfo(tenant)).thenReturn(expected);
 
@@ -302,5 +348,113 @@ class ProfileServiceTest {
     TenantPublicProfileDto result = profileService.getPublicProfile("bob");
 
     assertThat(result.getDisplayName()).isEqualTo("bob");
+  }
+
+  @Test
+  @DisplayName("getPublicProfile includes bio, website, location, profileReadme")
+  void getPublicProfile_includesProfileFields() {
+    Tenant tenant = new Tenant();
+    tenant.setUsername("alice");
+    tenant.setEmail("alice@example.com");
+    tenant.setDisplayName("Alice");
+    tenant.setAvatarUrl("https://avatar");
+    tenant.setBio("Hello world");
+    tenant.setWebsite("https://alice.dev");
+    tenant.setLocation("Istanbul");
+    tenant.setProfileReadme("# Alice\nI love code.");
+    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(tenant));
+
+    TenantPublicProfileDto result = profileService.getPublicProfile("alice");
+
+    assertThat(result.getBio()).isEqualTo("Hello world");
+    assertThat(result.getWebsite()).isEqualTo("https://alice.dev");
+    assertThat(result.getLocation()).isEqualTo("Istanbul");
+    assertThat(result.getProfileReadme()).isEqualTo("# Alice\nI love code.");
+  }
+
+  @Test
+  @DisplayName("updateProfile throws when user not found")
+  void updateProfile_throws_whenUserNotFound() {
+    UUID tenantId = UUID.randomUUID();
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () ->
+                profileService.updateProfile(
+                    tenantId, new UpdateProfileForm("bio", "https://site.com", "Istanbul", "# Me")))
+        .isInstanceOf(ItemNotFoundException.class)
+        .hasMessageContaining("userNotFound");
+  }
+
+  @Test
+  @DisplayName("updateProfile saves trimmed values")
+  void updateProfile_savesTrimmedValues() {
+    UUID tenantId = UUID.randomUUID();
+    Tenant tenant = new Tenant();
+    tenant.setId(tenantId);
+    TenantInfo expected =
+        new TenantInfo(
+            tenantId,
+            "u",
+            "e@e.com",
+            "u",
+            null,
+            "My bio",
+            "https://site.com",
+            "Istanbul",
+            "# Me",
+            false,
+            Instant.EPOCH,
+            Instant.EPOCH);
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+    when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
+    when(tenantMapper.toTenantInfo(any(Tenant.class))).thenReturn(expected);
+
+    TenantInfo result =
+        profileService.updateProfile(
+            tenantId,
+            new UpdateProfileForm("  My bio  ", "  https://site.com  ", "  Istanbul  ", "# Me"));
+
+    assertThat(result).isSameAs(expected);
+    assertThat(tenant.getBio()).isEqualTo("My bio");
+    assertThat(tenant.getWebsite()).isEqualTo("https://site.com");
+    assertThat(tenant.getLocation()).isEqualTo("Istanbul");
+    assertThat(tenant.getProfileReadme()).isEqualTo("# Me");
+  }
+
+  @Test
+  @DisplayName("updateProfile sets fields to null when blank")
+  void updateProfile_setsNull_whenBlank() {
+    UUID tenantId = UUID.randomUUID();
+    Tenant tenant = new Tenant();
+    tenant.setId(tenantId);
+    tenant.setBio("Old bio");
+    tenant.setWebsite("https://old.com");
+    tenant.setLocation("Old city");
+    tenant.setProfileReadme("Old readme");
+    TenantInfo expected =
+        new TenantInfo(
+            tenantId,
+            "u",
+            "e@e.com",
+            "u",
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            Instant.EPOCH,
+            Instant.EPOCH);
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+    when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
+    when(tenantMapper.toTenantInfo(any(Tenant.class))).thenReturn(expected);
+
+    profileService.updateProfile(tenantId, new UpdateProfileForm("  ", "  ", "  ", "  "));
+
+    assertThat(tenant.getBio()).isNull();
+    assertThat(tenant.getWebsite()).isNull();
+    assertThat(tenant.getLocation()).isNull();
+    assertThat(tenant.getProfileReadme()).isNull();
   }
 }

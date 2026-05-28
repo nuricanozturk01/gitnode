@@ -1,0 +1,5 @@
+ALTER TABLE tenant
+    ADD COLUMN IF NOT EXISTS bio           VARCHAR(300),
+    ADD COLUMN IF NOT EXISTS website       VARCHAR(500),
+    ADD COLUMN IF NOT EXISTS location      VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS profile_readme TEXT;

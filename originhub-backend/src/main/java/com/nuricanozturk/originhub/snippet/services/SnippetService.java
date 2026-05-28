@@ -38,7 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -49,22 +49,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class SnippetService {
 
-  private final @NonNull SnippetRepository snippetRepository;
-  private final @NonNull SnippetRevisionRepository revisionRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull SnippetMapper snippetMapper;
-  private final @NonNull SnippetFileStorageService fileStorage;
+  private static final String ERR_USER_NOT_FOUND = "userNotFound";
+
+  private final SnippetRepository snippetRepository;
+  private final SnippetRevisionRepository revisionRepository;
+  private final TenantRepository tenantRepository;
+  private final SnippetMapper snippetMapper;
+  private final SnippetFileStorageService fileStorage;
 
   @Transactional
-  public @NonNull SnippetDetail create(
-      final @NonNull UUID tenantId, final @NonNull SnippetForm form) {
+  public SnippetDetail create(final UUID tenantId, final SnippetForm form) {
 
     final var owner =
         this.tenantRepository
             .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
 
     final var snippet = new Snippet();
     snippet.setOwner(owner);
@@ -102,10 +104,8 @@ public class SnippetService {
   }
 
   @Transactional
-  public @NonNull SnippetDetail update(
-      final @NonNull UUID tenantId,
-      final @NonNull UUID snippetId,
-      final @NonNull SnippetUpdateForm form) {
+  public SnippetDetail update(
+      final UUID tenantId, final UUID snippetId, final SnippetUpdateForm form) {
 
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
@@ -122,8 +122,7 @@ public class SnippetService {
     return this.buildDetail(saved, username);
   }
 
-  private void applyFieldUpdates(
-      final @NonNull Snippet snippet, final @NonNull SnippetUpdateForm form) {
+  private void applyFieldUpdates(final Snippet snippet, final SnippetUpdateForm form) {
 
     if (form.getTitle() != null) {
       snippet.setTitle(form.getTitle());
@@ -136,10 +135,8 @@ public class SnippetService {
     }
   }
 
-  private @NonNull Map<String, String> applyFileUpdates(
-      final @NonNull Snippet snippet,
-      final @NonNull SnippetUpdateForm form,
-      final @NonNull String username) {
+  private Map<String, String> applyFileUpdates(
+      final Snippet snippet, final SnippetUpdateForm form, final String username) {
 
     final var contentByFilename = new HashMap<String, String>();
     final var files = form.getFiles();
@@ -165,10 +162,8 @@ public class SnippetService {
     return contentByFilename;
   }
 
-  private @NonNull Map<String, String> resolveFileContents(
-      final @NonNull Snippet saved,
-      final @NonNull String username,
-      final @NonNull Map<String, String> contentByFilename) {
+  private Map<String, String> resolveFileContents(
+      final Snippet saved, final String username, final Map<String, String> contentByFilename) {
 
     if (!contentByFilename.isEmpty()) {
       for (final var file : saved.getFiles()) {
@@ -190,7 +185,7 @@ public class SnippetService {
   }
 
   @Transactional
-  public void delete(final @NonNull UUID tenantId, final @NonNull UUID snippetId) {
+  public void delete(final UUID tenantId, final UUID snippetId) {
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
     final var username = snippet.getOwner().getUsername();
@@ -198,21 +193,20 @@ public class SnippetService {
     this.fileStorage.deleteSnippetDir(username, snippetId);
   }
 
-  public @NonNull SnippetDetail get(final @NonNull UUID snippetId, final @Nullable UUID callerId) {
+  public SnippetDetail get(final UUID snippetId, final @Nullable UUID callerId) {
 
     final var snippet = this.loadSnippet(snippetId);
     this.checkVisibility(snippet, callerId);
     return this.buildDetail(snippet, snippet.getOwner().getUsername());
   }
 
-  public @NonNull List<SnippetInfo> listMine(final @NonNull UUID tenantId) {
+  public List<SnippetInfo> listMine(final UUID tenantId) {
     return this.snippetRepository.findAllByOwnerIdOrderByCreatedAtDesc(tenantId).stream()
         .map(this.snippetMapper::toInfo)
         .toList();
   }
 
-  public @NonNull Page<SnippetInfo> listPublic(
-      final int page, final int size, final @Nullable String q) {
+  public Page<SnippetInfo> listPublic(final int page, final int size, final @Nullable String q) {
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
@@ -225,18 +219,15 @@ public class SnippetService {
         .map(this.snippetMapper::toInfo);
   }
 
-  public @NonNull Page<SnippetInfo> listByOwner(
-      final @NonNull String ownerUsername,
-      final @Nullable UUID callerId,
-      final int page,
-      final int size) {
+  public Page<SnippetInfo> listByOwner(
+      final String ownerUsername, final @Nullable UUID callerId, final int page, final int size) {
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
     final var owner =
         this.tenantRepository
             .findByUsernameOrEmail(ownerUsername)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
 
     if (callerId != null && callerId.equals(owner.getId())) {
       return this.snippetRepository
@@ -250,7 +241,7 @@ public class SnippetService {
   }
 
   @Transactional
-  public @NonNull SnippetDetail fork(final @NonNull UUID tenantId, final @NonNull UUID snippetId) {
+  public SnippetDetail fork(final UUID tenantId, final UUID snippetId) {
 
     final var original = this.loadSnippet(snippetId);
     this.checkVisibility(original, tenantId);
@@ -259,7 +250,7 @@ public class SnippetService {
     final var forker =
         this.tenantRepository
             .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
 
     final var fork = new Snippet();
     fork.setOwner(forker);
@@ -299,11 +290,8 @@ public class SnippetService {
     return this.buildDetail(saved, forker.getUsername());
   }
 
-  public @NonNull PageResponse<SnippetRevisionInfo> listRevisions(
-      final @NonNull UUID snippetId,
-      final @Nullable UUID callerId,
-      final int page,
-      final int size) {
+  public PageResponse<SnippetRevisionInfo> listRevisions(
+      final UUID snippetId, final @Nullable UUID callerId, final int page, final int size) {
 
     final var snippet = this.loadSnippet(snippetId);
     this.checkVisibility(snippet, callerId);
@@ -315,10 +303,8 @@ public class SnippetService {
             .map(this.snippetMapper::toRevisionInfo));
   }
 
-  public @NonNull SnippetRevisionDetail getRevision(
-      final @NonNull UUID snippetId,
-      final @NonNull UUID revisionId,
-      final @Nullable UUID callerId) {
+  public SnippetRevisionDetail getRevision(
+      final UUID snippetId, final UUID revisionId, final @Nullable UUID callerId) {
 
     final var snippet = this.loadSnippet(snippetId);
     this.checkVisibility(snippet, callerId);
@@ -339,8 +325,7 @@ public class SnippetService {
     return this.snippetMapper.toRevisionDetail(revision, revision.getFiles(), contentByFileId);
   }
 
-  @NonNull SnippetDetail buildDetail(
-      final @NonNull Snippet snippet, final @NonNull String username) {
+  SnippetDetail buildDetail(final Snippet snippet, final String username) {
     final Map<UUID, String> contentByFileId = new HashMap<>();
     for (final var file : snippet.getFiles()) {
       final var content = this.fileStorage.readFile(username, snippet.getId(), file.getId());
@@ -350,15 +335,15 @@ public class SnippetService {
   }
 
   private void snapshotRevision(
-      final @NonNull Snippet snippet,
-      final @NonNull UUID authorId,
+      final Snippet snippet,
+      final UUID authorId,
       final @Nullable String summary,
-      final @NonNull Map<String, String> contentByFilename) {
+      final Map<String, String> contentByFilename) {
 
     final var author =
         this.tenantRepository
             .findById(authorId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
     final var username = snippet.getOwner().getUsername();
 
     final var revision = new SnippetRevision();
@@ -385,20 +370,20 @@ public class SnippetService {
     }
   }
 
-  @NonNull Snippet loadSnippet(final @NonNull UUID id) {
+  Snippet loadSnippet(final UUID id) {
     return this.snippetRepository
         .findByIdWithOwner(id)
         .orElseThrow(() -> new ItemNotFoundException("snippetNotFound"));
   }
 
-  private void checkVisibility(final @NonNull Snippet snippet, final @Nullable UUID callerId) {
+  private void checkVisibility(final Snippet snippet, final @Nullable UUID callerId) {
     if (snippet.getVisibility() == Visibility.PRIVATE
         && (callerId == null || !callerId.equals(snippet.getOwner().getId()))) {
       throw new ItemNotFoundException("snippetNotFound");
     }
   }
 
-  private void requireOwner(final @NonNull Snippet snippet, final @NonNull UUID callerId) {
+  private void requireOwner(final Snippet snippet, final UUID callerId) {
     if (!callerId.equals(snippet.getOwner().getId())) {
       throw new AccessNotAllowedException("notSnippetOwner");
     }

@@ -22,23 +22,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 
 @Slf4j
 @Service
+@NullMarked
 public class SnippetFileStorageService {
 
   @Value("${originhub.git.repo-root}")
   private String repoRoot;
 
   public void writeFile(
-      final @NonNull String username,
-      final @NonNull UUID snippetId,
-      final @NonNull UUID fileId,
-      final @NonNull String content) {
+      final String username, final UUID snippetId, final UUID fileId, final String content) {
 
     final var path = this.snippetFilePath(username, snippetId, fileId);
     try {
@@ -50,8 +48,7 @@ public class SnippetFileStorageService {
     }
   }
 
-  public @NonNull String readFile(
-      final @NonNull String username, final @NonNull UUID snippetId, final @NonNull UUID fileId) {
+  public String readFile(final String username, final UUID snippetId, final UUID fileId) {
 
     final var path = this.snippetFilePath(username, snippetId, fileId);
     try {
@@ -63,11 +60,11 @@ public class SnippetFileStorageService {
   }
 
   public void writeRevisionFile(
-      final @NonNull String username,
-      final @NonNull UUID snippetId,
-      final @NonNull UUID revisionId,
-      final @NonNull UUID revisionFileId,
-      final @NonNull String content) {
+      final String username,
+      final UUID snippetId,
+      final UUID revisionId,
+      final UUID revisionFileId,
+      final String content) {
 
     final var path = this.revisionFilePath(username, snippetId, revisionId, revisionFileId);
     try {
@@ -79,11 +76,11 @@ public class SnippetFileStorageService {
     }
   }
 
-  public @NonNull String readRevisionFile(
-      final @NonNull String username,
-      final @NonNull UUID snippetId,
-      final @NonNull UUID revisionId,
-      final @NonNull UUID revisionFileId) {
+  public String readRevisionFile(
+      final String username,
+      final UUID snippetId,
+      final UUID revisionId,
+      final UUID revisionFileId) {
 
     final var path = this.revisionFilePath(username, snippetId, revisionId, revisionFileId);
     try {
@@ -95,10 +92,10 @@ public class SnippetFileStorageService {
   }
 
   public void copySnippetFiles(
-      final @NonNull String fromUsername,
-      final @NonNull UUID fromSnippetId,
-      final @NonNull String toUsername,
-      final @NonNull UUID toSnippetId) {
+      final String fromUsername,
+      final UUID fromSnippetId,
+      final String toUsername,
+      final UUID toSnippetId) {
 
     final var src = this.snippetDir(fromUsername, fromSnippetId);
     final var dst = this.snippetDir(toUsername, toSnippetId);
@@ -118,7 +115,7 @@ public class SnippetFileStorageService {
     }
   }
 
-  public void deleteCurrentFiles(final @NonNull String username, final @NonNull UUID snippetId) {
+  public void deleteCurrentFiles(final String username, final UUID snippetId) {
     final var dir = this.snippetDir(username, snippetId);
     if (!Files.exists(dir)) {
       return;
@@ -132,7 +129,7 @@ public class SnippetFileStorageService {
     }
   }
 
-  public void deleteSnippetDir(final @NonNull String username, final @NonNull UUID snippetId) {
+  public void deleteSnippetDir(final String username, final UUID snippetId) {
     final var path = this.snippetDir(username, snippetId);
     try {
       FileSystemUtils.deleteRecursively(path);

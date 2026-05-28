@@ -58,6 +58,10 @@ public class Repo {
   @Column(name = "description", length = Integer.MAX_VALUE)
   private String description;
 
+  @ColumnDefault("true")
+  @Column(name = "is_private", nullable = false)
+  private boolean isPrivate = true;
+
   @ColumnDefault("false")
   @Column(name = "is_archived")
   private boolean isArchived;

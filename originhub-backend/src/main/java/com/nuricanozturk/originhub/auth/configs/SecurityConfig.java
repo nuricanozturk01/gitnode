@@ -94,6 +94,9 @@ public class SecurityConfig {
     auth.requestMatchers("/git/**").permitAll();
 
     auth.requestMatchers(HttpMethod.GET, "/api/snippets/**").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/users/*").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/repo/*", "/api/repo/*/*").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/repos/**").permitAll();
 
     auth.requestMatchers("/api/**").authenticated();
     auth.anyRequest().permitAll();

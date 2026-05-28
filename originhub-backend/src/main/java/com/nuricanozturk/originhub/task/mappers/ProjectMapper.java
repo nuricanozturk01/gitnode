@@ -23,16 +23,24 @@ import com.nuricanozturk.originhub.task.entities.BoardColumn;
 import com.nuricanozturk.originhub.task.entities.Project;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface ProjectMapper {
 
-  @BeanMapping(builder = @Builder())
-  @NonNull ProjectInfo toInfo(@NonNull Project project);
+  default @NonNull ProjectInfo toInfo(final @NonNull Project project, final long taskCount) {
+    return ProjectInfo.builder()
+        .id(project.getId())
+        .name(project.getName())
+        .description(project.getDescription())
+        .codePrefix(project.getCodePrefix())
+        .taskCount(taskCount)
+        .syncTaskStatusOnPrMerge(project.isSyncTaskStatusOnPrMerge())
+        .createdAt(project.getCreatedAt())
+        .updatedAt(project.getUpdatedAt())
+        .build();
+  }
 
   default @NonNull BoardColumnInfo toBoardColumnInfo(final @NonNull BoardColumn column) {
     return BoardColumnInfo.builder()

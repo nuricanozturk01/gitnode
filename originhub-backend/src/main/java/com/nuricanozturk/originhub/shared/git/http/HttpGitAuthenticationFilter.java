@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.git.http;
 
+import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -26,15 +27,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Base64;
 import java.util.Locale;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.jspecify.annotations.NullMarked;
 
 @Slf4j
 @RequiredArgsConstructor
+@NullMarked
 public class HttpGitAuthenticationFilter implements Filter {
 
   private final TenantRepository tenantRepository;
+  private final RepoRepository repoRepository;
 
   @Override
   public void doFilter(
@@ -50,20 +55,55 @@ public class HttpGitAuthenticationFilter implements Filter {
       if (auth != null && auth.startsWith("Basic ")) {
         final var username = this.authenticate(auth);
         chain.doFilter(new AuthenticatedRequest(httpRequest, username), response);
+      } else if (this.isPublicReadRequest(httpRequest)) {
+        chain.doFilter(request, response);
       } else {
-        httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        httpResponse.setHeader("WWW-Authenticate", "Basic realm=\"OriginHub\"");
-        httpResponse.setContentType("text/plain");
-        httpResponse.getWriter().write("Unauthorized");
-        httpResponse.getWriter().flush();
+        this.sendUnauthorized(httpResponse, "Unauthorized");
       }
     } catch (final IllegalArgumentException ex) {
-      httpResponse.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-      httpResponse.setHeader("WWW-Authenticate", "Basic realm=\"OriginHub\"");
-      httpResponse.setContentType("text/plain");
-      httpResponse.getWriter().write("Unauthorized: " + ex.getMessage());
-      httpResponse.getWriter().flush();
+      this.sendUnauthorized(httpResponse, "Unauthorized: " + ex.getMessage());
     }
+  }
+
+  private boolean isPublicReadRequest(final HttpServletRequest request) {
+    final var uri = request.getRequestURI();
+    final var queryString = request.getQueryString();
+    final var isWriteRequest =
+        uri.contains("git-receive-pack")
+            || (queryString != null && queryString.contains("service=git-receive-pack"));
+
+    if (isWriteRequest) {
+      return false;
+    }
+
+    final var partsOpt = this.extractOwnerAndRepo(uri);
+    if (partsOpt.isEmpty()) {
+      return false;
+    }
+
+    final var parts = partsOpt.get();
+
+    final var repoOpt = this.repoRepository.findByOwnerUsernameAndName(parts[0], parts[1]);
+    return repoOpt.isPresent() && !repoOpt.get().isPrivate();
+  }
+
+  private Optional<String[]> extractOwnerAndRepo(final String uri) {
+    final var gitPrefix = "/git/";
+
+    if (!uri.startsWith(gitPrefix)) {
+      return Optional.empty();
+    }
+
+    final var segments = uri.substring(gitPrefix.length()).split("/");
+
+    if (segments.length < 2) {
+      return Optional.empty();
+    }
+
+    final var owner = segments[0];
+    final var repo = segments[1].replace(".git", "");
+
+    return Optional.of(new String[] {owner, repo});
   }
 
   private String authenticate(final String authHeader) {
@@ -101,5 +141,14 @@ public class HttpGitAuthenticationFilter implements Filter {
     } catch (final Exception ex) {
       throw new IllegalArgumentException("Auth failed: " + ex.getMessage(), ex);
     }
+  }
+
+  private void sendUnauthorized(final HttpServletResponse response, final String message)
+      throws IOException {
+    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    response.setHeader("WWW-Authenticate", "Basic realm=\"OriginHub\"");
+    response.setContentType("text/plain");
+    response.getWriter().write(message);
+    response.getWriter().flush();
   }
 }

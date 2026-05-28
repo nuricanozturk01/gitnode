@@ -76,7 +76,7 @@
           <div class="text-base-content/40 border-base-200 mt-auto flex items-center gap-3 border-t pt-1 text-xs">
             <span class="inline-flex items-center gap-1">
               <lucide-icon name="layers" class="size-3.5"></lucide-icon>
-              {{ project.taskSeq }} task{{ project.taskSeq !== 1 ? 's' : '' }}
+              {{ project.taskCount }} task{{ project.taskCount !== 1 ? 's' : '' }}
             </span>
             @if (project.updatedAt) {
             <span class="ml-auto">{{ project.updatedAt | relativeTime }}</span>

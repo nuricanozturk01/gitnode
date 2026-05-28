@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.repo.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -43,6 +44,9 @@ public class RepoForm {
   @Size(max = 6, message = "Maximum 6 topics allowed")
   private Set<@NotNull @Size(min = 1, max = 50) @Pattern(regexp = "^[a-zA-Z0-9\\-]+$") String>
       topics;
+
+  @JsonProperty("isPrivate")
+  private Boolean isPrivate;
 
   /** When non-null, updates whether the head branch is deleted after a PR is merged. */
   private Boolean deleteHeadBranchOnPrMerge;

@@ -21,12 +21,22 @@ import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public interface SubtaskRepository extends JpaRepository<Subtask, UUID> {
 
-  @NonNull List<Subtask> findAllByTaskIdOrderByPositionAsc(@NonNull UUID taskId);
+  @NonNull
+  @Query(
+      """
+      SELECT s FROM Subtask s
+      LEFT JOIN FETCH s.branchRepo
+      LEFT JOIN FETCH s.linkedPr
+      WHERE s.task.id = :taskId
+      ORDER BY s.position ASC
+      """)
+  List<Subtask> findAllByTaskIdOrderByPositionAsc(@NonNull UUID taskId);
 
   @NonNull Optional<Subtask> findByIdAndTaskId(@NonNull UUID id, @NonNull UUID taskId);
 

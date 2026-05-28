@@ -106,13 +106,13 @@ public class TreeController {
 
   @GetMapping("/archive/{branch}")
   public @NonNull ResponseEntity<@NonNull StreamingResponseBody> downloadBranchArchive(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader,
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
       @PathVariable final @NonNull String branch)
       throws IOException {
 
-    final var userId = this.jwtUtils.extractUserId(authHeader);
+    final var userId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     this.treeNonTxService.assertBranchExists(owner, repo, branch);
 

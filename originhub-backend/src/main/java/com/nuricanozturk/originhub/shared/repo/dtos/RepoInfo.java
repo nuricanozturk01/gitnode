@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.repo.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Set;
@@ -29,8 +30,13 @@ public class RepoInfo implements Serializable {
   private final TenantRepoInfo owner;
   private final String name;
   private final String description;
+
+  @JsonProperty("isPrivate")
   private final boolean isPrivate;
+
+  @JsonProperty("isArchived")
   private final boolean isArchived;
+
   private final String defaultBranch;
   private final Set<String> topics;
   private final boolean deleteHeadBranchOnPrMerge;

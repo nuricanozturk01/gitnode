@@ -59,10 +59,11 @@ public class HttpGitConfiguration {
 
   @Bean
   public FilterRegistrationBean<HttpGitAuthenticationFilter> httpGitAuthenticationFilter(
-      final TenantRepository tenantRepository) {
+      final TenantRepository tenantRepository, final RepoRepository repoRepository) {
 
-    final var filter = new HttpGitAuthenticationFilter(tenantRepository);
+    final var filter = new HttpGitAuthenticationFilter(tenantRepository, repoRepository);
     final var registration = new FilterRegistrationBean<>(filter);
+
     registration.addUrlPatterns("/git/*");
     registration.setOrder(HTTP_GIT_FILTER_ORDER);
 

@@ -40,4 +40,8 @@ public class TaskUpdateForm {
   private UUID assigneeId;
 
   private Integer position;
+
+  private UUID linkedIssueId;
+
+  private boolean unlinkIssue;
 }

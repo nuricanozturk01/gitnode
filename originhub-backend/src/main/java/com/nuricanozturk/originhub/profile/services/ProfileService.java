@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -151,6 +152,20 @@ public class ProfileService {
     final var displayName =
         tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername();
 
-    return new TenantPublicProfileDto(tenant.getUsername(), displayName, tenant.getAvatarUrl());
+    final var avatarUrl = resolveAvatarUrl(tenant.getAvatarUrl(), tenant.getEmail());
+
+    return new TenantPublicProfileDto(tenant.getUsername(), displayName, avatarUrl);
+  }
+
+  private static @NonNull String resolveAvatarUrl(
+      final @Nullable String storedUrl, final @NonNull String email) {
+
+    if (storedUrl != null && !storedUrl.isBlank()) {
+      return storedUrl;
+    }
+
+    final var hash = DigestUtils.md5Hex(email.trim().toLowerCase(java.util.Locale.getDefault()));
+
+    return "https://www.gravatar.com/avatar/" + hash + "?d=identicon";
   }
 }

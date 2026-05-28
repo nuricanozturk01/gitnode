@@ -17,10 +17,13 @@ package com.nuricanozturk.originhub.task.services;
 
 import com.nuricanozturk.originhub.pr.entities.PrStatus;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.task.dtos.OpenPrInfo;
 import com.nuricanozturk.originhub.task.dtos.ProjectForm;
 import com.nuricanozturk.originhub.task.dtos.ProjectInfo;
@@ -34,6 +37,8 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,42 +56,62 @@ public class ProjectService {
 
   @Transactional
   public @NonNull ProjectInfo create(
-      final @NonNull String ownerUsername, final @NonNull ProjectForm form) {
+      final @NonNull String ownerUsername,
+      final @NonNull Tenant caller,
+      final @NonNull ProjectForm form) {
 
-    final var owner =
-        this.tenantRepository
-            .findByUsernameOrEmail(ownerUsername)
-            .orElseThrow(() -> new ItemNotFoundException("User not found: " + ownerUsername));
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
 
-    if (this.projectRepository.existsByOwnerIdAndName(owner.getId(), form.getName())) {
+    if (this.projectRepository.existsByOwnerIdAndName(caller.getId(), form.getName())) {
       throw new ErrorOccurredException("Project with this name already exists");
     }
 
-    if (this.projectRepository.existsByOwnerIdAndCodePrefix(owner.getId(), form.getCodePrefix())) {
+    if (this.projectRepository.existsByOwnerIdAndCodePrefix(caller.getId(), form.getCodePrefix())) {
       throw new ErrorOccurredException("Project with this code prefix already exists");
     }
 
     final var project = new Project();
-    project.setOwner(owner);
+    project.setOwner(caller);
     project.setName(form.getName());
     project.setDescription(form.getDescription());
     project.setCodePrefix(form.getCodePrefix());
     project.setTaskSeq(0);
     project.setSyncTaskStatusOnPrMerge(true);
+    project.setPublic(form.isPublic());
 
     final var saved = this.projectRepository.save(project);
     return this.projectMapper.toInfo(saved, this.taskRepository.countByProjectId(saved.getId()));
   }
 
-  public @NonNull List<ProjectInfo> getAll(final @NonNull String ownerUsername) {
-    return this.projectRepository.findAllByOwnerUsernameOrderByCreatedAtDesc(ownerUsername).stream()
-        .map(p -> this.projectMapper.toInfo(p, this.taskRepository.countByProjectId(p.getId())))
-        .toList();
+  public @NonNull PageResponse<ProjectInfo> getAll(
+      final @NonNull String ownerUsername,
+      final @Nullable Tenant viewer,
+      final int page,
+      final int size) {
+
+    final boolean isOwner = viewer != null && viewer.getUsername().equals(ownerUsername);
+    final var pageable = PageRequest.of(page, size);
+    final var projects =
+        isOwner
+            ? this.projectRepository.findAllByOwnerUsernameOrderByCreatedAtDesc(
+                ownerUsername, pageable)
+            : this.projectRepository
+                .findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
+                    ownerUsername, pageable);
+
+    return PageResponse.from(
+        projects.map(
+            p -> this.projectMapper.toInfo(p, this.taskRepository.countByProjectId(p.getId()))));
   }
 
   public @NonNull ProjectInfo get(
-      final @NonNull String ownerUsername, final @NonNull String codePrefix) {
-    final var project = this.findProject(ownerUsername, codePrefix);
+      final @NonNull String ownerUsername,
+      final @NonNull String codePrefix,
+      final @Nullable Tenant viewer) {
+
+    final var project = this.findProjectAsViewer(ownerUsername, codePrefix, viewer);
     return this.projectMapper.toInfo(
         project, this.taskRepository.countByProjectId(project.getId()));
   }
@@ -95,7 +120,12 @@ public class ProjectService {
   public @NonNull ProjectInfo update(
       final @NonNull String ownerUsername,
       final @NonNull String codePrefix,
+      final @NonNull Tenant caller,
       final @NonNull ProjectUpdateForm form) {
+
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
 
     final var project = this.findProject(ownerUsername, codePrefix);
 
@@ -111,13 +141,25 @@ public class ProjectService {
       project.setSyncTaskStatusOnPrMerge(form.getSyncTaskStatusOnPrMerge());
     }
 
+    if (form.getIsPublic() != null) {
+      project.setPublic(form.getIsPublic());
+    }
+
     final var updated = this.projectRepository.save(project);
     return this.projectMapper.toInfo(
         updated, this.taskRepository.countByProjectId(updated.getId()));
   }
 
   @Transactional
-  public void delete(final @NonNull String ownerUsername, final @NonNull String codePrefix) {
+  public void delete(
+      final @NonNull String ownerUsername,
+      final @NonNull String codePrefix,
+      final @NonNull Tenant caller) {
+
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
+
     final var project = this.findProject(ownerUsername, codePrefix);
     this.projectRepository.delete(project);
   }
@@ -126,7 +168,12 @@ public class ProjectService {
   public void linkRepo(
       final @NonNull String ownerUsername,
       final @NonNull String codePrefix,
-      final @NonNull UUID repoId) {
+      final @NonNull UUID repoId,
+      final @NonNull Tenant caller) {
+
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
 
     final var project = this.findProject(ownerUsername, codePrefix);
 
@@ -146,7 +193,12 @@ public class ProjectService {
   public void unlinkRepo(
       final @NonNull String ownerUsername,
       final @NonNull String codePrefix,
-      final @NonNull UUID repoId) {
+      final @NonNull UUID repoId,
+      final @NonNull Tenant caller) {
+
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
 
     final var project = this.findProject(ownerUsername, codePrefix);
 
@@ -163,9 +215,11 @@ public class ProjectService {
   }
 
   public @NonNull List<ProjectRepoInfo> getLinkedRepos(
-      final @NonNull String ownerUsername, final @NonNull String codePrefix) {
+      final @NonNull String ownerUsername,
+      final @NonNull String codePrefix,
+      final @Nullable Tenant viewer) {
 
-    final var project = this.findProject(ownerUsername, codePrefix);
+    final var project = this.findProjectAsViewer(ownerUsername, codePrefix, viewer);
     final var repos = this.repoRepository.findAllByProjectId(project.getId());
 
     return repos.stream()
@@ -204,5 +258,25 @@ public class ProjectService {
     return this.projectRepository
         .findByOwnerUsernameAndCodePrefix(ownerUsername, codePrefix)
         .orElseThrow(() -> new ItemNotFoundException("Project not found: " + codePrefix));
+  }
+
+  @NonNull Project findProjectAsViewer(
+      final @NonNull String ownerUsername,
+      final @NonNull String codePrefix,
+      final @Nullable Tenant viewer) {
+
+    final var project =
+        this.projectRepository
+            .findByOwnerUsernameAndCodePrefix(ownerUsername, codePrefix)
+            .orElseThrow(() -> new ItemNotFoundException("Project not found: " + codePrefix));
+
+    if (!project.isPublic()) {
+      final boolean isOwner = viewer != null && viewer.getUsername().equals(ownerUsername);
+      if (!isOwner) {
+        throw new AccessNotAllowedException("accessDenied");
+      }
+    }
+
+    return project;
   }
 }

@@ -31,4 +31,6 @@ public class ProjectUpdateForm {
   private String description;
 
   private Boolean syncTaskStatusOnPrMerge;
+
+  private Boolean isPublic;
 }

@@ -39,4 +39,6 @@ public class ProjectForm {
       regexp = "^[A-Z][A-Z0-9]*$",
       message = "Code prefix must be uppercase letters and digits, starting with a letter")
   private String codePrefix;
+
+  private boolean isPublic = false;
 }

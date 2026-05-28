@@ -34,6 +34,8 @@ public record SnippetDetail(
     int commentCount,
     int forkCount,
     @Nullable SnippetForkedFromInfo forkedFrom,
+    @Nullable UUID repoId,
+    @Nullable String repoName,
     @NonNull List<SnippetFileInfo> files,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

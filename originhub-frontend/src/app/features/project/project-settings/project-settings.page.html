@@ -5,7 +5,7 @@
         <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
         <lucide-icon name="chevronRight" class="size-3.5 shrink-0"></lucide-icon>
         <a
-          [routerLink]="['/projects', projectCode]"
+          [routerLink]="['/projects', owner, projectCode]"
           class="hover:text-base-content shrink-0 no-underline transition-colors"
         >
           <span class="truncate font-semibold">{{ projectName() || projectCode }}</span>
@@ -25,6 +25,23 @@
     <div class="bg-base-100 border-base-300 rounded-2xl border p-6 shadow-sm">
       <h1 class="text-base-content mb-1 text-xl font-bold">Project settings</h1>
       <p class="text-base-content/60 mb-6 text-sm">Automation and integrations for this project.</p>
+
+      <!-- Visibility -->
+      <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
+        <input
+          id="project-is-public"
+          type="checkbox"
+          class="checkbox checkbox-primary mt-0.5"
+          [checked]="isPublic()"
+          (change)="onVisibilityChange($any($event.target).checked)"
+        />
+        <div class="min-w-0 flex-1">
+          <label class="cursor-pointer font-medium" for="project-is-public">Make project public</label>
+          <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+            Public projects are visible to everyone (read-only). Private projects are only visible to you.
+          </p>
+        </div>
+      </div>
 
       <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
         <input
@@ -50,7 +67,7 @@
           <span class="loading loading-spinner loading-sm"></span>
           } Save changes
         </button>
-        <a [routerLink]="['/projects', projectCode]" class="btn btn-ghost btn-sm">Back to board</a>
+        <a [routerLink]="['/projects', owner, projectCode]" class="btn btn-ghost btn-sm">Back to board</a>
       </div>
     </div>
     }

@@ -87,6 +87,24 @@ export class SnippetService {
     return firstValueFrom(this.http.delete<void>(`${this.base}/${id}/comments/${commentId}`));
   }
 
+  listByOwner(username: string, page = 0, size = 20): Promise<SnippetPage> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return firstValueFrom(this.http.get<SnippetPage>(`${this.base}/by-owner/${username}`, { params }));
+  }
+
+  linkRepo(snippetId: string, repoId: string): Promise<SnippetDetail> {
+    return firstValueFrom(this.http.put<SnippetDetail>(`${this.base}/${snippetId}/repo/${repoId}`, {}));
+  }
+
+  unlinkRepo(snippetId: string): Promise<SnippetDetail> {
+    return firstValueFrom(this.http.delete<SnippetDetail>(`${this.base}/${snippetId}/repo`));
+  }
+
+  listByRepo(owner: string, repoName: string, page = 0, size = 20): Promise<SnippetPage> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return firstValueFrom(this.http.get<SnippetPage>(`${this.base}/repo/${owner}/${repoName}`, { params }));
+  }
+
   rawFileUrl(id: string, fileId: string): string {
     return `${this.base}/${id}/files/${fileId}/raw`;
   }

@@ -1,0 +1,78 @@
+@if (loading()) {
+  <div class="flex justify-center py-20">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+} @else if (snippets().length === 0) {
+  <div class="border-base-300 bg-base-100 rounded-2xl border p-12 text-center shadow-sm">
+    <div class="bg-primary/10 text-primary ring-primary/20 mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl ring-1">
+      <lucide-icon name="fileCode2" class="size-8"></lucide-icon>
+    </div>
+    <h2 class="text-base-content text-xl font-bold">No snippets linked</h2>
+    <p class="text-base-content/55 mx-auto mt-2 max-w-sm text-sm">
+      Link a snippet to this repository from the snippet edit page.
+    </p>
+  </div>
+} @else {
+  <div class="flex flex-col gap-3">
+    @for (snippet of snippets(); track snippet.id) {
+      <a
+        [routerLink]="['/snippets', snippet.id]"
+        class="bg-base-100 border-base-300 group flex flex-col gap-2 rounded-xl border p-4 shadow-sm no-underline transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <lucide-icon name="fileCode2" class="text-primary size-4 shrink-0"></lucide-icon>
+              <span class="text-base-content group-hover:text-primary truncate font-semibold transition-colors">
+                {{ snippet.title }}
+              </span>
+              @if (snippet.visibility === 'PRIVATE') {
+                <span class="badge-pill badge-pill--neutral">Private</span>
+              }
+            </div>
+            @if (snippet.description) {
+              <p class="text-base-content/55 mt-1 line-clamp-2 text-sm">{{ snippet.description }}</p>
+            }
+          </div>
+        </div>
+        <div class="text-base-content/40 flex items-center gap-4 text-xs">
+          <span class="inline-flex items-center gap-1">
+            <lucide-icon name="file" class="size-3.5"></lucide-icon>
+            {{ snippet.fileCount }} file{{ snippet.fileCount !== 1 ? 's' : '' }}
+          </span>
+          <span class="inline-flex items-center gap-1">
+            <lucide-icon name="gitFork" class="size-3.5"></lucide-icon>
+            {{ snippet.forkCount }}
+          </span>
+          @if (snippet.updatedAt) {
+            <span class="ml-auto">{{ snippet.updatedAt | relativeTime }}</span>
+          }
+        </div>
+      </a>
+    }
+  </div>
+
+  @if (totalPages() > 1) {
+    <div class="mt-6 flex items-center justify-center gap-2">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm gap-1"
+        [disabled]="currentPage() === 0"
+        (click)="goToPage(currentPage() - 1)"
+      >
+        <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+        Prev
+      </button>
+      <span class="text-base-content/60 text-sm">{{ currentPage() + 1 }} / {{ totalPages() }}</span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm gap-1"
+        [disabled]="currentPage() + 1 >= totalPages()"
+        (click)="goToPage(currentPage() + 1)"
+      >
+        Next
+        <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+      </button>
+    </div>
+  }
+}

@@ -80,6 +80,7 @@ public interface SnippetMapper {
   }
 
   default @NonNull SnippetInfo toInfo(final @NonNull Snippet snippet) {
+    final var repo = snippet.getRepo();
     return SnippetInfo.builder()
         .id(snippet.getId())
         .title(snippet.getTitle())
@@ -90,6 +91,8 @@ public interface SnippetMapper {
         .commentCount(snippet.getCommentCount())
         .forkCount(snippet.getForkCount())
         .forkedFrom(this.toForkedFromInfo(snippet.getForkedFrom()))
+        .repoId(repo != null ? repo.getId() : null)
+        .repoName(repo != null ? repo.getName() : null)
         .createdAt(snippet.getCreatedAt())
         .updatedAt(snippet.getUpdatedAt())
         .build();
@@ -102,6 +105,7 @@ public interface SnippetMapper {
             .map(f -> this.toFileInfo(f, contentByFileId.getOrDefault(f.getId(), "")))
             .toList();
 
+    final var repo = snippet.getRepo();
     return SnippetDetail.builder()
         .id(snippet.getId())
         .title(snippet.getTitle())
@@ -112,6 +116,8 @@ public interface SnippetMapper {
         .commentCount(snippet.getCommentCount())
         .forkCount(snippet.getForkCount())
         .forkedFrom(this.toForkedFromInfo(snippet.getForkedFrom()))
+        .repoId(repo != null ? repo.getId() : null)
+        .repoName(repo != null ? repo.getName() : null)
         .files(files)
         .createdAt(snippet.getCreatedAt())
         .updatedAt(snippet.getUpdatedAt())

@@ -2,7 +2,12 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import type { ProjectInfo, ProjectForm, ProjectUpdateForm } from '../../../domain/project/models/project-info.model';
+import type {
+  ProjectInfo,
+  ProjectForm,
+  ProjectUpdateForm,
+  ProjectPage,
+} from '../../../domain/project/models/project-info.model';
 import type { ProjectRepoInfo } from '../../../domain/project/models/project-repo-info.model';
 
 @Injectable({ providedIn: 'root' })
@@ -13,8 +18,8 @@ export class ProjectService {
     return `${environment.apiUrl}/api/projects/${owner}`;
   }
 
-  getAll(owner: string): Promise<ProjectInfo[]> {
-    return firstValueFrom(this.http.get<ProjectInfo[]>(this.base(owner)));
+  getAll(owner: string, page = 0, size = 12): Promise<ProjectPage> {
+    return firstValueFrom(this.http.get<ProjectPage>(this.base(owner), { params: { page, size } }));
   }
 
   get(owner: string, projectCode: string): Promise<ProjectInfo> {

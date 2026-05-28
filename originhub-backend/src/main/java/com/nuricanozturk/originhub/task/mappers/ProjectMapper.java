@@ -37,6 +37,7 @@ public interface ProjectMapper {
         .codePrefix(project.getCodePrefix())
         .taskCount(taskCount)
         .syncTaskStatusOnPrMerge(project.isSyncTaskStatusOnPrMerge())
+        .isPublic(project.isPublic())
         .createdAt(project.getCreatedAt())
         .updatedAt(project.getUpdatedAt())
         .build();

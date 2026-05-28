@@ -50,6 +50,8 @@ export interface SnippetInfo {
   commentCount: number;
   forkCount: number;
   forkedFrom: SnippetForkedFromInfo | null;
+  repoId: string | null;
+  repoName: string | null;
   createdAt: string | null;
   updatedAt: string | null;
 }

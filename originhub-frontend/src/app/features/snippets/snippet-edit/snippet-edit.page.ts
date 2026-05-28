@@ -18,9 +18,12 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { SnippetService } from '../../../core/snippet/services/snippet.service';
+import { RepoService } from '../../../core/repo/services/repo.service';
+import { TokenService } from '../../../core/auth/services/token.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import type { SnippetVisibility } from '../../../domain/snippet/models/snippet.model';
+import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
 
 interface FileRow {
   filename: string;
@@ -37,6 +40,8 @@ export class SnippetEditPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly snippetService = inject(SnippetService);
+  private readonly repoService = inject(RepoService);
+  private readonly tokenService = inject(TokenService);
   private readonly toastService = inject(ToastService);
   private readonly confirmModal = inject(ConfirmModalService);
 
@@ -50,13 +55,27 @@ export class SnippetEditPage implements OnInit {
   readonly visibility = signal<SnippetVisibility>('PUBLIC');
   readonly files = signal<FileRow[]>([{ filename: 'snippet.txt', content: '' }]);
   readonly summary = signal('');
+  readonly linkedRepoId = signal<string | null>(null);
+  readonly repos = signal<RepoInfo[]>([]);
 
   ngOnInit(): void {
+    void this.loadRepos();
     const id = this.route.snapshot.paramMap.get('snippetId');
     if (id) {
       this.snippetId.set(id);
       this.isEditMode.set(true);
       this.loadExisting(id);
+    }
+  }
+
+  private async loadRepos(): Promise<void> {
+    const username = this.tokenService.getUsername();
+    if (!username) return;
+    try {
+      const page = await this.repoService.listUserRepos(username, 0, 100);
+      this.repos.set(page.content);
+    } catch {
+      // repos are optional
     }
   }
 
@@ -68,6 +87,7 @@ export class SnippetEditPage implements OnInit {
       this.description.set(detail.description ?? '');
       this.visibility.set(detail.visibility);
       this.files.set(detail.files.map((f) => ({ filename: f.filename, content: f.content })));
+      this.linkedRepoId.set(detail.repoId ?? null);
     } catch {
       this.toastService.error('Failed to load snippet');
       this.router.navigate(['/snippets']);
@@ -90,6 +110,11 @@ export class SnippetEditPage implements OnInit {
 
   onSummaryInput(event: Event): void {
     this.summary.set((event.target as HTMLInputElement).value);
+  }
+
+  onRepoChange(event: Event): void {
+    const val = (event.target as HTMLSelectElement).value;
+    this.linkedRepoId.set(val || null);
   }
 
   onFilenameInput(index: number, event: Event): void {
@@ -163,6 +188,12 @@ export class SnippetEditPage implements OnInit {
         });
         id = created.id;
         this.toastService.success('Snippet created');
+      }
+      const repoId = this.linkedRepoId();
+      if (repoId) {
+        await this.snippetService.linkRepo(id, repoId);
+      } else if (this.isEditMode()) {
+        await this.snippetService.unlinkRepo(id).catch(() => {});
       }
       this.router.navigate(['/snippets', id]);
     } catch {

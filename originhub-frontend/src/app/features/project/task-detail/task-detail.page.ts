@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, computed, inject, signal, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,7 @@ import { BranchService } from '../../../core/branch/services/branch.service';
 import { RepoService } from '../../../core/repo/services/repo.service';
 import { IssueService } from '../../../core/issue/services/issue.service';
 import { TokenService } from '../../../core/auth/services/token.service';
-import { UserService } from '../../../core/user/services/user.service';
+
 import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
@@ -50,7 +50,7 @@ export class TaskDetailPage implements OnInit {
   private readonly repoService = inject(RepoService);
   private readonly issueService = inject(IssueService);
   private readonly tokenService = inject(TokenService);
-  private readonly userService = inject(UserService);
+
   private readonly toastService = inject(ToastService);
   private readonly confirmModal = inject(ConfirmModalService);
 
@@ -104,6 +104,11 @@ export class TaskDetailPage implements OnInit {
     return this.route.snapshot.paramMap.get('taskCode') ?? '';
   }
 
+  readonly isOwner = computed(() => {
+    const me = this.tokenService.getUsername();
+    return !!me && me.toLowerCase() === this.owner.toLowerCase();
+  });
+
   statusBadgeClass(status: string): string {
     switch (status) {
       case 'COMPLETED':
@@ -115,6 +120,58 @@ export class TaskDetailPage implements OnInit {
       default:
         return 'badge-ghost';
     }
+  }
+
+  statusInlineBadgeClass(status: string): string {
+    switch (status) {
+      case 'COMPLETED':
+        return 'bg-success/10 text-success';
+      case 'IN_PROGRESS':
+        return 'bg-warning/10 text-warning';
+      default:
+        return 'bg-base-200 text-base-content/60';
+    }
+  }
+
+  statusDotBgClass(status: string): string {
+    switch (status) {
+      case 'COMPLETED':
+        return 'bg-success';
+      case 'IN_PROGRESS':
+        return 'bg-warning';
+      default:
+        return 'bg-base-content/40';
+    }
+  }
+
+  prInlineBadgeClass(status: string): string {
+    switch (status) {
+      case 'MERGED':
+        return 'bg-success/10 text-success';
+      case 'OPEN':
+        return 'bg-primary/10 text-primary';
+      default:
+        return 'bg-base-200 text-base-content/60';
+    }
+  }
+
+  prDotBgClass(status: string): string {
+    switch (status) {
+      case 'MERGED':
+        return 'bg-success';
+      case 'OPEN':
+        return 'bg-primary';
+      default:
+        return 'bg-base-content/40';
+    }
+  }
+
+  issueInlineBadgeClass(status: string): string {
+    return status === 'OPEN' ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/60';
+  }
+
+  issueDotBgClass(status: string): string {
+    return status === 'OPEN' ? 'bg-success' : 'bg-base-content/40';
   }
 
   statusLabel(status: string): string {
@@ -379,22 +436,12 @@ export class TaskDetailPage implements OnInit {
   readonly types: TaskType[] = ['TASK', 'BUG'];
 
   async ngOnInit(): Promise<void> {
-    await this.resolveOwner();
+    this.resolveOwner();
     await this.loadTask();
   }
 
-  private async resolveOwner(): Promise<void> {
-    let username = this.tokenService.getUsername();
-    if (!username) {
-      try {
-        const me = await this.userService.getMe();
-        username = me.username;
-        this.tokenService.persistUsernameIfMissing(username);
-      } catch {
-        username = null;
-      }
-    }
-    this.ownerUsername.set(username ?? '');
+  private resolveOwner(): void {
+    this.ownerUsername.set(this.route.snapshot.paramMap.get('owner') ?? '');
   }
 
   private apiErrorMessage(err: unknown, fallback: string): string {

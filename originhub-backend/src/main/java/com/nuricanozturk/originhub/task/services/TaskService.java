@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.task.dtos.CreateBranchFromTaskForm;
 import com.nuricanozturk.originhub.task.dtos.LinkedIssueInfo;
@@ -124,9 +125,12 @@ public class TaskService {
   }
 
   public @NonNull List<TaskInfo> getAll(
-      final @NonNull String ownerUsername, final @NonNull String projectCode) {
+      final @NonNull String ownerUsername,
+      final @NonNull String projectCode,
+      final @Nullable Tenant viewer) {
 
-    final var project = this.projectService.findProject(ownerUsername, projectCode);
+    final var project =
+        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.taskRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
         .map(
             task -> {
@@ -141,9 +145,11 @@ public class TaskService {
   public @NonNull TaskDetail get(
       final @NonNull String ownerUsername,
       final @NonNull String projectCode,
-      final @NonNull String taskCode) {
+      final @NonNull String taskCode,
+      final @Nullable Tenant viewer) {
 
-    final var project = this.projectService.findProject(ownerUsername, projectCode);
+    final var project =
+        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.toDetail(this.findTask(project.getId(), taskCode));
   }
 

@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.snippet.services;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
+import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetDetail;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetForm;
@@ -57,6 +58,7 @@ public class SnippetService {
   private final SnippetRepository snippetRepository;
   private final SnippetRevisionRepository revisionRepository;
   private final TenantRepository tenantRepository;
+  private final RepoRepository repoRepository;
   private final SnippetMapper snippetMapper;
   private final SnippetFileStorageService fileStorage;
 
@@ -323,6 +325,59 @@ public class SnippetService {
     }
 
     return this.snippetMapper.toRevisionDetail(revision, revision.getFiles(), contentByFileId);
+  }
+
+  @Transactional
+  public SnippetDetail linkRepo(
+      final UUID tenantId, final UUID snippetId, final UUID repoId) {
+
+    final var snippet = this.loadSnippet(snippetId);
+    this.requireOwner(snippet, tenantId);
+    final var repo =
+        this.repoRepository
+            .findById(repoId)
+            .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+    snippet.setRepo(repo);
+    final var saved = this.snippetRepository.save(snippet);
+    return this.buildDetail(saved, saved.getOwner().getUsername());
+  }
+
+  @Transactional
+  public SnippetDetail unlinkRepo(final UUID tenantId, final UUID snippetId) {
+
+    final var snippet = this.loadSnippet(snippetId);
+    this.requireOwner(snippet, tenantId);
+    snippet.setRepo(null);
+    final var saved = this.snippetRepository.save(snippet);
+    return this.buildDetail(saved, saved.getOwner().getUsername());
+  }
+
+  public PageResponse<SnippetInfo> listByRepo(
+      final String ownerUsername,
+      final String repoName,
+      final @Nullable UUID callerId,
+      final int page,
+      final int size) {
+
+    final var repo =
+        this.repoRepository
+            .findByOwnerUsernameAndName(ownerUsername, repoName)
+            .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+
+    final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+
+    final boolean isOwner =
+        callerId != null && callerId.equals(repo.getOwner().getId());
+
+    if (isOwner) {
+      return PageResponse.from(
+          this.snippetRepository.findAllByRepoId(repo.getId(), pageable)
+              .map(this.snippetMapper::toInfo));
+    }
+
+    return PageResponse.from(
+        this.snippetRepository.findPublicByRepoId(repo.getId(), pageable)
+            .map(this.snippetMapper::toInfo));
   }
 
   SnippetDetail buildDetail(final Snippet snippet, final String username) {

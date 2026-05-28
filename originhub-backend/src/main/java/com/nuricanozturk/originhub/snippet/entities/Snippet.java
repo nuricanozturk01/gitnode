@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.snippet.entities;
 
+import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -72,6 +73,10 @@ public class Snippet {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "forked_from_id")
   private Snippet forkedFrom;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "repo_id")
+  private Repo repo;
 
   @ColumnDefault("0")
   @Column(name = "file_count", nullable = false)

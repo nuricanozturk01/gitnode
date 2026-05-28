@@ -68,6 +68,10 @@ public class Project {
   @Column(name = "sync_task_status_on_pr_merge", nullable = false)
   private boolean syncTaskStatusOnPrMerge = true;
 
+  @ColumnDefault("false")
+  @Column(name = "is_public", nullable = false)
+  private boolean isPublic = false;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;

@@ -122,6 +122,36 @@
           <span class="profile-tab-count">{{ repoStats().total }}</span>
           }
         </button>
+        <button
+          type="button"
+          role="tab"
+          id="profile-tab-projects"
+          class="profile-tab"
+          [class.profile-tab--active]="activeTab() === 'projects'"
+          [attr.aria-selected]="activeTab() === 'projects'"
+          aria-controls="profile-panel-projects"
+          (click)="setTab('projects')"
+        >
+          <lucide-icon name="kanban" class="size-4 shrink-0"></lucide-icon>
+          Projects @if (projects().length > 0) {
+          <span class="profile-tab-count">{{ projects().length }}{{ projectTotalPages() > 1 ? '+' : '' }}</span>
+          }
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="profile-tab-snippets"
+          class="profile-tab"
+          [class.profile-tab--active]="activeTab() === 'snippets'"
+          [attr.aria-selected]="activeTab() === 'snippets'"
+          aria-controls="profile-panel-snippets"
+          (click)="setTab('snippets')"
+        >
+          <lucide-icon name="fileCode2" class="size-4 shrink-0"></lucide-icon>
+          Snippets @if (snippetTotalElements() > 0) {
+          <span class="profile-tab-count">{{ snippetTotalElements() }}</span>
+          }
+        </button>
       </div>
 
       <!-- OVERVIEW tab -->
@@ -147,7 +177,12 @@
             <lucide-icon name="bookOpen" class="size-3.5"></lucide-icon>
             {{ repoStats().total }} {{ repoStats().total === 1 ? 'repository' : 'repositories' }}
           </span>
-          @if (repoStats().private > 0) {
+          @if (projects().length > 0) {
+          <span class="badge-pill badge-pill--primary gap-1">
+            <lucide-icon name="kanban" class="size-3.5"></lucide-icon>
+            {{ projects().length }} {{ projects().length === 1 ? 'project' : 'projects' }}
+          </span>
+          } @if (repoStats().private > 0) {
           <span class="badge-pill badge-pill--neutral">{{ repoStats().private }} private</span>
           } @if (repoStats().archived > 0) {
           <span class="badge-pill badge-pill--draft">{{ repoStats().archived }} archived</span>
@@ -380,6 +415,210 @@
           </button>
         </div>
         }
+      </section>
+      }
+      <!-- PROJECTS tab -->
+      @if (activeTab() === 'projects') {
+      <section id="profile-panel-projects" role="tabpanel" aria-labelledby="profile-tab-projects" class="space-y-4">
+        <div class="flex items-end justify-between">
+          <div>
+            <h2 class="text-base-content text-lg font-semibold">Projects</h2>
+            <p class="text-base-content/60 mt-0.5 text-sm">
+              {{ projects().length }}{{ projectTotalPages() > 1 ? '+' : '' }} public project{{ projects().length !== 1 ?
+              's' : '' }}
+            </p>
+          </div>
+          @if (isOwnProfile()) {
+          <a routerLink="/projects" class="btn btn-outline btn-sm border-base-300 gap-2">
+            <lucide-icon name="kanban" class="size-4"></lucide-icon>
+            Manage projects
+          </a>
+          }
+        </div>
+
+        @if (projects().length === 0) {
+        <div class="repo-panel">
+          <div class="flex flex-col items-center px-6 py-14 text-center">
+            <lucide-icon name="kanban" class="text-base-content/35 mb-4 size-14"></lucide-icon>
+            <h3 class="text-base-content text-lg font-semibold">No public projects</h3>
+            <p class="text-base-content/65 mt-2 max-w-md text-sm">
+              @if (isOwnProfile()) { Create a project and make it public to show it here. } @else { This user has no
+              public projects yet. }
+            </p>
+            @if (isOwnProfile()) {
+            <a routerLink="/projects" class="btn btn-primary btn-sm mt-6 gap-2">
+              <lucide-icon name="plus" class="size-4"></lucide-icon>
+              New project
+            </a>
+            }
+          </div>
+        </div>
+        } @else {
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          @for (project of projects(); track project.id) {
+          <a
+            [routerLink]="['/projects', username(), project.codePrefix]"
+            class="group bg-base-100 border-base-300 hover:border-primary/45 relative flex flex-col overflow-hidden rounded-2xl border no-underline shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+          >
+            <div class="from-primary/60 via-primary to-primary/60 h-0.5 bg-gradient-to-r"></div>
+            <div class="flex flex-1 flex-col gap-3 p-4">
+              <div class="flex items-start gap-2">
+                <div class="min-w-0 flex-1">
+                  <code class="bg-primary/10 text-primary rounded-lg px-2 py-1 font-mono text-xs font-bold">
+                    {{ project.codePrefix }}
+                  </code>
+                  <h3
+                    class="text-base-content group-hover:text-primary mt-2 truncate text-sm leading-snug font-semibold transition-colors"
+                  >
+                    {{ project.name }}
+                  </h3>
+                  @if (project.description) {
+                  <p class="text-base-content/50 mt-1 line-clamp-2 text-xs leading-relaxed">
+                    {{ project.description }}
+                  </p>
+                  }
+                </div>
+              </div>
+              <div class="text-base-content/40 border-base-200 mt-auto flex items-center gap-3 border-t pt-1 text-xs">
+                <span class="inline-flex items-center gap-1">
+                  <lucide-icon name="layers" class="size-3.5"></lucide-icon>
+                  {{ project.taskCount }} task{{ project.taskCount !== 1 ? 's' : '' }}
+                </span>
+                @if (project.updatedAt) {
+                <span class="ml-auto">{{ project.updatedAt | relativeTime }}</span>
+                }
+              </div>
+            </div>
+          </a>
+          }
+        </div>
+        @if (projectTotalPages() > 1) {
+        <div class="mt-6 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm gap-1"
+            [disabled]="projectCurrentPage() === 0"
+            (click)="goToProjectPage(projectCurrentPage() - 1)"
+          >
+            <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+            Prev
+          </button>
+          <span class="text-base-content/60 text-sm">{{ projectCurrentPage() + 1 }} / {{ projectTotalPages() }}</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm gap-1"
+            [disabled]="projectCurrentPage() + 1 >= projectTotalPages()"
+            (click)="goToProjectPage(projectCurrentPage() + 1)"
+          >
+            Next
+            <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+          </button>
+        </div>
+        } }
+      </section>
+      }
+
+      <!-- SNIPPETS tab -->
+      @if (activeTab() === 'snippets') {
+      <section id="profile-panel-snippets" role="tabpanel" aria-labelledby="profile-tab-snippets" class="space-y-4">
+        <div class="flex items-end justify-between">
+          <div>
+            <h2 class="text-base-content text-lg font-semibold">Snippets</h2>
+            <p class="text-base-content/60 mt-0.5 text-sm">
+              {{ snippetTotalElements() }} snippet{{ snippetTotalElements() !== 1 ? 's' : '' }}
+            </p>
+          </div>
+          @if (isOwnProfile()) {
+          <a routerLink="/snippets/new" class="btn btn-outline btn-sm border-base-300 gap-2">
+            <lucide-icon name="plus" class="size-4"></lucide-icon>
+            New snippet
+          </a>
+          }
+        </div>
+
+        @if (snippets().length === 0) {
+        <div class="repo-panel">
+          <div class="flex flex-col items-center px-6 py-14 text-center">
+            <lucide-icon name="fileCode2" class="text-base-content/35 mb-4 size-14"></lucide-icon>
+            <h3 class="text-base-content text-lg font-semibold">No snippets yet</h3>
+            <p class="text-base-content/65 mt-2 max-w-md text-sm">
+              @if (isOwnProfile()) { Create your first snippet to share code with others. } @else { This user has no
+              public snippets yet. }
+            </p>
+            @if (isOwnProfile()) {
+            <a routerLink="/snippets/new" class="btn btn-primary btn-sm mt-6 gap-2">
+              <lucide-icon name="plus" class="size-4"></lucide-icon>
+              New snippet
+            </a>
+            }
+          </div>
+        </div>
+        } @else {
+        <div class="flex flex-col gap-3">
+          @for (snippet of snippets(); track snippet.id) {
+          <a
+            [routerLink]="['/snippets', snippet.id]"
+            class="group bg-base-100 border-base-300 hover:border-primary/45 flex flex-col gap-2 rounded-xl border p-4 no-underline shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <lucide-icon name="fileCode2" class="text-primary size-4 shrink-0"></lucide-icon>
+                  <span class="text-base-content group-hover:text-primary truncate font-semibold transition-colors">
+                    {{ snippet.title }}
+                  </span>
+                  @if (snippet.visibility === 'PRIVATE') {
+                  <span class="bg-base-200 text-base-content/50 rounded px-1.5 py-0.5 text-[10px] font-semibold"
+                    >Private</span
+                  >
+                  }
+                </div>
+                @if (snippet.description) {
+                <p class="text-base-content/55 mt-1 line-clamp-2 text-sm">{{ snippet.description }}</p>
+                }
+              </div>
+            </div>
+            <div class="text-base-content/40 flex items-center gap-4 text-xs">
+              <span class="inline-flex items-center gap-1">
+                <lucide-icon name="file" class="size-3.5"></lucide-icon>
+                {{ snippet.fileCount }} file{{ snippet.fileCount !== 1 ? 's' : '' }}
+              </span>
+              @if (snippet.repoName) {
+              <span class="inline-flex items-center gap-1">
+                <lucide-icon name="gitBranch" class="size-3.5"></lucide-icon>
+                {{ snippet.repoName }}
+              </span>
+              }
+              @if (snippet.updatedAt) {
+              <span class="ml-auto">{{ snippet.updatedAt | relativeTime }}</span>
+              }
+            </div>
+          </a>
+          }
+        </div>
+        @if (snippetTotalPages() > 1) {
+        <div class="mt-6 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm gap-1"
+            [disabled]="snippetCurrentPage() === 0"
+            (click)="goToSnippetPage(snippetCurrentPage() - 1)"
+          >
+            <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+            Prev
+          </button>
+          <span class="text-base-content/60 text-sm">{{ snippetCurrentPage() + 1 }} / {{ snippetTotalPages() }}</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm gap-1"
+            [disabled]="snippetCurrentPage() + 1 >= snippetTotalPages()"
+            (click)="goToSnippetPage(snippetCurrentPage() + 1)"
+          >
+            Next
+            <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+          </button>
+        </div>
+        } }
       </section>
       }
     </div>

@@ -15,6 +15,8 @@
  */
 package com.nuricanozturk.originhub.task.controllers;
 
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.task.dtos.ProjectForm;
 import com.nuricanozturk.originhub.task.dtos.ProjectInfo;
 import com.nuricanozturk.originhub.task.dtos.ProjectRepoInfo;
@@ -25,8 +27,10 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -34,6 +38,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -46,39 +51,49 @@ public class ProjectController {
   @PostMapping
   public @NonNull ResponseEntity<ProjectInfo> create(
       @PathVariable final @NonNull String owner,
+      @AuthenticationPrincipal final @NonNull Tenant caller,
       @Valid @RequestBody final @NonNull ProjectForm form) {
 
-    return ResponseEntity.status(HttpStatus.CREATED).body(this.projectService.create(owner, form));
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(this.projectService.create(owner, caller, form));
   }
 
   @GetMapping
-  public @NonNull ResponseEntity<List<ProjectInfo>> getAll(
-      @PathVariable final @NonNull String owner) {
+  public @NonNull ResponseEntity<PageResponse<ProjectInfo>> getAll(
+      @PathVariable final @NonNull String owner,
+      @AuthenticationPrincipal final @Nullable Tenant viewer,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "12") final int size) {
 
-    return ResponseEntity.ok(this.projectService.getAll(owner));
+    return ResponseEntity.ok(this.projectService.getAll(owner, viewer, page, size));
   }
 
   @GetMapping("/{projectCode}")
   public @NonNull ResponseEntity<ProjectInfo> get(
-      @PathVariable final @NonNull String owner, @PathVariable final @NonNull String projectCode) {
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String projectCode,
+      @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.projectService.get(owner, projectCode));
+    return ResponseEntity.ok(this.projectService.get(owner, projectCode, viewer));
   }
 
   @PatchMapping("/{projectCode}")
   public @NonNull ResponseEntity<ProjectInfo> update(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String projectCode,
+      @AuthenticationPrincipal final @NonNull Tenant caller,
       @Valid @RequestBody final @NonNull ProjectUpdateForm form) {
 
-    return ResponseEntity.ok(this.projectService.update(owner, projectCode, form));
+    return ResponseEntity.ok(this.projectService.update(owner, projectCode, caller, form));
   }
 
   @DeleteMapping("/{projectCode}")
   public @NonNull ResponseEntity<Void> delete(
-      @PathVariable final @NonNull String owner, @PathVariable final @NonNull String projectCode) {
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String projectCode,
+      @AuthenticationPrincipal final @NonNull Tenant caller) {
 
-    this.projectService.delete(owner, projectCode);
+    this.projectService.delete(owner, projectCode, caller);
     return ResponseEntity.noContent().build();
   }
 
@@ -86,9 +101,10 @@ public class ProjectController {
   public @NonNull ResponseEntity<Void> linkRepo(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID repoId) {
+      @PathVariable final @NonNull UUID repoId,
+      @AuthenticationPrincipal final @NonNull Tenant caller) {
 
-    this.projectService.linkRepo(owner, projectCode, repoId);
+    this.projectService.linkRepo(owner, projectCode, repoId, caller);
     return ResponseEntity.noContent().build();
   }
 
@@ -96,16 +112,19 @@ public class ProjectController {
   public @NonNull ResponseEntity<Void> unlinkRepo(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID repoId) {
+      @PathVariable final @NonNull UUID repoId,
+      @AuthenticationPrincipal final @NonNull Tenant caller) {
 
-    this.projectService.unlinkRepo(owner, projectCode, repoId);
+    this.projectService.unlinkRepo(owner, projectCode, repoId, caller);
     return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{projectCode}/repos")
   public @NonNull ResponseEntity<List<ProjectRepoInfo>> getLinkedRepos(
-      @PathVariable final @NonNull String owner, @PathVariable final @NonNull String projectCode) {
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String projectCode,
+      @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.projectService.getLinkedRepos(owner, projectCode));
+    return ResponseEntity.ok(this.projectService.getLinkedRepos(owner, projectCode, viewer));
   }
 }

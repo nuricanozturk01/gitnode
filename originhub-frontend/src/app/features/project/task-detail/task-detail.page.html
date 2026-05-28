@@ -8,7 +8,7 @@
   <div class="flex min-h-screen flex-col items-center justify-center px-4 text-center">
     <lucide-icon name="x" class="text-base-content/20 mb-4 size-12"></lucide-icon>
     <p class="text-base-content/60">Task not found.</p>
-    <a [routerLink]="['/projects', projectCode]" class="btn btn-ghost btn-sm mt-4 gap-2">
+    <a [routerLink]="['/projects', owner, projectCode]" class="btn btn-ghost btn-sm mt-4 gap-2">
       <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
       Back to board
     </a>
@@ -23,7 +23,7 @@
         <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
         <lucide-icon name="chevronRight" class="text-base-content/30 size-3.5 shrink-0"></lucide-icon>
         <a
-          [routerLink]="['/projects', projectCode]"
+          [routerLink]="['/projects', owner, projectCode]"
           class="hover:text-base-content shrink-0 no-underline transition-colors"
         >
           <code class="bg-primary/10 text-primary rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
@@ -35,14 +35,16 @@
       </nav>
 
       <div class="flex shrink-0 items-center gap-2">
-        <a [routerLink]="['/projects', projectCode]" class="btn btn-ghost btn-sm gap-1.5">
+        <a [routerLink]="['/projects', owner, projectCode]" class="btn btn-ghost btn-sm gap-1.5">
           <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
           Board
         </a>
+        @if (isOwner()) {
         <button type="button" class="btn btn-ghost btn-sm text-error hover:bg-error/10 gap-1.5" (click)="deleteTask()">
           <lucide-icon name="x" class="size-4"></lucide-icon>
           Delete
         </button>
+        }
       </div>
     </div>
   </div>
@@ -72,26 +74,14 @@
               <lucide-icon name="checkCircle" class="size-3.5"></lucide-icon>
               Task
             </span>
-            }
-
+            } @if (isOwner()) {
             <div class="dropdown dropdown-bottom">
               <div
                 tabindex="0"
                 role="button"
-                class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
-                [class.bg-success/10]="t.status === 'COMPLETED'"
-                [class.text-success]="t.status === 'COMPLETED'"
-                [class.bg-warning/10]="t.status === 'IN_PROGRESS'"
-                [class.text-warning]="t.status === 'IN_PROGRESS'"
-                [class.bg-base-200]="t.status === 'NOT_STARTED'"
-                [class.text-base-content/60]="t.status === 'NOT_STARTED'"
+                [class]="'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 ' + statusInlineBadgeClass(t.status)"
               >
-                <span
-                  class="size-1.5 shrink-0 rounded-full"
-                  [class.bg-success]="t.status === 'COMPLETED'"
-                  [class.bg-warning]="t.status === 'IN_PROGRESS'"
-                  [class.bg-base-content/40]="t.status === 'NOT_STARTED'"
-                ></span>
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
                 {{ statusLabel(t.status) }}
                 <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
               </div>
@@ -114,6 +104,14 @@
                 }
               </ul>
             </div>
+            } @else {
+            <span
+              [class]="'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + statusInlineBadgeClass(t.status)"
+            >
+              <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
+              {{ statusLabel(t.status) }}
+            </span>
+            }
           </div>
 
           <!-- Title -->
@@ -134,7 +132,7 @@
               Cancel
             </button>
           </div>
-          } @else {
+          } @else if (isOwner()) {
           <h1
             class="text-base-content hover:text-primary group flex cursor-pointer items-start gap-2 text-xl leading-snug font-bold transition-colors"
             role="button"
@@ -150,6 +148,8 @@
               class="text-base-content/20 group-hover:text-primary/50 mt-1 size-4 shrink-0 transition-colors"
             ></lucide-icon>
           </h1>
+          } @else {
+          <h1 class="text-base-content text-xl leading-snug font-bold">{{ t.title }}</h1>
           }
         </div>
 
@@ -157,7 +157,7 @@
         <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-base-content text-sm font-semibold">Description</h2>
-            @if (!editingDesc()) {
+            @if (isOwner() && !editingDesc()) {
             <button
               type="button"
               class="btn btn-ghost btn-xs text-base-content/40 hover:text-base-content gap-1"
@@ -185,8 +185,8 @@
             </div>
           </div>
           } @else if (t.description) {
-          <p class="text-base-content/70 text-sm leading-relaxed whitespace-pre-wrap">{{ t.description }}</p>
-          } @else {
+          <p class="text-base-content/70 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">{{ t.description }}</p>
+          } @else if (isOwner()) {
           <button
             type="button"
             class="text-base-content/30 hover:text-base-content/50 w-full text-left text-sm italic transition-colors"
@@ -194,6 +194,8 @@
           >
             No description. Click to add one…
           </button>
+          } @else {
+          <p class="text-base-content/30 text-sm italic">No description.</p>
           }
         </div>
 
@@ -206,7 +208,7 @@
           <p class="text-base-content/60 mb-4 text-sm leading-relaxed">
             Create a Git branch for this task, then open a pull request from that branch so it appears linked here.
           </p>
-          @if (linkedRepos().length === 0) {
+          @if (isOwner()) { @if (linkedRepos().length === 0) {
           <p class="text-base-content/50 mb-4 text-xs leading-relaxed">
             No repositories are linked to this project yet — the branch dialog will list repositories you can access.
             Link repos to the project for shorter lists.
@@ -216,7 +218,7 @@
             <lucide-icon name="gitBranch" class="size-4"></lucide-icon>
             Create branch
           </button>
-          } @else {
+          } } @else {
           <div class="flex flex-col gap-3">
             <div class="bg-base-200/50 flex flex-wrap items-center gap-3 rounded-xl p-3 text-sm">
               <lucide-icon name="gitBranch" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
@@ -254,20 +256,9 @@
                 >
               </div>
               <span
-                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
-                [class.bg-success/10]="t.linkedPr.status === 'MERGED'"
-                [class.text-success]="t.linkedPr.status === 'MERGED'"
-                [class.bg-primary/10]="t.linkedPr.status === 'OPEN'"
-                [class.text-primary]="t.linkedPr.status === 'OPEN'"
-                [class.bg-base-200]="t.linkedPr.status === 'CLOSED'"
-                [class.text-base-content/60]="t.linkedPr.status === 'CLOSED'"
+                [class]="'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + prInlineBadgeClass(t.linkedPr.status)"
               >
-                <span
-                  class="size-1.5 shrink-0 rounded-full"
-                  [class.bg-success]="t.linkedPr.status === 'MERGED'"
-                  [class.bg-primary]="t.linkedPr.status === 'OPEN'"
-                  [class.bg-base-content/40]="t.linkedPr.status === 'CLOSED'"
-                ></span>
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + prDotBgClass(t.linkedPr.status)"></span>
                 {{ t.linkedPr.status }}
               </span>
             </a>
@@ -281,26 +272,15 @@
                 >
               </div>
               <span
-                class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
-                [class.bg-success/10]="t.linkedPr.status === 'MERGED'"
-                [class.text-success]="t.linkedPr.status === 'MERGED'"
-                [class.bg-primary/10]="t.linkedPr.status === 'OPEN'"
-                [class.text-primary]="t.linkedPr.status === 'OPEN'"
-                [class.bg-base-200]="t.linkedPr.status === 'CLOSED'"
-                [class.text-base-content/60]="t.linkedPr.status === 'CLOSED'"
+                [class]="'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + prInlineBadgeClass(t.linkedPr.status)"
               >
-                <span
-                  class="size-1.5 shrink-0 rounded-full"
-                  [class.bg-success]="t.linkedPr.status === 'MERGED'"
-                  [class.bg-primary]="t.linkedPr.status === 'OPEN'"
-                  [class.bg-base-content/40]="t.linkedPr.status === 'CLOSED'"
-                ></span>
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + prDotBgClass(t.linkedPr.status)"></span>
                 {{ t.linkedPr.status }}
               </span>
             </div>
             } } @else {
             <div class="flex flex-col gap-2">
-              @if (devRepo) {
+              @if (devRepo && isOwner()) {
               <button type="button" class="btn btn-outline btn-sm w-fit gap-2" (click)="openNewPullRequest(t)">
                 <lucide-icon name="gitPullRequest" class="size-4"></lucide-icon>
                 Open pull request
@@ -308,7 +288,7 @@
               <p class="text-base-content/50 max-w-md text-xs leading-relaxed">
                 Compare branch <code class="font-mono">{{ t.branchName }}</code> into
                 <code class="font-mono">{{ devRepo.defaultBranch || 'main' }}</code>. The PR links here when opened; if
-                <a [routerLink]="['/projects', projectCode, 'settings']" class="link link-hover text-primary"
+                <a [routerLink]="['/projects', owner, projectCode, 'settings']" class="link link-hover text-primary"
                   >project settings</a
                 >
                 allow it, merging marks the task completed.
@@ -329,7 +309,7 @@
         <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
           <div class="mb-3 flex items-center justify-between">
             <h3 class="text-base-content text-sm font-semibold">Linked Issue</h3>
-            @if (t.linkedIssue) {
+            @if (t.linkedIssue && isOwner()) {
             <button
               type="button"
               class="btn btn-ghost btn-xs text-error opacity-60 hover:opacity-100"
@@ -363,21 +343,13 @@
               }
             </div>
             <span
-              class="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
-              [class.bg-success/10]="t.linkedIssue.status === 'OPEN'"
-              [class.text-success]="t.linkedIssue.status === 'OPEN'"
-              [class.bg-base-200]="t.linkedIssue.status === 'CLOSED'"
-              [class.text-base-content/60]="t.linkedIssue.status === 'CLOSED'"
+              [class]="'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + issueInlineBadgeClass(t.linkedIssue.status)"
             >
-              <span
-                class="size-1.5 shrink-0 rounded-full"
-                [class.bg-success]="t.linkedIssue.status === 'OPEN'"
-                [class.bg-base-content/40]="t.linkedIssue.status === 'CLOSED'"
-              ></span>
+              <span [class]="'size-1.5 shrink-0 rounded-full ' + issueDotBgClass(t.linkedIssue.status)"></span>
               {{ t.linkedIssue.status }}
             </span>
           </div>
-          } @else {
+          } @else if (isOwner()) {
           <div class="text-base-content/50 flex flex-col gap-2 text-sm">
             <p class="text-xs leading-relaxed">Link this task to a repository issue to track the problem it solves.</p>
             <button type="button" class="btn btn-outline btn-sm w-fit gap-2" (click)="openLinkIssueModal()">
@@ -389,7 +361,7 @@
         </div>
 
         <!-- Link Issue Modal -->
-        @if (showLinkIssueModal()) {
+        @if (showLinkIssueModal() && isOwner()) {
         <div
           class="bg-base-300/60 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
           role="dialog"
@@ -504,7 +476,8 @@
                   type="checkbox"
                   class="checkbox checkbox-sm checkbox-primary shrink-0"
                   [checked]="subtask.status === 'COMPLETED'"
-                  (change)="toggleSubtask(subtask)"
+                  [disabled]="!isOwner()"
+                  (change)="isOwner() && toggleSubtask(subtask)"
                 />
                 <div class="min-w-0 flex-1">
                   <div class="mb-0.5 flex flex-wrap items-center gap-2">
@@ -514,13 +487,14 @@
                     >
                   </div>
                   <span
-                    class="text-sm leading-snug transition-colors"
+                    class="text-sm leading-snug transition-colors wrap-break-word"
                     [class.line-through]="subtask.status === 'COMPLETED'"
                     [class.text-base-content/35]="subtask.status === 'COMPLETED'"
                     [class.text-base-content]="subtask.status !== 'COMPLETED'"
                     >{{ subtask.title }}</span
                   >
                 </div>
+                @if (isOwner()) {
                 <button
                   type="button"
                   class="btn btn-ghost btn-xs text-base-content/20 hover:text-error hover:bg-error/10 size-6 shrink-0 p-0 opacity-0 transition-all group-hover:opacity-100"
@@ -528,9 +502,10 @@
                 >
                   <lucide-icon name="x" class="size-3.5"></lucide-icon>
                 </button>
+                }
               </div>
               <div class="border-base-200 flex flex-wrap items-center gap-2 border-t border-dashed pt-2 pl-8">
-                @if (!subtask.branchName) {
+                @if (!subtask.branchName && isOwner()) {
                 <button
                   type="button"
                   class="btn btn-ghost btn-xs gap-1"
@@ -553,7 +528,7 @@
                   class="text-primary text-xs font-medium no-underline hover:underline"
                   >#{{ subtask.linkedPr.number }}</a
                 >
-                } @else if (subtask.branchName && subRepo) {
+                } @else if (subtask.branchName && subRepo && isOwner()) {
                 <button
                   type="button"
                   class="btn btn-ghost btn-xs gap-1"
@@ -567,8 +542,7 @@
             </li>
             }
           </ul>
-          }
-
+          } @if (isOwner()) {
           <div class="flex items-center gap-2">
             <input
               type="text"
@@ -591,6 +565,7 @@
               } Add
             </button>
           </div>
+          }
         </div>
       </div>
 
@@ -603,24 +578,14 @@
             <!-- Status -->
             <div class="flex items-center justify-between gap-2">
               <span class="text-base-content/50 text-xs font-medium">Status</span>
+              @if (isOwner()) {
               <div class="dropdown dropdown-end">
                 <div
                   tabindex="0"
                   role="button"
-                  class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
-                  [class.bg-success/10]="t.status === 'COMPLETED'"
-                  [class.text-success]="t.status === 'COMPLETED'"
-                  [class.bg-warning/10]="t.status === 'IN_PROGRESS'"
-                  [class.text-warning]="t.status === 'IN_PROGRESS'"
-                  [class.bg-base-200]="t.status === 'NOT_STARTED'"
-                  [class.text-base-content/60]="t.status === 'NOT_STARTED'"
+                  [class]="'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 ' + statusInlineBadgeClass(t.status)"
                 >
-                  <span
-                    class="size-1.5 shrink-0 rounded-full"
-                    [class.bg-success]="t.status === 'COMPLETED'"
-                    [class.bg-warning]="t.status === 'IN_PROGRESS'"
-                    [class.bg-base-content/40]="t.status === 'NOT_STARTED'"
-                  ></span>
+                  <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
                   {{ statusLabel(t.status) }}
                   <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
                 </div>
@@ -633,11 +598,20 @@
                   }
                 </ul>
               </div>
+              } @else {
+              <span
+                [class]="'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + statusInlineBadgeClass(t.status)"
+              >
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
+                {{ statusLabel(t.status) }}
+              </span>
+              }
             </div>
 
             <!-- Type -->
             <div class="flex items-center justify-between gap-2">
               <span class="text-base-content/50 text-xs font-medium">Type</span>
+              @if (isOwner()) {
               <div class="dropdown dropdown-end">
                 <div
                   tabindex="0"
@@ -665,12 +639,25 @@
                   }
                 </ul>
               </div>
+              } @else {
+              <span
+                class="bg-base-200 text-base-content/60 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
+              >
+                @if (t.type === 'BUG') {
+                <lucide-icon name="alertTriangle" class="text-error size-3"></lucide-icon>
+                <span class="text-error">Bug</span>
+                } @else {
+                <lucide-icon name="checkCircle" class="size-3"></lucide-icon>
+                Task }
+              </span>
+              }
             </div>
 
             <!-- Column -->
             @if (columns().length > 0) {
             <div class="flex items-center justify-between gap-2">
               <span class="text-base-content/50 text-xs font-medium">Column</span>
+              @if (isOwner()) {
               <div class="dropdown dropdown-end">
                 <div
                   tabindex="0"
@@ -689,6 +676,13 @@
                   }
                 </ul>
               </div>
+              } @else {
+              <span
+                class="bg-base-200 text-base-content/60 max-w-32 truncate rounded-lg px-2 py-1 text-xs font-semibold"
+              >
+                {{ columnName(t.boardColumnId) }}
+              </span>
+              }
             </div>
             }
 
@@ -746,7 +740,7 @@
   }
 
   <!-- Create branch modal -->
-  @if (showBranchModal() && task()) { @let ct = task()!;
+  @if (showBranchModal() && task() && isOwner()) { @let ct = task()!;
   <div class="modal modal-open">
     <div class="modal-box max-w-md">
       <button

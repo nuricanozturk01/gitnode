@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.task.services;
 
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnForm;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnInfo;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnUpdateForm;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,9 +64,12 @@ public class BoardService {
   }
 
   public @NonNull List<BoardInfo> getAllBoards(
-      final @NonNull String ownerUsername, final @NonNull String projectCode) {
+      final @NonNull String ownerUsername,
+      final @NonNull String projectCode,
+      final @Nullable Tenant viewer) {
 
-    final var project = this.projectService.findProject(ownerUsername, projectCode);
+    final var project =
+        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.boardRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
         .map(this::toBoardInfo)
         .toList();
@@ -73,9 +78,11 @@ public class BoardService {
   public @NonNull BoardInfo getBoard(
       final @NonNull String ownerUsername,
       final @NonNull String projectCode,
-      final @NonNull UUID boardId) {
+      final @NonNull UUID boardId,
+      final @Nullable Tenant viewer) {
 
-    final var project = this.projectService.findProject(ownerUsername, projectCode);
+    final var project =
+        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     final var board = this.findBoard(boardId, project.getId());
     return this.toBoardInfo(board);
   }

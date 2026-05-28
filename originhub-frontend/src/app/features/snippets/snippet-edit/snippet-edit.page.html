@@ -142,6 +142,22 @@
       </label>
       }
 
+      <!-- Linked repository -->
+      @if (repos().length > 0) {
+      <label class="form-control w-full">
+        <div class="label pb-1">
+          <span class="label-text font-medium">Link to repository</span>
+          <span class="label-text-alt text-base-content/40">optional</span>
+        </div>
+        <select class="select select-bordered w-full" (change)="onRepoChange($event)">
+          <option value="">No repository</option>
+          @for (repo of repos(); track repo.id) {
+          <option [value]="repo.id" [selected]="linkedRepoId() === repo.id">{{ repo.name }}</option>
+          }
+        </select>
+      </label>
+      }
+
       <!-- Actions -->
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" class="btn btn-ghost" (click)="cancel()">Cancel</button>

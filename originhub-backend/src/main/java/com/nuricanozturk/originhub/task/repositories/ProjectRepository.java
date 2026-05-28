@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -30,7 +32,23 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
   @NonNull List<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(@NonNull String ownerUsername);
 
+  @NonNull
+  List<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
+      @NonNull String ownerUsername);
+
+  @NonNull
+  Page<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(
+      @NonNull String ownerUsername, @NonNull Pageable pageable);
+
+  @NonNull
+  Page<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
+      @NonNull String ownerUsername, @NonNull Pageable pageable);
+
   @NonNull Optional<Project> findByOwnerUsernameAndCodePrefix(
+      @NonNull String ownerUsername, @NonNull String codePrefix);
+
+  @NonNull
+  Optional<Project> findByOwnerUsernameAndCodePrefixAndIsPublicTrue(
       @NonNull String ownerUsername, @NonNull String codePrefix);
 
   boolean existsByOwnerIdAndName(@NonNull UUID ownerId, @NonNull String name);

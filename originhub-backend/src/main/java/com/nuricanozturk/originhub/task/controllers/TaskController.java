@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.task.controllers;
 
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.task.dtos.CreateBranchFromTaskForm;
 import com.nuricanozturk.originhub.task.dtos.SubtaskForm;
 import com.nuricanozturk.originhub.task.dtos.SubtaskInfo;
@@ -31,7 +32,9 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,18 +64,21 @@ public class TaskController {
 
   @GetMapping
   public @NonNull ResponseEntity<List<TaskInfo>> getAll(
-      @PathVariable final @NonNull String owner, @PathVariable final @NonNull String projectCode) {
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String projectCode,
+      @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.taskService.getAll(owner, projectCode));
+    return ResponseEntity.ok(this.taskService.getAll(owner, projectCode, viewer));
   }
 
   @GetMapping("/{taskCode}")
   public @NonNull ResponseEntity<TaskDetail> get(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode) {
+      @PathVariable final @NonNull String taskCode,
+      @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.taskService.get(owner, projectCode, taskCode));
+    return ResponseEntity.ok(this.taskService.get(owner, projectCode, taskCode, viewer));
   }
 
   @PatchMapping("/{taskCode}")

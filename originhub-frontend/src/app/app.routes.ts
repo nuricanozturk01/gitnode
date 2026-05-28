@@ -69,20 +69,18 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
-    path: 'projects/:projectCode/settings',
+    path: 'projects/:owner/:projectCode/settings',
     loadComponent: () =>
       import('./features/project/project-settings/project-settings.page').then((m) => m.ProjectSettingsPage),
     canActivate: [authGuard],
   },
   {
-    path: 'projects/:projectCode/tasks/:taskCode',
+    path: 'projects/:owner/:projectCode/tasks/:taskCode',
     loadComponent: () => import('./features/project/task-detail/task-detail.page').then((m) => m.TaskDetailPage),
-    canActivate: [authGuard],
   },
   {
-    path: 'projects/:projectCode',
+    path: 'projects/:owner/:projectCode',
     loadComponent: () => import('./features/project/board/board.page').then((m) => m.BoardPage),
-    canActivate: [authGuard],
   },
 
   {
@@ -180,6 +178,11 @@ export const routes: Routes = [
       {
         path: 'pulls/:number',
         loadComponent: () => import('./features/repo/pull-requests/pr-detail.page').then((m) => m.PrDetailPage),
+      },
+      {
+        path: 'snippets',
+        loadComponent: () =>
+          import('./features/repo/snippets/repo-snippets.page').then((m) => m.RepoSnippetsPage),
       },
       {
         path: 'settings',

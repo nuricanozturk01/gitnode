@@ -25,22 +25,33 @@ export class ProjectsPage implements OnInit {
   readonly loading = signal(true);
   readonly showCreateModal = signal(false);
   readonly creating = signal(false);
+  readonly currentPage = signal(0);
+  readonly totalPages = signal(0);
+  readonly totalElements = signal(0);
 
-  readonly form = signal<ProjectForm>({ name: '', codePrefix: '', description: '' });
+  readonly form = signal<ProjectForm>({ name: '', codePrefix: '', description: '', isPublic: false });
 
   get owner(): string {
     return this.tokenService.getUsername() ?? '';
   }
 
   async ngOnInit(): Promise<void> {
-    await this.loadProjects();
+    await this.loadProjects(0);
   }
 
-  private async loadProjects(): Promise<void> {
+  async goToPage(page: number): Promise<void> {
+    if (page < 0 || page >= this.totalPages()) return;
+    await this.loadProjects(page);
+  }
+
+  private async loadProjects(page: number): Promise<void> {
     this.loading.set(true);
     try {
-      const data = await this.projectService.getAll(this.owner);
-      this.projects.set(data);
+      const data = await this.projectService.getAll(this.owner, page);
+      this.projects.set(data.content);
+      this.currentPage.set(data.number);
+      this.totalPages.set(data.totalPages);
+      this.totalElements.set(data.totalElements);
     } catch {
       this.toastService.error('Failed to load projects');
     } finally {
@@ -49,7 +60,7 @@ export class ProjectsPage implements OnInit {
   }
 
   openCreateModal(): void {
-    this.form.set({ name: '', codePrefix: '', description: '' });
+    this.form.set({ name: '', codePrefix: '', description: '', isPublic: false });
     this.showCreateModal.set(true);
   }
 
@@ -79,6 +90,10 @@ export class ProjectsPage implements OnInit {
     this.form.update((f) => ({ ...f, description }));
   }
 
+  onVisibilityChange(isPublic: boolean): void {
+    this.form.update((f) => ({ ...f, isPublic }));
+  }
+
   async submitCreate(): Promise<void> {
     const f = this.form();
     if (!f.name.trim() || !f.codePrefix.trim()) return;
@@ -87,7 +102,7 @@ export class ProjectsPage implements OnInit {
       const project = await this.projectService.create(this.owner, f);
       this.projects.update((list) => [project, ...list]);
       this.closeCreateModal();
-      this.router.navigate(['/projects', project.codePrefix]);
+      this.router.navigate(['/projects', this.owner, project.codePrefix]);
     } catch {
       this.toastService.error('Failed to create project');
     } finally {

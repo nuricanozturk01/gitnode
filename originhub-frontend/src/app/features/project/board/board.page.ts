@@ -81,11 +81,16 @@ export class BoardPage implements OnInit {
   readonly dragOverColumnHeaderId = signal<string | null>(null);
 
   get owner(): string {
-    return this.tokenService.getUsername() ?? '';
+    return this.route.snapshot.paramMap.get('owner') ?? '';
   }
   get projectCode(): string {
     return this.route.snapshot.paramMap.get('projectCode') ?? '';
   }
+
+  readonly isOwner = computed(() => {
+    const me = this.tokenService.getUsername();
+    return !!me && me.toLowerCase() === this.owner.toLowerCase();
+  });
 
   readonly selectedBoard = computed(() => {
     const id = this.selectedBoardId();

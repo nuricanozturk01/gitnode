@@ -36,6 +36,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -142,6 +143,52 @@ public class SnippetController {
 
     final var callerId = this.extractOptionalCaller(authHeader);
     return ResponseEntity.ok(this.snippetService.getRevision(snippetId, revisionId, callerId));
+  }
+
+  @PutMapping("/{snippetId}/repo/{repoId}")
+  public @NonNull ResponseEntity<SnippetDetail> linkRepo(
+      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final @NonNull UUID snippetId,
+      @PathVariable final @NonNull UUID repoId) {
+
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
+    return ResponseEntity.ok(this.snippetService.linkRepo(tenantId, snippetId, repoId));
+  }
+
+  @DeleteMapping("/{snippetId}/repo")
+  public @NonNull ResponseEntity<SnippetDetail> unlinkRepo(
+      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final @NonNull UUID snippetId) {
+
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
+    return ResponseEntity.ok(this.snippetService.unlinkRepo(tenantId, snippetId));
+  }
+
+  @GetMapping("/by-owner/{username}")
+  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listByOwner(
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
+      @PathVariable final @NonNull String username,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "20") final int size) {
+
+    final var callerId = this.extractOptionalCaller(authHeader);
+    return ResponseEntity.ok(
+        PageResponse.from(this.snippetService.listByOwner(username, callerId, page, size)));
+  }
+
+  @GetMapping("/repo/{owner}/{repoName}")
+  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listByRepo(
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String repoName,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "20") final int size) {
+
+    final var callerId = this.extractOptionalCaller(authHeader);
+    return ResponseEntity.ok(
+        this.snippetService.listByRepo(owner, repoName, callerId, page, size));
   }
 
   @GetMapping("/{snippetId}/files/{fileId}/raw")

@@ -98,6 +98,15 @@
                 <span class="badge-pill badge-pill--primary">{{ prCount() }}</span>
               }
             </a>
+            <a
+              [routerLink]="['/', owner(), repoName(), 'snippets']"
+              routerLinkActive="tab-active"
+              ariaCurrentWhenActive="page"
+              class="tab gap-1.5 rounded-md"
+            >
+              <lucide-icon name="fileCode2" class="size-3.5 shrink-0"></lucide-icon>
+              Snippets
+            </a>
             @if (repoContext.canEdit()) {
               <a
                 [routerLink]="['/', owner(), repoName(), 'settings']"

@@ -16,8 +16,9 @@
         </span>
       </nav>
       <div class="flex-1"></div>
+      @if (isOwner()) {
       <a
-        [routerLink]="['/projects', projectCode, 'settings']"
+        [routerLink]="['/projects', owner, projectCode, 'settings']"
         class="btn btn-ghost btn-sm gap-1.5"
         title="Project settings"
       >
@@ -38,6 +39,7 @@
         <lucide-icon name="plus" class="size-4"></lucide-icon>
         New board
       </button>
+      }
     </div>
   </div>
 
@@ -79,19 +81,23 @@
       </div>
       <h2 class="text-base-content text-xl font-bold">No boards yet</h2>
       <p class="text-base-content/60 mt-2 text-sm">Create a board to organize tasks into columns.</p>
+      @if (isOwner()) {
       <button type="button" class="btn btn-primary mt-8 gap-2" (click)="showCreateBoardModal.set(true)">
         <lucide-icon name="plus" class="size-4"></lucide-icon>
         Create board
       </button>
+      }
     </div>
 
     } @else if (selectedBoard()) { @let board = selectedBoard()!; @if (board.columns.length === 0) {
     <div class="mx-auto max-w-sm px-4 py-24 text-center">
       <p class="text-base-content/60 mb-4 text-sm">No columns yet. Add a column to get started.</p>
+      @if (isOwner()) {
       <button type="button" class="btn btn-outline btn-sm gap-1.5" (click)="showAddColumnModal.set(true)">
         <lucide-icon name="plus" class="size-4"></lucide-icon>
         Add column
       </button>
+      }
     </div>
     } @else {
     <div class="flex items-start gap-4 p-4 pb-8 sm:p-6" style="min-width: max-content; min-height: calc(100vh - 112px)">
@@ -108,9 +114,9 @@
         [class.bg-base-100]="dragOverColumnId() !== column.id"
         [class.shadow-md]="dragOverColumnId() === column.id"
         [class.shadow-sm]="dragOverColumnId() !== column.id"
-        draggable="true"
-        (dragstart)="onColumnDragStart($event, column)"
-        (dragend)="onColumnDragEnd()"
+        [attr.draggable]="isOwner() ? 'true' : null"
+        (dragstart)="isOwner() && onColumnDragStart($event, column)"
+        (dragend)="isOwner() && onColumnDragEnd()"
       >
         <!-- Column top color accent -->
         @if (columnColor(column)) {
@@ -133,6 +139,7 @@
               {{ tasksByColumn(column.id).length }}
             </span>
           </div>
+          @if (isOwner()) {
           <div class="flex shrink-0 items-center gap-0.5">
             <!-- Color picker trigger -->
             <div class="relative">
@@ -203,6 +210,7 @@
               <lucide-icon name="x" class="size-3.5"></lucide-icon>
             </button>
           </div>
+          }
         </div>
 
         <!-- Task list — drop zone for tasks -->
@@ -219,12 +227,14 @@
           }
 
           <a
-            [routerLink]="['/projects', projectCode, 'tasks', task.code]"
-            class="group border-base-200 bg-base-100 hover:border-primary/30 block cursor-grab rounded-xl border p-3 no-underline shadow-sm transition-all duration-150 select-none hover:-translate-y-px hover:shadow-md active:cursor-grabbing"
-            draggable="true"
-            (dragstart)="onTaskDragStart($event, task)"
-            (dragend)="onTaskDragEnd($event)"
-            (dragover)="onTaskDragOver($event, column.id, i)"
+            [routerLink]="['/projects', owner, projectCode, 'tasks', task.code]"
+            class="group border-base-200 bg-base-100 hover:border-primary/30 block rounded-xl border p-3 no-underline shadow-sm transition-all duration-150 select-none hover:-translate-y-px hover:shadow-md"
+            [class.cursor-grab]="isOwner()"
+            [class.active:cursor-grabbing]="isOwner()"
+            [attr.draggable]="isOwner() ? 'true' : null"
+            (dragstart)="isOwner() && onTaskDragStart($event, task)"
+            (dragend)="isOwner() && onTaskDragEnd($event)"
+            (dragover)="isOwner() && onTaskDragOver($event, column.id, i)"
           >
             <!-- Top row: code + type badge -->
             <div class="mb-1.5 flex items-center justify-between gap-2">
@@ -288,6 +298,7 @@
           }
 
           <!-- Add task button -->
+          @if (isOwner()) {
           <button
             type="button"
             class="border-base-300 text-base-content/40 hover:border-primary/40 hover:text-primary hover:bg-primary/5 mt-1 flex w-full items-center gap-2 rounded-xl border border-dashed px-3 py-2 text-sm transition-colors"
@@ -296,11 +307,13 @@
             <lucide-icon name="plus" class="size-4 shrink-0"></lucide-icon>
             Add task
           </button>
+          }
         </div>
       </div>
       }
 
       <!-- Add column inline -->
+      @if (isOwner()) {
       <button
         type="button"
         class="border-base-300 text-base-content/40 hover:border-primary/40 hover:text-primary hover:bg-primary/5 mt-0 flex w-72 shrink-0 items-center gap-2 self-start rounded-2xl border border-dashed px-4 py-3 text-sm transition-colors"
@@ -309,10 +322,14 @@
         <lucide-icon name="plus" class="size-4 shrink-0"></lucide-icon>
         Add column
       </button>
+      }
     </div>
     } }
   </div>
 </div>
+
+<!-- Owner-only modals and overlays -->
+@if (isOwner()) {
 
 <!-- Close color picker on backdrop click -->
 @if (colorPickerColumnId()) {
@@ -490,4 +507,5 @@
     (click)="showCreateTaskModal.set(false)"
   ></button>
 </div>
-}
+} }
+<!-- end @if (isOwner()) -->

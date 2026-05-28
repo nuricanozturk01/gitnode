@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.task.controllers;
 
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnForm;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnInfo;
 import com.nuricanozturk.originhub.task.dtos.BoardColumnUpdateForm;
@@ -27,8 +28,10 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -57,18 +60,21 @@ public class BoardController {
 
   @GetMapping
   public @NonNull ResponseEntity<List<BoardInfo>> getAllBoards(
-      @PathVariable final @NonNull String owner, @PathVariable final @NonNull String projectCode) {
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull String projectCode,
+      @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.boardService.getAllBoards(owner, projectCode));
+    return ResponseEntity.ok(this.boardService.getAllBoards(owner, projectCode, viewer));
   }
 
   @GetMapping("/{boardId}")
   public @NonNull ResponseEntity<BoardInfo> getBoard(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId) {
+      @PathVariable final @NonNull UUID boardId,
+      @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.boardService.getBoard(owner, projectCode, boardId));
+    return ResponseEntity.ok(this.boardService.getBoard(owner, projectCode, boardId, viewer));
   }
 
   @PatchMapping("/{boardId}")

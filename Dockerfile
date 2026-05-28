@@ -25,6 +25,7 @@ WORKDIR /app
 COPY pom.xml ./
 COPY .mvn ./.mvn
 COPY originhub-backend/pom.xml ./originhub-backend/
+COPY originhub-actions/pom.xml ./originhub-actions/
 RUN mvn dependency:go-offline -pl originhub-backend -q
 
 COPY --from=frontend-build /app/dist/originhub-frontend/browser \

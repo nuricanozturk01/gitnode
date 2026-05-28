@@ -53,8 +53,11 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Enable Corepack
+        run: corepack enable
+
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: corepack prepare pnpm@10 --activate
 
       - name: Install dependencies
         run: pnpm install --ignore-scripts

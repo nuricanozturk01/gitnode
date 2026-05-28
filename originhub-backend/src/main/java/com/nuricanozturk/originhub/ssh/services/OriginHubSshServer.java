@@ -253,7 +253,8 @@ public class OriginHubSshServer {
       final @NonNull Tenant tenant,
       final @NonNull String owner,
       final @NonNull String repoName,
-      final boolean isWrite) {
+      final boolean isWrite)
+      throws IOException {
 
     log.debug(
         "Access check: tenant={}, repo={}/{}, write={}",
@@ -261,5 +262,18 @@ public class OriginHubSshServer {
         owner,
         repoName,
         isWrite);
+
+    final var isOwner = tenant.getUsername().equalsIgnoreCase(owner) || tenant.isAdmin();
+
+    if (isWrite && !isOwner) {
+      throw new IOException(
+          "Write access denied: only the repository owner can push to " + owner + "/" + repoName);
+    }
+
+    final var repoOpt = this.repoRepository.findByOwnerUsernameAndName(owner, repoName);
+    if (repoOpt.isPresent() && repoOpt.get().isPrivate() && !isOwner) {
+      throw new IOException(
+          "Read access denied: repository " + owner + "/" + repoName + " is private");
+    }
   }
 }

@@ -14,10 +14,17 @@ import { UserService } from '../../../core/user/services/user.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
-import type { TaskDetail, SubtaskInfo, TaskStatus, TaskType } from '../../../domain/project/models/task.model';
+import type {
+  TaskDetail,
+  SubtaskInfo,
+  TaskStatus,
+  TaskType,
+  TaskUpdateForm,
+} from '../../../domain/project/models/task.model';
 import type { BoardColumnInfo } from '../../../domain/project/models/board-info.model';
 import type { ProjectRepoInfo } from '../../../domain/project/models/project-repo-info.model';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
+import type { IssueInfo } from '../../../domain/repository/models/issue.model';
 
 /** Repo row for the create-branch modal (linked project repos or collaborator list). */
 interface BranchModalRepo {
@@ -77,7 +84,10 @@ export class TaskDetailPage implements OnInit {
   readonly showLinkIssueModal = signal(false);
   readonly linkIssueOwner = signal('');
   readonly linkIssueRepo = signal('');
-  readonly linkIssueNumber = signal('');
+  readonly linkIssueNumber = signal<number | null>(null);
+  readonly linkIssueRepos = signal<{ name: string; ownerUsername: string }[]>([]);
+  readonly linkIssueIssues = signal<IssueInfo[]>([]);
+  readonly linkIssueLoadingIssues = signal(false);
   readonly linkingIssue = signal(false);
 
   private readonly ownerUsername = signal('');
@@ -440,7 +450,11 @@ export class TaskDetailPage implements OnInit {
     }
     this.saving.set(true);
     try {
-      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, { title });
+      const taskUpdateForm: TaskUpdateForm = {
+        title: title,
+      };
+
+      const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, taskUpdateForm);
       this.task.set(updated);
       this.editingTitle.set(false);
     } catch {
@@ -568,12 +582,55 @@ export class TaskDetailPage implements OnInit {
     }
   }
 
-  openLinkIssueModal(): void {
-    const first = this.linkedRepos()[0];
-    this.linkIssueOwner.set(first?.ownerUsername ?? this.owner);
-    this.linkIssueRepo.set(first?.name ?? '');
-    this.linkIssueNumber.set('');
+  async openLinkIssueModal(): Promise<void> {
+    this.linkIssueNumber.set(null);
+    this.linkIssueIssues.set([]);
+    this.linkIssueRepos.set([]);
     this.showLinkIssueModal.set(true);
+
+    let repos = this.linkedRepos().map((r) => ({ name: r.name, ownerUsername: r.ownerUsername }));
+    if (repos.length === 0 && this.owner) {
+      try {
+        const page = await this.repoService.listUserRepos(this.owner, 0, 200);
+        repos = page.content.map((r) => ({ name: r.name, ownerUsername: r.owner?.username ?? this.owner }));
+      } catch {
+        repos = [];
+      }
+    }
+    this.linkIssueRepos.set(repos);
+
+    const first = repos[0];
+    if (first) {
+      this.linkIssueOwner.set(first.ownerUsername);
+      this.linkIssueRepo.set(first.name);
+      void this.loadIssuesForRepo(first.ownerUsername, first.name);
+    } else {
+      this.linkIssueOwner.set(this.owner);
+      this.linkIssueRepo.set('');
+    }
+  }
+
+  async onLinkIssueRepoChange(repoName: string): Promise<void> {
+    const repo = this.linkIssueRepos().find((r) => r.name === repoName);
+    this.linkIssueOwner.set(repo?.ownerUsername ?? this.owner);
+    this.linkIssueRepo.set(repoName);
+    this.linkIssueNumber.set(null);
+    this.linkIssueIssues.set([]);
+    if (repoName) {
+      await this.loadIssuesForRepo(this.linkIssueOwner(), repoName);
+    }
+  }
+
+  private async loadIssuesForRepo(owner: string, repo: string): Promise<void> {
+    this.linkIssueLoadingIssues.set(true);
+    try {
+      const page = await this.issueService.getAll(owner, repo, 'OPEN', 0);
+      this.linkIssueIssues.set(page.content);
+    } catch {
+      this.linkIssueIssues.set([]);
+    } finally {
+      this.linkIssueLoadingIssues.set(false);
+    }
   }
 
   closeLinkIssueModal(): void {
@@ -587,25 +644,23 @@ export class TaskDetailPage implements OnInit {
   }
 
   async submitLinkIssue(): Promise<void> {
-    const owner = this.linkIssueOwner().trim();
-    const repo = this.linkIssueRepo().trim();
-    const numStr = this.linkIssueNumber().trim();
-    const num = parseInt(numStr, 10);
-    if (!owner || !repo || !num || num <= 0) {
-      this.toastService.error('Enter a valid repo and issue number');
+    const num = this.linkIssueNumber();
+    const issue = this.linkIssueIssues().find((i) => i.number === num);
+    if (!issue) {
+      this.toastService.error('Select a valid issue');
       return;
     }
     this.linkingIssue.set(true);
     try {
-      const issue = await this.issueService.get(owner, repo, num);
       const updated = await this.taskService.update(this.owner, this.projectCode, this.taskCode, {
         linkedIssueId: issue.id,
+        unlinkIssue: false,
       });
       this.task.set(updated);
       this.showLinkIssueModal.set(false);
       this.toastService.success(`Linked to issue #${issue.number}`);
     } catch {
-      this.toastService.error('Issue not found or could not link');
+      this.toastService.error('Could not link issue');
     } finally {
       this.linkingIssue.set(false);
     }

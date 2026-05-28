@@ -17,10 +17,13 @@ import com.nuricanozturk.originhub.issue.entities.IssueStatus;
 import com.nuricanozturk.originhub.issue.mappers.IssueMapper;
 import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.issue.events.IssueDeletedEvent;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.util.Arrays;
@@ -29,6 +32,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,7 @@ public class IssueService implements IssueQueryService {
   private final @NonNull TenantRepository tenantRepository;
   private final @NonNull IssueMapper issueMapper;
   private final @NonNull TaskQueryPort taskQueryPort;
+  private final @NonNull ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public @NonNull IssueDetail create(
@@ -160,7 +165,8 @@ public class IssueService implements IssueQueryService {
       final @NonNull String owner,
       final @NonNull String repoName,
       final int number,
-      final @NonNull IssueUpdateForm form) {
+      final @NonNull IssueUpdateForm form,
+      final @NonNull UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -172,6 +178,7 @@ public class IssueService implements IssueQueryService {
             .findByRepoIdAndNumber(repo.getId(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
+    this.assertCanModify(requesterId, issue.getAuthor(), owner);
     this.setIssueStatuses(form, issue);
 
     if (form.getAssigneeId() != null) {
@@ -210,7 +217,10 @@ public class IssueService implements IssueQueryService {
 
   @Transactional
   public void delete(
-      final @NonNull String owner, final @NonNull String repoName, final int number) {
+      final @NonNull String owner,
+      final @NonNull String repoName,
+      final int number,
+      final @NonNull UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -222,7 +232,10 @@ public class IssueService implements IssueQueryService {
             .findByRepoIdAndNumber(repo.getId(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
+    this.assertCanModify(requesterId, issue.getAuthor(), owner);
+    final var issueId = issue.getId();
     this.issueRepository.delete(issue);
+    this.eventPublisher.publishEvent(new IssueDeletedEvent(issueId));
   }
 
   @Transactional
@@ -262,7 +275,8 @@ public class IssueService implements IssueQueryService {
       final @NonNull String repoName,
       final int number,
       final @NonNull UUID commentId,
-      final @NonNull IssueCommentUpdateForm form) {
+      final @NonNull IssueCommentUpdateForm form,
+      final @NonNull UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -279,6 +293,7 @@ public class IssueService implements IssueQueryService {
             .findByIdAndIssueId(commentId, issue.getId())
             .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
 
+    this.assertCanModify(requesterId, comment.getAuthor(), owner);
     comment.setBody(form.getBody());
     return this.issueMapper.toCommentInfo(this.commentRepository.save(comment));
   }
@@ -288,23 +303,25 @@ public class IssueService implements IssueQueryService {
       final @NonNull String owner,
       final @NonNull String repoName,
       final int number,
-      final @NonNull UUID commentId) {
+      final @NonNull UUID commentId,
+      final @NonNull UUID requesterId) {
 
     final var repo =
         this.repoRepository
             .findByOwnerUsernameAndName(owner, repoName)
-            .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var issue =
         this.issueRepository
             .findByRepoIdAndNumber(repo.getId(), number)
-            .orElseThrow(() -> new ItemNotFoundException("Issue #" + number + " not found"));
+            .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
     final var comment =
         this.commentRepository
             .findByIdAndIssueId(commentId, issue.getId())
             .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
 
+    this.assertCanModify(requesterId, comment.getAuthor(), owner);
     this.commentRepository.delete(comment);
   }
 
@@ -339,6 +356,28 @@ public class IssueService implements IssueQueryService {
     return this.issueRepository
         .findById(id)
         .map(i -> new IssueData(i.getId(), i.getNumber(), i.getTitle(), i.getStatus()));
+  }
+
+  private void assertCanModify(
+      final @NonNull UUID requesterId,
+      final @NonNull Tenant author,
+      final @NonNull String repoOwnerUsername) {
+
+    if (requesterId.equals(author.getId())) {
+      return;
+    }
+
+    final var repoOwner = this.tenantRepository.findByUsername(repoOwnerUsername);
+    final boolean isRepoOwner =
+        repoOwner.isPresent() && requesterId.equals(repoOwner.get().getId());
+
+    if (!isRepoOwner && !this.isAdmin(requesterId)) {
+      throw new AccessNotAllowedException("notAuthorized");
+    }
+  }
+
+  private boolean isAdmin(final @NonNull UUID tenantId) {
+    return this.tenantRepository.findById(tenantId).map(Tenant::isAdmin).orElse(false);
   }
 
   private @NonNull String validateStatus(final @NonNull String status) {

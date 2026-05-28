@@ -412,40 +412,55 @@
                 <input
                   id="link-issue-owner"
                   type="text"
-                  class="input input-bordered input-sm w-full font-mono"
-                  placeholder="username"
-                  [ngModel]="linkIssueOwner()"
-                  (ngModelChange)="linkIssueOwner.set($event)"
+                  class="input input-bordered input-sm bg-base-200 w-full cursor-not-allowed font-mono"
+                  [value]="linkIssueOwner()"
+                  readonly
                 />
               </div>
               <div class="flex flex-col gap-1">
-                <label for="link-issue-repo" class="text-base-content/70 text-xs font-medium">Repository name</label>
-                <input
+                <label for="link-issue-repo" class="text-base-content/70 text-xs font-medium">Repository</label>
+                <select
                   id="link-issue-repo"
-                  type="text"
-                  class="input input-bordered input-sm w-full font-mono"
-                  placeholder="repo-name"
+                  class="select select-bordered select-sm w-full font-mono"
                   [ngModel]="linkIssueRepo()"
-                  (ngModelChange)="linkIssueRepo.set($event)"
-                />
+                  (ngModelChange)="onLinkIssueRepoChange($event)"
+                >
+                  <option value="" disabled>Select repository</option>
+                  @for (repo of linkIssueRepos(); track repo.name) {
+                  <option [value]="repo.name">{{ repo.name }}</option>
+                  }
+                </select>
               </div>
               <div class="flex flex-col gap-1">
-                <label for="link-issue-number" class="text-base-content/70 text-xs font-medium">Issue number</label>
-                <input
+                <label for="link-issue-number" class="text-base-content/70 text-xs font-medium">Issue</label>
+                @if (linkIssueLoadingIssues()) {
+                <div class="flex items-center gap-2 py-1">
+                  <span class="loading loading-spinner loading-xs"></span>
+                  <span class="text-base-content/50 text-xs">Loading issues…</span>
+                </div>
+                } @else {
+                <select
                   id="link-issue-number"
-                  type="number"
-                  class="input input-bordered input-sm w-full"
-                  placeholder="42"
-                  min="1"
+                  class="select select-bordered select-sm w-full"
                   [ngModel]="linkIssueNumber()"
-                  (ngModelChange)="linkIssueNumber.set($event)"
-                />
+                  (ngModelChange)="linkIssueNumber.set($event ? +$event : null)"
+                  [disabled]="!linkIssueRepo() || linkIssueIssues().length === 0"
+                >
+                  <option [value]="null">
+                    @if (!linkIssueRepo()) { Select a repository first } @else if (linkIssueIssues().length === 0) { No
+                    open issues } @else { Select issue }
+                  </option>
+                  @for (issue of linkIssueIssues(); track issue.id) {
+                  <option [value]="issue.number">#{{ issue.number }} — {{ issue.title }}</option>
+                  }
+                </select>
+                }
               </div>
               <div class="mt-1 flex gap-2">
                 <button
                   type="button"
                   class="btn btn-primary btn-sm flex-1 gap-2"
-                  [disabled]="linkingIssue() || !linkIssueOwner().trim() || !linkIssueRepo().trim() || !linkIssueNumber().trim()"
+                  [disabled]="linkingIssue() || linkIssueNumber() === null"
                   (click)="submitLinkIssue()"
                 >
                   @if (linkingIssue()) {

@@ -43,13 +43,4 @@ public class RepoInfo implements Serializable {
   private final boolean deleteHeadBranchOnPrClose;
   private final Instant createdAt;
   private final Instant updatedAt;
-
-  @AllArgsConstructor
-  @Getter
-  public static class RepoDto implements Serializable {
-    private final UUID id;
-    private final String name;
-    private final String description;
-    private final Instant createdAt;
-  }
 }

@@ -70,4 +70,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
   @Modifying
   @Query("UPDATE Task t SET t.subtaskSeq = t.subtaskSeq + 1 WHERE t.id = :taskId")
   void incrementSubtaskSeq(@NonNull UUID taskId);
+
+  @Modifying
+  @Query("UPDATE Task t SET t.linkedIssueId = null WHERE t.linkedIssueId = :issueId")
+  void clearLinkedIssueId(@NonNull UUID issueId);
 }

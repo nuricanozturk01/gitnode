@@ -294,6 +294,7 @@ class ProfileServiceTest {
   void getPublicProfile_usesUsernameAsDisplayName_whenNull() {
     Tenant tenant = new Tenant();
     tenant.setUsername("bob");
+    tenant.setEmail("bob@example.com");
     tenant.setDisplayName(null);
     tenant.setAvatarUrl(null);
     when(tenantRepository.findByUsername("bob")).thenReturn(Optional.of(tenant));

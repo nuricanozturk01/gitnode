@@ -23,6 +23,9 @@ app:
   schema: public
 
 spring:
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
   web:
     resources:
       static-locations: classpath:/static/

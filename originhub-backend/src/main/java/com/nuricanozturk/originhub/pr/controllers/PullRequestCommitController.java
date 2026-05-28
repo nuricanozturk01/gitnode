@@ -20,6 +20,7 @@ import com.nuricanozturk.originhub.pr.dtos.PrCommentInfo;
 import com.nuricanozturk.originhub.pr.dtos.PrCommentUpdateForm;
 import com.nuricanozturk.originhub.pr.services.PullRequestCommentService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -45,6 +46,7 @@ public class PullRequestCommitController {
 
   private final @NonNull PullRequestCommentService prService;
   private final @NonNull JwtUtils tokenService;
+  private final @NonNull RepoService repoService;
 
   @PostMapping("/comments")
   public @NonNull ResponseEntity<PrCommentInfo> addComment(
@@ -55,9 +57,8 @@ public class PullRequestCommitController {
       @Valid @RequestBody final @NonNull PrCommentForm form) {
 
     final var authorId = this.tokenService.extractUserId(authHeader);
-
+    this.repoService.assertUserCanAccessRepo(authorId, owner, repo);
     final var comment = this.prService.addComment(owner, repo, number, authorId, form);
-
     return ResponseEntity.status(HttpStatus.CREATED).body(comment);
   }
 
@@ -72,9 +73,8 @@ public class PullRequestCommitController {
       @Valid @RequestBody final @NonNull PrCommentUpdateForm form) {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
-
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var response = this.prService.updateComment(commentId, requesterId, form);
-
     return ResponseEntity.ok(response);
   }
 
@@ -88,9 +88,8 @@ public class PullRequestCommitController {
       @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
-
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     this.prService.deleteComment(commentId, requesterId);
-
     return ResponseEntity.noContent().build();
   }
 
@@ -98,10 +97,12 @@ public class PullRequestCommitController {
   public @NonNull ResponseEntity<List<PrCommentInfo>> getComments(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number) {
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var comments = this.prService.getComments(owner, repo, number);
-
     return ResponseEntity.ok(comments);
   }
 }

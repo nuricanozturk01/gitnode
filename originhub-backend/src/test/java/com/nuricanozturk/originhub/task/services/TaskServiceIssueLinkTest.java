@@ -7,8 +7,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.nuricanozturk.originhub.issue.entities.Issue;
-import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
+import com.nuricanozturk.originhub.issue.api.IssueData;
+import com.nuricanozturk.originhub.issue.api.IssueQueryService;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -49,7 +49,7 @@ class TaskServiceIssueLinkTest {
   @Mock private RepoRepository repoRepository;
   @Mock private TenantRepository tenantRepository;
   @Mock private PrRepository prRepository;
-  @Mock private IssueRepository issueRepository;
+  @Mock private IssueQueryService issueQueryService;
   @Mock private ProjectService projectService;
   @Mock private TaskMapper taskMapper;
   @Mock private ProjectMapper projectMapper;
@@ -77,13 +77,8 @@ class TaskServiceIssueLinkTest {
     return c;
   }
 
-  private static Issue issue(UUID id) {
-    Issue i = new Issue();
-    i.setId(id);
-    i.setNumber(1);
-    i.setTitle("Sample issue");
-    i.setStatus("OPEN");
-    return i;
+  private static IssueData issueData(UUID id) {
+    return new IssueData(id, 1, "Sample issue", "OPEN");
   }
 
   private static Task savedTask(Project project, BoardColumn col) {
@@ -125,14 +120,14 @@ class TaskServiceIssueLinkTest {
     Project proj = project("OH", 1L);
     BoardColumn col = column();
     col.setId(columnId);
-    Issue iss = issue(issueId);
+    IssueData iss = issueData(issueId);
     Task saved = savedTask(proj, col);
-    saved.setLinkedIssue(iss);
+    saved.setLinkedIssueId(issueId);
 
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(boardColumnRepository.findById(columnId)).thenReturn(Optional.of(col));
     when(projectRepository.findById(proj.getId())).thenReturn(Optional.of(proj));
-    when(issueRepository.findById(issueId)).thenReturn(Optional.of(iss));
+    when(issueQueryService.findById(issueId)).thenReturn(Optional.of(iss));
     when(taskRepository.save(any(Task.class))).thenReturn(saved);
     when(subtaskRepository.findAllByTaskIdOrderByPositionAsc(saved.getId())).thenReturn(List.of());
 
@@ -143,6 +138,7 @@ class TaskServiceIssueLinkTest {
             .title("Sample issue")
             .status("OPEN")
             .build();
+    when(issueQueryService.findById(issueId)).thenReturn(Optional.of(iss));
     when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(saved, linkedInfo));
 
     TaskForm form = new TaskForm();
@@ -158,7 +154,7 @@ class TaskServiceIssueLinkTest {
 
     ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
     verify(taskRepository).save(captor.capture());
-    assertThat(captor.getValue().getLinkedIssue()).isSameAs(iss);
+    assertThat(captor.getValue().getLinkedIssueId()).isEqualTo(issueId);
   }
 
   @Test
@@ -186,11 +182,11 @@ class TaskServiceIssueLinkTest {
     TaskDetail result = taskService.create("alice", "OH", form);
 
     assertThat(result.linkedIssue()).isNull();
-    verify(issueRepository, never()).findById(any());
+    verify(issueQueryService, never()).findById(any());
 
     ArgumentCaptor<Task> captor = ArgumentCaptor.forClass(Task.class);
     verify(taskRepository).save(captor.capture());
-    assertThat(captor.getValue().getLinkedIssue()).isNull();
+    assertThat(captor.getValue().getLinkedIssueId()).isNull();
   }
 
   @Test
@@ -205,7 +201,7 @@ class TaskServiceIssueLinkTest {
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(boardColumnRepository.findById(columnId)).thenReturn(Optional.of(col));
     when(projectRepository.findById(proj.getId())).thenReturn(Optional.of(proj));
-    when(issueRepository.findById(issueId)).thenReturn(Optional.empty());
+    when(issueQueryService.findById(issueId)).thenReturn(Optional.empty());
 
     TaskForm form = new TaskForm();
     form.setTitle("Task");
@@ -242,11 +238,11 @@ class TaskServiceIssueLinkTest {
     Project proj = project("OH", 1L);
     BoardColumn col = column();
     Task task = existingTask(proj, col);
-    Issue iss = issue(issueId);
+    IssueData iss = issueData(issueId);
 
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
-    when(issueRepository.findById(issueId)).thenReturn(Optional.of(iss));
+    when(issueQueryService.findById(issueId)).thenReturn(Optional.of(iss));
     when(taskRepository.save(task)).thenReturn(task);
     when(subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId())).thenReturn(List.of());
 
@@ -264,7 +260,7 @@ class TaskServiceIssueLinkTest {
 
     TaskDetail result = taskService.update("alice", "OH", "OH-1", form);
 
-    assertThat(task.getLinkedIssue()).isSameAs(iss);
+    assertThat(task.getLinkedIssueId()).isEqualTo(issueId);
     assertThat(result.linkedIssue()).isNotNull();
     assertThat(result.linkedIssue().id()).isEqualTo(issueId);
   }
@@ -275,7 +271,7 @@ class TaskServiceIssueLinkTest {
     Project proj = project("OH", 1L);
     BoardColumn col = column();
     Task task = existingTask(proj, col);
-    task.setLinkedIssue(issue(UUID.randomUUID())); // already linked
+    task.setLinkedIssueId(UUID.randomUUID()); // already linked
 
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
@@ -288,8 +284,8 @@ class TaskServiceIssueLinkTest {
 
     taskService.update("alice", "OH", "OH-1", form);
 
-    assertThat(task.getLinkedIssue()).isNull();
-    verify(issueRepository, never()).findById(any());
+    assertThat(task.getLinkedIssueId()).isNull();
+    verify(issueQueryService, never()).findById(any());
   }
 
   @Test
@@ -299,7 +295,7 @@ class TaskServiceIssueLinkTest {
     Project proj = project("OH", 1L);
     BoardColumn col = column();
     Task task = existingTask(proj, col);
-    task.setLinkedIssue(issue(UUID.randomUUID())); // already linked to something else
+    task.setLinkedIssueId(UUID.randomUUID()); // already linked to something else
 
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
@@ -313,8 +309,8 @@ class TaskServiceIssueLinkTest {
 
     taskService.update("alice", "OH", "OH-1", form);
 
-    assertThat(task.getLinkedIssue()).isNull();
-    verify(issueRepository, never()).findById(any());
+    assertThat(task.getLinkedIssueId()).isNull();
+    verify(issueQueryService, never()).findById(any());
   }
 
   @Test
@@ -327,7 +323,7 @@ class TaskServiceIssueLinkTest {
 
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
-    when(issueRepository.findById(issueId)).thenReturn(Optional.empty());
+    when(issueQueryService.findById(issueId)).thenReturn(Optional.empty());
 
     TaskUpdateForm form = new TaskUpdateForm();
     form.setLinkedIssueId(issueId);
@@ -340,11 +336,11 @@ class TaskServiceIssueLinkTest {
   @Test
   @DisplayName("update — skips issue linking when neither linkedIssueId nor unlinkIssue is set")
   void update_skipsIssueLinking_whenNeitherFieldSet() {
+    UUID existingIssueId = UUID.randomUUID();
     Project proj = project("OH", 1L);
     BoardColumn col = column();
     Task task = existingTask(proj, col);
-    Issue existing = issue(UUID.randomUUID());
-    task.setLinkedIssue(existing); // preserve existing link
+    task.setLinkedIssueId(existingIssueId); // preserve existing link
 
     when(projectService.findProject("alice", "OH")).thenReturn(proj);
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
@@ -353,11 +349,13 @@ class TaskServiceIssueLinkTest {
 
     LinkedIssueInfo linkedInfo =
         LinkedIssueInfo.builder()
-            .id(existing.getId())
+            .id(existingIssueId)
             .number(1)
             .title("Sample issue")
             .status("OPEN")
             .build();
+    when(issueQueryService.findById(existingIssueId))
+        .thenReturn(Optional.of(new IssueData(existingIssueId, 1, "Sample issue", "OPEN")));
     when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(task, linkedInfo));
 
     TaskUpdateForm form = new TaskUpdateForm();
@@ -365,8 +363,7 @@ class TaskServiceIssueLinkTest {
 
     taskService.update("alice", "OH", "OH-1", form);
 
-    // linked issue must be untouched
-    assertThat(task.getLinkedIssue()).isSameAs(existing);
-    verify(issueRepository, never()).findById(any());
+    // linked issue id must be untouched
+    assertThat(task.getLinkedIssueId()).isEqualTo(existingIssueId);
   }
 }

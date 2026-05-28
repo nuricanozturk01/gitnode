@@ -11,6 +11,7 @@ import com.nuricanozturk.originhub.issue.dtos.IssueUpdateForm;
 import com.nuricanozturk.originhub.issue.services.IssueService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -37,6 +38,7 @@ public class IssueController {
 
   private final @NonNull IssueService issueService;
   private final @NonNull JwtUtils jwtUtils;
+  private final @NonNull RepoService repoService;
 
   @PostMapping
   public @NonNull ResponseEntity<IssueDetail> create(
@@ -46,6 +48,7 @@ public class IssueController {
       @Valid @RequestBody final @NonNull IssueForm form) {
 
     final var authorId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(authorId, owner, repo);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.issueService.create(owner, repo, authorId, form));
   }
@@ -55,8 +58,11 @@ public class IssueController {
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
       @RequestParam(defaultValue = "OPEN") final @NonNull String status,
-      @RequestParam(defaultValue = "0") final int page) {
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     return ResponseEntity.ok(this.issueService.getAll(owner, repo, status, page));
   }
 
@@ -64,8 +70,11 @@ public class IssueController {
   public @NonNull ResponseEntity<IssueDetail> get(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number) {
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     return ResponseEntity.ok(this.issueService.get(owner, repo, number));
   }
 
@@ -74,18 +83,24 @@ public class IssueController {
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
       @PathVariable final int number,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
       @Valid @RequestBody final @NonNull IssueUpdateForm form) {
 
-    return ResponseEntity.ok(this.issueService.update(owner, repo, number, form));
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(this.issueService.update(owner, repo, number, form, requesterId));
   }
 
   @DeleteMapping("/{number}")
   public @NonNull ResponseEntity<Void> delete(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number) {
+      @PathVariable final int number,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
 
-    this.issueService.delete(owner, repo, number);
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.issueService.delete(owner, repo, number, requesterId);
     return ResponseEntity.noContent().build();
   }
 
@@ -93,8 +108,11 @@ public class IssueController {
   public @NonNull ResponseEntity<List<IssueLinkedTaskInfo>> getLinkedTasks(
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
-      @PathVariable final int number) {
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     return ResponseEntity.ok(this.issueService.getLinkedTasks(owner, repo, number));
   }
 
@@ -103,8 +121,11 @@ public class IssueController {
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
       @PathVariable final int number,
-      @RequestParam(defaultValue = "0") final int page) {
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
+    final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     return ResponseEntity.ok(this.issueService.getComments(owner, repo, number, page));
   }
 
@@ -117,6 +138,7 @@ public class IssueController {
       @Valid @RequestBody final @NonNull IssueCommentForm form) {
 
     final var authorId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(authorId, owner, repo);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.issueService.addComment(owner, repo, number, authorId, form));
   }
@@ -127,9 +149,13 @@ public class IssueController {
       @PathVariable final @NonNull String repo,
       @PathVariable final int number,
       @PathVariable final @NonNull UUID commentId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
       @Valid @RequestBody final @NonNull IssueCommentUpdateForm form) {
 
-    return ResponseEntity.ok(this.issueService.updateComment(owner, repo, number, commentId, form));
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(
+        this.issueService.updateComment(owner, repo, number, commentId, form, requesterId));
   }
 
   @DeleteMapping("/{number}/comments/{commentId}")
@@ -137,9 +163,12 @@ public class IssueController {
       @PathVariable final @NonNull String owner,
       @PathVariable final @NonNull String repo,
       @PathVariable final int number,
-      @PathVariable final @NonNull UUID commentId) {
+      @PathVariable final @NonNull UUID commentId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
 
-    this.issueService.deleteComment(owner, repo, number, commentId);
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.issueService.deleteComment(owner, repo, number, commentId, requesterId);
     return ResponseEntity.noContent().build();
   }
 }

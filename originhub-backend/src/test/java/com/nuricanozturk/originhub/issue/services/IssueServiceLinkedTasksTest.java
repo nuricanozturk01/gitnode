@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.issue.api.LinkedTaskData;
+import com.nuricanozturk.originhub.issue.api.TaskQueryPort;
 import com.nuricanozturk.originhub.issue.dtos.IssueLinkedTaskInfo;
 import com.nuricanozturk.originhub.issue.entities.Issue;
 import com.nuricanozturk.originhub.issue.mappers.IssueMapper;
@@ -13,9 +15,6 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundE
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
-import com.nuricanozturk.originhub.task.entities.Project;
-import com.nuricanozturk.originhub.task.entities.Task;
-import com.nuricanozturk.originhub.task.repositories.TaskRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("IssueService — getLinkedTasks")
@@ -35,7 +35,8 @@ class IssueServiceLinkedTasksTest {
   @Mock private RepoRepository repoRepository;
   @Mock private TenantRepository tenantRepository;
   @Mock private IssueMapper issueMapper;
-  @Mock private TaskRepository taskRepository;
+  @Mock private TaskQueryPort taskQueryPort;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private IssueService issueService;
 
@@ -60,22 +61,9 @@ class IssueServiceLinkedTasksTest {
     return i;
   }
 
-  private static Task task(String code, String title, String status, Project project) {
-    Task t = new Task();
-    t.setId(UUID.randomUUID());
-    t.setCode(code);
-    t.setTitle(title);
-    t.setStatus(status);
-    t.setProject(project);
-    return t;
-  }
-
-  private static Project project(String codePrefix, String name) {
-    Project p = new Project();
-    p.setId(UUID.randomUUID());
-    p.setCodePrefix(codePrefix);
-    p.setName(name);
-    return p;
+  private static LinkedTaskData taskData(
+      String code, String title, String status, String projectCode, String projectName) {
+    return new LinkedTaskData(code, title, status, projectCode, projectName);
   }
 
   // -----------------------------------------------------------------------
@@ -89,13 +77,12 @@ class IssueServiceLinkedTasksTest {
     UUID issueId = UUID.randomUUID();
     Repo r = repo(repoId, "alice", "myrepo");
     Issue iss = issue(issueId, r, 1);
-    Project proj = project("OH", "OriginHub");
-    Task t1 = task("OH-1", "Fix login bug", "IN_PROGRESS", proj);
-    Task t2 = task("OH-3", "Add dark mode", "NOT_STARTED", proj);
+    LinkedTaskData t1 = taskData("OH-1", "Fix login bug", "IN_PROGRESS", "OH", "OriginHub");
+    LinkedTaskData t2 = taskData("OH-3", "Add dark mode", "NOT_STARTED", "OH", "OriginHub");
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
-    when(taskRepository.findByLinkedIssueId(issueId)).thenReturn(List.of(t1, t2));
+    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of(t1, t2));
 
     List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 1);
 
@@ -123,7 +110,7 @@ class IssueServiceLinkedTasksTest {
 
     when(repoRepository.findByOwnerUsernameAndName("bob", "repo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 5)).thenReturn(Optional.of(iss));
-    when(taskRepository.findByLinkedIssueId(issueId)).thenReturn(List.of());
+    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of());
 
     List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("bob", "repo", 5);
 
@@ -137,14 +124,12 @@ class IssueServiceLinkedTasksTest {
     UUID issueId = UUID.randomUUID();
     Repo r = repo(repoId, "alice", "myrepo");
     Issue iss = issue(issueId, r, 2);
-    Project projA = project("AAA", "Project Alpha");
-    Project projB = project("BB", "Project Beta");
-    Task tA = task("AAA-1", "Alpha task", "COMPLETED", projA);
-    Task tB = task("BB-7", "Beta task", "IN_PROGRESS", projB);
+    LinkedTaskData tA = taskData("AAA-1", "Alpha task", "COMPLETED", "AAA", "Project Alpha");
+    LinkedTaskData tB = taskData("BB-7", "Beta task", "IN_PROGRESS", "BB", "Project Beta");
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 2)).thenReturn(Optional.of(iss));
-    when(taskRepository.findByLinkedIssueId(issueId)).thenReturn(List.of(tA, tB));
+    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of(tA, tB));
 
     List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 2);
 
@@ -185,12 +170,11 @@ class IssueServiceLinkedTasksTest {
     UUID issueId = UUID.randomUUID();
     Repo r = repo(repoId, "alice", "myrepo");
     Issue iss = issue(issueId, r, 3);
-    Project proj = project("ZZ", "Done Project");
-    Task t = task("ZZ-99", "Old task", "COMPLETED", proj);
+    LinkedTaskData t = taskData("ZZ-99", "Old task", "COMPLETED", "ZZ", "Done Project");
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 3)).thenReturn(Optional.of(iss));
-    when(taskRepository.findByLinkedIssueId(issueId)).thenReturn(List.of(t));
+    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of(t));
 
     List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 3);
 

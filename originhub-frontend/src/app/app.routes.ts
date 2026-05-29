@@ -181,8 +181,11 @@ export const routes: Routes = [
       },
       {
         path: 'snippets',
-        loadComponent: () =>
-          import('./features/repo/snippets/repo-snippets.page').then((m) => m.RepoSnippetsPage),
+        loadComponent: () => import('./features/repo/snippets/repo-snippets.page').then((m) => m.RepoSnippetsPage),
+      },
+      {
+        path: 'projects',
+        loadComponent: () => import('./features/repo/projects/repo-projects.page').then((m) => m.RepoProjectsPage),
       },
       {
         path: 'settings',

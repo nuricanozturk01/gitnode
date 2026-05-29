@@ -398,7 +398,8 @@
             <p class="text-base-content/70 mt-2 max-w-2xl flex-1 text-sm leading-relaxed sm:text-base">
               Kanban boards with tasks and subtasks, linked to repository branches and pull requests. Create work
               branches from the board, track open PRs on cards, and optionally complete items when a PR merges — tuned
-              per project in settings.
+              per project in settings. Projects linked to a repository are browseable and paginated directly from the
+              repo's Projects tab.
             </p>
             <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
               Available after sign-in — open
@@ -435,7 +436,7 @@
           <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Code snippets</h3>
           <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
             Gist-style shares for one-off scripts and notes — revisioned, syntax-highlighted, and scoped to who can see
-            them.
+            them. Browse paginated snippets per repository or across all public ones.
           </p>
           <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
             Available after sign-in — open
@@ -446,6 +447,7 @@
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Public &amp; private</span>
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Revision history</span>
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Multi-file</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Fork</span>
           </div>
         </article>
 
@@ -468,6 +470,69 @@
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">GitHub import</span>
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Full history</span>
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">PR migration</span>
+          </div>
+        </article>
+
+        <!-- Repo Issues (available) -->
+        <article
+          class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="circleAlert" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Issues</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Track bugs and feature requests per repository with labels, comments, and status. Issues can be linked to
+            tasks on a Kanban board to keep planning in sync with the codebase.
+          </p>
+          <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
+            Available in the <strong>Issues</strong> tab of any repository.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Labels</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Comments</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Task linking</span>
+          </div>
+        </article>
+
+        <!-- Public profile (available) -->
+        <article
+          class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="user" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Public profile</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Every account gets a public profile page at
+            <span class="font-mono text-xs opacity-90">/:username</span> — showcasing public repositories with an
+            optional profile README rendered from your account's special repo.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Profile README</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Public repos</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Paginated</span>
+          </div>
+        </article>
+
+        <!-- Webhooks (available) -->
+        <article
+          class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
+        >
+          <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+            <lucide-icon name="webhook" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Webhooks</h3>
+          <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+            Signed delivery to your services for pushes, PR events, releases, and more — with retries and delivery
+            visibility.
+          </p>
+          <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
+            Available in repository settings under <strong>Webhooks</strong>.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">HMAC signed</span>
+            <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Retries</span>
           </div>
         </article>
 
@@ -505,23 +570,6 @@
           <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
             First-party registries and proxies for Maven, npm, PyPI, Docker, NuGet, Cargo, and Helm — versioned next to
             your repos.
-          </p>
-        </article>
-
-        <article
-          class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-2 lg:p-8"
-        >
-          <div class="mb-3 flex items-start justify-between gap-2">
-            <div
-              class="bg-base-300/40 text-base-content/70 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-            >
-              <lucide-icon name="webhook" class="size-6" aria-hidden="true"></lucide-icon>
-            </div>
-            <span class="badge-coming-soon shrink-0">Coming soon</span>
-          </div>
-          <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Webhooks</h3>
-          <p class="text-base-content/65 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
-            Signed delivery to your services for pushes, PR events, releases, and more — with retries and visibility.
           </p>
         </article>
 

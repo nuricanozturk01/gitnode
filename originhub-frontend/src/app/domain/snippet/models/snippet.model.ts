@@ -40,6 +40,11 @@ export interface SnippetForkedFromInfo {
   owner: SnippetOwnerInfo;
 }
 
+export interface SnippetLinkedRepoInfo {
+  id: string;
+  name: string;
+}
+
 export interface SnippetInfo {
   id: string;
   title: string;
@@ -50,8 +55,7 @@ export interface SnippetInfo {
   commentCount: number;
   forkCount: number;
   forkedFrom: SnippetForkedFromInfo | null;
-  repoId: string | null;
-  repoName: string | null;
+  repos: SnippetLinkedRepoInfo[];
   createdAt: string | null;
   updatedAt: string | null;
 }

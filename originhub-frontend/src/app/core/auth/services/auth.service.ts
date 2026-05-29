@@ -85,11 +85,18 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  loginOauth(token: string, refresh_token: string, username: string): void {
+  loginOauth(
+    token: string,
+    refresh_token: string,
+    username: string,
+    expiresIn?: number,
+    refreshExpiresIn?: number,
+  ): void {
     const tokens: TokenResponse = {
       token,
       refreshToken: refresh_token,
-      expiresIn: 1800,
+      expiresIn,
+      refreshExpiresIn,
       username,
     };
     this.tokenService.saveTokens(tokens);

@@ -138,7 +138,7 @@
       }
     </div>
 
-    <!-- Pagination (public tab only) -->
+    <!-- Pagination -->
     @if (activeTab() === 'public' && publicPage() && publicPage()!.totalPages > 1) {
     <div class="mt-6 flex items-center justify-center gap-3">
       <button type="button" class="btn btn-ghost btn-sm" [disabled]="currentPage() === 0" (click)="prevPage()">
@@ -151,6 +151,23 @@
         class="btn btn-ghost btn-sm"
         [disabled]="currentPage() >= publicPage()!.totalPages - 1"
         (click)="nextPage()"
+      >
+        Next
+        <lucide-icon name="chevron-right" class="size-4"></lucide-icon>
+      </button>
+    </div>
+    } @if (activeTab() === 'mine' && myPage() && myPage()!.totalPages > 1) {
+    <div class="mt-6 flex items-center justify-center gap-3">
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="myCurrentPage() === 0" (click)="prevMinePage()">
+        <lucide-icon name="chevron-left" class="size-4"></lucide-icon>
+        Prev
+      </button>
+      <span class="text-base-content/55 text-sm"> Page {{ myCurrentPage() + 1 }} of {{ myPage()!.totalPages }} </span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        [disabled]="myCurrentPage() >= myPage()!.totalPages - 1"
+        (click)="nextMinePage()"
       >
         Next
         <lucide-icon name="chevron-right" class="size-4"></lucide-icon>

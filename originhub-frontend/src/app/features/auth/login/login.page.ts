@@ -49,9 +49,17 @@ export class LoginPage implements OnInit {
     const token = this.route.snapshot.queryParamMap.get('token');
     const refreshToken = this.route.snapshot.queryParamMap.get('refresh_token');
     const username = this.route.snapshot.queryParamMap.get('username');
+    const expiresIn = this.route.snapshot.queryParamMap.get('expires_in');
+    const refreshExpiresIn = this.route.snapshot.queryParamMap.get('refresh_expires_in');
 
     if (token && refreshToken && username) {
-      this.authService.loginOauth(token, refreshToken, username);
+      this.authService.loginOauth(
+        token,
+        refreshToken,
+        username,
+        expiresIn ? parseInt(expiresIn, 10) : undefined,
+        refreshExpiresIn ? parseInt(refreshExpiresIn, 10) : undefined,
+      );
       this.toast.success('Login successful');
       void this.router.navigate(['/dashboard']);
     }

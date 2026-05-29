@@ -15,6 +15,7 @@
 ///
 
 import {
+  Check,
   Mail,
   Lock,
   GitBranch,
@@ -90,6 +91,7 @@ import {
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
+  Check,
   Mail,
   Lock,
   GitBranch,

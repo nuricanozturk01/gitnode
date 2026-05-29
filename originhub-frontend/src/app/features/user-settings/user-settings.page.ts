@@ -24,7 +24,10 @@ import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.serv
 import { ToastService } from '../../core/toast/toast.service';
 import { UserService } from '../../core/user/services/user.service';
 import { TokenService } from '../../core/auth/services/token.service';
+import { UserWebhookService } from '../../core/webhook/user-webhook.service';
 import type { SshKeyInfo } from '../../domain/ssh/models/ssh-key-info.model';
+import type { WebhookInfo } from '../../domain/webhook/webhook.model';
+import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
 
 @Component({
   selector: 'app-user-settings',
@@ -38,9 +41,10 @@ export class UserSettingsPage {
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
   private readonly userService = inject(UserService);
+  private readonly userWebhookService = inject(UserWebhookService);
   readonly tokenService = inject(TokenService);
 
-  readonly activeTab = signal<'profile' | 'security' | 'ssh' | 'danger'>('profile');
+  readonly activeTab = signal<'profile' | 'security' | 'ssh' | 'webhooks' | 'danger'>('profile');
 
   readonly username = signal('');
   readonly savingUsername = signal(false);
@@ -75,6 +79,25 @@ export class UserSettingsPage {
   readonly newSshKey = signal('');
   readonly addingSsh = signal(false);
 
+  // Webhook state
+  readonly webhooks = signal<WebhookInfo[]>([]);
+  readonly loadingWebhooks = signal(false);
+  readonly webhookError = signal<string | null>(null);
+  readonly showAddWebhook = signal(false);
+  readonly savingWebhook = signal(false);
+  readonly editingWebhookId = signal<string | null>(null);
+
+  readonly newWebhookUrl = signal('');
+  readonly newWebhookSecret = signal('');
+  readonly newWebhookEnabled = signal(true);
+  readonly newWebhookEvents = signal<string[]>([]);
+
+  readonly webhookEventGroups = USER_WEBHOOK_EVENT_GROUPS;
+
+  get canAddWebhook(): boolean {
+    return this.webhooks().length < 3;
+  }
+
   constructor() {
     const u = this.tokenService.getUsername();
     if (u) this.username.set(u);
@@ -95,9 +118,10 @@ export class UserSettingsPage {
     }
   }
 
-  setTab(t: 'profile' | 'security' | 'ssh' | 'danger'): void {
+  setTab(t: 'profile' | 'security' | 'ssh' | 'webhooks' | 'danger'): void {
     this.activeTab.set(t);
     if (t === 'ssh') this.loadSshKeys();
+    if (t === 'webhooks') void this.loadWebhooks();
     if (t === 'profile') {
       const u = this.tokenService.getUsername();
       if (u) this.username.set(u);
@@ -286,6 +310,113 @@ export class UserSettingsPage {
       await this.loadSshKeys();
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Failed to remove SSH key');
+    }
+  }
+
+  async loadWebhooks(): Promise<void> {
+    const username = this.tokenService.getUsername();
+    if (!username) return;
+    this.loadingWebhooks.set(true);
+    this.webhookError.set(null);
+    try {
+      const list = await this.userWebhookService.list(username);
+      this.webhooks.set(list);
+    } catch {
+      this.webhookError.set('Failed to load webhooks');
+    } finally {
+      this.loadingWebhooks.set(false);
+    }
+  }
+
+  toggleWebhookEvent(key: string): void {
+    const current = this.newWebhookEvents();
+    if (current.includes(key)) {
+      this.newWebhookEvents.set(current.filter((e) => e !== key));
+    } else {
+      this.newWebhookEvents.set([...current, key]);
+    }
+  }
+
+  isEventSelected(key: string): boolean {
+    return this.newWebhookEvents().includes(key);
+  }
+
+  startEditWebhook(w: WebhookInfo): void {
+    this.editingWebhookId.set(w.id);
+    this.showAddWebhook.set(false);
+    this.newWebhookUrl.set(w.url);
+    this.newWebhookSecret.set('');
+    this.newWebhookEnabled.set(w.enabled);
+    this.newWebhookEvents.set([...w.events]);
+  }
+
+  cancelEdit(): void {
+    this.editingWebhookId.set(null);
+    this.showAddWebhook.set(false);
+    this.newWebhookUrl.set('');
+    this.newWebhookSecret.set('');
+    this.newWebhookEnabled.set(true);
+    this.newWebhookEvents.set([]);
+  }
+
+  async saveWebhook(): Promise<void> {
+    const username = this.tokenService.getUsername();
+    if (!username) return;
+    const url = this.newWebhookUrl().trim();
+    if (!url) return;
+    this.savingWebhook.set(true);
+    try {
+      const editId = this.editingWebhookId();
+      if (editId) {
+        const updated = await this.userWebhookService.update(username, editId, {
+          url,
+          secret: this.newWebhookSecret() || undefined,
+          enabled: this.newWebhookEnabled(),
+          events: this.newWebhookEvents(),
+        });
+        this.webhooks.set(this.webhooks().map((w) => (w.id === editId ? updated : w)));
+        this.toast.success('Webhook updated');
+      } else {
+        const created = await this.userWebhookService.create(username, {
+          url,
+          secret: this.newWebhookSecret() || undefined,
+          enabled: this.newWebhookEnabled(),
+          events: this.newWebhookEvents(),
+        });
+        this.webhooks.set([...this.webhooks(), created]);
+        this.toast.success('Webhook created');
+      }
+      this.cancelEdit();
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Failed to save webhook');
+    } finally {
+      this.savingWebhook.set(false);
+    }
+  }
+
+  async toggleWebhookEnabled(w: WebhookInfo): Promise<void> {
+    const username = this.tokenService.getUsername();
+    if (!username) return;
+    try {
+      const updated = await this.userWebhookService.update(username, w.id, { enabled: !w.enabled });
+      this.webhooks.set(this.webhooks().map((wh) => (wh.id === w.id ? updated : wh)));
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Failed to update webhook');
+    }
+  }
+
+  async deleteWebhook(id: string): Promise<void> {
+    const username = this.tokenService.getUsername();
+    if (!username) return;
+    const ok = await this.confirmModal.confirm('Delete this webhook?', undefined, { variant: 'danger' });
+    if (!ok) return;
+    try {
+      await this.userWebhookService.delete(username, id);
+      this.webhooks.set(this.webhooks().filter((w) => w.id !== id));
+      this.toast.success('Webhook deleted');
+      if (this.editingWebhookId() === id) this.cancelEdit();
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Failed to delete webhook');
     }
   }
 }

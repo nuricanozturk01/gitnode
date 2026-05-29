@@ -49,4 +49,10 @@ export class ProjectService {
   getLinkedRepos(owner: string, projectCode: string): Promise<ProjectRepoInfo[]> {
     return firstValueFrom(this.http.get<ProjectRepoInfo[]>(`${this.base(owner)}/${projectCode}/repos`));
   }
+
+  getLinkedProjects(owner: string, repoId: string, page = 0, size = 12): Promise<ProjectPage> {
+    return firstValueFrom(
+      this.http.get<ProjectPage>(`${this.base(owner)}/by-repo/${repoId}`, { params: { page, size } }),
+    );
+  }
 }

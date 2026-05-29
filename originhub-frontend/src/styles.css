@@ -8,26 +8,27 @@
   name: 'originhub';
   default: false;
   color-scheme: dark;
-  --color-base-100: oklch(15% 0.02 250);
-  --color-base-200: oklch(20% 0.02 250);
-  --color-base-300: oklch(25% 0.02 250);
-  --color-base-content: oklch(78% 0.02 250);
-  --color-primary: oklch(0.72 0.15 166);
-  --color-primary-content: oklch(0.12 0.02 250);
-  --color-secondary: oklch(0.55 0.15 166);
-  --color-secondary-content: oklch(0.98 0.01 166);
-  --color-accent: oklch(0.72 0.15 166);
-  --color-accent-content: oklch(0.12 0.02 250);
-  --color-neutral: oklch(0.22 0.02 250);
-  --color-neutral-content: oklch(0.92 0.02 250);
-  --color-info: oklch(0.72 0.15 166);
-  --color-info-content: oklch(0.12 0.02 250);
-  --color-success: oklch(0.65 0.2 145);
-  --color-success-content: oklch(0.12 0.02 250);
-  --color-warning: oklch(0.75 0.2 85);
-  --color-warning-content: oklch(0.15 0.02 85);
-  --color-error: oklch(0.55 0.12 25);
-  --color-error-content: oklch(0.98 0.01 25);
+  /* Layered cool slate: cards above canvas; borders/dividers read at a glance */
+  --color-base-100: oklch(27% 0.024 250);
+  --color-base-200: oklch(21% 0.026 250);
+  --color-base-300: oklch(39% 0.03 250);
+  --color-base-content: oklch(93% 0.018 250);
+  --color-primary: oklch(74% 0.16 166);
+  --color-primary-content: oklch(13% 0.02 250);
+  --color-secondary: oklch(62% 0.12 166);
+  --color-secondary-content: oklch(96% 0.01 166);
+  --color-accent: oklch(74% 0.16 166);
+  --color-accent-content: oklch(13% 0.02 250);
+  --color-neutral: oklch(32% 0.026 250);
+  --color-neutral-content: oklch(90% 0.016 250);
+  --color-info: oklch(70% 0.14 230);
+  --color-info-content: oklch(13% 0.02 230);
+  --color-success: oklch(72% 0.19 145);
+  --color-success-content: oklch(14% 0.02 145);
+  --color-warning: oklch(80% 0.16 85);
+  --color-warning-content: oklch(18% 0.04 85);
+  --color-error: oklch(68% 0.18 25);
+  --color-error-content: oklch(98% 0.01 25);
 }
 @plugin 'daisyui/theme' {
   name: 'originhub-light';
@@ -91,6 +92,13 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark: softer grid so panels and borders stay the focus */
+[data-theme='originhub'] body {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-primary) 2.5%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-primary) 2.5%, transparent) 1px, transparent 1px);
 }
 
 /* Wordmark: primary + base-content, both themes; tight lockup reads as one brand */

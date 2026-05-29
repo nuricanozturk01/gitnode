@@ -185,7 +185,9 @@
             </div>
           </div>
           } @else if (t.description) {
-          <p class="text-base-content/70 text-sm leading-relaxed whitespace-pre-wrap wrap-break-word">{{ t.description }}</p>
+          <p class="text-base-content/70 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
+            {{ t.description }}
+          </p>
           } @else if (isOwner()) {
           <button
             type="button"
@@ -487,7 +489,7 @@
                     >
                   </div>
                   <span
-                    class="text-sm leading-snug transition-colors wrap-break-word"
+                    class="text-sm leading-snug wrap-break-word transition-colors"
                     [class.line-through]="subtask.status === 'COMPLETED'"
                     [class.text-base-content/35]="subtask.status === 'COMPLETED'"
                     [class.text-base-content]="subtask.status !== 'COMPLETED'"

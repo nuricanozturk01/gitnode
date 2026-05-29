@@ -21,6 +21,7 @@ export interface TokenResponse {
   token: string;
   refreshToken: string;
   expiresIn?: number;
+  refreshExpiresIn?: number;
   username?: string;
 }
 

@@ -37,10 +37,11 @@ export class SnippetsPage implements OnInit {
   readonly loading = signal(true);
   readonly activeTab = signal<'public' | 'mine'>('public');
   readonly publicPage = signal<SnippetPage | null>(null);
-  readonly mySnippets = signal<SnippetInfo[]>([]);
+  readonly myPage = signal<SnippetPage | null>(null);
   readonly searchQuery = signal('');
   readonly searchInput = signal('');
   readonly currentPage = signal(0);
+  readonly myCurrentPage = signal(0);
 
   readonly username = this.tokenService.getUsername() ?? '';
 
@@ -51,7 +52,7 @@ export class SnippetsPage implements OnInit {
   switchTab(tab: 'public' | 'mine'): void {
     this.activeTab.set(tab);
     if (tab === 'mine') {
-      this.loadMine();
+      this.loadMine(0);
     } else {
       this.loadPublic();
     }
@@ -70,11 +71,12 @@ export class SnippetsPage implements OnInit {
     }
   }
 
-  async loadMine(): Promise<void> {
+  async loadMine(page = 0): Promise<void> {
     this.loading.set(true);
+    this.myCurrentPage.set(page);
     try {
-      const data = await this.snippetService.listMine();
-      this.mySnippets.set(data);
+      const data = await this.snippetService.listMine(page);
+      this.myPage.set(data);
     } catch {
       this.toastService.error('Failed to load your snippets');
     } finally {
@@ -116,9 +118,22 @@ export class SnippetsPage implements OnInit {
     }
   }
 
+  nextMinePage(): void {
+    const p = this.myPage();
+    if (p && this.myCurrentPage() < p.totalPages - 1) {
+      this.loadMine(this.myCurrentPage() + 1);
+    }
+  }
+
+  prevMinePage(): void {
+    if (this.myCurrentPage() > 0) {
+      this.loadMine(this.myCurrentPage() - 1);
+    }
+  }
+
   snippetList(): SnippetInfo[] {
     if (this.activeTab() === 'mine') {
-      return this.mySnippets();
+      return this.myPage()?.content ?? [];
     }
     return this.publicPage()?.content ?? [];
   }

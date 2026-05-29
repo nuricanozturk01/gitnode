@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { SnippetService } from '../../../core/snippet/services/snippet.service';
@@ -55,8 +55,32 @@ export class SnippetEditPage implements OnInit {
   readonly visibility = signal<SnippetVisibility>('PUBLIC');
   readonly files = signal<FileRow[]>([{ filename: 'snippet.txt', content: '' }]);
   readonly summary = signal('');
-  readonly linkedRepoId = signal<string | null>(null);
+  readonly linkedRepoIds = signal<Set<string>>(new Set());
+  readonly initialRepoIds = signal<Set<string>>(new Set());
   readonly repos = signal<RepoInfo[]>([]);
+
+  readonly repoSearch = signal('');
+  readonly repoDropdownOpen = signal(false);
+  readonly repoDropdownPage = signal(0);
+  readonly REPO_PAGE_SIZE = 8;
+
+  readonly filteredRepos = computed(() => {
+    const q = this.repoSearch().toLowerCase();
+    if (!q) return this.repos();
+    return this.repos().filter((r) => r.name.toLowerCase().includes(q));
+  });
+
+  readonly repoTotalPages = computed(() => Math.max(1, Math.ceil(this.filteredRepos().length / this.REPO_PAGE_SIZE)));
+
+  readonly pagedRepos = computed(() => {
+    const start = this.repoDropdownPage() * this.REPO_PAGE_SIZE;
+    return this.filteredRepos().slice(start, start + this.REPO_PAGE_SIZE);
+  });
+
+  readonly linkedRepoInfos = computed(() => {
+    const ids = this.linkedRepoIds();
+    return this.repos().filter((r) => ids.has(r.id));
+  });
 
   ngOnInit(): void {
     void this.loadRepos();
@@ -87,7 +111,9 @@ export class SnippetEditPage implements OnInit {
       this.description.set(detail.description ?? '');
       this.visibility.set(detail.visibility);
       this.files.set(detail.files.map((f) => ({ filename: f.filename, content: f.content })));
-      this.linkedRepoId.set(detail.repoId ?? null);
+      const ids = new Set(detail.repos.map((r) => r.id));
+      this.linkedRepoIds.set(ids);
+      this.initialRepoIds.set(new Set(ids));
     } catch {
       this.toastService.error('Failed to load snippet');
       this.router.navigate(['/snippets']);
@@ -112,9 +138,41 @@ export class SnippetEditPage implements OnInit {
     this.summary.set((event.target as HTMLInputElement).value);
   }
 
-  onRepoChange(event: Event): void {
-    const val = (event.target as HTMLSelectElement).value;
-    this.linkedRepoId.set(val || null);
+  onRepoToggle(repoId: string): void {
+    this.linkedRepoIds.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(repoId)) {
+        next.delete(repoId);
+      } else {
+        next.add(repoId);
+      }
+      return next;
+    });
+  }
+
+  onRepoSearchInput(event: Event): void {
+    this.repoSearch.set((event.target as HTMLInputElement).value);
+    this.repoDropdownPage.set(0);
+  }
+
+  openRepoDropdown(): void {
+    this.repoDropdownOpen.set(true);
+  }
+
+  closeRepoDropdown(): void {
+    this.repoDropdownOpen.set(false);
+  }
+
+  keepDropdownOpen(event: MouseEvent): void {
+    event.preventDefault();
+  }
+
+  repoPrevPage(): void {
+    this.repoDropdownPage.update((p) => Math.max(0, p - 1));
+  }
+
+  repoNextPage(): void {
+    this.repoDropdownPage.update((p) => Math.min(this.repoTotalPages() - 1, p + 1));
   }
 
   onFilenameInput(index: number, event: Event): void {
@@ -189,12 +247,18 @@ export class SnippetEditPage implements OnInit {
         id = created.id;
         this.toastService.success('Snippet created');
       }
-      const repoId = this.linkedRepoId();
-      if (repoId) {
-        await this.snippetService.linkRepo(id, repoId);
-      } else if (this.isEditMode()) {
-        await this.snippetService.unlinkRepo(id).catch(() => {});
-      }
+      const current = this.linkedRepoIds();
+      const initial = this.initialRepoIds();
+      const toAdd = [...current].filter((rid) => !initial.has(rid));
+      const toRemove = [...initial].filter((rid) => !current.has(rid));
+      await Promise.all([
+        ...toAdd.map((rid) => this.snippetService.linkRepo(id, rid)),
+        ...toRemove.map((rid) =>
+          this.snippetService.unlinkRepo(id, rid).catch(() => {
+            // continue
+          }),
+        ),
+      ]);
       this.router.navigate(['/snippets', id]);
     } catch {
       this.toastService.error(this.isEditMode() ? 'Failed to update snippet' : 'Failed to create snippet');

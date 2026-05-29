@@ -583,13 +583,12 @@
                 <lucide-icon name="file" class="size-3.5"></lucide-icon>
                 {{ snippet.fileCount }} file{{ snippet.fileCount !== 1 ? 's' : '' }}
               </span>
-              @if (snippet.repoName) {
+              @for (repo of snippet.repos; track repo.id) {
               <span class="inline-flex items-center gap-1">
                 <lucide-icon name="gitBranch" class="size-3.5"></lucide-icon>
-                {{ snippet.repoName }}
+                {{ repo.name }}
               </span>
-              }
-              @if (snippet.updatedAt) {
+              } @if (snippet.updatedAt) {
               <span class="ml-auto">{{ snippet.updatedAt | relativeTime }}</span>
               }
             </div>

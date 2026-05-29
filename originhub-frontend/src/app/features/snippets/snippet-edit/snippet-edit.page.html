@@ -142,20 +142,112 @@
       </label>
       }
 
-      <!-- Linked repository -->
+      <!-- Linked repositories combobox -->
       @if (repos().length > 0) {
-      <label class="form-control w-full">
+      <div class="form-control w-full">
         <div class="label pb-1">
-          <span class="label-text font-medium">Link to repository</span>
-          <span class="label-text-alt text-base-content/40">optional</span>
+          <span class="label-text font-medium">Link to repositories</span>
+          <span class="label-text-alt text-base-content/40">optional, multiple</span>
         </div>
-        <select class="select select-bordered w-full" (change)="onRepoChange($event)">
-          <option value="">No repository</option>
-          @for (repo of repos(); track repo.id) {
-          <option [value]="repo.id" [selected]="linkedRepoId() === repo.id">{{ repo.name }}</option>
+
+        <!-- Selected chips -->
+        @if (linkedRepoInfos().length > 0) {
+        <div class="mb-2 flex flex-wrap gap-1.5">
+          @for (repo of linkedRepoInfos(); track repo.id) {
+          <span class="badge-pill badge-pill--primary gap-1 pr-1.5">
+            <lucide-icon name="git-branch" class="size-3"></lucide-icon>
+            {{ repo.name }}
+            <button
+              type="button"
+              class="ml-0.5 cursor-pointer opacity-70 hover:opacity-100"
+              (mousedown)="keepDropdownOpen($event)"
+              (click)="onRepoToggle(repo.id)"
+            >
+              <lucide-icon name="x" class="size-3"></lucide-icon>
+            </button>
+          </span>
           }
-        </select>
-      </label>
+        </div>
+        }
+
+        <!-- Search input + dropdown -->
+        <div class="relative">
+          <div class="input input-bordered flex w-full items-center gap-2 pr-3">
+            <lucide-icon name="search" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
+            <input
+              type="text"
+              class="flex-1 bg-transparent text-sm focus:outline-none"
+              placeholder="Search repositories..."
+              [value]="repoSearch()"
+              (input)="onRepoSearchInput($event)"
+              (focus)="openRepoDropdown()"
+              (blur)="closeRepoDropdown()"
+            />
+            @if (repoSearch()) {
+            <button
+              type="button"
+              class="text-base-content/40 hover:text-base-content cursor-pointer"
+              (mousedown)="keepDropdownOpen($event)"
+              (click)="repoSearch.set(''); repoDropdownPage.set(0)"
+            >
+              <lucide-icon name="x" class="size-3.5"></lucide-icon>
+            </button>
+            }
+          </div>
+
+          @if (repoDropdownOpen()) {
+          <div
+            class="bg-base-100 border-base-300 absolute top-full right-0 left-0 z-50 mt-1 overflow-hidden rounded-lg border shadow-lg"
+            (mousedown)="keepDropdownOpen($event)"
+          >
+            <!-- Repo list -->
+            <div>
+              @for (repo of pagedRepos(); track repo.id) {
+              <label class="hover:bg-base-200 flex cursor-pointer items-center gap-3 px-3 py-2.5">
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm checkbox-primary"
+                  [checked]="linkedRepoIds().has(repo.id)"
+                  (change)="onRepoToggle(repo.id)"
+                />
+                <span class="text-sm">{{ repo.name }}</span>
+                @if (linkedRepoIds().has(repo.id)) {
+                <lucide-icon name="check" class="text-primary ml-auto size-3.5"></lucide-icon>
+                }
+              </label>
+              } @if (pagedRepos().length === 0) {
+              <p class="text-base-content/40 py-6 text-center text-sm">No repositories found</p>
+              }
+            </div>
+
+            <!-- Pagination -->
+            @if (repoTotalPages() > 1) {
+            <div class="border-base-300 flex items-center justify-between border-t px-3 py-2">
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                [disabled]="repoDropdownPage() === 0"
+                (click)="repoPrevPage()"
+              >
+                <lucide-icon name="chevron-left" class="size-3.5"></lucide-icon>
+                Prev
+              </button>
+              <span class="text-base-content/50 text-xs">{{ repoDropdownPage() + 1 }} / {{ repoTotalPages() }}</span>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                [disabled]="repoDropdownPage() >= repoTotalPages() - 1"
+                (click)="repoNextPage()"
+              >
+                Next
+                <lucide-icon name="chevron-right" class="size-3.5"></lucide-icon>
+              </button>
+            </div>
+            }
+          </div>
+          }
+        </div>
+      </div>
       }
 
       <!-- Actions -->

@@ -21,7 +21,6 @@ import { environment } from '../../../../environments/environment';
 import type {
   SnippetDetail,
   SnippetForm,
-  SnippetInfo,
   SnippetPage,
   SnippetUpdateForm,
   SnippetCommentInfo,
@@ -41,8 +40,9 @@ export class SnippetService {
     return firstValueFrom(this.http.get<SnippetPage>(this.base, { params }));
   }
 
-  listMine(): Promise<SnippetInfo[]> {
-    return firstValueFrom(this.http.get<SnippetInfo[]>(`${this.base}/me`));
+  listMine(page = 0, size = 20): Promise<SnippetPage> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return firstValueFrom(this.http.get<SnippetPage>(`${this.base}/me`, { params }));
   }
 
   get(id: string): Promise<SnippetDetail> {
@@ -96,8 +96,8 @@ export class SnippetService {
     return firstValueFrom(this.http.put<SnippetDetail>(`${this.base}/${snippetId}/repo/${repoId}`, {}));
   }
 
-  unlinkRepo(snippetId: string): Promise<SnippetDetail> {
-    return firstValueFrom(this.http.delete<SnippetDetail>(`${this.base}/${snippetId}/repo`));
+  unlinkRepo(snippetId: string, repoId: string): Promise<SnippetDetail> {
+    return firstValueFrom(this.http.delete<SnippetDetail>(`${this.base}/${snippetId}/repo/${repoId}`));
   }
 
   listByRepo(owner: string, repoName: string, page = 0, size = 20): Promise<SnippetPage> {

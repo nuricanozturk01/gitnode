@@ -63,8 +63,9 @@ export class TokenService {
 
   saveTokens(tokens: TokenResponse): void {
     const expiresIn = tokens.expiresIn ?? ACCESS_TOKEN_TTL_SECONDS;
+    const refreshExpiresIn = tokens.refreshExpiresIn ?? REFRESH_TOKEN_TTL_SECONDS;
     const expiresAt = Date.now() + expiresIn * 1000;
-    const refreshExpiresAt = Date.now() + REFRESH_TOKEN_TTL_SECONDS * 1000;
+    const refreshExpiresAt = Date.now() + refreshExpiresIn * 1000;
     localStorage.setItem(ACCESS_KEY, tokens.token);
     localStorage.setItem(REFRESH_KEY, tokens.refreshToken);
     localStorage.setItem(EXPIRES_KEY, String(expiresAt));

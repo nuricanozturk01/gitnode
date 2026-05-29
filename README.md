@@ -54,16 +54,22 @@ server"*, OriginHub is for you.
 
 ## ✨ Features
 
-OriginHub covers the core Git hosting loop — repos, review, and browsing — plus lightweight **project boards** and **code snippets** tied to your repositories.
+OriginHub covers the core Git hosting loop — repos, review, browsing, issues, project boards, webhooks, and code snippets — all tied to your repositories on your own infrastructure.
 
 ### 📁 Repository management
 
 - Create, clone, push, and pull repositories
-- Private repositories, descriptions, and **topics**
+- **Public and private** repositories, descriptions, and **topics**
 - **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your
   OriginHub host (same protocol support for the web UI and API)
 - **SSH** Git on a configurable port (default **2222** in Docker)
 - Per-repo **Settings**: general metadata, optional **auto-delete head branch** after PR merge or close
+
+### 👤 Public profile
+
+- Every account has a public profile at `/:username` showing public repositories
+- Optional **profile README** rendered from the account’s special repository
+- Paginated public repository list
 
 ### 📥 GitHub repository migration
 
@@ -83,22 +89,36 @@ OriginHub covers the core Git hosting loop — repos, review, and browsing — p
 - Merge strategies: **merge commit**, **squash**, **rebase**
 - Draft PRs, inline discussion, file-level comments
 
+### 🐛 Issues
+
+- Track bugs and feature requests per repository
+- Labels, comments, open/close status
+- **Link issues to Kanban tasks** — resolving a PR can auto-complete linked tasks
+
 ### 📋 Project management (Kanban)
 
 - **Projects** with **boards** and configurable **columns** (per-project)
 - **Tasks** and **subtasks** with types, status, assignee, and ordering
 - Create **Git branches** from a task or subtask (conventional branch names, e.g. `TASK-1` or `TASK-1.SUB-1-…`)
 - **Link** a branch’s pull request to the task or subtask; see PR status on the card
-- **Optional automation** (per project): when a linked PR is **merged**, mark the task or subtask **completed** — can be
-  turned off in **Project settings**
+- **Optional automation** (per project): when a linked PR is **merged**, mark the task or subtask **completed**
 - **Project settings** page for the above PR → status behaviour
+- Projects linked to a repository are paginated in the repo’s **Projects** tab
 
 ### 📝 Code snippets (Gist-like)
 
 - Create **public** or **private** snippets with syntax-highlighted code blocks
 - **Multi-file** support per snippet
 - Full **revision history** — track edits and diff between revisions
+- **Fork** any public snippet
+- Paginated snippets per repository in the repo’s **Snippets** tab
 - Manage all your snippets from the **Snippets** section in the app bar
+
+### 🔔 Webhooks
+
+- **Signed HTTP delivery** to your services for pushes, PR events, and more
+- **Retries** on delivery failure with full delivery log visibility
+- Configured per-repository in **Settings → Webhooks**
 
 ### ⚡ Actions — CI/CD *(coming soon)*
 
@@ -203,7 +223,7 @@ Edit the variables at the top of the `Makefile` before running — at minimum se
 
 ## 🗺 Roadmap
 
-OriginHub is under active development. Here's what's planned:gi
+OriginHub is under active development. Here's what's planned:
 
 - [X] HTTPS Git support
 - [X] Github Repo Migration
@@ -212,11 +232,11 @@ OriginHub is under active development. Here's what's planned:gi
 - [X] Repo Issues
 - [X] Public repositories
 - [X] Public Profile and ReadMe
-- [ ] Webhooks
-- [ ] Two-factor authentication (TOTP)
+- [X] Webhooks
 - [ ] Actions — CI/CD
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Tags and releases
+- [ ] Two-factor authentication (TOTP)
 
 ---
 

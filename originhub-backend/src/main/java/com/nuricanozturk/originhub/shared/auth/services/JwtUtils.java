@@ -21,7 +21,6 @@ import static com.nuricanozturk.originhub.shared.auth.utils.BearerTokenUtils.isB
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.TokenExpiredException;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -40,6 +39,9 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class JwtUtils {
+
+  public static final int ACCESS_EXPIRATION_SECONDS = 24 * 3600;
+  public static final int REFRESH_EXPIRATION_SECONDS = 48 * 3600;
 
   private static final int ACCESS_EXPIRATION_HOUR = 24;
   private static final int REFRESH_EXPIRATION_HOUR = 48;
@@ -122,10 +124,9 @@ public class JwtUtils {
 
     try {
       Jwts.parser().verifyWith(this.getSigningKey()).build().parseSignedClaims(jwt);
-    } catch (final ExpiredJwtException e) {
-      log.info("Token expired: {}", e.getMessage());
     } catch (final JwtException e) {
-      log.info("Invalid token: {}", e.getMessage());
+      log.info("Token rejected: {}", e.getMessage());
+      throw new TokenExpiredException("invalidToken");
     }
   }
 }

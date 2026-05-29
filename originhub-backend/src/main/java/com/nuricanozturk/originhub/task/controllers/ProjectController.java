@@ -127,4 +127,15 @@ public class ProjectController {
 
     return ResponseEntity.ok(this.projectService.getLinkedRepos(owner, projectCode, viewer));
   }
+
+  @GetMapping("/by-repo/{repoId}")
+  public @NonNull ResponseEntity<PageResponse<ProjectInfo>> getByRepo(
+      @PathVariable final @NonNull String owner,
+      @PathVariable final @NonNull UUID repoId,
+      @AuthenticationPrincipal final @Nullable Tenant viewer,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "12") final int size) {
+
+    return ResponseEntity.ok(this.projectService.getLinkedProjects(repoId, viewer, page, size));
+  }
 }

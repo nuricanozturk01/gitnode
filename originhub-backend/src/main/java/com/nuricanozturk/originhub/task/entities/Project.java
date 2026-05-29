@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.task.entities;
 
+import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -23,9 +24,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -71,6 +76,13 @@ public class Project {
   @ColumnDefault("false")
   @Column(name = "is_public", nullable = false)
   private boolean isPublic = false;
+
+  @ManyToMany(fetch = FetchType.LAZY)
+  @JoinTable(
+      name = "project_repos",
+      joinColumns = @JoinColumn(name = "project_id"),
+      inverseJoinColumns = @JoinColumn(name = "repo_id"))
+  private Set<Repo> repos = new LinkedHashSet<>();
 
   @CreationTimestamp
   @Column(name = "created_at")

@@ -68,8 +68,7 @@ public class BoardService {
       final @NonNull String projectCode,
       final @Nullable Tenant viewer) {
 
-    final var project =
-        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
+    final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.boardRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
         .map(this::toBoardInfo)
         .toList();
@@ -81,8 +80,7 @@ public class BoardService {
       final @NonNull UUID boardId,
       final @Nullable Tenant viewer) {
 
-    final var project =
-        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
+    final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     final var board = this.findBoard(boardId, project.getId());
     return this.toBoardInfo(board);
   }

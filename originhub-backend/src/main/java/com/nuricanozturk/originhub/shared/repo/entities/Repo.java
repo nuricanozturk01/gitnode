@@ -35,7 +35,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
@@ -84,10 +83,6 @@ public class Repo {
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;
-
-  @Nullable
-  @Column(name = "project_id")
-  private UUID projectId;
 
   @UpdateTimestamp
   @Column(name = "updated_at")

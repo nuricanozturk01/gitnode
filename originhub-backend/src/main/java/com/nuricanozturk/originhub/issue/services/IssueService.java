@@ -20,7 +20,11 @@ import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.issue.events.IssueCommentedEvent;
+import com.nuricanozturk.originhub.shared.issue.events.IssueCreatedEvent;
 import com.nuricanozturk.originhub.shared.issue.events.IssueDeletedEvent;
+import com.nuricanozturk.originhub.shared.issue.events.IssueStatusChangedEvent;
+import com.nuricanozturk.originhub.shared.issue.events.IssueUpdatedEvent;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -91,6 +95,8 @@ public class IssueService implements IssueQueryService {
     }
 
     final var saved = this.issueRepository.save(issue);
+    this.eventPublisher.publishEvent(
+        new IssueCreatedEvent(saved.getId(), repo.getId(), saved.getNumber(), saved.getTitle()));
     return this.issueMapper.toDetail(saved, 0);
   }
 
@@ -191,6 +197,14 @@ public class IssueService implements IssueQueryService {
 
     final var saved = this.issueRepository.save(issue);
     final int commentCount = this.commentRepository.countByIssueId(saved.getId());
+    if (form.getStatus() != null) {
+      this.eventPublisher.publishEvent(
+          new IssueStatusChangedEvent(
+              saved.getId(), repo.getId(), saved.getNumber(), saved.getStatus()));
+    } else {
+      this.eventPublisher.publishEvent(
+          new IssueUpdatedEvent(saved.getId(), repo.getId(), saved.getNumber()));
+    }
     return this.issueMapper.toDetail(saved, commentCount);
   }
 
@@ -266,7 +280,11 @@ public class IssueService implements IssueQueryService {
     comment.setAuthor(author);
     comment.setBody(form.getBody());
 
-    return this.issueMapper.toCommentInfo(this.commentRepository.save(comment));
+    final var saved = this.commentRepository.save(comment);
+    this.eventPublisher.publishEvent(
+        new IssueCommentedEvent(
+            saved.getId(), issue.getId(), repo.getId(), issue.getNumber(), saved.getBody()));
+    return this.issueMapper.toCommentInfo(saved);
   }
 
   @Transactional

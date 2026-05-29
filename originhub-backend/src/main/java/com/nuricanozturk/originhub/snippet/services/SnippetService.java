@@ -19,6 +19,9 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllo
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.snippet.events.SnippetCreatedEvent;
+import com.nuricanozturk.originhub.shared.snippet.events.SnippetDeletedEvent;
+import com.nuricanozturk.originhub.shared.snippet.events.SnippetUpdatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetDetail;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetForm;
@@ -35,12 +38,12 @@ import com.nuricanozturk.originhub.snippet.mappers.SnippetMapper;
 import com.nuricanozturk.originhub.snippet.repositories.SnippetRepository;
 import com.nuricanozturk.originhub.snippet.repositories.SnippetRevisionRepository;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -61,6 +64,7 @@ public class SnippetService {
   private final RepoRepository repoRepository;
   private final SnippetMapper snippetMapper;
   private final SnippetFileStorageService fileStorage;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public SnippetDetail create(final UUID tenantId, final SnippetForm form) {
@@ -102,6 +106,9 @@ public class SnippetService {
 
     this.snapshotRevision(saved, tenantId, null, contentByFilename);
 
+    this.eventPublisher.publishEvent(
+        new SnippetCreatedEvent(saved.getId(), owner.getUsername(), saved.getTitle(), null));
+
     return this.buildDetail(saved, owner.getUsername());
   }
 
@@ -120,6 +127,9 @@ public class SnippetService {
 
     final var resolvedContent = this.resolveFileContents(saved, username, contentByFilename);
     this.snapshotRevision(saved, tenantId, form.getSummary(), resolvedContent);
+
+    this.eventPublisher.publishEvent(
+        new SnippetUpdatedEvent(saved.getId(), username, saved.getTitle(), null));
 
     return this.buildDetail(saved, username);
   }
@@ -191,8 +201,10 @@ public class SnippetService {
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
     final var username = snippet.getOwner().getUsername();
+    final var title = snippet.getTitle();
     this.snippetRepository.delete(snippet);
     this.fileStorage.deleteSnippetDir(username, snippetId);
+    this.eventPublisher.publishEvent(new SnippetDeletedEvent(snippetId, username, title));
   }
 
   public SnippetDetail get(final UUID snippetId, final @Nullable UUID callerId) {
@@ -202,10 +214,12 @@ public class SnippetService {
     return this.buildDetail(snippet, snippet.getOwner().getUsername());
   }
 
-  public List<SnippetInfo> listMine(final UUID tenantId) {
-    return this.snippetRepository.findAllByOwnerIdOrderByCreatedAtDesc(tenantId).stream()
-        .map(this.snippetMapper::toInfo)
-        .toList();
+  public PageResponse<SnippetInfo> listMine(final UUID tenantId, final int page, final int size) {
+    final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    return PageResponse.from(
+        this.snippetRepository
+            .findAllByOwnerIdOrderByCreatedAtDesc(tenantId, pageable)
+            .map(this.snippetMapper::toInfo));
   }
 
   public Page<SnippetInfo> listPublic(final int page, final int size, final @Nullable String q) {
@@ -328,8 +342,7 @@ public class SnippetService {
   }
 
   @Transactional
-  public SnippetDetail linkRepo(
-      final UUID tenantId, final UUID snippetId, final UUID repoId) {
+  public SnippetDetail linkRepo(final UUID tenantId, final UUID snippetId, final UUID repoId) {
 
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
@@ -337,17 +350,17 @@ public class SnippetService {
         this.repoRepository
             .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
-    snippet.setRepo(repo);
+    snippet.getRepos().add(repo);
     final var saved = this.snippetRepository.save(snippet);
     return this.buildDetail(saved, saved.getOwner().getUsername());
   }
 
   @Transactional
-  public SnippetDetail unlinkRepo(final UUID tenantId, final UUID snippetId) {
+  public SnippetDetail unlinkRepo(final UUID tenantId, final UUID snippetId, final UUID repoId) {
 
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
-    snippet.setRepo(null);
+    snippet.getRepos().removeIf(r -> r.getId().equals(repoId));
     final var saved = this.snippetRepository.save(snippet);
     return this.buildDetail(saved, saved.getOwner().getUsername());
   }
@@ -364,19 +377,24 @@ public class SnippetService {
             .findByOwnerUsernameAndName(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+    final boolean isOwner = callerId != null && callerId.equals(repo.getOwner().getId());
 
-    final boolean isOwner =
-        callerId != null && callerId.equals(repo.getOwner().getId());
+    if (repo.isPrivate() && !isOwner) {
+      throw new AccessNotAllowedException("repoAccessDenied");
+    }
+
+    final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
     if (isOwner) {
       return PageResponse.from(
-          this.snippetRepository.findAllByRepoId(repo.getId(), pageable)
+          this.snippetRepository
+              .findAllByRepoId(repo.getId(), pageable)
               .map(this.snippetMapper::toInfo));
     }
 
     return PageResponse.from(
-        this.snippetRepository.findPublicByRepoId(repo.getId(), pageable)
+        this.snippetRepository
+            .findPublicByRepoId(repo.getId(), pageable)
             .map(this.snippetMapper::toInfo));
   }
 

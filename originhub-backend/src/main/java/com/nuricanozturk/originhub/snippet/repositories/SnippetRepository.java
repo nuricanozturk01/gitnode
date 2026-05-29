@@ -54,11 +54,11 @@ public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
       @NonNull UUID ownerId, @NonNull Pageable pageable);
 
   @Query(
-      "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.repo.id = :repoId AND s.visibility = 'PUBLIC'")
+      "SELECT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId AND s.visibility = 'PUBLIC'")
   @NonNull Page<Snippet> findPublicByRepoId(
       @Param("repoId") @NonNull UUID repoId, @NonNull Pageable pageable);
 
-  @Query("SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.repo.id = :repoId")
+  @Query("SELECT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId")
   @NonNull Page<Snippet> findAllByRepoId(
       @Param("repoId") @NonNull UUID repoId, @NonNull Pageable pageable);
 

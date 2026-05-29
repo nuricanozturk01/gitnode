@@ -25,4 +25,6 @@ public class LoginInfo {
   private String username;
   private String token;
   private String refreshToken;
+  private int expiresIn;
+  private int refreshExpiresIn;
 }

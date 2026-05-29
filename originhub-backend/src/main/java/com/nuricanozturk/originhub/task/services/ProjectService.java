@@ -20,10 +20,13 @@ import com.nuricanozturk.originhub.pr.repositories.PrRepository;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.project.events.ProjectCreatedEvent;
+import com.nuricanozturk.originhub.shared.project.events.ProjectDeletedEvent;
+import com.nuricanozturk.originhub.shared.project.events.ProjectUpdatedEvent;
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
-import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.task.dtos.OpenPrInfo;
 import com.nuricanozturk.originhub.task.dtos.ProjectForm;
 import com.nuricanozturk.originhub.task.dtos.ProjectInfo;
@@ -38,6 +41,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +57,7 @@ public class ProjectService {
   private final @NonNull PrRepository prRepository;
   private final @NonNull ProjectMapper projectMapper;
   private final @NonNull TaskRepository taskRepository;
+  private final @NonNull ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public @NonNull ProjectInfo create(
@@ -82,6 +87,8 @@ public class ProjectService {
     project.setPublic(form.isPublic());
 
     final var saved = this.projectRepository.save(project);
+    this.eventPublisher.publishEvent(
+        new ProjectCreatedEvent(saved.getId(), ownerUsername, saved.getName()));
     return this.projectMapper.toInfo(saved, this.taskRepository.countByProjectId(saved.getId()));
   }
 
@@ -97,9 +104,8 @@ public class ProjectService {
         isOwner
             ? this.projectRepository.findAllByOwnerUsernameOrderByCreatedAtDesc(
                 ownerUsername, pageable)
-            : this.projectRepository
-                .findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
-                    ownerUsername, pageable);
+            : this.projectRepository.findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
+                ownerUsername, pageable);
 
     return PageResponse.from(
         projects.map(
@@ -146,6 +152,8 @@ public class ProjectService {
     }
 
     final var updated = this.projectRepository.save(project);
+    this.eventPublisher.publishEvent(
+        new ProjectUpdatedEvent(updated.getId(), ownerUsername, updated.getName()));
     return this.projectMapper.toInfo(
         updated, this.taskRepository.countByProjectId(updated.getId()));
   }
@@ -161,6 +169,8 @@ public class ProjectService {
     }
 
     final var project = this.findProject(ownerUsername, codePrefix);
+    this.eventPublisher.publishEvent(
+        new ProjectDeletedEvent(project.getId(), ownerUsername, project.getName()));
     this.projectRepository.delete(project);
   }
 
@@ -176,17 +186,19 @@ public class ProjectService {
     }
 
     final var project = this.findProject(ownerUsername, codePrefix);
-
     final var repo =
         this.repoRepository
             .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
 
-    if (repo.getProjectId() != null) {
-      throw new ErrorOccurredException("Repository is already linked to a project");
+    final boolean alreadyLinked =
+        project.getRepos().stream().anyMatch(r -> r.getId().equals(repoId));
+    if (alreadyLinked) {
+      throw new ErrorOccurredException("Repository is already linked to this project");
     }
 
-    this.repoRepository.linkToProject(repoId, project.getId());
+    project.getRepos().add(repo);
+    this.projectRepository.save(project);
   }
 
   @Transactional
@@ -201,17 +213,12 @@ public class ProjectService {
     }
 
     final var project = this.findProject(ownerUsername, codePrefix);
-
-    final var repo =
-        this.repoRepository
-            .findById(repoId)
-            .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
-
-    if (!project.getId().equals(repo.getProjectId())) {
+    final boolean removed = project.getRepos().removeIf(r -> r.getId().equals(repoId));
+    if (!removed) {
       throw new ErrorOccurredException("Repository is not linked to this project");
     }
 
-    this.repoRepository.unlinkFromProject(repoId);
+    this.projectRepository.save(project);
   }
 
   public @NonNull List<ProjectRepoInfo> getLinkedRepos(
@@ -220,7 +227,7 @@ public class ProjectService {
       final @Nullable Tenant viewer) {
 
     final var project = this.findProjectAsViewer(ownerUsername, codePrefix, viewer);
-    final var repos = this.repoRepository.findAllByProjectId(project.getId());
+    final var repos = project.getRepos();
 
     return repos.stream()
         .map(
@@ -258,6 +265,32 @@ public class ProjectService {
     return this.projectRepository
         .findByOwnerUsernameAndCodePrefix(ownerUsername, codePrefix)
         .orElseThrow(() -> new ItemNotFoundException("Project not found: " + codePrefix));
+  }
+
+  public @NonNull PageResponse<ProjectInfo> getLinkedProjects(
+      final @NonNull UUID repoId, final @Nullable Tenant viewer, final int page, final int size) {
+
+    final var repo =
+        this.repoRepository
+            .findById(repoId)
+            .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+
+    final boolean isRepoOwnerOrAdmin =
+        viewer != null && (viewer.getId().equals(repo.getOwner().getId()) || viewer.isAdmin());
+
+    if (repo.isPrivate() && !isRepoOwnerOrAdmin) {
+      throw new AccessNotAllowedException("repoAccessDenied");
+    }
+
+    final var pageable = PageRequest.of(page, size);
+    final var projects =
+        viewer != null
+            ? this.projectRepository.findVisibleByRepoId(repoId, viewer.getUsername(), pageable)
+            : this.projectRepository.findPublicByRepoId(repoId, pageable);
+
+    return PageResponse.from(
+        projects.map(
+            p -> this.projectMapper.toInfo(p, this.taskRepository.countByProjectId(p.getId()))));
   }
 
   @NonNull Project findProjectAsViewer(

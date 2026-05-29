@@ -24,6 +24,9 @@ import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.task.events.TaskCreatedEvent;
+import com.nuricanozturk.originhub.shared.task.events.TaskDeletedEvent;
+import com.nuricanozturk.originhub.shared.task.events.TaskUpdatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.task.dtos.CreateBranchFromTaskForm;
@@ -52,6 +55,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,6 +75,7 @@ public class TaskService {
   private final @NonNull ProjectService projectService;
   private final @NonNull TaskMapper taskMapper;
   private final @NonNull BranchProtocolService branchProtocolService;
+  private final @NonNull ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public @NonNull TaskDetail create(
@@ -121,7 +126,10 @@ public class TaskService {
       task.setLinkedIssueId(form.getLinkedIssueId());
     }
 
-    return this.toDetail(this.taskRepository.save(task));
+    final var saved = this.taskRepository.save(task);
+    this.eventPublisher.publishEvent(
+        new TaskCreatedEvent(saved.getId(), project.getId(), saved.getCode(), ownerUsername));
+    return this.toDetail(saved);
   }
 
   public @NonNull List<TaskInfo> getAll(
@@ -129,8 +137,7 @@ public class TaskService {
       final @NonNull String projectCode,
       final @Nullable Tenant viewer) {
 
-    final var project =
-        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
+    final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.taskRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
         .map(
             task -> {
@@ -148,8 +155,7 @@ public class TaskService {
       final @NonNull String taskCode,
       final @Nullable Tenant viewer) {
 
-    final var project =
-        this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
+    final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.toDetail(this.findTask(project.getId(), taskCode));
   }
 
@@ -165,7 +171,10 @@ public class TaskService {
 
     this.applyTaskUpdates(task, form);
 
-    return this.toDetail(this.taskRepository.save(task));
+    final var saved = this.taskRepository.save(task);
+    this.eventPublisher.publishEvent(
+        new TaskUpdatedEvent(saved.getId(), project.getId(), saved.getCode(), ownerUsername));
+    return this.toDetail(saved);
   }
 
   private void applyTaskUpdates(final @NonNull Task task, final @NonNull TaskUpdateForm form) {
@@ -227,6 +236,8 @@ public class TaskService {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
+    this.eventPublisher.publishEvent(
+        new TaskDeletedEvent(task.getId(), project.getId(), task.getCode(), ownerUsername));
     this.taskRepository.delete(task);
   }
 

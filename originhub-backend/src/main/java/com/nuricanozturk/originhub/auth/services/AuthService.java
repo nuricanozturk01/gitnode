@@ -143,6 +143,8 @@ public class AuthService {
         .refreshToken(refreshToken)
         .email(tenant.getEmail())
         .username(tenant.getUsername())
+        .expiresIn(JwtUtils.ACCESS_EXPIRATION_SECONDS)
+        .refreshExpiresIn(JwtUtils.REFRESH_EXPIRATION_SECONDS)
         .build();
   }
 

@@ -36,9 +36,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -75,11 +75,13 @@ public class SnippetController {
   }
 
   @GetMapping("/me")
-  public @NonNull ResponseEntity<java.util.List<SnippetInfo>> listMine(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listMine(
+      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "20") final int size) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    return ResponseEntity.ok(this.snippetService.listMine(tenantId));
+    return ResponseEntity.ok(this.snippetService.listMine(tenantId, page, size));
   }
 
   @GetMapping("/{snippetId}")
@@ -155,13 +157,14 @@ public class SnippetController {
     return ResponseEntity.ok(this.snippetService.linkRepo(tenantId, snippetId, repoId));
   }
 
-  @DeleteMapping("/{snippetId}/repo")
+  @DeleteMapping("/{snippetId}/repo/{repoId}")
   public @NonNull ResponseEntity<SnippetDetail> unlinkRepo(
       final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId) {
+      @PathVariable final @NonNull UUID snippetId,
+      @PathVariable final @NonNull UUID repoId) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    return ResponseEntity.ok(this.snippetService.unlinkRepo(tenantId, snippetId));
+    return ResponseEntity.ok(this.snippetService.unlinkRepo(tenantId, snippetId, repoId));
   }
 
   @GetMapping("/by-owner/{username}")
@@ -187,8 +190,7 @@ public class SnippetController {
       @RequestParam(defaultValue = "20") final int size) {
 
     final var callerId = this.extractOptionalCaller(authHeader);
-    return ResponseEntity.ok(
-        this.snippetService.listByRepo(owner, repoName, callerId, page, size));
+    return ResponseEntity.ok(this.snippetService.listByRepo(owner, repoName, callerId, page, size));
   }
 
   @GetMapping("/{snippetId}/files/{fileId}/raw")

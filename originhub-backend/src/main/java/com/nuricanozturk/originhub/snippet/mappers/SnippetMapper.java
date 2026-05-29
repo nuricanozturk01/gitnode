@@ -15,12 +15,14 @@
  */
 package com.nuricanozturk.originhub.snippet.mappers;
 
+import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetCommentInfo;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetDetail;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetFileInfo;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetForkedFromInfo;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetInfo;
+import com.nuricanozturk.originhub.snippet.dtos.SnippetLinkedRepoInfo;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetOwnerInfo;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetRevisionDetail;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetRevisionInfo;
@@ -79,8 +81,11 @@ public interface SnippetMapper {
         .build();
   }
 
+  default @NonNull SnippetLinkedRepoInfo toLinkedRepoInfo(final @NonNull Repo repo) {
+    return SnippetLinkedRepoInfo.builder().id(repo.getId()).name(repo.getName()).build();
+  }
+
   default @NonNull SnippetInfo toInfo(final @NonNull Snippet snippet) {
-    final var repo = snippet.getRepo();
     return SnippetInfo.builder()
         .id(snippet.getId())
         .title(snippet.getTitle())
@@ -91,8 +96,7 @@ public interface SnippetMapper {
         .commentCount(snippet.getCommentCount())
         .forkCount(snippet.getForkCount())
         .forkedFrom(this.toForkedFromInfo(snippet.getForkedFrom()))
-        .repoId(repo != null ? repo.getId() : null)
-        .repoName(repo != null ? repo.getName() : null)
+        .repos(snippet.getRepos().stream().map(this::toLinkedRepoInfo).toList())
         .createdAt(snippet.getCreatedAt())
         .updatedAt(snippet.getUpdatedAt())
         .build();
@@ -105,7 +109,6 @@ public interface SnippetMapper {
             .map(f -> this.toFileInfo(f, contentByFileId.getOrDefault(f.getId(), "")))
             .toList();
 
-    final var repo = snippet.getRepo();
     return SnippetDetail.builder()
         .id(snippet.getId())
         .title(snippet.getTitle())
@@ -116,8 +119,7 @@ public interface SnippetMapper {
         .commentCount(snippet.getCommentCount())
         .forkCount(snippet.getForkCount())
         .forkedFrom(this.toForkedFromInfo(snippet.getForkedFrom()))
-        .repoId(repo != null ? repo.getId() : null)
-        .repoName(repo != null ? repo.getName() : null)
+        .repos(snippet.getRepos().stream().map(this::toLinkedRepoInfo).toList())
         .files(files)
         .createdAt(snippet.getCreatedAt())
         .updatedAt(snippet.getUpdatedAt())

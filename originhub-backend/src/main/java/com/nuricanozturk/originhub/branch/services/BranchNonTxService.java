@@ -19,6 +19,8 @@ import static java.util.Comparator.comparing;
 
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
+import com.nuricanozturk.originhub.shared.branch.events.BranchCreatedEvent;
+import com.nuricanozturk.originhub.shared.branch.events.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -36,6 +38,7 @@ import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -48,6 +51,7 @@ public class BranchNonTxService implements BranchProtocolService {
 
   private final BranchTxService branchTxService;
   private final GitProvider gitProvider;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Override
   public BranchInfo create(final String owner, final String repoName, final BranchForm form)
@@ -60,6 +64,9 @@ public class BranchNonTxService implements BranchProtocolService {
       final var result = this.createNewBranch(gitRepo, form.getName(), form.getSourceBranch());
 
       this.checkCreateResult(result);
+
+      final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
+      this.eventPublisher.publishEvent(new BranchCreatedEvent(repo.getId(), form.getName()));
 
       return this.get(owner, repoName, form.getName());
     }
@@ -81,6 +88,8 @@ public class BranchNonTxService implements BranchProtocolService {
 
       this.checkDeleteResult(result);
     }
+
+    this.eventPublisher.publishEvent(new BranchDeletedEvent(repo.getId(), branchName));
   }
 
   @Override

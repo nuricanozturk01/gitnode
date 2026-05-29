@@ -52,14 +52,4 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")
   void updateDefaultBranch(@NonNull UUID repoId, @NonNull String branchName);
-
-  @NonNull List<Repo> findAllByProjectId(@NonNull UUID projectId);
-
-  @Modifying
-  @Query("update Repo r set r.projectId = :projectId where r.id = :repoId")
-  void linkToProject(@NonNull UUID repoId, @NonNull UUID projectId);
-
-  @Modifying
-  @Query("update Repo r set r.projectId = null where r.id = :repoId")
-  void unlinkFromProject(@NonNull UUID repoId);
 }

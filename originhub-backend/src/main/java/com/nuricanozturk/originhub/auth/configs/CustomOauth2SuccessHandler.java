@@ -53,6 +53,8 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
   private static final @NonNull String GITLAB = "gitlab";
   private static final @NonNull String TOKEN = "token";
   private static final @NonNull String REFRESH_TOKEN = "refresh_token";
+  private static final @NonNull String EXPIRES_IN = "expires_in";
+  private static final @NonNull String REFRESH_EXPIRES_IN = "refresh_expires_in";
 
   private final @NonNull JwtUtils jwtUtils;
   private final @NonNull TenantRepository tenantRepository;
@@ -90,6 +92,8 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
             .queryParam(TOKEN, this.jwtUtils.generateToken(tenant))
             .queryParam(REFRESH_TOKEN, this.jwtUtils.generateRefreshToken(tenant))
             .queryParam(USERNAME, tenant.getUsername())
+            .queryParam(EXPIRES_IN, JwtUtils.ACCESS_EXPIRATION_SECONDS)
+            .queryParam(REFRESH_EXPIRES_IN, JwtUtils.REFRESH_EXPIRATION_SECONDS)
             .build()
             .toUriString();
 

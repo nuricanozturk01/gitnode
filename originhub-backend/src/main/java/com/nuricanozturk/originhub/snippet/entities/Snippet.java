@@ -27,13 +27,17 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -74,9 +78,12 @@ public class Snippet {
   @JoinColumn(name = "forked_from_id")
   private Snippet forkedFrom;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "repo_id")
-  private Repo repo;
+  @ManyToMany(fetch = FetchType.LAZY)
+  @JoinTable(
+      name = "snippet_repos",
+      joinColumns = @JoinColumn(name = "snippet_id"),
+      inverseJoinColumns = @JoinColumn(name = "repo_id"))
+  private Set<Repo> repos = new LinkedHashSet<>();
 
   @ColumnDefault("0")
   @Column(name = "file_count", nullable = false)

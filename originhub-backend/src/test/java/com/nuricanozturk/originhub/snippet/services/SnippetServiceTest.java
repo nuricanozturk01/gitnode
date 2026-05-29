@@ -56,6 +56,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 
@@ -68,6 +69,7 @@ class SnippetServiceTest {
   @Mock private TenantRepository tenantRepository;
   @Mock private SnippetMapper snippetMapper;
   @Mock private SnippetFileStorageService fileStorage;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private SnippetService snippetService;
 
@@ -575,14 +577,14 @@ class SnippetServiceTest {
       SnippetInfo pubInfo = stubInfo(pub.getId(), "Public");
       SnippetInfo privInfo = stubInfo(priv.getId(), "Private");
 
-      when(snippetRepository.findAllByOwnerIdOrderByCreatedAtDesc(ownerId))
-          .thenReturn(List.of(pub, priv));
+      when(snippetRepository.findAllByOwnerIdOrderByCreatedAtDesc(eq(ownerId), any(Pageable.class)))
+          .thenReturn(new PageImpl<>(List.of(pub, priv)));
       when(snippetMapper.toInfo(pub)).thenReturn(pubInfo);
       when(snippetMapper.toInfo(priv)).thenReturn(privInfo);
 
-      var result = snippetService.listMine(ownerId);
+      var result = snippetService.listMine(ownerId, 0, 20);
 
-      assertThat(result).containsExactly(pubInfo, privInfo);
+      assertThat(result.content()).containsExactly(pubInfo, privInfo);
     }
   }
 

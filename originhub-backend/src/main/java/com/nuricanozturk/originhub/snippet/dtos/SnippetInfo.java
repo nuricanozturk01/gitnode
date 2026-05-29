@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.snippet.dtos;
 
 import com.nuricanozturk.originhub.snippet.entities.Visibility;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import org.jspecify.annotations.NonNull;
@@ -33,7 +34,6 @@ public record SnippetInfo(
     int commentCount,
     int forkCount,
     @Nullable SnippetForkedFromInfo forkedFrom,
-    @Nullable UUID repoId,
-    @Nullable String repoName,
+    @NonNull List<SnippetLinkedRepoInfo> repos,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

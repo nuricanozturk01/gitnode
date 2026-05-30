@@ -188,6 +188,24 @@ export const routes: Routes = [
         loadComponent: () => import('./features/repo/projects/repo-projects.page').then((m) => m.RepoProjectsPage),
       },
       {
+        path: 'releases',
+        loadComponent: () => import('./features/repo/releases/releases.page').then((m) => m.ReleasesPage),
+      },
+      {
+        path: 'releases/new',
+        loadComponent: () => import('./features/repo/releases/create-release.page').then((m) => m.CreateReleasePage),
+        canActivate: [repoOwnerGuard],
+      },
+      {
+        path: 'releases/:id/edit',
+        loadComponent: () => import('./features/repo/releases/edit-release.page').then((m) => m.EditReleasePage),
+        canActivate: [repoOwnerGuard],
+      },
+      {
+        path: 'releases/tag/:tagName',
+        loadComponent: () => import('./features/repo/releases/release-detail.page').then((m) => m.ReleaseDetailPage),
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/repo/settings/repo-settings.page').then((m) => m.RepoSettingsPage),
         canActivate: [repoOwnerGuard],

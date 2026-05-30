@@ -65,6 +65,7 @@ export class MigrateGithubPage {
     accessToken: ['', [Validators.required]],
     migrateRepository: [true],
     migratePullRequests: [false],
+    migrateTagsAndReleases: [false],
     repoNameOverride: [''],
   });
 
@@ -164,6 +165,7 @@ export class MigrateGithubPage {
     const items: MigrationItemKind[] = [];
     if (v.migrateRepository) items.push('REPOSITORIES');
     if (v.migratePullRequests) items.push('PULL_REQUESTS');
+    if (v.migrateTagsAndReleases) items.push('TAGS_AND_RELEASES');
     return items;
   }
 

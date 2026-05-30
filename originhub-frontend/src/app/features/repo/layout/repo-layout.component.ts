@@ -24,6 +24,7 @@ import { RepoService } from '../../../core/repo/services/repo.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
 import { IssueService } from '../../../core/issue/services/issue.service';
+import { ReleaseService } from '../../../core/release/services/release.service';
 import { TokenService } from '../../../core/auth/services/token.service';
 
 @Component({
@@ -40,6 +41,7 @@ export class RepoLayoutComponent {
   readonly repoContext = inject(RepoContextService);
   private readonly prService = inject(PullRequestService);
   private readonly issueService = inject(IssueService);
+  private readonly releaseService = inject(ReleaseService);
   private readonly tokenService = inject(TokenService);
 
   readonly loading = signal(true);
@@ -51,6 +53,7 @@ export class RepoLayoutComponent {
   readonly repoName = computed(() => this.routeParams().get('repo') ?? '');
   readonly prCount = signal(0);
   readonly issueCount = signal(0);
+  readonly releaseCount = signal(0);
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => void this.loadRepo());
@@ -66,16 +69,18 @@ export class RepoLayoutComponent {
     }
     this.loading.set(true);
     try {
-      const [repoData, prList, issueList] = await Promise.all([
+      const [repoData, prList, issueList, releaseList] = await Promise.all([
         this.repoService.getRepo(owner, repo),
         this.prService.getPullRequests(owner, repo, 'OPEN').catch(() => []),
         this.issueService
           .getAll(owner, repo, 'OPEN')
           .catch(() => ({ content: [], number: 0, size: 0, totalElements: 0, totalPages: 0 })),
+        this.releaseService.getAll(owner, repo).catch(() => []),
       ]);
       this.repoContext.repo.set(repoData);
       this.prCount.set(prList.length);
       this.issueCount.set(issueList.totalElements);
+      this.releaseCount.set(releaseList.length);
     } catch (err) {
       if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
         if (!this.tokenService.getAccessToken()) {

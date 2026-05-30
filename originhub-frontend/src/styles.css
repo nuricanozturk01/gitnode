@@ -101,6 +101,14 @@ body {
     linear-gradient(90deg, color-mix(in oklch, var(--color-primary) 2.5%, transparent) 1px, transparent 1px);
 }
 
+/* Light theme: checkboxes need an explicit visible border (base-300 blends into near-white backgrounds) */
+html[data-theme='originhub-light'] .checkbox,
+[data-theme='originhub-light'] .checkbox {
+  --chkbg: oklch(48% 0.14 166);
+  border-color: oklch(55% 0.03 250) !important;
+  border-width: 2px !important;
+}
+
 /* Wordmark: primary + base-content, both themes; tight lockup reads as one brand */
 .originhub-mark {
   display: inline-flex;
@@ -340,6 +348,10 @@ a:not(.btn):hover {
   line-height: 1.25;
   margin-top: 1.5rem;
   margin-bottom: 1rem;
+}
+
+.readme-content h1,
+.readme-content h2 {
   padding-bottom: 0.3em;
   border-bottom: 1px solid var(--border-default);
 }

@@ -28,8 +28,13 @@ import type { BlobResponse } from '../../../domain/repository/models/blob-respon
 import type { BreadcrumbItem } from '../shared/repo-breadcrumb.component';
 import { RepoBreadcrumbComponent } from '../shared/repo-breadcrumb.component';
 import { ThemeService } from '../../../core/theme/theme.service';
-import { DomSanitizer, SafeHtml, SafeResourceUrl } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
+import { RepoContextService } from '../../../core/repo/services/repo-context.service';
+import { ToastService } from '../../../core/toast/toast.service';
+import { decodeBase64Utf8 } from '../shared/utils/encoding';
 import hljs from 'highlight.js';
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'bmp', 'avif']);
 
 const TEXT_SIZE_LIMIT = 512 * 1024; // 512KB - avoid loading huge text into memory
 
@@ -48,6 +53,8 @@ export class BlobPage implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly appTheme = inject(ThemeService);
+  readonly repoContext = inject(RepoContextService);
+  private readonly toast = inject(ToastService);
 
   readonly blobSyntaxTheme = computed(() => (this.appTheme.isDark() ? 'dark' : 'light'));
 
@@ -58,7 +65,15 @@ export class BlobPage implements OnDestroy {
   readonly path = signal('');
   readonly highlightedLines = signal<SafeHtml[]>([]);
   readonly pdfObjectUrl = signal<SafeResourceUrl | null>(null);
+  readonly imageObjectUrl = signal<SafeUrl | null>(null);
   readonly rawBlobUrl = signal<string | null>(null);
+
+  readonly isEditing = signal(false);
+  readonly editContent = signal('');
+  readonly commitMessage = signal('');
+  readonly commitDescription = signal('');
+  readonly saving = signal(false);
+
   private objectUrlToRevoke: string | null = null;
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -129,12 +144,18 @@ export class BlobPage implements OnDestroy {
     }
     this.revokeBlobUrl();
     this.pdfObjectUrl.set(null);
+    this.imageObjectUrl.set(null);
     this.rawBlobUrl.set(null);
+    this.isEditing.set(false);
     this.loading.set(true);
 
     const ext = path.toLowerCase().split('.').pop() ?? '';
     if (ext === 'pdf') {
       await this.loadPdfAsBlob(owner, repo, branch, path);
+      return;
+    }
+    if (IMAGE_EXTENSIONS.has(ext)) {
+      await this.loadImageAsBlob(owner, repo, branch, path);
       return;
     }
 
@@ -178,6 +199,75 @@ export class BlobPage implements OnDestroy {
       this.loading.set(false);
     } catch {
       this.loading.set(false);
+    }
+  }
+
+  private async loadImageAsBlob(owner: string, repo: string, branch: string, path: string): Promise<void> {
+    const rawUrl = this.buildRawUrl(owner, repo, branch, path);
+    try {
+      const blob = await firstValueFrom(this.http.get(rawUrl, { responseType: 'blob' }));
+      const objectUrl = URL.createObjectURL(blob);
+      this.objectUrlToRevoke = objectUrl;
+      this.imageObjectUrl.set(this.sanitizer.bypassSecurityTrustUrl(objectUrl));
+      this.blob.set({
+        path,
+        name: path.split('/').pop() ?? path,
+        sha: '',
+        size: blob.size,
+        content: '',
+        isBinary: true,
+        language: null,
+        lineCount: 0,
+      });
+      this.loading.set(false);
+    } catch {
+      this.loading.set(false);
+    }
+  }
+
+  enterEditMode(): void {
+    const b = this.blob();
+    if (!b || b.isBinary) return;
+    this.editContent.set(decodeBase64Utf8(b.content));
+    this.commitMessage.set(`Update ${this.fileName()}`);
+    this.commitDescription.set('');
+    this.isEditing.set(true);
+  }
+
+  cancelEdit(): void {
+    this.isEditing.set(false);
+    this.editContent.set('');
+    this.commitMessage.set('');
+    this.commitDescription.set('');
+  }
+
+  async commitFile(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const branch = this.branch();
+    const path = this.path();
+    const msg = this.commitMessage().trim();
+    if (!owner || !repo || !branch || !path || !msg) return;
+
+    this.saving.set(true);
+    try {
+      const url = `${environment.apiUrl}/api/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/blob/${encodeURIComponent(branch)}/${path}`;
+      const result = await firstValueFrom(
+        this.http.put<BlobResponse>(url, {
+          content: this.editContent(),
+          commitMessage: msg,
+          commitDescription: this.commitDescription().trim() || null,
+        }),
+      );
+      this.blob.set(result);
+      this.isEditing.set(false);
+      this.editContent.set('');
+      this.processHighlighting(result);
+      this.toast.success('Changes committed');
+    } catch {
+      this.toast.error('Could not commit changes');
+    } finally {
+      this.saving.set(false);
     }
   }
 

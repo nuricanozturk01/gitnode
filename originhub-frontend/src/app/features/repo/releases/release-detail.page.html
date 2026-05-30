@@ -1,0 +1,71 @@
+@if (loading()) {
+<div class="flex justify-center py-20">
+  <span class="loading loading-spinner loading-md text-primary"></span>
+</div>
+} @else if (release(); as r) {
+<div class="space-y-4">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <div class="mb-1 flex flex-wrap items-center gap-2">
+        <h1 class="text-base-content text-2xl font-bold">{{ r.name ?? r.tagName }}</h1>
+        @if (r.isDraft) {
+        <span class="badge-pill badge-pill--neutral">Draft</span>
+        } @if (r.isPrerelease) {
+        <span class="badge-pill badge-pill--warning">Pre-release</span>
+        }
+      </div>
+      <div class="text-base-content/55 flex flex-wrap items-center gap-2 text-sm">
+        <lucide-icon name="tag" class="size-4 shrink-0"></lucide-icon>
+        <span class="font-mono font-medium">{{ r.tagName }}</span>
+        <span>·</span>
+        <span>{{ r.publishedAt ?? r.createdAt | relativeTime }}</span>
+        <span>·</span>
+        <span>by {{ r.author.displayName ?? r.author.username }}</span>
+      </div>
+    </div>
+    @if (repoContext.canEdit()) {
+    <div class="flex gap-2">
+      <a [routerLink]="['/', owner(), repoName(), 'releases', r.id, 'edit']" class="btn btn-outline btn-sm gap-1.5">
+        <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
+        Edit
+      </a>
+      <button class="btn btn-error btn-sm gap-1.5" (click)="deleteRelease()">
+        <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
+        Delete
+      </button>
+    </div>
+    }
+  </div>
+
+  @if (bodyHtml()) {
+  <section class="repo-panel readme-panel overflow-hidden">
+    <div class="readme-markdown-body readme-content px-6 py-5 sm:px-10 sm:py-8" [innerHTML]="bodyHtml()"></div>
+  </section>
+  } @else if (!r.body) {
+  <p class="text-base-content/45 text-sm italic">No release notes provided.</p>
+  }
+
+  <div class="border-base-300 mt-2 border-t pt-4">
+    <h3 class="text-base-content/60 mb-2 text-xs font-semibold tracking-wide uppercase">Assets</h3>
+    <div class="flex flex-wrap gap-2">
+      <button
+        type="button"
+        class="btn btn-outline btn-sm gap-1.5"
+        [disabled]="zipDownloading()"
+        (click)="downloadZip()"
+      >
+        @if (zipDownloading()) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } @else {
+        <lucide-icon name="download" class="size-4"></lucide-icon>
+        } Source code (ZIP)
+      </button>
+    </div>
+  </div>
+</div>
+} @else {
+<section class="repo-panel p-8 text-center">
+  <p class="text-base-content/55 text-sm">Release not found.</p>
+  <a [routerLink]="['/', owner(), repoName(), 'releases']" class="btn btn-ghost btn-sm mt-3"> Back to releases </a>
+</section>
+}

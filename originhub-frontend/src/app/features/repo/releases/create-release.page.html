@@ -1,0 +1,192 @@
+<div class="mx-auto max-w-3xl space-y-5 px-4 py-6">
+  <div class="flex items-center gap-3">
+    <a [routerLink]="['/', owner(), repoName(), 'releases']" class="btn btn-ghost btn-sm gap-1.5">
+      <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+      Releases
+    </a>
+    <h1 class="text-base-content text-xl font-semibold">Create a new release</h1>
+  </div>
+
+  <form [formGroup]="form" class="space-y-4">
+    <section class="repo-panel overflow-hidden">
+      <div class="repo-toolbar px-5 py-3">
+        <span class="text-base-content text-sm font-medium">Tag</span>
+      </div>
+      <div class="space-y-4 p-5">
+        <div class="form-control">
+          <label class="label pb-1" for="tagName">
+            <span class="label-text font-medium">Tag name <span class="text-error">*</span></span>
+          </label>
+          @if (tags().length > 0 && !createNewTag()) {
+          <select id="tagName" class="select select-bordered w-full" formControlName="tagName">
+            <option value="">Select an existing tag…</option>
+            @for (tag of tags(); track tag.name) {
+            <option [value]="tag.name">{{ tag.name }}</option>
+            }
+          </select>
+          } @else {
+          <input
+            id="tagName"
+            type="text"
+            class="input input-bordered w-full"
+            placeholder="e.g. v1.0.0"
+            formControlName="tagName"
+          />
+          } @if (form.controls.tagName.invalid && form.controls.tagName.touched) {
+          <p class="text-error mt-1 text-xs">Required — letters, numbers, dots, hyphens, slashes only.</p>
+          }
+        </div>
+
+        <label class="flex cursor-pointer items-start gap-2.5">
+          <input
+            type="checkbox"
+            class="checkbox checkbox-sm mt-0.5"
+            [checked]="createNewTag()"
+            (change)="toggleCreateNewTag()"
+          />
+          <div>
+            <span class="text-base-content text-sm font-medium">Create new tag on publish</span>
+            <p class="text-base-content/50 text-xs">A new git tag will be created at the selected target.</p>
+          </div>
+        </label>
+
+        @if (createNewTag()) {
+        <div class="border-base-300 space-y-4 border-l-2 pl-4">
+          <div class="form-control">
+            <label class="label pb-1" for="targetCommitish">
+              <span class="label-text font-medium">Target branch</span>
+            </label>
+            <select id="targetCommitish" class="select select-bordered w-full" formControlName="targetCommitish">
+              @for (branch of branches(); track branch.name) {
+              <option [value]="branch.name">{{ branch.name }}</option>
+              }
+            </select>
+          </div>
+          <div class="form-control">
+            <label class="label pb-1" for="tagMessage">
+              <span class="label-text font-medium">
+                Tag message
+                <span class="text-base-content/45 text-xs font-normal">(leave empty for lightweight tag)</span>
+              </span>
+            </label>
+            <textarea
+              id="tagMessage"
+              class="textarea textarea-bordered w-full"
+              rows="2"
+              placeholder="Optional annotated tag message…"
+              formControlName="tagMessage"
+            ></textarea>
+          </div>
+        </div>
+        }
+      </div>
+    </section>
+
+    <section class="repo-panel overflow-hidden">
+      <div class="repo-toolbar px-5 py-3">
+        <span class="text-base-content text-sm font-medium">Release details</span>
+      </div>
+      <div class="space-y-4 p-5">
+        <div class="form-control">
+          <label class="label pb-1" for="releaseName">
+            <span class="label-text font-medium">Release title</span>
+          </label>
+          <input
+            id="releaseName"
+            type="text"
+            class="input input-bordered w-full"
+            placeholder="e.g. Version 1.0.0"
+            formControlName="name"
+          />
+        </div>
+
+        <div class="form-control">
+          <span class="label-text mb-1 block font-medium">Release notes</span>
+          <div class="border-base-300 overflow-hidden rounded-lg border">
+            <div class="border-base-300 flex gap-0 border-b">
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium transition-colors"
+                [class.text-primary]="bodyTab() === 'write'"
+                [class.border-b-2]="bodyTab() === 'write'"
+                [class.border-primary]="bodyTab() === 'write'"
+                [class.text-base-content]="bodyTab() === 'write'"
+                [class.text-base-content\/55]="bodyTab() === 'preview'"
+                (click)="bodyTab.set('write')"
+              >
+                Write
+              </button>
+              <button
+                type="button"
+                class="px-4 py-2 text-sm font-medium transition-colors"
+                [class.text-primary]="bodyTab() === 'preview'"
+                [class.border-b-2]="bodyTab() === 'preview'"
+                [class.border-primary]="bodyTab() === 'preview'"
+                [class.text-base-content]="bodyTab() === 'preview'"
+                [class.text-base-content\/55]="bodyTab() === 'write'"
+                (click)="bodyTab.set('preview')"
+              >
+                Preview
+              </button>
+            </div>
+            @if (bodyTab() === 'write') {
+            <textarea
+              id="releaseBody"
+              class="textarea w-full rounded-none border-0 font-mono text-sm focus:outline-none"
+              rows="12"
+              placeholder="Describe what's new in this release…"
+              formControlName="body"
+            ></textarea>
+            } @else {
+            <div class="min-h-40 px-4 py-3">
+              @if (form.value.body?.trim()) {
+              <div class="readme-content" [innerHTML]="form.value.body | markdown"></div>
+              } @else {
+              <p class="text-base-content/40 py-8 text-center text-sm">Nothing to preview yet.</p>
+              }
+            </div>
+            }
+          </div>
+          <p class="text-base-content/45 mt-1 text-xs">Markdown supported</p>
+        </div>
+
+        <div class="border-base-300 border-t pt-3">
+          <label class="flex cursor-pointer items-start gap-2.5">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-sm checkbox-warning mt-0.5"
+              formControlName="isPrerelease"
+            />
+            <div>
+              <span class="text-base-content text-sm font-medium">Pre-release</span>
+              <p class="text-base-content/50 text-xs">This release is not ready for production.</p>
+            </div>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <div class="flex flex-wrap gap-3">
+      <button
+        type="button"
+        class="btn btn-primary gap-1.5"
+        [disabled]="form.invalid || submitting()"
+        (click)="submit(true)"
+      >
+        @if (submitting()) { <span class="loading loading-spinner loading-xs"></span> }
+        <lucide-icon name="upload" class="size-4"></lucide-icon>
+        Publish release
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline gap-1.5"
+        [disabled]="form.invalid || submitting()"
+        (click)="submit(false)"
+      >
+        <lucide-icon name="save" class="size-4"></lucide-icon>
+        Save draft
+      </button>
+      <a [routerLink]="['/', owner(), repoName(), 'releases']" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>

@@ -26,6 +26,7 @@ import com.nuricanozturk.originhub.tree.dtos.TreeResponse;
 import com.nuricanozturk.originhub.tree.utils.ArchivePathSupport;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -35,8 +36,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
+import org.eclipse.jgit.dircache.DirCache;
+import org.eclipse.jgit.dircache.DirCacheEntry;
+import org.eclipse.jgit.lib.CommitBuilder;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.FileMode;
+import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -156,23 +162,23 @@ public class TreeNonTxService {
   }
 
   /**
-   * Ensures {@code refs/heads/{branch}} exists so a streaming ZIP response can return 404 before
-   * headers are committed.
+   * Ensures a branch or tag ref exists so a streaming ZIP response can return 404 before headers
+   * are committed.
    */
   public void assertBranchExists(
       final @NonNull String owner, final @NonNull String repoName, final @NonNull String branch)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
-      if (gitRepo.findRef(Constants.R_HEADS + branch) == null) {
-        throw new ItemNotFoundException("branchNotFound: " + branch);
+      if (this.resolveRef(gitRepo, branch) == null) {
+        throw new ItemNotFoundException("refNotFound: " + branch);
       }
     }
   }
 
   /**
-   * Writes a ZIP of the branch tip tree to {@code out}. Does not buffer the whole archive in
-   * memory. Call {@link #assertBranchExists} first so missing branches surface as 404.
+   * Writes a ZIP of the branch or tag tip tree to {@code out}. Does not buffer the whole archive in
+   * memory. Call {@link #assertBranchExists} first so missing refs surface as 404.
    */
   public void writeBranchZip(
       final @NonNull String owner,
@@ -183,15 +189,20 @@ public class TreeNonTxService {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
 
-      final var ref = gitRepo.findRef(Constants.R_HEADS + branch);
+      final var ref = this.resolveRef(gitRepo, branch);
 
       if (ref == null) {
-        log.warn("Branch not found during zip write: {}", branch);
+        log.warn("Ref not found during zip write: {}", branch);
         return;
       }
 
       try (final var revWalk = new RevWalk(gitRepo)) {
-        final var headCommit = revWalk.parseCommit(ref.getObjectId());
+        final var peeledRef = gitRepo.getRefDatabase().peel(ref);
+        final var commitId =
+            peeledRef.getPeeledObjectId() != null
+                ? peeledRef.getPeeledObjectId()
+                : ref.getObjectId();
+        final var headCommit = revWalk.parseCommit(commitId);
         final var prefix = ArchivePathSupport.archiveTreePrefix(owner, repoName, branch);
 
         try (final var git = Git.wrap(gitRepo)) {
@@ -206,6 +217,15 @@ public class TreeNonTxService {
         }
       }
     }
+  }
+
+  private @Nullable Ref resolveRef(final @NonNull Repository gitRepo, final @NonNull String name)
+      throws IOException {
+    final var branchRef = gitRepo.findRef(Constants.R_HEADS + name);
+    if (branchRef != null) {
+      return branchRef;
+    }
+    return gitRepo.findRef(Constants.R_TAGS + name);
   }
 
   private @NonNull List<TreeEntry> listTree(
@@ -327,9 +347,96 @@ public class TreeNonTxService {
       throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
-      walk.markStart(startCommit);
       walk.setTreeFilter(AndTreeFilter.create(PathFilter.create(filePath), TreeFilter.ANY_DIFF));
+      // Re-parse the commit so each RevWalk starts with a clean flag state.
+      // Sharing the same RevCommit object across multiple RevWalk instances causes
+      // the SEEN/PARSED flags from a previous walk to bleed through, making all
+      // calls after the first return null.
+      walk.markStart(walk.parseCommit(startCommit.getId()));
       return walk.next();
+    }
+  }
+
+  public @NonNull BlobResponse updateFile(
+      final @NonNull String owner,
+      final @NonNull String repoName,
+      final @NonNull String branch,
+      final @NonNull String filePath,
+      final @NonNull byte[] newContent,
+      final @NonNull String commitMessage,
+      final @NonNull PersonIdent author)
+      throws IOException {
+
+    try (final var gitRepo = this.gitProvider.open(owner, repoName);
+        final var inserter = gitRepo.newObjectInserter()) {
+
+      final var branchRef = gitRepo.findRef(Constants.R_HEADS + branch);
+      if (branchRef == null) {
+        throw new ItemNotFoundException("branchNotFound: " + branch);
+      }
+
+      try (final var revWalk = new RevWalk(gitRepo)) {
+        final var headCommit = revWalk.parseCommit(branchRef.getObjectId());
+
+        final var newBlobId = inserter.insert(Constants.OBJ_BLOB, newContent);
+
+        final var dirCache = DirCache.newInCore();
+        final var builder = dirCache.builder();
+
+        try (final var treeWalk = new TreeWalk(gitRepo)) {
+          treeWalk.addTree(headCommit.getTree());
+          treeWalk.setRecursive(true);
+          while (treeWalk.next()) {
+            final var entryPath = treeWalk.getPathString();
+            if (entryPath.equals(filePath)) {
+              continue;
+            }
+            final var entry = new DirCacheEntry(entryPath);
+            entry.setFileMode(treeWalk.getFileMode(0));
+            entry.setObjectId(treeWalk.getObjectId(0));
+            builder.add(entry);
+          }
+        }
+
+        final var updatedEntry = new DirCacheEntry(filePath);
+        updatedEntry.setFileMode(FileMode.REGULAR_FILE);
+        updatedEntry.setObjectId(newBlobId);
+        builder.add(updatedEntry);
+        builder.finish();
+
+        final var newTreeId = dirCache.writeTree(inserter);
+
+        final var commitBuilder = new CommitBuilder();
+        commitBuilder.setTreeId(newTreeId);
+        commitBuilder.setParentId(headCommit.getId());
+        commitBuilder.setAuthor(author);
+        commitBuilder.setCommitter(author);
+        commitBuilder.setMessage(
+            commitMessage.endsWith("\n") ? commitMessage : commitMessage + "\n");
+        commitBuilder.setEncoding(StandardCharsets.UTF_8);
+
+        final var newCommitId = inserter.insert(commitBuilder);
+        inserter.flush();
+
+        final var refUpdate = gitRepo.updateRef(Constants.R_HEADS + branch);
+        refUpdate.setNewObjectId(newCommitId);
+        refUpdate.setExpectedOldObjectId(headCommit.getId());
+        refUpdate.update();
+
+        final var fileName = Path.of(filePath).getFileName().toString();
+        final var isBinary = this.isBinaryContent(newContent);
+
+        return BlobResponse.builder()
+            .path(filePath)
+            .name(fileName)
+            .sha(newBlobId.getName())
+            .size((long) newContent.length)
+            .content(Base64.getEncoder().encodeToString(newContent))
+            .isBinary(isBinary)
+            .language(detectLanguage(fileName))
+            .lineCount(isBinary ? 0 : this.countLines(newContent))
+            .build();
+      }
     }
   }
 

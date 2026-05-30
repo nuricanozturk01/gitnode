@@ -18,10 +18,13 @@ import { Component, HostListener, inject, signal, computed, SecurityContext, OnD
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { finalize, firstValueFrom } from 'rxjs';
+import { finalize, firstValueFrom, noop } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { FileSizePipe } from '../../../shared/pipes/file-size.pipe';
+import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { BranchService } from '../../../core/branch/services/branch.service';
+import { TagService } from '../../../core/tag/services/tag.service';
+import { ReleaseService } from '../../../core/release/services/release.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { environment } from '../../../../environments/environment';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
@@ -29,17 +32,22 @@ import { marked } from 'marked';
 import type { TreeResponse, TreeResponseEntry } from '../../../domain/repository/models/tree-response.model';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 import type { BlobResponse } from '../../../domain/repository/models/blob-response.model';
+import type { TagInfo } from '../../../domain/repository/models/tag-info.model';
+import type { ReleaseInfo } from '../../../domain/release/models/release-info.model';
 import { decodeBase64Utf8 } from '../shared/utils/encoding';
 import { ToastService } from '../../../core/toast/toast.service';
 import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { postProcessReadmeHtml } from '../shared/readme-markdown.utils';
+import { LanguageService } from '../../../core/language/services/language.service';
+import { LanguageBarComponent } from '../../../shared/components/language-bar/language-bar.component';
+import type { LanguageStats } from '../../../domain/language/models/language-stats.model';
 
 marked.use({ gfm: true, breaks: false });
 
 @Component({
   selector: 'app-repo-home',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, FileSizePipe],
+  imports: [RouterLink, LucideAngularModule, FileSizePipe, RelativeTimePipe, LanguageBarComponent],
   templateUrl: './repo-home.page.html',
   styleUrl: './repo-home.page.css',
 })
@@ -47,9 +55,12 @@ export class RepoHomePage implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly http = inject(HttpClient);
   private readonly branchService = inject(BranchService);
-  private readonly repoContext = inject(RepoContextService);
+  private readonly tagService = inject(TagService);
+  private readonly releaseService = inject(ReleaseService);
+  readonly repoContext = inject(RepoContextService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly toast = inject(ToastService);
+  private readonly languageService = inject(LanguageService);
 
   readonly tree = signal<TreeResponseEntry[]>([]);
   readonly branches = signal<BranchInfo[]>([]);
@@ -57,6 +68,11 @@ export class RepoHomePage implements OnDestroy {
   readonly isEmpty = signal(false);
   readonly selectedBranch = signal('');
   readonly readmeHtml = signal<SafeHtml | null>(null);
+  readonly languages = signal<LanguageStats[]>([]);
+  readonly allTags = signal<TagInfo[]>([]);
+  readonly latestRelease = signal<ReleaseInfo | null>(null);
+
+  readonly recentTags = computed(() => this.allTags().slice(0, 5));
 
   /** Fullscreen preview for README images (blob or absolute URLs). */
   readonly readmeImageLightboxOpen = signal(false);
@@ -159,6 +175,8 @@ export class RepoHomePage implements OnDestroy {
     }
     this.loading.set(true);
     this.isEmpty.set(false);
+    this.allTags.set([]);
+    this.latestRelease.set(null);
     try {
       const branchesData = await this.branchService.getAll(owner, repo);
       this.branches.set(branchesData);
@@ -181,7 +199,18 @@ export class RepoHomePage implements OnDestroy {
       }
 
       await this.loadTreeOnce(owner, repo, branchForTree);
-      await this.loadReadme(owner, repo, branchForTree);
+      await Promise.all([
+        this.loadReadme(owner, repo, branchForTree),
+        this.loadLanguages(owner, repo, branchForTree),
+        this.tagService
+          .getAll(owner, repo)
+          .then((t) => this.allTags.set(t))
+          .catch(noop),
+        this.releaseService
+          .getLatest(owner, repo)
+          .then((r) => this.latestRelease.set(r))
+          .catch(noop),
+      ]);
     } catch {
       this.branches.set([]);
       this.isEmpty.set(true);
@@ -241,6 +270,11 @@ export class RepoHomePage implements OnDestroy {
     }
   }
 
+  private async loadLanguages(owner: string, repo: string, branch: string): Promise<void> {
+    const stats = await this.languageService.getLanguages(owner, repo, branch);
+    this.languages.set(stats);
+  }
+
   onBranchChange(branchName: string): void {
     this.selectedBranch.set(branchName);
     const owner = this.owner();
@@ -248,6 +282,7 @@ export class RepoHomePage implements OnDestroy {
     if (!owner || !repo) return;
     this.loadTreeOnce(owner, repo, branchName);
     this.loadReadme(owner, repo, branchName);
+    void this.loadLanguages(owner, repo, branchName);
   }
 
   entryRoute(entry: TreeResponseEntry): string[] {

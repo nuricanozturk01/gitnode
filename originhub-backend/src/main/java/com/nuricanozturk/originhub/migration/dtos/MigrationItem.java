@@ -17,5 +17,6 @@ package com.nuricanozturk.originhub.migration.dtos;
 
 public enum MigrationItem {
   REPOSITORIES,
-  PULL_REQUESTS
+  PULL_REQUESTS,
+  TAGS_AND_RELEASES
 }

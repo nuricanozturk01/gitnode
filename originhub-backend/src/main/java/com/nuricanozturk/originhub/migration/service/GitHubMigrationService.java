@@ -21,6 +21,7 @@ import com.nuricanozturk.originhub.migration.entities.MigrationJob;
 import com.nuricanozturk.originhub.migration.repositories.MigrationJobRepository;
 import com.nuricanozturk.originhub.shared.pr.events.GithubPullRequestMigrationRequestedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoMigrationService;
+import com.nuricanozturk.originhub.shared.tag.events.GithubTagReleaseMigrationRequestedEvent;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import java.io.IOException;
 import java.time.Instant;
@@ -51,6 +52,7 @@ public class GitHubMigrationService implements CloudMigrationService {
         switch (item) {
           case REPOSITORIES -> this.migrateRepository(job, accessToken, tenant);
           case PULL_REQUESTS -> this.migratePullRequests(job, accessToken, tenant);
+          case TAGS_AND_RELEASES -> this.migrateTagsAndReleases(job, accessToken, tenant);
           default -> throw new UnsupportedOperationException("unsupportedItem");
         }
       }
@@ -75,6 +77,21 @@ public class GitHubMigrationService implements CloudMigrationService {
 
     final var event =
         GithubPullRequestMigrationRequestedEvent.builder()
+            .accessToken(token)
+            .remoteRepoOwner(job.getOwner())
+            .remoteRepoName(job.getRepoName())
+            .tenantId(job.getRequesterId())
+            .tenantUsername(tenant.getUsername())
+            .build();
+
+    this.eventPublisher.publishEvent(event);
+  }
+
+  private void migrateTagsAndReleases(
+      final MigrationJob job, final String token, final Tenant tenant) {
+
+    final var event =
+        GithubTagReleaseMigrationRequestedEvent.builder()
             .accessToken(token)
             .remoteRepoOwner(job.getOwner())
             .remoteRepoName(job.getRepoName())

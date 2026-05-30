@@ -7,7 +7,6 @@
   <div class="mx-auto max-w-2xl">
     <h2 class="text-base-content mb-2 text-xl font-semibold">Get started with {{ repoName() }}</h2>
     <p class="text-base-content/60 mb-6 text-sm">This repository is empty. Push your first commit to get started.</p>
-
     <div class="space-y-6">
       <div class="space-y-3">
         <div>
@@ -32,7 +31,6 @@
           </div>
         </div>
       </div>
-
       <div>
         <h3 class="text-base-content mb-2 text-sm font-semibold">Create a new repository on the command line</h3>
         <div class="bg-base-200 border-base-300 text-base-content/80 space-y-1 rounded-lg border p-4 font-mono text-sm">
@@ -45,7 +43,6 @@
           <p>git push -u origin main</p>
         </div>
       </div>
-
       <div>
         <h3 class="text-base-content mb-2 text-sm font-semibold">Push an existing repository from the command line</h3>
         <div class="bg-base-200 border-base-300 text-base-content/80 space-y-1 rounded-lg border p-4 font-mono text-sm">
@@ -58,85 +55,173 @@
   </div>
 </section>
 } @else {
-<section class="repo-panel overflow-hidden">
-  <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-    <div class="flex items-center gap-2">
-      <select
-        class="select select-bordered select-sm w-44"
-        [value]="branch()"
-        (change)="onBranchChange($any($event.target).value)"
-      >
-        @if (branches().length > 0) { @for (b of branches(); track b.name) {
-        <option [value]="b.name" [selected]="b.name === branch()">{{ b.name }}</option>
-        } } @else {
-        <option [value]="branch()">{{ branch() }}</option>
-        }
-      </select>
-      <div class="flex flex-wrap items-center gap-2">
-        <button type="button" class="btn btn-sm btn-outline gap-1.5" (click)="openCloneDialog()">Code</button>
-        <button
-          type="button"
-          class="btn btn-sm btn-primary gap-1.5 shadow-sm"
-          [disabled]="zipDownloading()"
-          (click)="downloadBranchZip()"
-        >
-          @if (zipDownloading()) {
-          <span class="loading loading-spinner loading-xs"></span>
-          Preparing… } @else {
-          <lucide-icon name="download" class="size-4"></lucide-icon>
-          Download ZIP }
-        </button>
-      </div>
-    </div>
-  </div>
 
-  <div class="overflow-x-auto">
-    <table class="table">
-      <tbody>
-        @for (entry of tree(); track entry.path) {
-        <tr class="hover">
-          <td class="w-10">
-            @if (isTree(entry)) {
-            <lucide-icon name="folder" class="text-primary size-5"></lucide-icon>
-            } @else {
-            <lucide-icon name="fileText" class="text-base-content/60 size-5"></lucide-icon>
+<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
+  <!-- ── LEFT MAIN ── -->
+  <div class="min-w-0 flex-1 space-y-4">
+    <section class="repo-panel overflow-hidden">
+      <div class="repo-toolbar flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <select
+            class="select select-bordered select-sm w-40"
+            [value]="branch()"
+            (change)="onBranchChange($any($event.target).value)"
+          >
+            @for (b of branches(); track b.name) {
+            <option [value]="b.name" [selected]="b.name === branch()">{{ b.name }}</option>
             }
-          </td>
-          <td>
-            <a
-              [routerLink]="entryRoute(entry)"
-              class="text-primary flex items-center gap-1 font-medium no-underline hover:underline"
-            >
-              {{ entry.name }} @if (isTree(entry)) {
-              <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
-              }
-            </a>
-          </td>
-          <td class="text-base-content/60 text-sm">{{ entry.lastCommitMessage ?? 'Latest update' }}</td>
-          <td class="text-base-content/60 text-right text-sm">
-            @if (entry.size !== null && entry.size > 0) { {{ entry.size | fileSize }} }
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-</section>
+          </select>
+          <span class="text-base-content/45 text-xs">
+            {{ branches().length }} {{ branches().length === 1 ? 'branch' : 'branches' }}
+          </span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn btn-sm btn-outline h-8 min-w-[5rem] gap-1.5" (click)="openCloneDialog()">
+            <lucide-icon name="gitBranch" class="size-3.5"></lucide-icon>
+            Clone
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-primary h-8 min-w-[5rem] gap-1.5"
+            [disabled]="zipDownloading()"
+            (click)="downloadBranchZip()"
+          >
+            @if (zipDownloading()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="download" class="size-3.5"></lucide-icon>
+            } ZIP
+          </button>
+        </div>
+      </div>
 
-@if (readmeHtml()) {
-<section class="repo-panel readme-panel mt-6 overflow-hidden">
-  <div class="repo-toolbar flex items-center gap-2 px-4 py-3">
-    <lucide-icon name="fileText" class="text-base-content/60 size-4"></lucide-icon>
-    <span class="text-base-content text-sm font-medium">README.md</span>
+      <div class="overflow-x-auto">
+        <table class="table-sm table">
+          <tbody>
+            @for (entry of tree(); track entry.path) {
+            <tr class="hover">
+              <td class="w-8 pr-0">
+                @if (isTree(entry)) {
+                <lucide-icon name="folder" class="text-primary size-4"></lucide-icon>
+                } @else {
+                <lucide-icon name="fileText" class="text-base-content/45 size-4"></lucide-icon>
+                }
+              </td>
+              <td class="py-1.5">
+                <a
+                  [routerLink]="entryRoute(entry)"
+                  class="text-base-content hover:text-primary text-sm font-medium no-underline hover:underline"
+                >
+                  {{ entry.name }}
+                </a>
+              </td>
+              <td class="text-base-content/50 hidden max-w-xs truncate text-xs sm:table-cell">
+                {{ entry.lastCommitMessage ?? '' }}
+              </td>
+              <td class="text-base-content/45 text-right text-xs">
+                @if (entry.size !== null && entry.size! > 0) { {{ entry.size | fileSize }} }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    @if (readmeHtml()) {
+    <section class="repo-panel readme-panel overflow-hidden">
+      <div class="repo-toolbar flex items-center gap-2 px-4 py-3">
+        <lucide-icon name="fileText" class="text-base-content/60 size-4"></lucide-icon>
+        <span class="text-base-content text-sm font-medium">README.md</span>
+      </div>
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+      <div
+        class="readme-markdown-body readme-content px-4 py-6 sm:px-10 sm:py-8"
+        [innerHTML]="readmeHtml()"
+        (click)="onReadmeImageClick($event)"
+      ></div>
+    </section>
+    }
   </div>
-  <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
-  <div
-    class="readme-markdown-body readme-content px-4 py-6 sm:px-10 sm:py-8"
-    [innerHTML]="readmeHtml()"
-    (click)="onReadmeImageClick($event)"
-  ></div>
-</section>
-} } @if (readmeImageLightboxOpen() && readmeImageLightboxSrc(); as lightboxSrc) {
+
+  <!-- ── RIGHT SIDEBAR ── -->
+  <aside class="w-full shrink-0 space-y-4 lg:sticky lg:top-4 lg:w-72">
+    <!-- About -->
+    @if (repoContext.repo()?.description || repoContext.repo()?.topics?.length) {
+    <div class="repo-panel p-4">
+      <h3 class="text-base-content mb-3 text-sm font-semibold">About</h3>
+      @if (repoContext.repo()?.description) {
+      <p class="text-base-content/70 mb-3 text-sm leading-relaxed">{{ repoContext.repo()!.description }}</p>
+      } @if (repoContext.repo()?.topics?.length) {
+      <div class="flex flex-wrap gap-1.5">
+        @for (topic of repoContext.repo()!.topics; track topic) {
+        <span class="badge-pill badge-pill--topic">{{ topic }}</span>
+        }
+      </div>
+      }
+    </div>
+    }
+
+    <!-- Latest Release -->
+    @if (latestRelease(); as lr) {
+    <div class="repo-panel p-4">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-base-content text-sm font-semibold">Latest release</h3>
+        <a [routerLink]="['/', owner(), repoName(), 'releases']" class="text-primary text-xs hover:underline">
+          All releases
+        </a>
+      </div>
+      <a
+        [routerLink]="['/', owner(), repoName(), 'releases', 'tag', lr.tagName]"
+        class="group flex items-start gap-2 no-underline"
+      >
+        <lucide-icon name="tag" class="text-success mt-0.5 size-4 shrink-0"></lucide-icon>
+        <div class="min-w-0">
+          <p class="text-base-content group-hover:text-primary text-sm font-medium">{{ lr.name ?? lr.tagName }}</p>
+          <p class="text-base-content/50 mt-0.5 font-mono text-xs">{{ lr.tagName }}</p>
+          <p class="text-base-content/45 mt-1 text-xs">{{ lr.publishedAt ?? lr.createdAt | relativeTime }}</p>
+        </div>
+      </a>
+    </div>
+    }
+
+    <!-- Languages -->
+    @if (languages().length > 0) {
+    <div class="repo-panel p-4">
+      <h3 class="text-base-content mb-3 text-sm font-semibold">Languages</h3>
+      <app-language-bar [languages]="languages()"></app-language-bar>
+    </div>
+    }
+
+    <!-- Tags -->
+    @if (recentTags().length > 0) {
+    <div class="repo-panel p-4">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="text-base-content text-sm font-semibold">Tags</h3>
+        @if (allTags().length > 5) {
+        <a [routerLink]="['/', owner(), repoName(), 'releases']" class="text-primary text-xs hover:underline">
+          {{ allTags().length }} tags
+        </a>
+        }
+      </div>
+      <ul class="space-y-1.5">
+        @for (tag of recentTags(); track tag.name) {
+        <li>
+          <a
+            [routerLink]="['/', owner(), repoName(), 'releases', 'tag', tag.name]"
+            class="text-primary flex items-center gap-2 text-sm no-underline hover:underline"
+          >
+            <lucide-icon name="tag" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+            <span class="font-mono">{{ tag.name }}</span>
+          </a>
+        </li>
+        }
+      </ul>
+    </div>
+    }
+  </aside>
+</div>
+} @if (readmeImageLightboxOpen() && readmeImageLightboxSrc(); as lightboxSrc) {
 <div
   class="readme-image-lightbox fixed inset-0 z-[200] flex items-center justify-center bg-black/88 p-4 backdrop-blur-[2px] sm:p-10"
   role="dialog"
@@ -175,16 +260,12 @@
       <h3 class="text-base-content text-lg font-semibold">Clone repository</h3>
       <button class="btn btn-sm btn-ghost" (click)="closeCloneDialog()">Close</button>
     </div>
-    <p class="text-base-content/70 mb-4 text-sm">
-      Clone with HTTPS (same host as the API; sign in with your account password) or SSH (SSH key on your profile).
-    </p>
-
+    <p class="text-base-content/70 mb-4 text-sm">Clone with HTTPS or SSH (SSH key on your profile).</p>
     <div class="form-control mt-4 space-y-5">
       <div>
         <label class="label pb-1" for="clone-https">
           <span class="label-text font-medium">HTTPS</span>
         </label>
-        <p class="text-base-content/55 mb-2 text-xs">Git will prompt for your OriginHub username and password.</p>
         <div class="join w-full">
           <input
             id="clone-https"
@@ -201,7 +282,6 @@
           </button>
         </div>
       </div>
-
       <div>
         <label class="label pb-1" for="clone-ssh">
           <span class="label-text font-medium">SSH</span>

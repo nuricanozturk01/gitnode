@@ -1,0 +1,109 @@
+<div class="mx-auto max-w-3xl space-y-6 px-4 py-6">
+  @if (loading()) {
+  <div class="flex justify-center py-20">
+    <span class="loading loading-spinner loading-md text-primary"></span>
+  </div>
+  } @else if (release(); as r) {
+
+  <div class="flex items-center gap-3">
+    <a [routerLink]="['/', owner(), repoName(), 'releases']" class="btn btn-ghost btn-sm gap-1.5">
+      <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+      Releases
+    </a>
+    <h1 class="text-base-content text-xl font-semibold">Edit release</h1>
+  </div>
+
+  <form [formGroup]="form" class="space-y-5">
+    <section class="repo-panel p-5">
+      <div class="mb-4 flex flex-wrap items-center gap-2">
+        <span class="text-base-content/55 font-mono text-xs">Tag:</span>
+        <span class="badge-pill badge-pill--neutral font-mono text-xs">{{ r.tagName }}</span>
+        @if (r.isDraft) { <span class="badge-pill badge-pill--neutral">Draft</span> } @if (r.isPrerelease) {
+        <span class="badge-pill badge-pill--warning">Pre-release</span> }
+      </div>
+
+      <div class="form-control mb-4">
+        <label class="label pb-1" for="releaseName">
+          <span class="label-text font-medium">Release title</span>
+        </label>
+        <input
+          id="releaseName"
+          type="text"
+          class="input input-bordered w-full"
+          placeholder="e.g. v1.0.0 — Initial Release"
+          formControlName="name"
+        />
+      </div>
+
+      <div class="form-control mb-4">
+        <span class="label-text mb-1 block font-medium">Release notes</span>
+        <div class="border-base-300 overflow-hidden rounded-lg border">
+          <div class="border-base-300 flex gap-0 border-b">
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium transition-colors"
+              [class.text-primary]="bodyTab() === 'write'"
+              [class.border-b-2]="bodyTab() === 'write'"
+              [class.border-primary]="bodyTab() === 'write'"
+              [class.text-base-content]="bodyTab() === 'write'"
+              [class.text-base-content\/55]="bodyTab() === 'preview'"
+              (click)="bodyTab.set('write')"
+            >
+              Write
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 text-sm font-medium transition-colors"
+              [class.text-primary]="bodyTab() === 'preview'"
+              [class.border-b-2]="bodyTab() === 'preview'"
+              [class.border-primary]="bodyTab() === 'preview'"
+              [class.text-base-content]="bodyTab() === 'preview'"
+              [class.text-base-content\/55]="bodyTab() === 'write'"
+              (click)="bodyTab.set('preview')"
+            >
+              Preview
+            </button>
+          </div>
+          @if (bodyTab() === 'write') {
+          <textarea
+            id="releaseBody"
+            class="textarea w-full rounded-none border-0 font-mono text-sm focus:outline-none"
+            rows="12"
+            placeholder="Describe this release…"
+            formControlName="body"
+          ></textarea>
+          } @else {
+          <div class="min-h-40 px-4 py-3">
+            @if (form.value.body?.trim()) {
+            <div class="readme-content" [innerHTML]="form.value.body | markdown"></div>
+            } @else {
+            <p class="text-base-content/40 py-8 text-center text-sm">Nothing to preview yet.</p>
+            }
+          </div>
+          }
+        </div>
+        <p class="text-base-content/45 mt-1 text-xs">Markdown supported</p>
+      </div>
+
+      <div class="border-base-300 space-y-2 border-t pt-4">
+        <label class="flex cursor-pointer items-center gap-2">
+          <input type="checkbox" class="checkbox checkbox-sm checkbox-warning" formControlName="isPrerelease" />
+          <span class="text-base-content/70 text-sm">This is a pre-release</span>
+        </label>
+      </div>
+    </section>
+
+    <div class="flex flex-wrap gap-3">
+      <button type="button" class="btn btn-primary gap-1.5" [disabled]="submitting()" (click)="save(true)">
+        @if (submitting()) { <span class="loading loading-spinner loading-xs"></span> }
+        <lucide-icon name="check" class="size-4"></lucide-icon>
+        Update release
+      </button>
+      <button type="button" class="btn btn-outline gap-1.5" [disabled]="submitting()" (click)="save(false)">
+        Save as draft
+      </button>
+      <a [routerLink]="['/', owner(), repoName(), 'releases', 'tag', r.tagName]" class="btn btn-ghost"> Cancel </a>
+    </div>
+  </form>
+  }
+</div>

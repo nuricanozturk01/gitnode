@@ -16,7 +16,7 @@
 
 export type MigrationServiceKind = 'GITHUB';
 
-export type MigrationItemKind = 'REPOSITORIES' | 'PULL_REQUESTS';
+export type MigrationItemKind = 'REPOSITORIES' | 'PULL_REQUESTS' | 'TAGS_AND_RELEASES';
 
 export type MigrationJobStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 

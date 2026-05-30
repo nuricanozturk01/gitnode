@@ -4,6 +4,8 @@ import com.nuricanozturk.originhub.pr.dtos.PrForm;
 import com.nuricanozturk.originhub.pr.services.PullRequestService;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.pr.events.PullRequestMigrationRequestedEvent;
 import java.util.List;
 import java.util.Map;
@@ -63,19 +65,63 @@ public class PullRequestMigrationListener {
       final var targetBranch = (String) base.get("ref");
       final var isClosed = "closed".equals(pr.get("state"));
 
-      final var branchForm = new BranchForm(sourceBranch, targetBranch);
-      this.branchProtocolService.create(tenantUsername, repoName, branchForm);
+      this.ensureBranchExists(tenantUsername, repoName, sourceBranch, targetBranch);
 
       final var prForm = this.buildPrForm(pr);
       final var prDetail =
           this.prService.create(tenantUsername, repoName, event.getTenantId(), prForm);
 
       if (isClosed) {
-        this.prService.close(tenantUsername, repoName, prDetail.number());
-        this.branchProtocolService.delete(tenantUsername, repoName, sourceBranch);
+        this.closePrAndCleanup(tenantUsername, repoName, prDetail.number(), sourceBranch);
       }
     } catch (final Exception e) {
       log.debug("PR migrate edilemedi: {} - {}", pr.get("number"), e.getMessage());
+    }
+  }
+
+  private void ensureBranchExists(
+      final String tenantUsername,
+      final String repoName,
+      final String sourceBranch,
+      final String targetBranch) {
+
+    try {
+      final var branchForm = new BranchForm(sourceBranch, targetBranch);
+      this.branchProtocolService.create(tenantUsername, repoName, branchForm);
+    } catch (final ItemAlreadyExistsException e) {
+      log.debug("Branch zaten mevcut, atlanıyor: {}", sourceBranch);
+    } catch (final ItemNotFoundException e) {
+      log.debug("Kaynak branch bulunamadı ({}), default branch'ten oluşturuluyor", targetBranch);
+      try {
+        final var fallbackForm = new BranchForm(sourceBranch, "main");
+        this.branchProtocolService.create(tenantUsername, repoName, fallbackForm);
+      } catch (final ItemAlreadyExistsException alreadyExists) {
+        log.debug("Branch zaten mevcut (fallback), atlanıyor: {}", sourceBranch);
+      } catch (final Exception fallbackErr) {
+        log.debug(
+            "Fallback branch oluşturulamadı: {} - {}", sourceBranch, fallbackErr.getMessage());
+      }
+    } catch (final Exception e) {
+      log.debug("Branch oluşturulamadı: {} - {}", sourceBranch, e.getMessage());
+    }
+  }
+
+  private void closePrAndCleanup(
+      final String tenantUsername,
+      final String repoName,
+      final int prNumber,
+      final String sourceBranch) {
+
+    try {
+      this.prService.close(tenantUsername, repoName, prNumber);
+    } catch (final Exception e) {
+      log.debug("PR kapatılamadı: {} - {}", prNumber, e.getMessage());
+    }
+
+    try {
+      this.branchProtocolService.delete(tenantUsername, repoName, sourceBranch);
+    } catch (final Exception e) {
+      log.debug("Branch silinemedi (PR kapatma): {} - {}", sourceBranch, e.getMessage());
     }
   }
 

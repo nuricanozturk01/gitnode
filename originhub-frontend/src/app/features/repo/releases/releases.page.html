@@ -1,0 +1,172 @@
+@if (loading()) {
+<div class="flex justify-center py-20">
+  <span class="loading loading-spinner loading-md text-primary"></span>
+</div>
+} @else { @if (releases().length === 0 && tagsWithoutRelease().length === 0) {
+<div class="repo-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
+  <lucide-icon name="tag" class="text-base-content/25 size-12"></lucide-icon>
+  <div>
+    <h2 class="text-base-content mb-1 text-base font-semibold">No releases yet</h2>
+    <p class="text-base-content/55 text-sm">Tag a commit and publish a release to share it with users.</p>
+  </div>
+  @if (repoContext.canEdit()) {
+  <a [routerLink]="['/', owner(), repoName(), 'releases', 'new']" class="btn btn-primary btn-sm mt-1 gap-1.5">
+    <lucide-icon name="plus" class="size-4"></lucide-icon>
+    Create release
+  </a>
+  }
+</div>
+} @else {
+
+<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+  <h2 class="text-base-content text-base font-semibold">
+    Releases @if (releases().length > 0) {
+    <span class="text-base-content/45 ml-1.5 text-sm font-normal">({{ releases().length }})</span>
+    }
+  </h2>
+  @if (repoContext.canEdit()) {
+  <a
+    [routerLink]="['/', owner(), repoName(), 'releases', 'new']"
+    class="btn btn-primary btn-sm gap-1.5 self-start sm:self-auto"
+  >
+    <lucide-icon name="plus" class="size-4"></lucide-icon>
+    New release
+  </a>
+  }
+</div>
+
+@if (releases().length > 0) {
+<div class="space-y-3">
+  @for (release of pagedReleases(); track release.id) {
+  <article class="repo-panel group overflow-hidden transition-shadow hover:shadow-md">
+    <div class="flex flex-col gap-4 p-4 sm:flex-row sm:items-start sm:gap-5 sm:p-5">
+      <div class="hidden shrink-0 sm:flex sm:flex-col sm:items-center sm:pt-0.5">
+        <div class="bg-base-300 flex size-9 items-center justify-center rounded-full">
+          <lucide-icon name="tag" class="text-base-content/60 size-4"></lucide-icon>
+        </div>
+      </div>
+
+      <div class="min-w-0 flex-1">
+        <div class="mb-1.5 flex flex-wrap items-center gap-2">
+          <a
+            [routerLink]="['/', owner(), repoName(), 'releases', 'tag', release.tagName]"
+            class="text-base-content hover:text-primary text-base font-semibold no-underline"
+          >
+            {{ release.name ?? release.tagName }}
+          </a>
+          @if (release.isDraft) {
+          <span class="badge-pill badge-pill--neutral">Draft</span>
+          } @if (release.isPrerelease) {
+          <span class="badge-pill badge-pill--warning">Pre-release</span>
+          }
+        </div>
+
+        <div class="text-base-content/50 mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <span class="bg-base-300 rounded px-1.5 py-0.5 font-mono">{{ release.tagName }}</span>
+          <span>·</span>
+          <span>{{ release.publishedAt ?? release.createdAt | relativeTime }}</span>
+          <span>·</span>
+          <span>{{ release.author.displayName ?? release.author.username }}</span>
+        </div>
+
+        @if (release.body) {
+        <p class="text-base-content/65 line-clamp-2 text-sm leading-relaxed">{{ release.body }}</p>
+        }
+      </div>
+
+      @if (repoContext.canEdit()) {
+      <div class="flex shrink-0 items-center gap-1.5 sm:flex-col sm:items-end sm:gap-2">
+        <a [routerLink]="['/', owner(), repoName(), 'releases', release.id, 'edit']" class="btn btn-ghost btn-xs gap-1">
+          <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
+          Edit
+        </a>
+        <button class="btn btn-ghost btn-xs text-error gap-1" (click)="deleteRelease(release)">
+          <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
+          Delete
+        </button>
+      </div>
+      }
+    </div>
+  </article>
+  }
+</div>
+
+@if (totalReleasePages() > 1) {
+<div class="mt-4 flex items-center justify-center gap-3">
+  <button type="button" class="btn btn-ghost btn-sm gap-1" [disabled]="releasePage() === 0" (click)="prevReleasePage()">
+    <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+    Prev
+  </button>
+  <span class="text-base-content/55 text-sm">{{ releasePage() + 1 }} / {{ totalReleasePages() }}</span>
+  <button
+    type="button"
+    class="btn btn-ghost btn-sm gap-1"
+    [disabled]="releasePage() >= totalReleasePages() - 1"
+    (click)="nextReleasePage()"
+  >
+    Next
+    <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+  </button>
+</div>
+} } @if (tagsWithoutRelease().length > 0) {
+<section class="repo-panel mt-6 overflow-hidden">
+  <div class="repo-toolbar flex items-center justify-between px-4 py-3">
+    <div class="flex items-center gap-2">
+      <lucide-icon name="tag" class="text-base-content/60 size-4"></lucide-icon>
+      <span class="text-base-content text-sm font-medium">Tags without release</span>
+      <span class="badge-pill badge-pill--neutral">{{ tagsWithoutRelease().length }}</span>
+    </div>
+  </div>
+  <div class="divide-base-300 divide-y">
+    @for (tag of pagedTags(); track tag.name) {
+    <div class="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-start gap-3 sm:items-center">
+        <lucide-icon name="tag" class="text-base-content/40 mt-0.5 size-4 shrink-0 sm:mt-0"></lucide-icon>
+        <div class="min-w-0">
+          <span class="text-base-content text-sm font-medium">{{ tag.name }}</span>
+          <div class="text-base-content/50 mt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+            <span class="font-mono">{{ tag.commitShortSha }}</span>
+            <span>·</span>
+            <span class="line-clamp-1 max-w-xs">{{ tag.commitMessage }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="flex shrink-0 items-center gap-1.5 pl-7 sm:pl-0">
+        @if (repoContext.canEdit()) {
+        <a
+          [routerLink]="['/', owner(), repoName(), 'releases', 'new']"
+          [queryParams]="{ tag: tag.name }"
+          class="btn btn-ghost btn-xs gap-1"
+        >
+          <lucide-icon name="plus" class="size-3.5"></lucide-icon>
+          Create release
+        </a>
+        <button class="btn btn-ghost btn-xs text-error gap-1" (click)="deleteTag(tag.name)">
+          <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
+        </button>
+        }
+      </div>
+    </div>
+    }
+  </div>
+
+  @if (totalTagPages() > 1) {
+  <div class="border-base-300 flex items-center justify-center gap-3 border-t px-4 py-3">
+    <button type="button" class="btn btn-ghost btn-sm gap-1" [disabled]="tagPage() === 0" (click)="prevTagPage()">
+      <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+      Prev
+    </button>
+    <span class="text-base-content/55 text-sm">{{ tagPage() + 1 }} / {{ totalTagPages() }}</span>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm gap-1"
+      [disabled]="tagPage() >= totalTagPages() - 1"
+      (click)="nextTagPage()"
+    >
+      Next
+      <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+    </button>
+  </div>
+  }
+</section>
+} } }

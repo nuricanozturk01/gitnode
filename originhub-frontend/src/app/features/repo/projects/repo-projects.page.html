@@ -1,0 +1,81 @@
+@if (loading()) {
+<div class="flex justify-center py-20">
+  <span class="loading loading-spinner loading-lg text-primary"></span>
+</div>
+} @else if (projects().length === 0) {
+<div class="border-base-300 bg-base-100 rounded-2xl border p-12 text-center shadow-sm">
+  <div
+    class="bg-primary/10 text-primary ring-primary/20 mx-auto mb-6 flex size-16 items-center justify-center rounded-2xl ring-1"
+  >
+    <lucide-icon name="kanban" class="size-8"></lucide-icon>
+  </div>
+  <h2 class="text-base-content text-xl font-bold">No projects linked</h2>
+  <p class="text-base-content/55 mx-auto mt-2 max-w-sm text-sm">
+    Link this repository to a project from the project settings to track tasks here.
+  </p>
+</div>
+} @else {
+<div class="flex flex-col gap-3">
+  @for (p of projects(); track p.id) {
+  <a
+    [routerLink]="['/projects', repoContext.repo()?.owner?.username, p.codePrefix]"
+    class="bg-base-100 border-base-300 group flex flex-col gap-3 rounded-xl border p-5 no-underline shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+  >
+    <div class="flex items-start justify-between gap-3">
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2">
+          <lucide-icon name="kanban" class="text-primary size-4 shrink-0"></lucide-icon>
+          <span class="text-base-content group-hover:text-primary truncate text-base font-semibold transition-colors">
+            {{ p.name }}
+          </span>
+          @if (!p.isPublic) {
+          <span class="badge-pill badge-pill--neutral">Private</span>
+          }
+        </div>
+        @if (p.description) {
+        <p class="text-base-content/55 mt-1 line-clamp-2 text-sm">{{ p.description }}</p>
+        }
+      </div>
+      <lucide-icon
+        name="externalLink"
+        class="text-base-content/30 group-hover:text-primary mt-0.5 size-4 shrink-0 transition-colors"
+      ></lucide-icon>
+    </div>
+
+    <div class="text-base-content/40 flex flex-wrap items-center gap-4 text-xs">
+      <span class="inline-flex items-center gap-1.5">
+        <lucide-icon name="tag" class="size-3.5"></lucide-icon>
+        {{ p.codePrefix }}
+      </span>
+      <span class="inline-flex items-center gap-1.5">
+        <lucide-icon name="layers" class="size-3.5"></lucide-icon>
+        {{ p.taskCount }} task{{ p.taskCount !== 1 ? 's' : '' }}
+      </span>
+    </div>
+  </a>
+  }
+</div>
+
+@if (totalPages() > 1) {
+<div class="mt-6 flex items-center justify-center gap-2">
+  <button
+    type="button"
+    class="btn btn-ghost btn-sm gap-1"
+    [disabled]="currentPage() === 0"
+    (click)="goToPage(currentPage() - 1)"
+  >
+    <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+    Prev
+  </button>
+  <span class="text-base-content/60 text-sm">{{ currentPage() + 1 }} / {{ totalPages() }}</span>
+  <button
+    type="button"
+    class="btn btn-ghost btn-sm gap-1"
+    [disabled]="currentPage() + 1 >= totalPages()"
+    (click)="goToPage(currentPage() + 1)"
+  >
+    Next
+    <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+  </button>
+</div>
+} }

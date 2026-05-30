@@ -1,0 +1,18 @@
+services:
+  postgres:
+    container_name: originhub-postgres
+    hostname: originhub-postgres
+    image: postgres:17
+    environment:
+      POSTGRES_DB: originhub
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+    ports:
+      - "5432:5432"
+    networks:
+      - originhub
+
+networks:
+  originhub:
+    name: originhub
+    driver: bridge

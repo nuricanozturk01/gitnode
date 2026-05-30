@@ -1,0 +1,57 @@
+services:
+  postgres:
+    container_name: originhub-postgres
+    hostname: originhub-postgres
+    image: postgres:17
+    environment:
+      POSTGRES_DB: originhub
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-admin123}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-admin}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - originhub
+    restart: unless-stopped
+
+  app:
+    image: repo.repsy.io/nuricanozturk/originhub:latest
+    container_name: originhub-app
+    ports:
+      - "8080:8080"
+      - "2222:2222"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://originhub-postgres:5432/originhub
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-admin}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-admin123}
+      ORIGINHUB_JWT_SECRET: ${ORIGINHUB_JWT_SECRET}
+      ORIGINHUB_GIT_REPO__ROOT: ${ORIGINHUB_GIT_REPO__ROOT:-/data/repos}
+      ORIGINHUB_FRONTEND_BASE_URL: ${ORIGINHUB_FRONTEND_BASE_URL:-http://localhost:8080}
+      OAUTH2_GOOGLE_CLIENT_ID: ${OAUTH2_GOOGLE_CLIENT_ID:-}
+      OAUTH2_GOOGLE_CLIENT_SECRET: ${OAUTH2_GOOGLE_CLIENT_SECRET:-}
+      OAUTH2_GITHUB_CLIENT_ID: ${OAUTH2_GITHUB_CLIENT_ID:-}
+      OAUTH2_GITHUB_CLIENT_SECRET: ${OAUTH2_GITHUB_CLIENT_SECRET:-}
+      OAUTH2_GITLAB_CLIENT_ID: ${OAUTH2_GITLAB_CLIENT_ID:-}
+      OAUTH2_GITLAB_CLIENT_SECRET: ${OAUTH2_GITLAB_CLIENT_SECRET:-}
+      SPRING_PROFILES_ACTIVE: os
+    volumes:
+      - git-repos:/data/repos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - originhub
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  git-repos:
+
+networks:
+  originhub:
+    name: originhub
+    driver: bridge

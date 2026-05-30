@@ -1,0 +1,480 @@
+<div class="bg-base-200 min-h-screen">
+  <div class="border-base-300 bg-base-100 border-b px-4 py-3 sm:px-6">
+    <div class="mx-auto flex max-w-2xl flex-wrap items-center gap-4">
+      <nav class="text-base-content/50 flex min-w-0 items-center gap-1.5 text-sm">
+        <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
+        <lucide-icon name="chevronRight" class="size-3.5 shrink-0"></lucide-icon>
+        <a
+          [routerLink]="['/projects', owner, projectCode]"
+          class="hover:text-base-content shrink-0 no-underline transition-colors"
+        >
+          <span class="truncate font-semibold">{{ projectName() || projectCode }}</span>
+        </a>
+        <lucide-icon name="chevronRight" class="size-3.5 shrink-0"></lucide-icon>
+        <span class="text-base-content font-medium">Settings</span>
+      </nav>
+    </div>
+  </div>
+
+  <div class="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+    @if (loading()) {
+    <div class="flex justify-center py-16">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+    } @else {
+
+    <!-- Tabs -->
+    <div role="tablist" class="tabs tabs-border mb-6">
+      <button
+        type="button"
+        role="tab"
+        id="project-settings-tab-general"
+        class="tab gap-2"
+        [class.tab-active]="activeTab() === 'general'"
+        [attr.aria-selected]="activeTab() === 'general'"
+        aria-controls="project-settings-panel-general"
+        (click)="setTab('general')"
+      >
+        <lucide-icon name="settings" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        General
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="project-settings-tab-webhooks"
+        class="tab gap-2"
+        [class.tab-active]="activeTab() === 'webhooks'"
+        [attr.aria-selected]="activeTab() === 'webhooks'"
+        aria-controls="project-settings-panel-webhooks"
+        (click)="setTab('webhooks')"
+      >
+        <lucide-icon name="webhook" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Webhooks
+      </button>
+      <button
+        type="button"
+        role="tab"
+        id="project-settings-tab-repos"
+        class="tab gap-2"
+        [class.tab-active]="activeTab() === 'repos'"
+        [attr.aria-selected]="activeTab() === 'repos'"
+        aria-controls="project-settings-panel-repos"
+        (click)="setTab('repos')"
+      >
+        <lucide-icon name="gitBranch" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Repositories
+      </button>
+    </div>
+
+    <!-- General panel -->
+    @if (activeTab() === 'general') {
+    <div id="project-settings-panel-general" role="tabpanel" aria-labelledby="project-settings-tab-general">
+      <div class="bg-base-100 border-base-300 rounded-2xl border p-6 shadow-sm">
+        <h1 class="text-base-content mb-1 text-xl font-bold">Project settings</h1>
+        <p class="text-base-content/60 mb-6 text-sm">Automation and integrations for this project.</p>
+
+        <!-- Visibility -->
+        <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
+          <input
+            id="project-is-public"
+            type="checkbox"
+            class="checkbox checkbox-primary mt-0.5"
+            [checked]="isPublic()"
+            (change)="onVisibilityChange($any($event.target).checked)"
+          />
+          <div class="min-w-0 flex-1">
+            <label class="cursor-pointer font-medium" for="project-is-public">Make project public</label>
+            <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+              Public projects are visible to everyone (read-only). Private projects are only visible to you.
+            </p>
+          </div>
+        </div>
+
+        <div class="border-base-200 flex items-start gap-4 rounded-xl border p-4">
+          <input
+            id="sync-pr-merge"
+            type="checkbox"
+            class="checkbox checkbox-primary mt-0.5"
+            [checked]="syncTaskStatusOnPrMerge()"
+            (change)="onSyncChange($any($event.target).checked)"
+          />
+          <div class="min-w-0 flex-1">
+            <label class="cursor-pointer font-medium" for="sync-pr-merge">Update task status when a PR is merged</label>
+            <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+              When enabled, merging a pull request linked to a task or subtask branch sets that item's status to
+              <span class="font-medium">Completed</span>. Pull requests are still linked when this is off; only the
+              automatic status change is skipped.
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-2">
+          <button type="button" class="btn btn-primary btn-sm gap-2" [disabled]="saving()" (click)="save()">
+            @if (saving()) {
+            <span class="loading loading-spinner loading-sm"></span>
+            } Save changes
+          </button>
+          <a [routerLink]="['/projects', owner, projectCode]" class="btn btn-ghost btn-sm">Back to board</a>
+        </div>
+      </div>
+    </div>
+    }
+
+    <!-- Webhooks panel -->
+    @if (activeTab() === 'webhooks') {
+    <div id="project-settings-panel-webhooks" role="tabpanel" aria-labelledby="project-settings-tab-webhooks">
+      <div class="bg-base-100 border-base-300 rounded-2xl border p-6 shadow-sm">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+              <lucide-icon name="webhook" class="text-primary size-5 shrink-0"></lucide-icon>
+              Webhooks
+            </h2>
+            <p class="text-base-content/65 mt-1 text-sm">
+              Receive HTTP POST notifications when task events occur in this project. Max 3 webhooks.
+            </p>
+          </div>
+          @if (canAddWebhook() && !showAddWebhook() && !editingWebhookId()) {
+          <button type="button" class="btn btn-primary btn-sm shrink-0 gap-1.5" (click)="showAddWebhook.set(true)">
+            <lucide-icon name="plus" class="size-4"></lucide-icon>
+            Add webhook
+          </button>
+          }
+        </div>
+
+        @if (loadingWebhooks()) {
+        <div class="mt-6 flex justify-center py-8">
+          <span class="loading loading-spinner loading-md text-primary"></span>
+        </div>
+        } @else if (webhookError()) {
+        <p class="text-error mt-6 text-sm" role="alert">{{ webhookError() }}</p>
+        } @else {
+        <div class="mt-6 space-y-3">
+          @for (w of webhooks(); track w.id) {
+          <div class="border-base-200 rounded-xl border p-4">
+            @if (editingWebhookId() === w.id) {
+            <div class="space-y-4">
+              <div>
+                <label class="label-text mb-1 block font-medium" for="webhook-edit-url-{{ w.id }}">Payload URL</label>
+                <input
+                  id="webhook-edit-url-{{ w.id }}"
+                  type="url"
+                  class="input input-bordered w-full text-sm"
+                  placeholder="https://example.com/webhook"
+                  [value]="newWebhookUrl()"
+                  (input)="newWebhookUrl.set($any($event.target).value)"
+                />
+              </div>
+              <div>
+                <label class="label-text mb-1 block font-medium" for="webhook-edit-secret-{{ w.id }}"
+                  >Secret <span class="text-base-content/50 font-normal">(optional)</span></label
+                >
+                <input
+                  id="webhook-edit-secret-{{ w.id }}"
+                  type="password"
+                  class="input input-bordered w-full text-sm"
+                  placeholder="Leave blank to keep unchanged"
+                  [value]="newWebhookSecret()"
+                  (input)="newWebhookSecret.set($any($event.target).value)"
+                  autocomplete="new-password"
+                />
+              </div>
+              <div class="flex items-center gap-3">
+                <input
+                  id="webhook-edit-enabled-{{ w.id }}"
+                  type="checkbox"
+                  class="toggle toggle-primary toggle-sm"
+                  [checked]="newWebhookEnabled()"
+                  (change)="newWebhookEnabled.set($any($event.target).checked)"
+                />
+                <label class="cursor-pointer text-sm font-medium" for="webhook-edit-enabled-{{ w.id }}">Active</label>
+              </div>
+              <div>
+                <p class="label-text mb-2 font-medium">Events</p>
+                <div class="space-y-3">
+                  @for (group of webhookEventGroups; track group.label) {
+                  <div>
+                    <p class="text-base-content/60 mb-1.5 text-xs font-semibold tracking-wide uppercase">
+                      {{ group.label }}
+                    </p>
+                    <div class="flex flex-wrap gap-3">
+                      @for (ev of group.events; track ev.key) {
+                      <label class="flex cursor-pointer items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          class="checkbox checkbox-primary checkbox-sm"
+                          [checked]="isEventSelected(ev.key)"
+                          (change)="toggleWebhookEvent(ev.key)"
+                        />
+                        {{ ev.label }}
+                      </label>
+                      }
+                    </div>
+                  </div>
+                  }
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm gap-1.5"
+                  [disabled]="savingWebhook() || !newWebhookUrl()"
+                  (click)="saveWebhook()"
+                >
+                  @if (savingWebhook()) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                  Saving… } @else {
+                  <lucide-icon name="check" class="size-4"></lucide-icon>
+                  Save }
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEdit()">
+                  <lucide-icon name="x" class="size-4"></lucide-icon>
+                  Cancel
+                </button>
+              </div>
+            </div>
+            } @else {
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <lucide-icon name="webhook" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+                  <span class="font-mono text-sm font-medium break-all">{{ w.url }}</span>
+                </div>
+                <div class="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    class="cursor-pointer border-none bg-transparent p-0"
+                    [title]="w.enabled ? 'Click to deactivate' : 'Click to activate'"
+                    (click)="toggleWebhookEnabled(w)"
+                  >
+                    @if (w.enabled) {
+                    <span class="badge-pill badge-pill--success">Active</span>
+                    } @else {
+                    <span class="badge-pill badge-pill--neutral">Inactive</span>
+                    }
+                  </button>
+                  <span class="text-base-content/55 text-xs"
+                    >{{ w.events.length }} event{{ w.events.length === 1 ? '' : 's' }}</span
+                  >
+                </div>
+              </div>
+              <div class="flex shrink-0 gap-1">
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs gap-1"
+                  title="Edit webhook"
+                  (click)="startEditWebhook(w)"
+                >
+                  <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error gap-1"
+                  title="Delete webhook"
+                  (click)="deleteWebhook(w.id)"
+                >
+                  <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
+                </button>
+              </div>
+            </div>
+            }
+          </div>
+          } @empty { @if (!showAddWebhook()) {
+          <p class="text-base-content/50 py-6 text-center text-sm">No webhooks configured yet.</p>
+          } }
+        </div>
+
+        @if (showAddWebhook()) {
+        <div class="border-base-200 mt-4 rounded-xl border p-4">
+          <h3 class="mb-4 font-semibold">New webhook</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="label-text mb-1 block font-medium" for="webhook-new-url">Payload URL</label>
+              <input
+                id="webhook-new-url"
+                type="url"
+                class="input input-bordered w-full text-sm"
+                placeholder="https://example.com/webhook"
+                [value]="newWebhookUrl()"
+                (input)="newWebhookUrl.set($any($event.target).value)"
+              />
+            </div>
+            <div>
+              <label class="label-text mb-1 block font-medium" for="webhook-new-secret"
+                >Secret <span class="text-base-content/50 font-normal">(optional)</span></label
+              >
+              <input
+                id="webhook-new-secret"
+                type="password"
+                class="input input-bordered w-full text-sm"
+                placeholder="Used to sign the payload"
+                [value]="newWebhookSecret()"
+                (input)="newWebhookSecret.set($any($event.target).value)"
+                autocomplete="new-password"
+              />
+            </div>
+            <div class="flex items-center gap-3">
+              <input
+                id="webhook-new-enabled"
+                type="checkbox"
+                class="toggle toggle-primary toggle-sm"
+                [checked]="newWebhookEnabled()"
+                (change)="newWebhookEnabled.set($any($event.target).checked)"
+              />
+              <label class="cursor-pointer text-sm font-medium" for="webhook-new-enabled">Active</label>
+            </div>
+            <div>
+              <p class="label-text mb-2 font-medium">Events</p>
+              <div class="space-y-3">
+                @for (group of webhookEventGroups; track group.label) {
+                <div>
+                  <p class="text-base-content/60 mb-1.5 text-xs font-semibold tracking-wide uppercase">
+                    {{ group.label }}
+                  </p>
+                  <div class="flex flex-wrap gap-3">
+                    @for (ev of group.events; track ev.key) {
+                    <label class="flex cursor-pointer items-center gap-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        class="checkbox checkbox-primary checkbox-sm"
+                        [checked]="isEventSelected(ev.key)"
+                        (change)="toggleWebhookEvent(ev.key)"
+                      />
+                      {{ ev.label }}
+                    </label>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm gap-1.5"
+                [disabled]="savingWebhook() || !newWebhookUrl()"
+                (click)="saveWebhook()"
+              >
+                @if (savingWebhook()) {
+                <span class="loading loading-spinner loading-xs"></span>
+                Saving… } @else {
+                <lucide-icon name="check" class="size-4"></lucide-icon>
+                Create webhook }
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEdit()">Cancel</button>
+            </div>
+          </div>
+        </div>
+        } }
+      </div>
+    </div>
+    }
+
+    <!-- Repositories panel -->
+    @if (activeTab() === 'repos') {
+    <div id="project-settings-panel-repos" role="tabpanel" aria-labelledby="project-settings-tab-repos">
+      <div class="bg-base-100 border-base-300 rounded-2xl border p-6 shadow-sm">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+              <lucide-icon name="gitBranch" class="text-primary size-5 shrink-0"></lucide-icon>
+              Linked Repositories
+            </h2>
+            <p class="text-base-content/65 mt-1 text-sm">
+              Repositories linked to this project. Each repository can only be linked to one project.
+            </p>
+          </div>
+        </div>
+
+        <!-- Search & add -->
+        <div class="relative mt-5">
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+              <lucide-icon
+                name="search"
+                class="text-base-content/40 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+              ></lucide-icon>
+              <input
+                type="text"
+                class="input input-bordered w-full pl-9 text-sm"
+                placeholder="Search your repositories to link…"
+                [value]="repoSearch()"
+                (input)="repoSearch.set($any($event.target).value); repoDropdownOpen.set(true)"
+                (focus)="repoDropdownOpen.set(true)"
+                (blur)="$event.relatedTarget === null && repoDropdownOpen.set(false)"
+                [disabled]="linkingRepo()"
+              />
+            </div>
+          </div>
+          @if (repoDropdownOpen() && availableRepos().length > 0) {
+          <ul
+            class="border-base-300 bg-base-100 absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border shadow-lg"
+          >
+            @for (r of availableRepos(); track r.id) {
+            <li>
+              <button
+                type="button"
+                class="hover:bg-base-200 flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                (mousedown)="linkRepo(r)"
+              >
+                <lucide-icon name="gitBranch" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
+                <span class="truncate text-sm font-medium">{{ r.name }}</span>
+                @if (r.isPrivate) {
+                <span class="badge-pill badge-pill--neutral ml-auto">Private</span>
+                }
+              </button>
+            </li>
+            }
+          </ul>
+          } @else if (repoDropdownOpen() && repoSearch() && availableRepos().length === 0) {
+          <div
+            class="border-base-300 bg-base-100 absolute z-20 mt-1 w-full rounded-xl border p-4 text-center shadow-lg"
+          >
+            <p class="text-base-content/50 text-sm">No available repositories found.</p>
+          </div>
+          }
+        </div>
+
+        @if (loadingRepos()) {
+        <div class="mt-6 flex justify-center py-8">
+          <span class="loading loading-spinner loading-md text-primary"></span>
+        </div>
+        } @else if (repoError()) {
+        <p class="text-error mt-6 text-sm" role="alert">{{ repoError() }}</p>
+        } @else {
+        <div class="mt-5 space-y-2">
+          @for (r of linkedRepos(); track r.id) {
+          <div class="border-base-200 flex items-center justify-between gap-3 rounded-xl border p-4">
+            <div class="flex min-w-0 flex-1 items-center gap-3">
+              <lucide-icon name="gitBranch" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
+              <div class="min-w-0">
+                <a
+                  [routerLink]="['/', r.ownerUsername, r.name]"
+                  class="text-base-content hover:text-primary truncate text-sm font-semibold no-underline transition-colors"
+                  >{{ r.ownerUsername }}/{{ r.name }}</a
+                >
+                @if (r.description) {
+                <p class="text-base-content/50 mt-0.5 truncate text-xs">{{ r.description }}</p>
+                }
+              </div>
+            </div>
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-error shrink-0 gap-1"
+              title="Unlink repository"
+              (click)="unlinkRepo(r)"
+            >
+              <lucide-icon name="x" class="size-3.5"></lucide-icon>
+              Unlink
+            </button>
+          </div>
+          } @empty {
+          <p class="text-base-content/50 py-6 text-center text-sm">No repositories linked yet.</p>
+          }
+        </div>
+        }
+      </div>
+    </div>
+    } }
+  </div>
+</div>

@@ -1,0 +1,167 @@
+<section class="repo-panel overflow-hidden">
+  <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <h2 class="text-base-content text-lg font-semibold">Branches</h2>
+    @if (canEdit()) {
+    <button type="button" class="btn btn-primary btn-sm gap-1" (click)="openCreateModal()">
+      <lucide-icon name="plus" class="size-4"></lucide-icon>
+      New branch
+    </button>
+    }
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-error mx-4 mb-4">
+    <span>{{ error() }}</span>
+  </div>
+  } @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (branches().length === 0) {
+  <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16">
+    <lucide-icon name="gitBranch" class="size-12"></lucide-icon>
+    <p class="font-medium">No Content</p>
+    <p class="text-center text-sm">No branches yet. Create your first branch to get started.</p>
+  </div>
+  } @else {
+  <div class="grid gap-4 p-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+    @for (b of branches(); track b.name) {
+    <div class="card bg-base-100 border-base-300 border shadow-sm">
+      <div class="card-body p-4">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <a
+              [routerLink]="['/', owner(), repoName(), 'tree', b.name]"
+              class="link link-primary font-medium no-underline"
+            >
+              {{ b.name }}
+            </a>
+            <div class="mt-1 flex flex-wrap gap-1">
+              @if (b.isDefault) {
+              <span class="badge-pill badge-pill--primary">default</span>
+              } @if (b.isProtected) {
+              <span class="badge-pill badge-pill--neutral">protected</span>
+              }
+            </div>
+          </div>
+          <lucide-icon name="gitBranch" class="text-primary size-5 shrink-0"></lucide-icon>
+        </div>
+        <div class="text-base-content/70 mt-3 flex flex-col gap-0.5 text-sm">
+          <a
+            [routerLink]="['/', owner(), repoName(), 'commit', b.lastCommitSha]"
+            class="text-primary font-mono text-sm hover:underline"
+          >
+            {{ b.lastCommitShortSha }}
+          </a>
+          <span class="line-clamp-2">{{ b.lastCommitMessage }}</span>
+          <span class="text-base-content/60 text-xs">{{ b.lastCommitAuthor }}</span>
+          <span class="text-base-content/60 text-xs">
+            @if (b.lastCommitSha) { {{ b.lastCommitDate | relativeTime }} } @else { No commits yet }
+          </span>
+        </div>
+        @if (!b.isDefault && canEdit()) {
+        <div class="card-actions mt-3 justify-end">
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            (click)="openSetDefaultModal(b)"
+            [disabled]="actionLoading()"
+          >
+            Set default
+          </button>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs text-error"
+            (click)="deleteBranch(b)"
+            [disabled]="actionLoading()"
+          >
+            Delete
+          </button>
+        </div>
+        }
+      </div>
+    </div>
+    }
+  </div>
+  }
+</section>
+
+@if (createModalOpen()) {
+<div class="modal modal-open">
+  <div class="modal-box">
+    <h3 class="text-base-content mb-4 text-lg font-semibold">Create branch</h3>
+    <form [formGroup]="createForm" (ngSubmit)="onCreateSubmit()" class="space-y-4">
+      <div class="form-control">
+        <label class="label" for="branch-name">
+          <span class="label-text">Branch name</span>
+        </label>
+        <input
+          id="branch-name"
+          type="text"
+          formControlName="name"
+          placeholder="feature/my-branch"
+          class="input input-bordered w-full"
+        />
+        @if (createForm.get('name')?.invalid && createForm.get('name')?.touched) {
+        <span class="label">
+          <span class="label-text-alt text-error">Letters, numbers, . _ - / only</span>
+        </span>
+        }
+      </div>
+      <div class="form-control">
+        <label class="label" for="source-branch">
+          <span class="label-text">Source branch</span>
+        </label>
+        <select id="source-branch" formControlName="sourceBranch" class="select select-bordered w-full">
+          @if (branches().length > 0) { @for (b of branches(); track b.name) {
+          <option [value]="b.name">{{ b.name }}</option>
+          } } @else {
+          <option [value]="defaultBranch()">{{ defaultBranch() }}</option>
+          }
+        </select>
+      </div>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" (click)="closeCreateModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="createForm.invalid || actionLoading()">
+          @if (actionLoading()) {
+          <span class="loading loading-spinner loading-sm"></span>
+          } @else { Create }
+        </button>
+      </div>
+    </form>
+  </div>
+  <div
+    class="modal-backdrop"
+    role="button"
+    tabindex="0"
+    (click)="closeCreateModal()"
+    (keydown.enter)="closeCreateModal()"
+    (keydown.space)="closeCreateModal(); $event.preventDefault()"
+  ></div>
+</div>
+} @if (setDefaultModalOpen() && branchToSetDefault(); as branch) {
+<div class="modal modal-open">
+  <div class="modal-box">
+    <h3 class="text-base-content mb-4 text-lg font-semibold">Set default branch</h3>
+    <p class="text-base-content/70 mb-4">
+      Set <strong>{{ branch.name }}</strong> as the default branch for this repository?
+    </p>
+    <div class="modal-action">
+      <button type="button" class="btn btn-ghost" (click)="closeSetDefaultModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="onSetDefaultConfirm()" [disabled]="actionLoading()">
+        @if (actionLoading()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } @else { Set default }
+      </button>
+    </div>
+  </div>
+  <div
+    class="modal-backdrop"
+    role="button"
+    tabindex="0"
+    (click)="closeSetDefaultModal()"
+    (keydown.enter)="closeSetDefaultModal()"
+    (keydown.space)="closeSetDefaultModal(); $event.preventDefault()"
+  ></div>
+</div>
+}

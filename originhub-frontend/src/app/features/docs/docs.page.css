@@ -1,0 +1,190 @@
+:host {
+  display: block;
+}
+
+.docs-layout .docs-section[id] {
+  scroll-margin-top: 5.5rem;
+}
+
+.docs-hero-surface {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in oklch, var(--color-base-200) 55%, var(--color-base-100));
+}
+
+.docs-hero-grid {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-base-content) 6%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-base-content) 6%, transparent) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(ellipse 100% 80% at 50% -20%, black 35%, transparent 75%);
+}
+
+.docs-hero-meta .badge {
+  border-color: color-mix(in oklch, var(--color-base-content) 12%, var(--color-base-300));
+}
+
+.docs-toc-link {
+  color: color-mix(in oklch, var(--color-base-content) 78%, transparent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.docs-toc-link:hover {
+  background: color-mix(in oklch, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+}
+
+.docs-step {
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+  background: color-mix(in oklch, var(--color-base-100) 92%, var(--color-base-200));
+  padding: 1.125rem 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .docs-step {
+    padding: 1.25rem 1.5rem;
+  }
+}
+
+.docs-code-wrap {
+  position: relative;
+}
+
+.docs-code-copy {
+  position: absolute;
+  right: 0.35rem;
+  top: 0.35rem;
+  z-index: 1;
+  min-height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+}
+
+.code-block {
+  background: color-mix(in oklch, var(--color-base-300) 38%, var(--color-base-100));
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 10%, var(--color-base-300));
+  border-radius: 0.625rem;
+  overflow: hidden;
+}
+
+.code-block pre {
+  font-family: var(--font-mono, monospace);
+  line-height: 1.65;
+  color: color-mix(in oklch, var(--color-base-content) 92%, var(--color-base-100));
+}
+
+.code-block code {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.docs-inline-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--color-base-300) 55%, var(--color-base-100));
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+}
+
+button.docs-inline-link {
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+button.docs-inline-link:hover {
+  color: color-mix(in oklch, var(--color-primary) 85%, var(--color-base-content));
+}
+
+.prose-docs a:not(.btn) {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.prose-docs a:not(.btn):hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.docs-table-wrap {
+  background: color-mix(in oklch, var(--color-base-100) 95%, var(--color-base-200));
+}
+
+.docs-table {
+  border-collapse: collapse;
+}
+
+.docs-table thead {
+  background: color-mix(in oklch, var(--color-base-200) 65%, var(--color-base-100));
+}
+
+.docs-table th,
+.docs-table td {
+  border-color: color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+  vertical-align: top;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .docs-table th,
+  .docs-table td {
+    padding: 0.875rem 1.125rem;
+  }
+}
+
+.docs-table th {
+  font-weight: 600;
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+  text-align: left;
+}
+
+.docs-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.docs-table tbody tr:nth-child(even) {
+  background: color-mix(in oklch, var(--color-base-200) 35%, transparent);
+}
+
+.docs-table tbody tr:hover {
+  background: color-mix(in oklch, var(--color-primary) 6%, transparent);
+}
+
+.docs-table-code {
+  display: block;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  word-break: break-word;
+  white-space: pre-wrap;
+  color: color-mix(in oklch, var(--color-base-content) 88%, transparent);
+}
+
+@media (min-width: 640px) {
+  .docs-table-code {
+    font-size: 0.8125rem;
+    white-space: normal;
+    word-break: break-all;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docs-toc-link,
+  .docs-table tbody tr {
+    transition: none;
+  }
+}

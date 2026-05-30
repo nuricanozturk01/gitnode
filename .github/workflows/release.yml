@@ -1,0 +1,41 @@
+name: Release | OriginHub
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Maven Action
+        uses: s4u/setup-maven-action@v1.19.0
+        with:
+          java-version: 25
+          java-distribution: temurin
+          maven-version: 3.9.9
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+
+      - name: Run release:prepare
+        run: |
+          mvn -B release:prepare \
+            -Dmaven.test.skip=true \
+            -Dcheckstyle.skip=true \
+            -Dfmt.skip=true \
+            -Derrorprone.skip=true
+
+      - name: Push release commits and tags
+        run: |
+          git push origin HEAD
+          git push origin --tags

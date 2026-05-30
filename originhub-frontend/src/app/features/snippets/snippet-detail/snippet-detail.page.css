@@ -1,0 +1,48 @@
+@import 'highlight.js/styles/github.css';
+
+[data-blob-syntax='dark'] .hljs {
+  background: transparent;
+}
+
+[data-blob-syntax='dark'] {
+  @import 'highlight.js/styles/github-dark.css';
+}
+
+[data-blob-syntax='dark'] .hljs-comment,
+[data-blob-syntax='dark'] .hljs-punctuation {
+  color: #8b949e;
+}
+
+[data-blob-syntax='dark'] .hljs-keyword,
+[data-blob-syntax='dark'] .hljs-selector-tag,
+[data-blob-syntax='dark'] .hljs-literal {
+  color: #ff7b72;
+}
+
+[data-blob-syntax='dark'] .hljs-string,
+[data-blob-syntax='dark'] .hljs-doctag {
+  color: #a5d6ff;
+}
+
+[data-blob-syntax='dark'] .hljs-title,
+[data-blob-syntax='dark'] .hljs-section,
+[data-blob-syntax='dark'] .hljs-selector-id {
+  color: #d2a8ff;
+}
+
+[data-blob-syntax='dark'] .hljs-variable,
+[data-blob-syntax='dark'] .hljs-template-variable,
+[data-blob-syntax='dark'] .hljs-attr {
+  color: #ffa657;
+}
+
+[data-blob-syntax='dark'] .hljs-number,
+[data-blob-syntax='dark'] .hljs-regexp,
+[data-blob-syntax='dark'] .hljs-link {
+  color: #79c0ff;
+}
+
+[data-blob-syntax='dark'] .hljs-built_in,
+[data-blob-syntax='dark'] .hljs-class .hljs-title {
+  color: #79c0ff;
+}

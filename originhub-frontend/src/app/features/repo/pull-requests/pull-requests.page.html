@@ -1,0 +1,165 @@
+<section class="repo-panel pr-list overflow-hidden">
+  <div class="repo-toolbar px-3 py-3 sm:px-4">
+    <div class="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <h2 class="text-base-content shrink-0 text-lg font-semibold">Pull requests</h2>
+        <div class="-mx-1 min-w-0 overflow-x-auto overscroll-x-contain px-1 pb-0.5 sm:mx-0 sm:pb-0">
+          <div class="join border-base-300 inline-flex shrink-0 rounded-lg border">
+            <button
+              type="button"
+              class="join-item btn btn-sm btn-ghost gap-1.5 rounded-none px-3 sm:gap-2"
+              [class.bg-base-200]="tab() === 'open'"
+              [class.text-primary]="tab() === 'open'"
+              [class.font-semibold]="tab() === 'open'"
+              (click)="setTab('open')"
+            >
+              <lucide-icon name="git-pull-request" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              <span class="whitespace-nowrap">Open</span>
+              <span class="badge-pill badge-pill--count">{{ openCount() }}</span>
+            </button>
+            <button
+              type="button"
+              class="join-item btn btn-sm btn-ghost border-base-300 gap-1.5 rounded-none border-l px-3 sm:gap-2"
+              [class.bg-base-200]="tab() === 'merged'"
+              [class.text-primary]="tab() === 'merged'"
+              [class.font-semibold]="tab() === 'merged'"
+              (click)="setTab('merged')"
+            >
+              <lucide-icon name="gitMerge" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              <span class="whitespace-nowrap">Merged</span>
+              <span class="badge-pill badge-pill--count">{{ mergedCount() }}</span>
+            </button>
+            <button
+              type="button"
+              class="join-item btn btn-sm btn-ghost border-base-300 gap-1.5 rounded-none border-l px-3 sm:gap-2"
+              [class.bg-base-200]="tab() === 'closed'"
+              [class.text-primary]="tab() === 'closed'"
+              [class.font-semibold]="tab() === 'closed'"
+              (click)="setTab('closed')"
+            >
+              <lucide-icon name="x-circle" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              <span class="whitespace-nowrap">Closed</span>
+              <span class="badge-pill badge-pill--count">{{ closedCount() }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      @if (repoContext.canEdit()) {
+      <a
+        [routerLink]="['/', owner(), repoName(), 'pulls', 'new']"
+        class="btn btn-primary btn-sm shrink-0 gap-2 self-start sm:self-auto"
+      >
+        <lucide-icon name="plus" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+        New pull request
+      </a>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+  <div class="divide-base-300 divide-y">
+    @for (i of [1, 2, 3, 4, 5]; track i) {
+    <div class="flex animate-pulse items-start gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-5">
+      <div class="bg-base-200 mt-0.5 size-10 shrink-0 rounded-xl sm:size-11"></div>
+      <div class="min-w-0 flex-1 space-y-2">
+        <div class="bg-base-200 h-4 w-full max-w-md rounded sm:h-5"></div>
+        <div class="bg-base-200 h-3 w-2/3 max-w-xs rounded"></div>
+      </div>
+    </div>
+    }
+  </div>
+  } @else if (filteredPulls().length === 0) {
+  <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16 sm:py-20">
+    <div
+      class="bg-base-200/80 text-base-content/35 mb-1 flex size-16 items-center justify-center rounded-2xl sm:size-20"
+    >
+      <lucide-icon name="git-pull-request" class="size-8 sm:size-10"></lucide-icon>
+    </div>
+    <p class="text-base-content text-center text-base font-semibold">No {{ tab() }} pull requests</p>
+    <p class="max-w-sm text-center text-sm leading-relaxed">
+      There aren’t any {{ tab() }} pull requests in this repository yet.
+    </p>
+    @if (tab() === 'open' && repoContext.canEdit()) {
+    <a [routerLink]="['/', owner(), repoName(), 'pulls', 'new']" class="btn btn-primary btn-sm mt-3 gap-2">
+      <lucide-icon name="plus" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+      Create pull request
+    </a>
+    }
+  </div>
+  } @else {
+  <div class="divide-base-300 divide-y">
+    @for (pr of filteredPulls(); track pr.id) {
+    <a
+      [routerLink]="['/', owner(), repoName(), 'pulls', pr.number]"
+      class="hover:bg-base-200/45 group flex gap-3 px-3 py-4 transition-colors sm:gap-4 sm:px-4 sm:py-5"
+    >
+      <div class="mt-0.5 shrink-0">
+        @if (pr.status === 'OPEN') {
+        <div
+          class="bg-success/12 text-success ring-success/20 flex size-10 items-center justify-center rounded-xl ring-1 sm:size-11"
+        >
+          <lucide-icon name="git-pull-request" class="size-5 sm:size-[1.35rem]"></lucide-icon>
+        </div>
+        } @else if (pr.status === 'MERGED') {
+        <div
+          class="bg-primary/12 text-primary ring-primary/20 flex size-10 items-center justify-center rounded-xl ring-1 sm:size-11"
+        >
+          <lucide-icon name="gitMerge" class="size-5 sm:size-[1.35rem]"></lucide-icon>
+        </div>
+        } @else {
+        <div
+          class="bg-base-300/80 text-base-content/55 ring-base-300 flex size-10 items-center justify-center rounded-xl ring-1 sm:size-11"
+        >
+          <lucide-icon name="git-pull-request-closed" class="size-5 sm:size-[1.35rem]"></lucide-icon>
+        </div>
+        }
+      </div>
+
+      <div class="min-w-0 flex-1">
+        <div class="flex flex-wrap items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            <p
+              class="text-base-content group-hover:text-primary text-base leading-snug font-semibold transition-colors sm:text-[1.05rem]"
+            >
+              <span class="text-pretty">{{ pr.title }}</span>
+              <span class="text-base-content/45 ml-1.5 font-mono text-sm font-normal">#{{ pr.number }}</span>
+            </p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              @if (pr.isDraft) {
+              <span class="badge-pill badge-pill--draft">Draft</span>
+              }
+              <span [class]="'badge-pill ' + statusBadgeClass(pr.status)">{{ statusLabel(pr.status) }}</span>
+            </div>
+          </div>
+          @if (pr.commentCount > 0) {
+          <span
+            class="text-base-content/55 bg-base-200/60 border-base-300/80 flex shrink-0 items-center gap-1 rounded-lg border px-2 py-0.5 text-xs font-medium"
+          >
+            <lucide-icon name="message-circle" class="size-3.5 opacity-80"></lucide-icon>
+            {{ pr.commentCount }}
+          </span>
+          }
+        </div>
+        <p class="text-base-content/60 mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs sm:text-sm">
+          <span class="text-base-content/80 font-medium">{{ pr.author.username || pr.author.name }}</span>
+          <span class="text-base-content/35">·</span>
+          <span>{{ pr.updatedAt | relativeTime }}</span>
+          <span class="text-base-content/35">·</span>
+          <span class="inline-flex max-w-full min-w-0 flex-wrap items-center gap-1.5 break-all sm:break-normal">
+            <code
+              class="bg-base-200/90 border-base-300/60 rounded-md border px-1.5 py-0.5 font-mono text-[11px] sm:text-xs"
+              >{{ pr.sourceBranch }}</code
+            >
+            <lucide-icon name="arrowRight" class="text-base-content/40 size-3 shrink-0"></lucide-icon>
+            <code
+              class="bg-base-200/90 border-base-300/60 rounded-md border px-1.5 py-0.5 font-mono text-[11px] sm:text-xs"
+              >{{ pr.targetBranch }}</code
+            >
+          </span>
+        </p>
+      </div>
+    </a>
+    }
+  </div>
+  }
+</section>

@@ -1,0 +1,405 @@
+<main class="docs-layout text-base-content min-h-screen">
+  <!-- Top bar -->
+  <div class="docs-hero-surface border-base-300/60 border-b">
+    <div class="docs-hero-grid pointer-events-none absolute inset-0 opacity-30"></div>
+    <div class="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <a
+        routerLink="/"
+        class="text-base-content/65 hover:text-primary mb-6 inline-flex items-center gap-2 text-sm font-medium no-underline transition-colors"
+      >
+        <lucide-icon name="arrowLeft" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Back to home
+      </a>
+
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div class="max-w-2xl">
+          <div class="mb-3 flex items-center gap-3">
+            <div
+              class="bg-primary/15 text-primary ring-primary/20 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1"
+            >
+              <lucide-icon name="bookOpen" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <h1 class="text-3xl font-bold tracking-tight sm:text-4xl lg:text-[2.5rem]">Documentation</h1>
+          </div>
+          <p class="text-base-content/70 text-base leading-relaxed text-pretty sm:text-lg">
+            Clone with <strong class="text-base-content/85 font-semibold">HTTPS</strong> or
+            <strong class="text-base-content/85 font-semibold">SSH</strong>, wire up your keys or password, and use the
+            same Git commands you already know.
+          </p>
+        </div>
+        <div
+          class="docs-hero-meta border-base-300/70 bg-base-100/60 flex shrink-0 flex-wrap gap-2 rounded-xl border p-3 backdrop-blur-sm"
+        >
+          <span class="badge badge-outline badge-sm border-base-300/80 gap-1 font-normal">
+            <lucide-icon name="link" class="size-3 opacity-70" aria-hidden="true"></lucide-icon>
+            Smart HTTP
+          </span>
+          <span class="badge badge-outline badge-sm border-base-300/80 gap-1 font-normal">
+            <lucide-icon name="keyRound" class="size-3 opacity-70" aria-hidden="true"></lucide-icon>
+            SSH
+          </span>
+          <span class="badge badge-outline badge-sm border-base-300/80 font-normal">JGit</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:flex lg:gap-12 lg:px-8 lg:py-12">
+    <!-- TOC -->
+    <aside
+      class="docs-toc border-base-300/70 bg-base-100/80 mb-10 h-fit rounded-2xl border p-4 shadow-sm backdrop-blur-sm lg:sticky lg:top-24 lg:mb-0 lg:w-56 lg:shrink-0 lg:self-start xl:w-64"
+      aria-label="On this page"
+    >
+      <h2 class="text-base-content/50 mb-3 px-1 text-[11px] font-bold tracking-wider uppercase">On this page</h2>
+      <nav>
+        <ul class="space-y-0.5">
+          <li>
+            <button
+              type="button"
+              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+              (click)="scrollToSection('local-setup')"
+            >
+              <span class="text-primary/80 mr-2 font-mono text-xs">01</span>
+              SSH keys
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+              (click)="scrollToSection('http-git')"
+            >
+              <span class="text-primary/80 mr-2 font-mono text-xs">02</span>
+              HTTP / HTTPS Git
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+              (click)="scrollToSection('ssh-config')"
+            >
+              <span class="text-primary/80 mr-2 font-mono text-xs">03</span>
+              SSH config
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+              (click)="scrollToSection('clone-push')"
+            >
+              <span class="text-primary/80 mr-2 font-mono text-xs">04</span>
+              Clone &amp; push
+            </button>
+          </li>
+        </ul>
+      </nav>
+      <a
+        routerLink="/settings"
+        class="border-base-300/60 text-base-content/70 hover:text-primary mt-4 flex items-center gap-2 border-t pt-4 text-xs font-medium no-underline transition-colors"
+      >
+        <lucide-icon name="settings" class="size-3.5 shrink-0 opacity-80" aria-hidden="true"></lucide-icon>
+        Settings (SSH keys)
+      </a>
+    </aside>
+
+    <article class="prose-docs min-w-0 flex-1 space-y-10 lg:space-y-12">
+      <!-- 1 SSH -->
+      <section
+        id="local-setup"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >1</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">SSH keys (Git over SSH)</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              To push and pull over SSH (default port
+              <code class="docs-inline-code">2222</code>), register a public key. If you only use
+              <button type="button" class="docs-inline-link" (click)="scrollToSection('http-git')">HTTP / HTTPS</button
+              >, you can skip this and use your account password with Git instead.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-5">
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 1 — Generate an SSH key</h3>
+            <p class="text-base-content/65 mb-3 text-sm">ED25519 is recommended. Skip if you already use a key pair.</p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                [attr.aria-label]="'Copy command'"
+                (click)="copySnippet('keygen', sshKeygenCmd)"
+              >
+                @if (copiedId() === 'keygen') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ sshKeygenCmd }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 2 — Copy your public key</h3>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Print the <code class="docs-inline-code">.pub</code> file and copy its contents.
+            </p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                [attr.aria-label]="'Copy command'"
+                (click)="copySnippet('cat', catPubCmd)"
+              >
+                @if (copiedId() === 'cat') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ catPubCmd }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 3 — Add the key in OriginHub</h3>
+            <p class="text-base-content/65 text-sm leading-relaxed">
+              Open <a routerLink="/settings" class="docs-inline-link font-medium">Settings</a> and paste the key under
+              <strong class="text-base-content/80 font-medium">SSH Keys</strong>, or use your deployment’s API if you
+              automate onboarding.
+            </p>
+          </div>
+
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 4 — Clone over SSH</h3>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Example using the same SSH clone URL as in the repository
+              <strong class="text-base-content/80 font-medium">Code</strong> dialog in the app.
+            </p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                [attr.aria-label]="'Copy command'"
+                (click)="copySnippet('ssh-clone', sshCloneLine())"
+              >
+                @if (copiedId() === 'ssh-clone') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ sshCloneLine() }}</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2 HTTP -->
+      <section
+        id="http-git"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >2</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">HTTP / HTTPS Git</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              Smart Git is served on the same origin as the REST API under
+              <code class="docs-inline-code">/git/&lt;owner&gt;/&lt;repo&gt;</code>. Git sends
+              <strong class="text-base-content/85 font-medium">HTTP Basic</strong> auth: use your OriginHub username and
+              account password when prompted.
+            </p>
+          </div>
+        </header>
+
+        <div
+          class="border-primary/25 from-primary/8 mb-6 rounded-xl border-l-4 bg-gradient-to-r to-transparent px-4 py-3 text-sm leading-relaxed"
+        >
+          <strong class="text-base-content font-medium">Path tip:</strong>
+          <span class="text-base-content/75">
+            Do not add a <code class="docs-inline-code">.git</code> suffix in the URL path — storage resolution appends
+            it on the server. With TLS in front of the app, use <code class="docs-inline-code">https://</code> instead
+            of <code class="docs-inline-code">http://</code>.
+          </span>
+        </div>
+
+        <div class="docs-code-wrap mb-6">
+          <button
+            type="button"
+            class="docs-code-copy btn btn-ghost btn-xs gap-1"
+            [attr.aria-label]="'Copy command'"
+            (click)="copySnippet('https-clone', httpsCloneLine())"
+          >
+            @if (copiedId() === 'https-clone') {
+            <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+            } @else {
+            <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+            }
+          </button>
+          <div class="code-block">
+            <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ httpsCloneLine() }}</code></pre>
+          </div>
+        </div>
+
+        <p class="text-base-content/60 text-sm leading-relaxed">
+          Smart HTTP can be turned off with
+          <code class="docs-inline-code text-xs">originhub.http.enabled=false</code>
+          on the server — then use SSH only.
+        </p>
+      </section>
+
+      <!-- 3 SSH config -->
+      <section
+        id="ssh-config"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >3</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">SSH config (optional)</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              Add a host alias in <code class="docs-inline-code">~/.ssh/config</code> for shorter clone URLs and a
+              stable identity file.
+            </p>
+          </div>
+        </header>
+
+        <div class="docs-code-wrap mb-5">
+          <button
+            type="button"
+            class="docs-code-copy btn btn-ghost btn-xs gap-1"
+            [attr.aria-label]="'Copy SSH config'"
+            (click)="copySnippet('ssh-config', sshConfigBlock)"
+          >
+            @if (copiedId() === 'ssh-config') {
+            <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+            } @else {
+            <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+            }
+          </button>
+          <div class="code-block">
+            <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ sshConfigBlock }}</code></pre>
+          </div>
+        </div>
+
+        <p class="text-base-content/65 mb-3 text-sm">Then clone and push with the short host form:</p>
+
+        <div class="docs-code-wrap">
+          <button
+            type="button"
+            class="docs-code-copy btn btn-ghost btn-xs gap-1"
+            [attr.aria-label]="'Copy commands'"
+            (click)="copySnippet('alias-flow', sshAliasFlow)"
+          >
+            @if (copiedId() === 'alias-flow') {
+            <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+            } @else {
+            <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+            }
+          </button>
+          <div class="code-block">
+            <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ sshAliasFlow }}</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- 4 Table -->
+      <section
+        id="clone-push"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >4</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">Clone &amp; push quick reference</h2>
+            <p class="text-base-content/70 mt-2 text-sm sm:text-base">
+              Common commands once <code class="docs-inline-code">origin</code> is set.
+            </p>
+          </div>
+        </header>
+
+        <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+          <table class="docs-table table w-full">
+            <thead>
+              <tr>
+                <th scope="col">Action</th>
+                <th scope="col">Command</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Clone (HTTP / HTTPS)</td>
+                <td>
+                  <code class="docs-table-code">{{ httpsCloneLine() }}</code>
+                </td>
+              </tr>
+              <tr>
+                <td>Clone (SSH)</td>
+                <td><code class="docs-table-code">{{ sshCloneLine() }}</code></td>
+              </tr>
+              <tr>
+                <td>Clone (SSH + config alias)</td>
+                <td><code class="docs-table-code">git clone originhub-local:owner/repo.git</code></td>
+              </tr>
+              <tr>
+                <td>Push branch</td>
+                <td><code class="docs-table-code">git push origin main</code></td>
+              </tr>
+              <tr>
+                <td>Push new branch</td>
+                <td><code class="docs-table-code">git push -u origin feature-branch</code></td>
+              </tr>
+              <tr>
+                <td>Pull latest</td>
+                <td><code class="docs-table-code">git pull origin main</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer
+        class="border-base-300/60 docs-footer bg-base-200/40 flex flex-col gap-4 rounded-2xl border p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8"
+      >
+        <p class="text-base-content/60 m-0 max-w-md text-sm leading-relaxed">
+          Need more detail? Use the same clone URLs shown in the app’s repository page — they follow your deployment
+          configuration.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <a routerLink="/" class="btn btn-ghost btn-sm gap-2">
+            <lucide-icon name="home" class="size-4" aria-hidden="true"></lucide-icon>
+            Home
+          </a>
+          <a routerLink="/register" class="btn btn-primary btn-sm gap-2">
+            <lucide-icon name="plus" class="size-4" aria-hidden="true"></lucide-icon>
+            Get started
+          </a>
+        </div>
+      </footer>
+    </article>
+  </div>
+</main>

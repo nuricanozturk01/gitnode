@@ -1,0 +1,49 @@
+<section class="repo-panel overflow-hidden">
+  <div class="repo-toolbar px-4 py-3">
+    <app-repo-breadcrumb
+      [owner]="owner()"
+      [repoName]="repoName()"
+      [branch]="branch()"
+      [path]="path()"
+      [items]="breadcrumbItems()"
+    />
+  </div>
+
+  @if (loading()) {
+  <div class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-md text-primary"></span>
+  </div>
+  } @else {
+  <div class="overflow-x-auto">
+    <table class="table">
+      <tbody>
+        @for (entry of tree(); track entry.path) {
+        <tr class="hover">
+          <td class="w-10">
+            @if (isTree(entry)) {
+            <lucide-icon name="folder" class="text-primary size-5"></lucide-icon>
+            } @else {
+            <lucide-icon name="fileText" class="text-base-content/60 size-5"></lucide-icon>
+            }
+          </td>
+          <td>
+            <a
+              [routerLink]="entryRoute(entry)"
+              class="text-primary flex items-center gap-1 font-medium no-underline hover:underline"
+            >
+              {{ entry.name }} @if (isTree(entry)) {
+              <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+              }
+            </a>
+          </td>
+          <td class="text-base-content/60 text-sm">{{ entry.lastCommitMessage ?? 'Latest update' }}</td>
+          <td class="text-base-content/60 text-right text-sm">
+            @if (entry.size !== null && entry.size > 0) { {{ entry.size | fileSize }} }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  }
+</section>

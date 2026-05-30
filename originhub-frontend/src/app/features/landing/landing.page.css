@@ -1,0 +1,138 @@
+:host {
+  display: block;
+}
+
+.hero-btn-outline {
+  border-color: color-mix(in oklch, var(--color-base-content) 22%, var(--color-base-300));
+}
+.hero-btn-outline:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 12%, transparent);
+}
+
+.hero-gradient {
+  background: linear-gradient(
+    135deg,
+    color-mix(in oklch, var(--color-primary) 12%, transparent) 0%,
+    transparent 42%,
+    color-mix(in oklch, var(--color-primary) 6%, transparent) 100%
+  );
+}
+
+.landing-hero-surface {
+  isolation: isolate;
+}
+
+.landing-hero-grid {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--color-base-content) 8%, transparent) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 0%, black 20%, transparent 75%);
+}
+
+.landing-hero-ray {
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklch, var(--color-primary) 22%, transparent),
+    transparent 100%
+  );
+  filter: blur(40px);
+  opacity: 0.55;
+}
+
+.landing-hero-preview {
+  max-width: 28rem;
+}
+
+@media (min-width: 1024px) {
+  .landing-hero-preview {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+.landing-code-shell {
+  box-shadow:
+    0 1px 0 color-mix(in oklch, var(--color-base-content) 6%, transparent),
+    0 24px 48px -24px color-mix(in oklch, var(--color-base-content) 25%, transparent);
+}
+
+.landing-code-row code {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 640px) {
+  .landing-code-row code {
+    font-size: 0.875rem;
+  }
+}
+
+.feature-card {
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.feature-card--lift:hover {
+  transform: none;
+  box-shadow:
+    0 12px 40px -12px color-mix(in oklch, var(--color-primary) 20%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--color-primary) 12%, var(--color-base-300));
+  border-color: color-mix(in oklch, var(--color-primary) 28%, var(--color-base-300));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feature-card,
+  .feature-card--lift:hover {
+    transition: none;
+  }
+}
+
+.code-snippet {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+}
+
+.glow {
+  box-shadow: 0 0 60px color-mix(in oklch, var(--color-primary) 22%, transparent);
+}
+
+.landing-cta-glow {
+  background: radial-gradient(
+    ellipse 70% 80% at 50% 100%,
+    color-mix(in oklch, var(--color-primary) 18%, transparent),
+    transparent 55%
+  );
+}
+
+.landing-github-cta:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in oklch, var(--color-primary) 38%, var(--color-base-300));
+  box-shadow:
+    0 24px 48px -20px color-mix(in oklch, var(--color-primary) 28%, transparent),
+    0 0 0 1px color-mix(in oklch, var(--color-primary) 18%, var(--color-base-300));
+}
+
+.landing-github-cta__icon {
+  background: linear-gradient(155deg, #2d333b 0%, #1c2128 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 4px 14px -4px rgb(0 0 0 / 0.45);
+}
+
+/* Slightly larger than default badge-pill for hero GitHub CTA */
+.landing-github-cta__badge {
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-github-cta:hover {
+    transform: none;
+  }
+}

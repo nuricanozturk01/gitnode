@@ -1,0 +1,26 @@
+:host {
+  display: block;
+}
+
+.migrate-page {
+  /* Keeps long helper text readable on small screens */
+  min-height: calc(100vh - 4rem);
+}
+
+.migrate-shell {
+  /* Slight lift from the screenshot’s GitHub-style density */
+  padding-bottom: 2rem;
+}
+
+.migrate-section-title {
+  letter-spacing: 0.06em;
+}
+
+.migrate-warning {
+  color: color-mix(in oklab, var(--fallback-bc, oklch(var(--bc))) 88%, transparent);
+}
+
+.migrate-checklist .divider {
+  margin-left: -0.25rem;
+  margin-right: -0.25rem;
+}

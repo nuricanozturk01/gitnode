@@ -1,0 +1,26 @@
+@import 'highlight.js/styles/github.css';
+
+[data-blob-syntax='dark'] .hljs-comment,
+[data-blob-syntax='dark'] .hljs-punctuation {
+  color: #8b949e;
+}
+[data-blob-syntax='dark'] .hljs-keyword,
+[data-blob-syntax='dark'] .hljs-literal {
+  color: #ff7b72;
+}
+[data-blob-syntax='dark'] .hljs-string {
+  color: #a5d6ff;
+}
+[data-blob-syntax='dark'] .hljs-title {
+  color: #d2a8ff;
+}
+[data-blob-syntax='dark'] .hljs-variable,
+[data-blob-syntax='dark'] .hljs-attr {
+  color: #ffa657;
+}
+[data-blob-syntax='dark'] .hljs-number {
+  color: #79c0ff;
+}
+[data-blob-syntax='dark'] .hljs-built_in {
+  color: #79c0ff;
+}

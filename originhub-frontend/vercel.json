@@ -1,0 +1,7 @@
+{
+  "buildCommand": "pnpm run build:prod",
+  "outputDirectory": "dist/originhub-frontend/browser",
+  "rewrites": [
+    { "source": "/:path((?!.*\\.).*)", "destination": "/index.html" }
+  ]
+}

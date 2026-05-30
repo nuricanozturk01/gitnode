@@ -1,0 +1,66 @@
+name: MR Checks | OriginHub
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pre-checks:
+    name: Editorconfig check - All
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install editorconfig-checker
+        uses: editorconfig-checker/action-editorconfig-checker@v2
+        with:
+          version: v3.0.3
+
+      - run: editorconfig-checker -exclude 'Makefile'
+
+  originhub-backend-checks:
+    name: OriginHub Backend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Maven Action
+        uses: s4u/setup-maven-action@v1.19.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build and Verify
+        run: mvn -B -ntp verify
+
+  node-check-repsy-frontend:
+    name: OriginHub Frontend Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./originhub-frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@10 --activate
+
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+
+      - name: Check
+        run: pnpm run lint

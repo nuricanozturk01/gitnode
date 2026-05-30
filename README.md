@@ -2,9 +2,9 @@
 
 <br/>
 
-<td><img src="images/logo.png" alt="Logo" width="45%"/></td>
+<img src="images/logo.png" alt="OriginHub Logo" width="45%"/>
 
-### A simple, self-hosted Git registry — your code, your server, your rules.
+<h3>A simple, self-hosted Git registry — your code, your server, your rules.</h3>
 
 <br/>
 
@@ -18,7 +18,7 @@
 
 <br/>
 
-[Features](#-features) · [Demo](#-demo) · [Tech Stack](#-tech-stack) · [Getting Started](#-getting-started) · [Roadmap](#-roadmap) · [License](#-license)
+[✨ Features](#-features) · [🎬 Demo](#-demo) · [🛠 Tech Stack](#-tech-stack) · [🚀 Getting Started](#-getting-started) · [🗺 Roadmap](#-roadmap) · [📄 License](#-license)
 
 <br/>
 
@@ -26,17 +26,13 @@
 
 ---
 
-## What is OriginHub?
+## 🔍 What is OriginHub?
 
-OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your
-repositories, pull requests, and CI/CD pipelines — running entirely on your own infrastructure, with zero dependency on
-third-party platforms.
+OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your repositories, pull requests, and CI/CD pipelines — running entirely on your own infrastructure, with zero dependency on third-party platforms.
 
 No subscriptions. No data leaving your servers. No vendor lock-in. Just Git, hosted your way.
 
-OriginHub is built for developers and teams who care about ownership — whether you're an indie developer running it on a
-VPS, or an enterprise team deploying it on private infrastructure. If you've ever thought *"I wish GitHub ran on my own
-server"*, OriginHub is for you.
+OriginHub is built for developers and teams who care about ownership — whether you're an indie developer running it on a VPS, or an enterprise team deploying it on private infrastructure. If you've ever thought *"I wish GitHub ran on my own server"*, OriginHub is for you.
 
 ---
 
@@ -44,7 +40,9 @@ server"*, OriginHub is for you.
 
 <div align="center">
 
-<a href="https://youtu.be/mis1Za2800E"><img src="images/cover.png" alt="OriginHub walkthrough — play on YouTube" width="480" /></a>
+<a href="https://youtu.be/mis1Za2800E">
+  <img src="images/cover.png" alt="OriginHub walkthrough — play on YouTube" width="480" />
+</a>
 
 **[Watch on YouTube →](https://youtu.be/mis1Za2800E)**
 
@@ -54,36 +52,48 @@ server"*, OriginHub is for you.
 
 ## ✨ Features
 
-OriginHub covers the core Git hosting loop — repos, review, browsing, issues, project boards, webhooks, and code snippets — all tied to your repositories on your own infrastructure.
+OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, and code snippets — all on your own infrastructure.
 
-### 📁 Repository management
+<div align="center">
+
+| | | |
+|:---:|:---:|:---:|
+| 📁 [Repository Management](#-repository-management) | 👤 [Public Profiles](#-public-profile) | 📥 [GitHub Migration](#-github-repository-migration) |
+| 🗂 [Code Browsing](#-code-browsing) | 🔀 [Pull Requests](#-pull-requests) | 🐛 [Issues](#-issues) |
+| 📋 [Project Boards](#-project-management-kanban) | 📝 [Code Snippets](#-code-snippets-gist-like) | 🏷 [Tags & Releases](#-tags--releases) |
+| 🔔 [Webhooks](#-webhooks) | 🔐 [Authentication](#-authentication) | ⚡ [Actions *(soon)*](#-actions--cicd-coming-soon) |
+
+</div>
+
+---
+
+### 📁 Repository Management
 
 - Create, clone, push, and pull repositories
 - **Public and private** repositories, descriptions, and **topics**
-- **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your
-  OriginHub host (same protocol support for the web UI and API)
+- **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your OriginHub host
 - **SSH** Git on a configurable port (default **2222** in Docker)
 - Per-repo **Settings**: general metadata, optional **auto-delete head branch** after PR merge or close
 
-### 👤 Public profile
+### 👤 Public Profile
 
 - Every account has a public profile at `/:username` showing public repositories
-- Optional **profile README** rendered from the account’s special repository
+- Optional **profile README** rendered from the account's special repository
 - Paginated public repository list
 
-### 📥 GitHub repository migration
+### 📥 GitHub Repository Migration
 
 - **Migrate from GitHub** with a repository URL and **personal access token** (classic or fine-grained with repo read)
 - **Mirror clone** the Git history into your OriginHub account
 - Optionally migrate **pull requests** from GitHub in the same job
 
-### 🗂 Code browsing
+### 🗂 Code Browsing
 
 - File tree with breadcrumbs; blob viewer and **raw** file URLs
 - **Markdown README** on the repo home (images and relative links resolved like on GitHub)
 - Commit history and diffs
 
-### 🔀 Pull requests
+### 🔀 Pull Requests
 
 - Open, review, merge, or close PRs
 - Merge strategies: **merge commit**, **squash**, **rebase**
@@ -95,23 +105,23 @@ OriginHub covers the core Git hosting loop — repos, review, browsing, issues, 
 - Labels, comments, open/close status
 - **Link issues to Kanban tasks** — resolving a PR can auto-complete linked tasks
 
-### 📋 Project management (Kanban)
+### 📋 Project Management (Kanban)
 
 - **Projects** with **boards** and configurable **columns** (per-project)
 - **Tasks** and **subtasks** with types, status, assignee, and ordering
 - Create **Git branches** from a task or subtask (conventional branch names, e.g. `TASK-1` or `TASK-1.SUB-1-…`)
-- **Link** a branch’s pull request to the task or subtask; see PR status on the card
+- **Link** a branch's pull request to the task or subtask; see PR status on the card
 - **Optional automation** (per project): when a linked PR is **merged**, mark the task or subtask **completed**
 - **Project settings** page for the above PR → status behaviour
-- Projects linked to a repository are paginated in the repo’s **Projects** tab
+- Projects linked to a repository are paginated in the repo's **Projects** tab
 
-### 📝 Code snippets (Gist-like)
+### 📝 Code Snippets (Gist-like)
 
 - Create **public** or **private** snippets with syntax-highlighted code blocks
 - **Multi-file** support per snippet
 - Full **revision history** — track edits and diff between revisions
 - **Fork** any public snippet
-- Paginated snippets per repository in the repo’s **Snippets** tab
+- Paginated snippets per repository in the repo's **Snippets** tab
 - Manage all your snippets from the **Snippets** section in the app bar
 
 ### 🔔 Webhooks
@@ -119,6 +129,15 @@ OriginHub covers the core Git hosting loop — repos, review, browsing, issues, 
 - **Signed HTTP delivery** to your services for pushes, PR events, and more
 - **Retries** on delivery failure with full delivery log visibility
 - Configured per-repository in **Settings → Webhooks**
+
+### 🏷 Tags & Releases
+
+- Create **lightweight and annotated tags** on any commit via the UI
+- **Draft or publish releases** tied to a tag — write release notes with Markdown
+- **Upload release assets** (binaries, archives, checksums) directly from the browser
+- Browse all releases in the repo's **Releases** tab; latest release shown on the repo home
+- **Delete** releases or tags from the UI (tag is removed from the underlying Git repo)
+- **Release badge** on the repo home shows the latest published version at a glance
 
 ### ⚡ Actions — CI/CD *(coming soon)*
 
@@ -134,25 +153,25 @@ OriginHub covers the core Git hosting loop — repos, review, browsing, issues, 
 
 ## 🛠 Tech Stack
 
-| Layer      | Technology                                      |
-|------------|-------------------------------------------------|
-| Language   | Java 25                                         |
-| Framework  | Spring Boot 4, Spring Security, Spring Data JPA |
-| Git Engine | Eclipse JGit                                    |
-| SSH Server | Apache MINA SSHD                                |
-| Auth       | JWT, OAuth2 (Google · GitHub · GitLab)          |
-| Database   | PostgreSQL, Flyway                              |
-| Frontend   | Angular 21, TypeScript 5                        |
-| Styling    | Tailwind CSS 4, DaisyUI 5                       |
-| Container  | Docker (multi-stage build, single image)        |
+| Layer       | Technology                                       |
+|-------------|--------------------------------------------------|
+| Language    | Java 25                                          |
+| Framework   | Spring Boot 4, Spring Security, Spring Data JPA  |
+| Git Engine  | Eclipse JGit                                     |
+| SSH Server  | Apache MINA SSHD                                 |
+| Auth        | JWT, OAuth2 (Google · GitHub · GitLab)           |
+| Database    | PostgreSQL, Flyway                               |
+| Frontend    | Angular 21, TypeScript 5                         |
+| Styling     | Tailwind CSS 4, DaisyUI 5                        |
+| Container   | Docker (multi-stage build, single image)         |
 
 ---
 
 ## 🚀 Getting Started
 
-> 📖 Full documentation: **[originhub.nuricanozturk.com/docs](https://originhub.nuricanozturk.com/docs)** [Only Documentation. Not deployed to cloud]
+> 📖 Full documentation: **[originhub.nuricanozturk.com/docs](https://originhub.nuricanozturk.com/docs)** *(documentation only — not deployed to cloud)*
 
-### Option 1 — Docker Run (Manual)
+### Option 1 — Docker Run
 
 ```bash
 SECRET=$(openssl rand -base64 64 | tr -d '\n')
@@ -179,8 +198,6 @@ docker run -d \
   repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 ```
 
----
-
 ### Option 2 — Makefile
 
 ```bash
@@ -191,33 +208,33 @@ make up
 
 Edit the variables at the top of the `Makefile` before running — at minimum set `JWT_SECRET`. OAuth2 keys are optional.
 
-| Target | Description |
-|---|---|
-| `make up` | Create network, start DB and app |
-| `make down` | Stop and remove containers |
-| `make start` / `make stop` | Start or stop existing containers |
-| `make restart` | Stop then start |
-| `make logs` | Follow app logs |
-| `make logs-db` | Follow database logs |
-| `make ps` | List running containers |
-| `make clean` | Remove containers and network (volumes kept) |
-| `make purge` | Remove everything including repo data ⚠️ |
+| Target               | Description                                     |
+|----------------------|-------------------------------------------------|
+| `make up`            | Create network, start DB and app                |
+| `make down`          | Stop and remove containers                      |
+| `make start` / `make stop` | Start or stop existing containers         |
+| `make restart`       | Stop then start                                 |
+| `make logs`          | Follow app logs                                 |
+| `make logs-db`       | Follow database logs                            |
+| `make ps`            | List running containers                         |
+| `make clean`         | Remove containers and network (volumes kept)    |
+| `make purge`         | Remove everything including repo data ⚠️        |
 
 ### Environment Variables
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `ORIGINHUB_JWT_SECRET` | ✅ | — | Min 32-char secret for JWT signing |
-| `DB_USER` | | `admin` | PostgreSQL username |
-| `DB_PASSWORD` | | `admin123` | PostgreSQL password |
-| `ORIGINHUB_GIT_REPO__ROOT` | | `/data/repos` | Git repository storage path |
-| `ORIGINHUB_FRONTEND_BASE_URL` | | `http://localhost:8080` | Public base URL |
-| `OAUTH2_GOOGLE_CLIENT_ID` | | — | Google OAuth2 client ID |
-| `OAUTH2_GOOGLE_CLIENT_SECRET` | | — | Google OAuth2 client secret |
-| `OAUTH2_GITHUB_CLIENT_ID` | | — | GitHub OAuth2 client ID |
-| `OAUTH2_GITHUB_CLIENT_SECRET` | | — | GitHub OAuth2 client secret |
-| `OAUTH2_GITLAB_CLIENT_ID` | | — | GitLab OAuth2 client ID |
-| `OAUTH2_GITLAB_CLIENT_SECRET` | | — | GitLab OAuth2 client secret |
+| Variable                       | Required | Default               | Description                          |
+|--------------------------------|----------|-----------------------|--------------------------------------|
+| `ORIGINHUB_JWT_SECRET`         | ✅        | —                     | Min 32-char secret for JWT signing   |
+| `DB_USER`                      |          | `admin`               | PostgreSQL username                  |
+| `DB_PASSWORD`                  |          | `admin123`            | PostgreSQL password                  |
+| `ORIGINHUB_GIT_REPO__ROOT`     |          | `/data/repos`         | Git repository storage path          |
+| `ORIGINHUB_FRONTEND_BASE_URL`  |          | `http://localhost:8080` | Public base URL                    |
+| `OAUTH2_GOOGLE_CLIENT_ID`      |          | —                     | Google OAuth2 client ID              |
+| `OAUTH2_GOOGLE_CLIENT_SECRET`  |          | —                     | Google OAuth2 client secret          |
+| `OAUTH2_GITHUB_CLIENT_ID`      |          | —                     | GitHub OAuth2 client ID              |
+| `OAUTH2_GITHUB_CLIENT_SECRET`  |          | —                     | GitHub OAuth2 client secret          |
+| `OAUTH2_GITLAB_CLIENT_ID`      |          | —                     | GitLab OAuth2 client ID              |
+| `OAUTH2_GITLAB_CLIENT_SECRET`  |          | —                     | GitLab OAuth2 client secret          |
 
 ---
 
@@ -225,22 +242,30 @@ Edit the variables at the top of the `Makefile` before running — at minimum se
 
 OriginHub is under active development. Here's what's planned:
 
-- [X] HTTPS Git support
-- [X] Github Repo Migration
-- [X] Project board (Kanban) integrated with repositories
-- [X] Code snippets (Gist-like)
-- [X] Repo Issues
-- [X] Public repositories
-- [X] Public Profile and ReadMe
-- [X] Webhooks
+- [x] HTTPS Git support
+- [x] GitHub repo migration
+- [x] Project board (Kanban) integrated with repositories
+- [x] Code snippets (Gist-like)
+- [x] Repo issues
+- [x] Public repositories
+- [x] Public profile and README
+- [x] Webhooks
+- [x] Tags and releases
 - [ ] Actions — CI/CD
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
-- [ ] Tags and releases
 - [ ] Two-factor authentication (TOTP)
 
 ---
 
+## 📄 License
+
+Distributed under the [MIT License](LICENSE.txt).
+
+---
+
 ## ☕ Support
+
+<div align="center">
 
 If OriginHub saves you time or you just want to say thanks, consider buying me a coffee. It keeps the project alive and the commits coming.
 
@@ -248,4 +273,4 @@ If OriginHub saves you time or you just want to say thanks, consider buying me a
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
 </a>
 
----
+</div>

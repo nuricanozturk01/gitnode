@@ -18,15 +18,16 @@ package com.nuricanozturk.originhub.task.dtos;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
+@NullMarked
 public record ProjectInfo(
-    @NonNull UUID id,
-    @NonNull String name,
+    UUID id,
+    String name,
     @Nullable String description,
-    @NonNull String codePrefix,
+    String codePrefix,
     long taskCount,
     boolean syncTaskStatusOnPrMerge,
     boolean isPublic,

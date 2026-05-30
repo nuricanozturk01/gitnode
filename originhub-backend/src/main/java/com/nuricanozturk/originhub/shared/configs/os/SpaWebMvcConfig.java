@@ -15,7 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.configs.os;
 
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
@@ -23,10 +23,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @Profile("os")
+@NullMarked
 public class SpaWebMvcConfig implements WebMvcConfigurer {
 
   @Override
-  public void addViewControllers(final @NonNull ViewControllerRegistry registry) {
+  public void addViewControllers(final ViewControllerRegistry registry) {
 
     registry.addViewController("/{path:[^\\.]*}").setViewName("forward:/index.html");
     registry.addViewController("/**/{path:[^\\.]*}").setViewName("forward:/index.html");

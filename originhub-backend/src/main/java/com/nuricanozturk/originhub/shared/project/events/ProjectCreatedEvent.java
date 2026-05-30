@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.shared.project.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record ProjectCreatedEvent(
-    @NonNull UUID projectId, @NonNull String ownerUsername, @NonNull String name) {}
+@NullMarked
+public record ProjectCreatedEvent(UUID projectId, String ownerUsername, String name) {}

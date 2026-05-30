@@ -16,6 +16,8 @@
 package com.nuricanozturk.originhub.shared.commit.dtos;
 
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public record DiffHunk(
     int oldStart, int oldCount, int newStart, int newCount, String header, List<DiffLine> lines) {}

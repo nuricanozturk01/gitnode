@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.shared.project;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record ProjectSummary(@NonNull UUID id, @NonNull String ownerUsername) {}
+@NullMarked
+public record ProjectSummary(UUID id, String ownerUsername) {}

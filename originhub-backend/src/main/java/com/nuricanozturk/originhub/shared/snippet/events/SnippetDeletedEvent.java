@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.shared.snippet.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record SnippetDeletedEvent(
-    @NonNull UUID snippetId, @NonNull String ownerUsername, @NonNull String title) {}
+@NullMarked
+public record SnippetDeletedEvent(UUID snippetId, String ownerUsername, String title) {}

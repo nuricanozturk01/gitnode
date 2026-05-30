@@ -35,11 +35,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.NullMarked;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "repositories")
+@NullMarked
 public class Repo {
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)

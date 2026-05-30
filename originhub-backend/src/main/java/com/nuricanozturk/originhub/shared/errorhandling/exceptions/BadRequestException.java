@@ -15,11 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.errorhandling.exceptions;
 
-import org.jspecify.annotations.NonNull;
-
 public class BadRequestException extends RuntimeException {
 
-  public BadRequestException(final @NonNull String msg) {
+  public BadRequestException(final String msg) {
 
     super(msg);
   }

@@ -17,7 +17,9 @@ package com.nuricanozturk.originhub.migration.service;
 
 import com.nuricanozturk.originhub.migration.entities.MigrationJob;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public interface CloudMigrationService {
 
   void process(MigrationJob job, String accessToken, Tenant tenant);

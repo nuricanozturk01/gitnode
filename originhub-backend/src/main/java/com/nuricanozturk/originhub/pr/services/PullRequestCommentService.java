@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,21 +42,22 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class PullRequestCommentService {
 
-  private final @NonNull PrMapper prMapper;
-  private final @NonNull PrRepository prRepository;
-  private final @NonNull PrCommentRepository commentRepository;
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
+  private final PrMapper prMapper;
+  private final PrRepository prRepository;
+  private final PrCommentRepository commentRepository;
+  private final RepoRepository repoRepository;
+  private final TenantRepository tenantRepository;
 
   @Transactional
-  public @NonNull PrCommentInfo addComment(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+  public PrCommentInfo addComment(
+      final String owner,
+      final String repoName,
       final int number,
-      final @NonNull UUID authorId,
-      final @NonNull PrCommentForm form) {
+      final UUID authorId,
+      final PrCommentForm form) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
@@ -75,10 +76,8 @@ public class PullRequestCommentService {
   }
 
   @Transactional
-  public @NonNull PrCommentInfo updateComment(
-      final @NonNull UUID commentId,
-      final @NonNull UUID requesterId,
-      final @NonNull PrCommentUpdateForm form) {
+  public PrCommentInfo updateComment(
+      final UUID commentId, final UUID requesterId, final PrCommentUpdateForm form) {
     final var comment =
         this.commentRepository
             .findById(commentId)
@@ -93,7 +92,7 @@ public class PullRequestCommentService {
   }
 
   @Transactional
-  public void deleteComment(final @NonNull UUID commentId, final @NonNull UUID requesterId) {
+  public void deleteComment(final UUID commentId, final UUID requesterId) {
     final var comment =
         this.commentRepository
             .findById(commentId)
@@ -106,8 +105,8 @@ public class PullRequestCommentService {
     this.commentRepository.delete(comment);
   }
 
-  public @NonNull List<PrCommentInfo> getComments(
-      final @NonNull String owner, final @NonNull String repoName, final int number) {
+  public List<PrCommentInfo> getComments(
+      final String owner, final String repoName, final int number) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
@@ -117,31 +116,31 @@ public class PullRequestCommentService {
         .toList();
   }
 
-  private @NonNull PrCommentInfo toCommentInfo(final @NonNull PullRequestComment comment) {
+  private PrCommentInfo toCommentInfo(final PullRequestComment comment) {
 
     final var author = this.toAuthorInfo(comment.getAuthor());
 
     return this.prMapper.toCommentInfo(comment, author);
   }
 
-  private @NonNull AuthorInfo toAuthorInfo(final @NonNull Tenant tenant) {
+  private AuthorInfo toAuthorInfo(final Tenant tenant) {
     return new AuthorInfo(
         tenant.getDisplayName(), tenant.getEmail(), tenant.getUsername(), tenant.getAvatarUrl());
   }
 
-  private @NonNull Repo findRepo(final @NonNull String owner, final @NonNull String repoName) {
+  private Repo findRepo(final String owner, final String repoName) {
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
   }
 
-  private @NonNull PullRequest findPr(final @NonNull UUID repoId, final int number) {
+  private PullRequest findPr(final UUID repoId, final int number) {
     return this.prRepository
         .findByRepoIdAndNumber(repoId, number)
         .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
   }
 
-  private @NonNull Tenant findTenant(final @NonNull UUID id) {
+  private Tenant findTenant(final UUID id) {
     return this.tenantRepository
         .findById(id)
         .orElseThrow(() -> new ItemNotFoundException("User not found"));

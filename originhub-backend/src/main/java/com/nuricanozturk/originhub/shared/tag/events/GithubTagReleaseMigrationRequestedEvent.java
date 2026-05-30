@@ -16,6 +16,8 @@
 package com.nuricanozturk.originhub.shared.tag.events;
 
 import lombok.experimental.SuperBuilder;
+import org.jspecify.annotations.NullMarked;
 
 @SuperBuilder
+@NullMarked
 public class GithubTagReleaseMigrationRequestedEvent extends TagReleaseMigrationRequestedEvent {}

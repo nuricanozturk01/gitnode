@@ -34,7 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -44,16 +44,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class ProfileService {
 
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull TenantMapper tenantMapper;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final TenantRepository tenantRepository;
+  private final TenantMapper tenantMapper;
+  private final ApplicationEventPublisher eventPublisher;
   private static final String USER_NOT_FOUND = "userNotFound";
 
   @Transactional
-  public @NonNull TenantInfo updateUsername(
-      final @NonNull UUID tenantId, final @NonNull UpdateUsernameForm form) {
+  public TenantInfo updateUsername(final UUID tenantId, final UpdateUsernameForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -77,8 +77,7 @@ public class ProfileService {
   }
 
   @Transactional
-  public @NonNull TenantInfo updateDisplayName(
-      final @NonNull UUID tenantId, final @NonNull UpdateDisplayNameForm form) {
+  public TenantInfo updateDisplayName(final UUID tenantId, final UpdateDisplayNameForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -96,7 +95,7 @@ public class ProfileService {
   }
 
   @Transactional
-  public void changePassword(final @NonNull UUID tenantId, final @NonNull ChangePasswordForm form) {
+  public void changePassword(final UUID tenantId, final ChangePasswordForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -116,7 +115,7 @@ public class ProfileService {
   }
 
   @Transactional
-  public void deleteAccount(final @NonNull UUID tenantId) {
+  public void deleteAccount(final UUID tenantId) {
 
     final var tenantOpt = this.tenantRepository.findById(tenantId);
 
@@ -133,7 +132,7 @@ public class ProfileService {
     log.warn("User {} deleted account.", tenant.getUsername());
   }
 
-  public @NonNull TenantInfo getTenantInfo(final @NonNull UUID tenantId) {
+  public TenantInfo getTenantInfo(final UUID tenantId) {
 
     final var tenant =
         this.tenantRepository
@@ -144,8 +143,7 @@ public class ProfileService {
   }
 
   @Transactional
-  public @NonNull TenantInfo updateProfile(
-      final @NonNull UUID tenantId, final @NonNull UpdateProfileForm form) {
+  public TenantInfo updateProfile(final UUID tenantId, final UpdateProfileForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -162,7 +160,7 @@ public class ProfileService {
     return this.tenantMapper.toTenantInfo(saved);
   }
 
-  public @NonNull TenantPublicProfileDto getPublicProfile(final @NonNull String username) {
+  public TenantPublicProfileDto getPublicProfile(final String username) {
 
     final var tenant =
         this.tenantRepository
@@ -184,8 +182,7 @@ public class ProfileService {
         tenant.getProfileReadme());
   }
 
-  private static @NonNull String resolveAvatarUrl(
-      final @Nullable String storedUrl, final @NonNull String email) {
+  private static String resolveAvatarUrl(final @Nullable String storedUrl, final String email) {
 
     if (storedUrl != null && !storedUrl.isBlank()) {
       return storedUrl;

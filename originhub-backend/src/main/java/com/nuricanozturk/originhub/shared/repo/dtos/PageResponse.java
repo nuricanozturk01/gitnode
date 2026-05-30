@@ -16,8 +16,10 @@
 package com.nuricanozturk.originhub.shared.repo.dtos;
 
 import java.util.List;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 
+@NullMarked
 public record PageResponse<T>(
     List<T> content, int number, int size, long totalElements, int totalPages) {
 

@@ -16,6 +16,8 @@
 package com.nuricanozturk.originhub.shared.pr.events;
 
 import lombok.experimental.SuperBuilder;
+import org.jspecify.annotations.NullMarked;
 
 @SuperBuilder
+@NullMarked
 public class GithubPullRequestMigrationRequestedEvent extends PullRequestMigrationRequestedEvent {}

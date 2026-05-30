@@ -31,7 +31,7 @@ import com.nuricanozturk.originhub.task.repositories.BoardRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,18 +39,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class BoardService {
 
-  private final @NonNull BoardRepository boardRepository;
-  private final @NonNull BoardColumnRepository boardColumnRepository;
-  private final @NonNull ProjectService projectService;
-  private final @NonNull ProjectMapper projectMapper;
+  private final BoardRepository boardRepository;
+  private final BoardColumnRepository boardColumnRepository;
+  private final ProjectService projectService;
+  private final ProjectMapper projectMapper;
 
   @Transactional
-  public @NonNull BoardInfo createBoard(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull BoardForm form) {
+  public BoardInfo createBoard(
+      final String ownerUsername, final String projectCode, final BoardForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
 
@@ -63,10 +62,8 @@ public class BoardService {
     return this.toBoardInfo(saved);
   }
 
-  public @NonNull List<BoardInfo> getAllBoards(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @Nullable Tenant viewer) {
+  public List<BoardInfo> getAllBoards(
+      final String ownerUsername, final String projectCode, final @Nullable Tenant viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.boardRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
@@ -74,10 +71,10 @@ public class BoardService {
         .toList();
   }
 
-  public @NonNull BoardInfo getBoard(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull UUID boardId,
+  public BoardInfo getBoard(
+      final String ownerUsername,
+      final String projectCode,
+      final UUID boardId,
       final @Nullable Tenant viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
@@ -86,11 +83,11 @@ public class BoardService {
   }
 
   @Transactional
-  public @NonNull BoardInfo updateBoard(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull UUID boardId,
-      final @NonNull BoardUpdateForm form) {
+  public BoardInfo updateBoard(
+      final String ownerUsername,
+      final String projectCode,
+      final UUID boardId,
+      final BoardUpdateForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var board = this.findBoard(boardId, project.getId());
@@ -108,9 +105,7 @@ public class BoardService {
 
   @Transactional
   public void deleteBoard(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull UUID boardId) {
+      final String ownerUsername, final String projectCode, final UUID boardId) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var board = this.findBoard(boardId, project.getId());
@@ -118,11 +113,11 @@ public class BoardService {
   }
 
   @Transactional
-  public @NonNull BoardColumnInfo createColumn(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull UUID boardId,
-      final @NonNull BoardColumnForm form) {
+  public BoardColumnInfo createColumn(
+      final String ownerUsername,
+      final String projectCode,
+      final UUID boardId,
+      final BoardColumnForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var board = this.findBoard(boardId, project.getId());
@@ -137,12 +132,12 @@ public class BoardService {
   }
 
   @Transactional
-  public @NonNull BoardColumnInfo updateColumn(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull UUID boardId,
-      final @NonNull UUID columnId,
-      final @NonNull BoardColumnUpdateForm form) {
+  public BoardColumnInfo updateColumn(
+      final String ownerUsername,
+      final String projectCode,
+      final UUID boardId,
+      final UUID columnId,
+      final BoardColumnUpdateForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     this.findBoard(boardId, project.getId());
@@ -165,10 +160,10 @@ public class BoardService {
 
   @Transactional
   public void deleteColumn(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull UUID boardId,
-      final @NonNull UUID columnId) {
+      final String ownerUsername,
+      final String projectCode,
+      final UUID boardId,
+      final UUID columnId) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     this.findBoard(boardId, project.getId());
@@ -176,7 +171,7 @@ public class BoardService {
     this.boardColumnRepository.delete(column);
   }
 
-  private @NonNull BoardInfo toBoardInfo(final @NonNull Board board) {
+  private BoardInfo toBoardInfo(final Board board) {
     final var columns =
         this.boardColumnRepository.findAllByBoardIdOrderByPositionAsc(board.getId()).stream()
             .map(this.projectMapper::toBoardColumnInfo)
@@ -184,14 +179,13 @@ public class BoardService {
     return this.projectMapper.toBoardInfo(board, columns);
   }
 
-  private @NonNull Board findBoard(final @NonNull UUID boardId, final @NonNull UUID projectId) {
+  private Board findBoard(final UUID boardId, final UUID projectId) {
     return this.boardRepository
         .findByIdAndProjectId(boardId, projectId)
         .orElseThrow(() -> new ItemNotFoundException("Board not found"));
   }
 
-  private @NonNull BoardColumn findColumn(
-      final @NonNull UUID columnId, final @NonNull UUID boardId) {
+  private BoardColumn findColumn(final UUID columnId, final UUID boardId) {
     return this.boardColumnRepository
         .findByIdAndBoardId(columnId, boardId)
         .orElseThrow(() -> new ItemNotFoundException("Column not found"));

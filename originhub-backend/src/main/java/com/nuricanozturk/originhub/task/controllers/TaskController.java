@@ -31,7 +31,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -48,65 +48,66 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects/{owner}/{projectCode}/tasks")
 @RequiredArgsConstructor
+@NullMarked
 public class TaskController {
 
-  private final @NonNull TaskService taskService;
+  private final TaskService taskService;
 
   @PostMapping
-  public @NonNull ResponseEntity<TaskDetail> create(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @Valid @RequestBody final @NonNull TaskForm form) {
+  public ResponseEntity<TaskDetail> create(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @Valid @RequestBody final TaskForm form) {
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.taskService.create(owner, projectCode, form));
   }
 
   @GetMapping
-  public @NonNull ResponseEntity<List<TaskInfo>> getAll(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
+  public ResponseEntity<List<TaskInfo>> getAll(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
       @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
     return ResponseEntity.ok(this.taskService.getAll(owner, projectCode, viewer));
   }
 
   @GetMapping("/{taskCode}")
-  public @NonNull ResponseEntity<TaskDetail> get(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
+  public ResponseEntity<TaskDetail> get(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
       @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
     return ResponseEntity.ok(this.taskService.get(owner, projectCode, taskCode, viewer));
   }
 
   @PatchMapping("/{taskCode}")
-  public @NonNull ResponseEntity<TaskDetail> update(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
-      @Valid @RequestBody final @NonNull TaskUpdateForm form) {
+  public ResponseEntity<TaskDetail> update(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
+      @Valid @RequestBody final TaskUpdateForm form) {
 
     return ResponseEntity.ok(this.taskService.update(owner, projectCode, taskCode, form));
   }
 
   @DeleteMapping("/{taskCode}")
-  public @NonNull ResponseEntity<Void> delete(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode) {
+  public ResponseEntity<Void> delete(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode) {
 
     this.taskService.delete(owner, projectCode, taskCode);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{taskCode}/branch")
-  public @NonNull ResponseEntity<BranchInfo> createBranch(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
-      @Valid @RequestBody final @NonNull CreateBranchFromTaskForm form)
+  public ResponseEntity<BranchInfo> createBranch(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
+      @Valid @RequestBody final CreateBranchFromTaskForm form)
       throws IOException {
 
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -114,12 +115,12 @@ public class TaskController {
   }
 
   @PostMapping("/{taskCode}/subtasks/{subtaskId}/branch")
-  public @NonNull ResponseEntity<BranchInfo> createBranchForSubtask(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
-      @PathVariable final @NonNull UUID subtaskId,
-      @Valid @RequestBody final @NonNull CreateBranchFromTaskForm form)
+  public ResponseEntity<BranchInfo> createBranchForSubtask(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
+      @PathVariable final UUID subtaskId,
+      @Valid @RequestBody final CreateBranchFromTaskForm form)
       throws IOException {
 
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -128,34 +129,34 @@ public class TaskController {
   }
 
   @PostMapping("/{taskCode}/subtasks")
-  public @NonNull ResponseEntity<SubtaskInfo> createSubtask(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
-      @Valid @RequestBody final @NonNull SubtaskForm form) {
+  public ResponseEntity<SubtaskInfo> createSubtask(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
+      @Valid @RequestBody final SubtaskForm form) {
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.taskService.createSubtask(owner, projectCode, taskCode, form));
   }
 
   @PatchMapping("/{taskCode}/subtasks/{subtaskId}")
-  public @NonNull ResponseEntity<SubtaskInfo> updateSubtask(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
-      @PathVariable final @NonNull UUID subtaskId,
-      @Valid @RequestBody final @NonNull SubtaskUpdateForm form) {
+  public ResponseEntity<SubtaskInfo> updateSubtask(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
+      @PathVariable final UUID subtaskId,
+      @Valid @RequestBody final SubtaskUpdateForm form) {
 
     return ResponseEntity.ok(
         this.taskService.updateSubtask(owner, projectCode, taskCode, subtaskId, form));
   }
 
   @DeleteMapping("/{taskCode}/subtasks/{subtaskId}")
-  public @NonNull ResponseEntity<Void> deleteSubtask(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull String taskCode,
-      @PathVariable final @NonNull UUID subtaskId) {
+  public ResponseEntity<Void> deleteSubtask(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final String taskCode,
+      @PathVariable final UUID subtaskId) {
 
     this.taskService.deleteSubtask(owner, projectCode, taskCode, subtaskId);
     return ResponseEntity.noContent().build();

@@ -35,7 +35,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -45,26 +45,24 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class IssueService implements IssueQueryService {
 
   private static final int DEFAULT_PAGE_SIZE = 10;
   private static final String ERR_ISSUE_NOT_FOUND = "Issue #%d not found.";
   private static final String ERR_REPO_NOT_FOUND = "Repo not found.";
 
-  private final @NonNull IssueRepository issueRepository;
-  private final @NonNull IssueCommentRepository commentRepository;
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull IssueMapper issueMapper;
-  private final @NonNull TaskQueryPort taskQueryPort;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final IssueRepository issueRepository;
+  private final IssueCommentRepository commentRepository;
+  private final RepoRepository repoRepository;
+  private final TenantRepository tenantRepository;
+  private final IssueMapper issueMapper;
+  private final TaskQueryPort taskQueryPort;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
-  public @NonNull IssueDetail create(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull UUID authorId,
-      final @NonNull IssueForm form) {
+  public IssueDetail create(
+      final String owner, final String repoName, final UUID authorId, final IssueForm form) {
 
     final var repo =
         this.repoRepository
@@ -100,11 +98,8 @@ public class IssueService implements IssueQueryService {
     return this.issueMapper.toDetail(saved, 0);
   }
 
-  public @NonNull PageResponse<IssueInfo> getAll(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String status,
-      final int page) {
+  public PageResponse<IssueInfo> getAll(
+      final String owner, final String repoName, final String status, final int page) {
 
     final var repo =
         this.repoRepository
@@ -126,8 +121,7 @@ public class IssueService implements IssueQueryService {
             }));
   }
 
-  public @NonNull IssueDetail get(
-      final @NonNull String owner, final @NonNull String repoName, final int number) {
+  public IssueDetail get(final String owner, final String repoName, final int number) {
 
     final var repo =
         this.repoRepository
@@ -143,11 +137,8 @@ public class IssueService implements IssueQueryService {
     return this.issueMapper.toDetail(issue, commentCount);
   }
 
-  public @NonNull PageResponse<IssueCommentInfo> getComments(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final int number,
-      final int page) {
+  public PageResponse<IssueCommentInfo> getComments(
+      final String owner, final String repoName, final int number, final int page) {
 
     final var repo =
         this.repoRepository
@@ -167,12 +158,12 @@ public class IssueService implements IssueQueryService {
   }
 
   @Transactional
-  public @NonNull IssueDetail update(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+  public IssueDetail update(
+      final String owner,
+      final String repoName,
       final int number,
-      final @NonNull IssueUpdateForm form,
-      final @NonNull UUID requesterId) {
+      final IssueUpdateForm form,
+      final UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -208,7 +199,7 @@ public class IssueService implements IssueQueryService {
     return this.issueMapper.toDetail(saved, commentCount);
   }
 
-  private void setIssueStatuses(final @NonNull IssueUpdateForm form, final Issue issue) {
+  private void setIssueStatuses(final IssueUpdateForm form, final Issue issue) {
 
     if (form.getTitle() != null) {
       issue.setTitle(form.getTitle());
@@ -231,10 +222,7 @@ public class IssueService implements IssueQueryService {
 
   @Transactional
   public void delete(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final int number,
-      final @NonNull UUID requesterId) {
+      final String owner, final String repoName, final int number, final UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -253,12 +241,12 @@ public class IssueService implements IssueQueryService {
   }
 
   @Transactional
-  public @NonNull IssueCommentInfo addComment(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+  public IssueCommentInfo addComment(
+      final String owner,
+      final String repoName,
       final int number,
-      final @NonNull UUID authorId,
-      final @NonNull IssueCommentForm form) {
+      final UUID authorId,
+      final IssueCommentForm form) {
 
     final var repo =
         this.repoRepository
@@ -288,13 +276,13 @@ public class IssueService implements IssueQueryService {
   }
 
   @Transactional
-  public @NonNull IssueCommentInfo updateComment(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+  public IssueCommentInfo updateComment(
+      final String owner,
+      final String repoName,
       final int number,
-      final @NonNull UUID commentId,
-      final @NonNull IssueCommentUpdateForm form,
-      final @NonNull UUID requesterId) {
+      final UUID commentId,
+      final IssueCommentUpdateForm form,
+      final UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -318,11 +306,11 @@ public class IssueService implements IssueQueryService {
 
   @Transactional
   public void deleteComment(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+      final String owner,
+      final String repoName,
       final int number,
-      final @NonNull UUID commentId,
-      final @NonNull UUID requesterId) {
+      final UUID commentId,
+      final UUID requesterId) {
 
     final var repo =
         this.repoRepository
@@ -343,8 +331,8 @@ public class IssueService implements IssueQueryService {
     this.commentRepository.delete(comment);
   }
 
-  public @NonNull List<IssueLinkedTaskInfo> getLinkedTasks(
-      final @NonNull String owner, final @NonNull String repoName, final int number) {
+  public List<IssueLinkedTaskInfo> getLinkedTasks(
+      final String owner, final String repoName, final int number) {
 
     final var repo =
         this.repoRepository
@@ -370,16 +358,14 @@ public class IssueService implements IssueQueryService {
   }
 
   @Override
-  public Optional<IssueData> findById(final @NonNull UUID id) {
+  public Optional<IssueData> findById(final UUID id) {
     return this.issueRepository
         .findById(id)
         .map(i -> new IssueData(i.getId(), i.getNumber(), i.getTitle(), i.getStatus()));
   }
 
   private void assertCanModify(
-      final @NonNull UUID requesterId,
-      final @NonNull Tenant author,
-      final @NonNull String repoOwnerUsername) {
+      final UUID requesterId, final Tenant author, final String repoOwnerUsername) {
 
     if (requesterId.equals(author.getId())) {
       return;
@@ -394,11 +380,11 @@ public class IssueService implements IssueQueryService {
     }
   }
 
-  private boolean isAdmin(final @NonNull UUID tenantId) {
+  private boolean isAdmin(final UUID tenantId) {
     return this.tenantRepository.findById(tenantId).map(Tenant::isAdmin).orElse(false);
   }
 
-  private @NonNull String validateStatus(final @NonNull String status) {
+  private String validateStatus(final String status) {
     final var valid = Arrays.stream(IssueStatus.values()).map(Enum::name).toList();
     if (!valid.contains(status)) {
       throw new ErrorOccurredException("Invalid status: " + status + ". Valid: " + valid);

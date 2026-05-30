@@ -23,7 +23,7 @@ import com.nuricanozturk.originhub.snippet.services.SnippetCommentService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -41,16 +41,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/snippets/{snippetId}/comments")
 @RequiredArgsConstructor
+@NullMarked
 public class SnippetCommentController {
 
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull SnippetCommentService commentService;
+  private final JwtUtils jwtUtils;
+  private final SnippetCommentService commentService;
 
   @GetMapping
-  public @NonNull ResponseEntity<PageResponse<SnippetCommentInfo>> list(
+  public ResponseEntity<PageResponse<SnippetCommentInfo>> list(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
+      @PathVariable final UUID snippetId,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "10") final int size) {
 
@@ -59,10 +60,10 @@ public class SnippetCommentController {
   }
 
   @PostMapping
-  public @NonNull ResponseEntity<SnippetCommentInfo> add(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @Valid @RequestBody final @NonNull SnippetCommentForm form) {
+  public ResponseEntity<SnippetCommentInfo> add(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId,
+      @Valid @RequestBody final SnippetCommentForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -70,10 +71,10 @@ public class SnippetCommentController {
   }
 
   @DeleteMapping("/{commentId}")
-  public @NonNull ResponseEntity<Void> delete(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @PathVariable final @NonNull UUID commentId) {
+  public ResponseEntity<Void> delete(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId,
+      @PathVariable final UUID commentId) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     this.commentService.deleteComment(tenantId, snippetId, commentId);

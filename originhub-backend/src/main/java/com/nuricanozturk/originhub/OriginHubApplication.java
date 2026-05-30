@@ -17,11 +17,13 @@ package com.nuricanozturk.originhub;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @Slf4j
 @SpringBootApplication
+@NullMarked
 public class OriginHubApplication {
 
   @PostConstruct

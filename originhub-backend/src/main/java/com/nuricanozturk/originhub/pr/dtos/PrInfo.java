@@ -18,22 +18,23 @@ package com.nuricanozturk.originhub.pr.dtos;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public record PrInfo(
-    @NonNull UUID id,
+    UUID id,
     int number,
-    @NonNull String title,
-    @NonNull String status,
+    String title,
+    String status,
     boolean isDraft,
-    @NonNull AuthorInfo author,
+    AuthorInfo author,
     @Nullable AuthorInfo mergedBy,
-    @NonNull String sourceBranch,
-    @NonNull String targetBranch,
+    String sourceBranch,
+    String targetBranch,
     @Nullable String mergeSha,
     int commentCount,
-    @NonNull Instant createdAt,
-    @NonNull Instant updatedAt,
+    Instant createdAt,
+    Instant updatedAt,
     @Nullable Instant mergedAt,
     @Nullable Instant closedAt) {}

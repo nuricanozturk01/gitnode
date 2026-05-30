@@ -19,7 +19,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -38,16 +38,17 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@NullMarked
 public class SecurityConfig {
 
   private static final long MAX_AGE = 3600L;
 
-  private final @NonNull CustomOauth2SuccessHandler successHandler;
-  private final @NonNull JwtAuthenticationFilter jwtAuthenticationFilter;
-  private final @NonNull CustomAuthenticationEntryPoint authenticationEntryPoint;
+  private final CustomOauth2SuccessHandler successHandler;
+  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
   @Bean
-  public SecurityFilterChain doFilter(final @NonNull HttpSecurity http) {
+  public SecurityFilterChain doFilter(final HttpSecurity http) {
 
     return http.exceptionHandling(c -> c.authenticationEntryPoint(this.authenticationEntryPoint))
         .cors(this::cors)
@@ -103,12 +104,12 @@ public class SecurityConfig {
     auth.anyRequest().permitAll();
   }
 
-  private void cors(final @NonNull CorsConfigurer<HttpSecurity> corsConfigurer) {
+  private void cors(final CorsConfigurer<HttpSecurity> corsConfigurer) {
 
     corsConfigurer.configurationSource(this.corsConfigurationSource());
   }
 
-  private @NonNull CorsConfigurationSource corsConfigurationSource() {
+  private CorsConfigurationSource corsConfigurationSource() {
 
     final var configuration = new CorsConfiguration();
 

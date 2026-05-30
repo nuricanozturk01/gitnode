@@ -17,8 +17,10 @@ package com.nuricanozturk.originhub.auth.repositories;
 
 import com.nuricanozturk.originhub.auth.entities.Account;
 import java.util.UUID;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface AccountRepository extends JpaRepository<Account, UUID> {}

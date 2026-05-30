@@ -20,30 +20,30 @@ import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface TenantRepository extends JpaRepository<Tenant, UUID> {
 
   @Query("from Tenant t where t.username = :emailOrUsername or t.email = :emailOrUsername")
-  @NonNull Optional<Tenant> findByUsernameOrEmail(@NonNull String emailOrUsername);
+  Optional<Tenant> findByUsernameOrEmail(String emailOrUsername);
 
-  boolean existsByUsername(@NonNull String username);
+  boolean existsByUsername(String username);
 
-  boolean existsByEmail(@NonNull String email);
+  boolean existsByEmail(String email);
 
-  @NonNull Optional<Tenant> findByPasswordRecoveryCode(@NotNull String recoveryCode);
+  Optional<Tenant> findByPasswordRecoveryCode(@NotNull String recoveryCode);
 
   @Modifying
   @Query("update Tenant t set t.passwordRecoveryCode = :recoveryCode where t.id = :id")
-  void updatePasswordRecoveryCode(@NonNull UUID id, @NonNull String recoveryCode);
+  void updatePasswordRecoveryCode(UUID id, String recoveryCode);
 
-  Optional<Tenant> findByUsername(@NonNull String username);
+  Optional<Tenant> findByUsername(String username);
 
-  @NonNull List<Tenant> findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc(
-      @NonNull String prefix);
+  List<Tenant> findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc(String prefix);
 }

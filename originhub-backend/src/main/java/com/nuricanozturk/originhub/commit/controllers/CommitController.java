@@ -25,7 +25,7 @@ import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,17 +38,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/repos/{owner}/{repo}/commits")
 @RequiredArgsConstructor
+@NullMarked
 public class CommitController {
 
-  private final @NonNull CommitNonTxService commitNonTxService;
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull RepoService repoService;
+  private final CommitNonTxService commitNonTxService;
+  private final JwtUtils jwtUtils;
+  private final RepoService repoService;
 
   @GetMapping
-  public ResponseEntity<@NonNull PagedResult<@NonNull CommitInfo>> getCommits(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestParam(defaultValue = "master") final @NonNull String branch,
+  public ResponseEntity<PagedResult<CommitInfo>> getCommits(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestParam(defaultValue = "master") final String branch,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
@@ -61,10 +62,10 @@ public class CommitController {
   }
 
   @GetMapping("/{sha}")
-  public @NonNull ResponseEntity<@NonNull CommitDetail> getCommit(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String sha,
+  public ResponseEntity<CommitDetail> getCommit(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String sha,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
@@ -75,10 +76,10 @@ public class CommitController {
   }
 
   @GetMapping("/{sha}/diff")
-  public @NonNull ResponseEntity<@NonNull List<@NonNull FileDiff>> getCommitDiff(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String sha,
+  public ResponseEntity<List<FileDiff>> getCommitDiff(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String sha,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 

@@ -25,7 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ValidationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.HttpStatus;
@@ -46,15 +46,16 @@ import org.springframework.web.server.MissingRequestValueException;
 @Slf4j
 @RestControllerAdvice
 @RequiredArgsConstructor
+@NullMarked
 public class ErrorHandler {
 
-  private static final @NonNull String ERR_VALIDATION = "validationError";
-  private static final @NonNull String ERR_ERROR_OCCURRED = "errorOccurred";
-  private static final @NonNull String ERR_ILLEGAL_ARGUMENT = "Invalid method argument";
+  private static final String ERR_VALIDATION = "validationError";
+  private static final String ERR_ERROR_OCCURRED = "errorOccurred";
+  private static final String ERR_ILLEGAL_ARGUMENT = "Invalid method argument";
 
   @ExceptionHandler(MissingRequestValueException.class)
-  @NonNull ResponseEntity<String> handleException(
-      final @NonNull MissingRequestValueException ex, final @NonNull HttpServletRequest request) {
+  ResponseEntity<String> handleException(
+      final MissingRequestValueException ex, final HttpServletRequest request) {
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .contentType(MediaType.APPLICATION_JSON)
@@ -63,8 +64,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(Throwable.class)
   @Nullable ResponseEntity<Object> defaultExceptionHandler(
-      final @NonNull Throwable ex,
-      final @NonNull HttpServletRequest request,
+      final Throwable ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -72,7 +73,7 @@ public class ErrorHandler {
       return null;
     }
 
-    if (ex instanceof @NonNull final HttpClientErrorException exception) {
+    if (ex instanceof final HttpClientErrorException exception) {
       log.error(exception.getResponseBodyAsString());
     }
 
@@ -83,8 +84,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(AccessNotAllowedException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull AccessNotAllowedException ex,
-      final @NonNull HttpServletRequest request,
+      final AccessNotAllowedException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -100,8 +101,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(BadRequestException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull BadRequestException ex,
-      final @NonNull HttpServletRequest request,
+      final BadRequestException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -117,8 +118,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(ConversionFailedException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull ConversionFailedException ex,
-      final @NonNull HttpServletRequest request,
+      final ConversionFailedException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -134,8 +135,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(ErrorOccurredException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull ErrorOccurredException ex,
-      final @NonNull HttpServletRequest request,
+      final ErrorOccurredException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -153,9 +154,8 @@ public class ErrorHandler {
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)
-  @NonNull ResponseEntity<String> handleException(
-      final @NonNull HttpMessageNotReadableException ex,
-      final @NonNull HttpServletRequest request) {
+  ResponseEntity<String> handleException(
+      final HttpMessageNotReadableException ex, final HttpServletRequest request) {
 
     return ResponseEntity.status(HttpStatus.BAD_REQUEST)
         .contentType(MediaType.APPLICATION_JSON)
@@ -164,8 +164,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
   @Nullable ResponseEntity<Void> handleException(
-      final @NonNull HttpRequestMethodNotSupportedException ex,
-      final @NonNull HttpServletRequest request,
+      final HttpRequestMethodNotSupportedException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -181,8 +181,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
   @Nullable ResponseEntity<Void> handleException(
-      final @NonNull HttpMediaTypeNotAcceptableException ex,
-      final @NonNull HttpServletRequest request,
+      final HttpMediaTypeNotAcceptableException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -198,8 +198,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(ItemNotFoundException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull ItemNotFoundException ex,
-      final @NonNull HttpServletRequest request,
+      final ItemNotFoundException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -215,8 +215,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(TokenExpiredException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull TokenExpiredException ex,
-      final @NonNull HttpServletRequest request,
+      final TokenExpiredException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -233,7 +233,7 @@ public class ErrorHandler {
   @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
   @Nullable ResponseEntity<String> handleException(
       final org.springframework.web.servlet.resource.NoResourceFoundException ex,
-      final @NonNull HttpServletRequest request,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -249,8 +249,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
   @Nullable ResponseEntity<Void> handleException(
-      final @NonNull MethodArgumentNotValidException ex,
-      final @NonNull HttpServletRequest request,
+      final MethodArgumentNotValidException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -266,8 +266,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(MethodNotAllowedException.class)
   @Nullable ResponseEntity<Void> handleException(
-      final @NonNull MethodNotAllowedException ex,
-      final @NonNull HttpServletRequest request,
+      final MethodNotAllowedException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -283,8 +283,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(MissingServletRequestParameterException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull MissingServletRequestParameterException ex,
-      final @NonNull HttpServletRequest request,
+      final MissingServletRequestParameterException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -300,8 +300,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull HttpMediaTypeNotSupportedException ex,
-      final @NonNull HttpServletRequest request,
+      final HttpMediaTypeNotSupportedException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {
@@ -317,8 +317,8 @@ public class ErrorHandler {
 
   @ExceptionHandler(ValidationException.class)
   @Nullable ResponseEntity<String> handleException(
-      final @NonNull ValidationException ex,
-      final @NonNull HttpServletRequest request,
+      final ValidationException ex,
+      final HttpServletRequest request,
       final @Nullable HttpServletResponse response) {
 
     if (response == null) {

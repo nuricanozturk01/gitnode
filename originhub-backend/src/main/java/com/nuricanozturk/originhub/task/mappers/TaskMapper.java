@@ -24,16 +24,17 @@ import com.nuricanozturk.originhub.task.dtos.TaskDetail;
 import com.nuricanozturk.originhub.task.dtos.TaskInfo;
 import com.nuricanozturk.originhub.task.entities.Task;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@NullMarked
 public interface TaskMapper {
 
-  default @NonNull TaskInfo toInfo(
-      final @NonNull Task task, final int subtaskCount, final int completedSubtaskCount) {
+  default TaskInfo toInfo(
+      final Task task, final int subtaskCount, final int completedSubtaskCount) {
     return TaskInfo.builder()
         .id(task.getId())
         .code(task.getCode())
@@ -53,11 +54,11 @@ public interface TaskMapper {
         .build();
   }
 
-  default @NonNull TaskDetail toDetail(
-      final @NonNull Task task,
+  default TaskDetail toDetail(
+      final Task task,
       final @Nullable LinkedPrInfo linkedPr,
       final @Nullable LinkedIssueInfo linkedIssue,
-      final @NonNull List<SubtaskInfo> subtasks) {
+      final List<SubtaskInfo> subtasks) {
     return TaskDetail.builder()
         .id(task.getId())
         .code(task.getCode())

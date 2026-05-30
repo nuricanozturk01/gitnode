@@ -20,24 +20,25 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
+@NullMarked
 public record TaskDetail(
-    @NonNull UUID id,
-    @NonNull String code,
-    @NonNull String title,
+    UUID id,
+    String code,
+    String title,
     @Nullable String description,
-    @NonNull String status,
-    @NonNull String type,
+    String status,
+    String type,
     int position,
-    @NonNull UUID boardColumnId,
+    UUID boardColumnId,
     @Nullable AuthorInfo assignee,
     @Nullable String branchName,
     @Nullable UUID branchRepoId,
     @Nullable LinkedPrInfo linkedPr,
     @Nullable LinkedIssueInfo linkedIssue,
-    @NonNull List<SubtaskInfo> subtasks,
+    List<SubtaskInfo> subtasks,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

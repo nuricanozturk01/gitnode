@@ -35,19 +35,18 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @UtilityClass
+@NullMarked
 public class FileDiffParser {
 
   private static final long MAX_FILE_SIZE = 512 * 1024;
   private static final int MAX_LINES_PER_FILE = 500;
 
-  public static @NonNull FileDiff parseFileDiff(
-      final @NonNull Repository gitRepo,
-      final @NonNull DiffFormatter formatter,
-      final @NonNull DiffEntry entry) {
+  public static FileDiff parseFileDiff(
+      final Repository gitRepo, final DiffFormatter formatter, final DiffEntry entry) {
 
     try {
       if (isOversized(gitRepo, entry.getOldId()) || isOversized(gitRepo, entry.getNewId())) {
@@ -66,11 +65,11 @@ public class FileDiffParser {
     }
   }
 
-  private static @NonNull FileDiff buildFileDiff(
-      final @NonNull DiffEntry entry,
-      final @NonNull RawText oldRaw,
-      final @NonNull RawText newRaw,
-      final @NonNull List<Edit> editList) {
+  private static FileDiff buildFileDiff(
+      final DiffEntry entry,
+      final RawText oldRaw,
+      final RawText newRaw,
+      final List<Edit> editList) {
 
     final var hunks = new ArrayList<DiffHunk>();
     int additions = 0;
@@ -107,11 +106,8 @@ public class FileDiffParser {
         isTruncated);
   }
 
-  private static @NonNull HunkResult buildHunk(
-      final @NonNull Edit edit,
-      final @NonNull RawText oldRaw,
-      final @NonNull RawText newRaw,
-      final int totalLinesBefore) {
+  private static HunkResult buildHunk(
+      final Edit edit, final RawText oldRaw, final RawText newRaw, final int totalLinesBefore) {
 
     final var lines = new ArrayList<DiffLine>();
     int additions = 0;
@@ -144,8 +140,7 @@ public class FileDiffParser {
     return new HunkResult(lines, additions, deletions, totalLines - totalLinesBefore, truncated);
   }
 
-  private static @NonNull DiffHunk toHunk(
-      final @NonNull Edit edit, final @NonNull List<DiffLine> lines) {
+  private static DiffHunk toHunk(final Edit edit, final List<DiffLine> lines) {
 
     return new DiffHunk(
         edit.getBeginA() + 1,
@@ -162,7 +157,7 @@ public class FileDiffParser {
   }
 
   private static boolean isOversized(
-      final @NonNull Repository repo, final @Nullable AbbreviatedObjectId id) {
+      final Repository repo, final @Nullable AbbreviatedObjectId id) {
 
     if (id == null || id.name().startsWith("0000000")) {
       return false;
@@ -183,8 +178,8 @@ public class FileDiffParser {
     }
   }
 
-  private static @NonNull RawText loadRawText(
-      final @NonNull Repository repo, final @Nullable AbbreviatedObjectId id) throws IOException {
+  private static RawText loadRawText(final Repository repo, final @Nullable AbbreviatedObjectId id)
+      throws IOException {
 
     if (id == null || id.name().startsWith("0000000")) {
       return new RawText(new byte[0]);
@@ -207,8 +202,8 @@ public class FileDiffParser {
     }
   }
 
-  public static @NonNull AbstractTreeIterator prepareTreeParser(
-      final @NonNull Repository repo, final @NonNull ObjectId commitId) throws IOException {
+  public static AbstractTreeIterator prepareTreeParser(
+      final Repository repo, final ObjectId commitId) throws IOException {
 
     try (final var walk = new RevWalk(repo)) {
 

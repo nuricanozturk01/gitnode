@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.scheduling.annotation.Async;
@@ -21,6 +22,7 @@ import org.springframework.web.client.RestClient;
 @Component
 @RequiredArgsConstructor
 @SuppressWarnings("unchecked")
+@NullMarked
 public class PullRequestMigrationListener {
 
   private final PullRequestService prService;

@@ -24,7 +24,7 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,16 +40,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/repos/{owner}/{repo}/tags")
 @RequiredArgsConstructor
+@NullMarked
 public class TagController {
 
-  private final @NonNull TagNonTxService tagNonTxService;
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull RepoService repoService;
+  private final TagNonTxService tagNonTxService;
+  private final JwtUtils jwtUtils;
+  private final RepoService repoService;
 
   @GetMapping
-  public @NonNull ResponseEntity<List<TagInfo>> getAll(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<List<TagInfo>> getAll(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
@@ -59,10 +60,10 @@ public class TagController {
   }
 
   @GetMapping("/{tag}")
-  public @NonNull ResponseEntity<TagInfo> get(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String tag,
+  public ResponseEntity<TagInfo> get(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String tag,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
@@ -72,11 +73,11 @@ public class TagController {
   }
 
   @PostMapping
-  public @NonNull ResponseEntity<TagInfo> create(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull CreateTagForm form)
+  public ResponseEntity<TagInfo> create(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final CreateTagForm form)
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
@@ -86,11 +87,11 @@ public class TagController {
   }
 
   @DeleteMapping("/{tag}")
-  public @NonNull ResponseEntity<Void> delete(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String tag,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader)
+  public ResponseEntity<Void> delete(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String tag,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader)
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);

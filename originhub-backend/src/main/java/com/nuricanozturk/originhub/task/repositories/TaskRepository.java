@@ -19,16 +19,16 @@ import com.nuricanozturk.originhub.task.entities.Task;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
-  @NonNull
   @Query(
       """
       SELECT t FROM Task t
@@ -39,9 +39,8 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
       WHERE t.project.id = :projectId
       ORDER BY t.position ASC
       """)
-  List<Task> findAllByProjectIdOrderByPositionAsc(@NonNull UUID projectId);
+  List<Task> findAllByProjectIdOrderByPositionAsc(UUID projectId);
 
-  @NonNull
   @Query(
 """
       SELECT t FROM Task t
@@ -51,27 +50,25 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
       LEFT JOIN FETCH t.linkedPr
       WHERE t.project.id = :projectId AND t.code = :code
 """)
-  Optional<Task> findByProjectIdAndCode(@NonNull UUID projectId, @NonNull String code);
+  Optional<Task> findByProjectIdAndCode(UUID projectId, String code);
 
-  @NonNull Optional<Task> findByBranchRepoIdAndBranchName(
-      @NonNull UUID branchRepoId, @NonNull String branchName);
+  Optional<Task> findByBranchRepoIdAndBranchName(UUID branchRepoId, String branchName);
 
-  @NonNull
   @Query(
 """
       SELECT t FROM Task t
       JOIN FETCH t.project
       WHERE t.linkedIssueId = :issueId
 """)
-  List<Task> findByLinkedIssueId(@NonNull UUID issueId);
+  List<Task> findByLinkedIssueId(UUID issueId);
 
-  long countByProjectId(@NonNull UUID projectId);
+  long countByProjectId(UUID projectId);
 
   @Modifying
   @Query("UPDATE Task t SET t.subtaskSeq = t.subtaskSeq + 1 WHERE t.id = :taskId")
-  void incrementSubtaskSeq(@NonNull UUID taskId);
+  void incrementSubtaskSeq(UUID taskId);
 
   @Modifying
   @Query("UPDATE Task t SET t.linkedIssueId = null WHERE t.linkedIssueId = :issueId")
-  void clearLinkedIssueId(@NonNull UUID issueId);
+  void clearLinkedIssueId(UUID issueId);
 }

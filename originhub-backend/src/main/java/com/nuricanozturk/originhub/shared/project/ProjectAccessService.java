@@ -16,10 +16,10 @@
 package com.nuricanozturk.originhub.shared.project;
 
 import java.util.Optional;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public interface ProjectAccessService {
 
-  @NonNull Optional<ProjectSummary> findByOwnerAndCode(
-      @NonNull String ownerUsername, @NonNull String codePrefix);
+  Optional<ProjectSummary> findByOwnerAndCode(String ownerUsername, String codePrefix);
 }

@@ -15,11 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.errorhandling.exceptions;
 
-import org.jspecify.annotations.NonNull;
-
 public class ErrorOccurredException extends RuntimeException {
 
-  public ErrorOccurredException(final @NonNull String msg) {
+  public ErrorOccurredException(final String msg) {
 
     super(msg);
   }

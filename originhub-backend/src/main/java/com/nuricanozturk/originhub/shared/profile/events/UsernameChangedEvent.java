@@ -15,6 +15,4 @@
  */
 package com.nuricanozturk.originhub.shared.profile.events;
 
-import org.jspecify.annotations.NonNull;
-
-public record UsernameChangedEvent(@NonNull String oldUsername, @NonNull String newUsername) {}
+public record UsernameChangedEvent(String oldUsername, String newUsername) {}

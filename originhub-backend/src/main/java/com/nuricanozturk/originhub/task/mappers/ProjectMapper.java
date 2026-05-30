@@ -22,14 +22,15 @@ import com.nuricanozturk.originhub.task.entities.Board;
 import com.nuricanozturk.originhub.task.entities.BoardColumn;
 import com.nuricanozturk.originhub.task.entities.Project;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@NullMarked
 public interface ProjectMapper {
 
-  default @NonNull ProjectInfo toInfo(final @NonNull Project project, final long taskCount) {
+  default ProjectInfo toInfo(final Project project, final long taskCount) {
     return ProjectInfo.builder()
         .id(project.getId())
         .name(project.getName())
@@ -43,7 +44,7 @@ public interface ProjectMapper {
         .build();
   }
 
-  default @NonNull BoardColumnInfo toBoardColumnInfo(final @NonNull BoardColumn column) {
+  default BoardColumnInfo toBoardColumnInfo(final BoardColumn column) {
     return BoardColumnInfo.builder()
         .id(column.getId())
         .name(column.getName())
@@ -54,8 +55,7 @@ public interface ProjectMapper {
         .build();
   }
 
-  default @NonNull BoardInfo toBoardInfo(
-      final @NonNull Board board, final @NonNull List<BoardColumnInfo> columns) {
+  default BoardInfo toBoardInfo(final Board board, final List<BoardColumnInfo> columns) {
     return BoardInfo.builder()
         .id(board.getId())
         .name(board.getName())

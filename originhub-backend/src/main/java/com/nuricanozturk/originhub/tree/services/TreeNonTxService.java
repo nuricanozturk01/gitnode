@@ -50,22 +50,20 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.AndTreeFilter;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class TreeNonTxService {
 
-  private final @NonNull GitProvider gitProvider;
+  private final GitProvider gitProvider;
 
-  public @NonNull TreeResponse getTree(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String path)
+  public TreeResponse getTree(
+      final String owner, final String repoName, final String branch, final String path)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -84,11 +82,8 @@ public class TreeNonTxService {
     }
   }
 
-  public @NonNull BlobResponse getBlob(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String filePath)
+  public BlobResponse getBlob(
+      final String owner, final String repoName, final String branch, final String filePath)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -132,10 +127,7 @@ public class TreeNonTxService {
   }
 
   public byte[] getRawContent(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String filePath)
+      final String owner, final String repoName, final String branch, final String filePath)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -165,8 +157,7 @@ public class TreeNonTxService {
    * Ensures a branch or tag ref exists so a streaming ZIP response can return 404 before headers
    * are committed.
    */
-  public void assertBranchExists(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String branch)
+  public void assertBranchExists(final String owner, final String repoName, final String branch)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -181,10 +172,7 @@ public class TreeNonTxService {
    * memory. Call {@link #assertBranchExists} first so missing refs surface as 404.
    */
   public void writeBranchZip(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull OutputStream out)
+      final String owner, final String repoName, final String branch, final OutputStream out)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -219,8 +207,7 @@ public class TreeNonTxService {
     }
   }
 
-  private @Nullable Ref resolveRef(final @NonNull Repository gitRepo, final @NonNull String name)
-      throws IOException {
+  private @Nullable Ref resolveRef(final Repository gitRepo, final String name) throws IOException {
     final var branchRef = gitRepo.findRef(Constants.R_HEADS + name);
     if (branchRef != null) {
       return branchRef;
@@ -228,11 +215,8 @@ public class TreeNonTxService {
     return gitRepo.findRef(Constants.R_TAGS + name);
   }
 
-  private @NonNull List<TreeEntry> listTree(
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit headCommit,
-      final @NonNull String path)
-      throws IOException {
+  private List<TreeEntry> listTree(
+      final Repository gitRepo, final RevCommit headCommit, final String path) throws IOException {
 
     try (final var treeWalk = new TreeWalk(gitRepo)) {
       treeWalk.addTree(headCommit.getTree());
@@ -256,11 +240,11 @@ public class TreeNonTxService {
 
   @SuppressWarnings("java:S135")
   private void walkInTree(
-      final @NonNull TreeWalk treeWalk,
-      final @NonNull List<TreeEntry> entries,
-      final @NonNull String path,
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit headCommit)
+      final TreeWalk treeWalk,
+      final List<TreeEntry> entries,
+      final String path,
+      final Repository gitRepo,
+      final RevCommit headCommit)
       throws IOException {
 
     while (treeWalk.next()) {
@@ -290,11 +274,11 @@ public class TreeNonTxService {
   }
 
   private void addToTreeList(
-      final @NonNull TreeWalk treeWalk,
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit headCommit,
-      final @NonNull String entryPath,
-      final @NonNull List<TreeEntry> entries)
+      final TreeWalk treeWalk,
+      final Repository gitRepo,
+      final RevCommit headCommit,
+      final String entryPath,
+      final List<TreeEntry> entries)
       throws IOException {
 
     final var isTree = treeWalk.getFileMode(0) == FileMode.TREE;
@@ -316,7 +300,7 @@ public class TreeNonTxService {
             lastCommit != null ? lastCommit.getAuthorIdent().getWhenAsInstant() : null));
   }
 
-  private void processForNonEmptyPath(final TreeWalk treeWalk, final @NonNull String path)
+  private void processForNonEmptyPath(final TreeWalk treeWalk, final String path)
       throws IOException {
 
     treeWalk.setFilter(PathFilter.create(path));
@@ -341,9 +325,7 @@ public class TreeNonTxService {
   }
 
   private @Nullable RevCommit findLastCommitForPath(
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit startCommit,
-      final @NonNull String filePath)
+      final Repository gitRepo, final RevCommit startCommit, final String filePath)
       throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
@@ -357,14 +339,14 @@ public class TreeNonTxService {
     }
   }
 
-  public @NonNull BlobResponse updateFile(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String filePath,
-      final @NonNull byte[] newContent,
-      final @NonNull String commitMessage,
-      final @NonNull PersonIdent author)
+  public BlobResponse updateFile(
+      final String owner,
+      final String repoName,
+      final String branch,
+      final String filePath,
+      final byte[] newContent,
+      final String commitMessage,
+      final PersonIdent author)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName);

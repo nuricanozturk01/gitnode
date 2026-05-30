@@ -19,7 +19,7 @@ import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,27 +29,25 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface RepoRepository extends JpaRepository<Repo, UUID> {
 
-  @NonNull Optional<Repo> findByOwnerIdAndName(@NonNull UUID ownerId, @NonNull String name);
+  Optional<Repo> findByOwnerIdAndName(UUID ownerId, String name);
 
   @Query("SELECT r FROM Repo r JOIN FETCH r.owner WHERE r.id = :id")
-  @NonNull Optional<Repo> findByIdWithOwner(@Param("id") @NonNull UUID id);
+  Optional<Repo> findByIdWithOwner(@Param("id") UUID id);
 
-  @NonNull Optional<Repo> findByOwnerUsernameAndName(
-      @NonNull String repoOwner, @NonNull String repoName);
+  Optional<Repo> findByOwnerUsernameAndName(String repoOwner, String repoName);
 
-  @NonNull List<Repo> findAllByOwnerUsername(@NonNull String ownerUsername);
+  List<Repo> findAllByOwnerUsername(String ownerUsername);
 
-  @NonNull Page<Repo> findAllByOwnerUsername(
-      @NonNull String ownerUsername, @NonNull Pageable pageable);
+  Page<Repo> findAllByOwnerUsername(String ownerUsername, Pageable pageable);
 
-  @NonNull Page<Repo> findAllByOwnerUsernameAndIsPrivateFalse(
-      @NonNull String ownerUsername, @NonNull Pageable pageable);
+  Page<Repo> findAllByOwnerUsernameAndIsPrivateFalse(String ownerUsername, Pageable pageable);
 
-  boolean existsByOwnerUsernameAndName(@NonNull String ownerUsername, @NonNull String name);
+  boolean existsByOwnerUsernameAndName(String ownerUsername, String name);
 
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")
-  void updateDefaultBranch(@NonNull UUID repoId, @NonNull String branchName);
+  void updateDefaultBranch(UUID repoId, String branchName);
 }

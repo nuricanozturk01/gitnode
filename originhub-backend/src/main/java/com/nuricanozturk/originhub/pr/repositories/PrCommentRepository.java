@@ -18,16 +18,17 @@ package com.nuricanozturk.originhub.pr.repositories;
 import com.nuricanozturk.originhub.pr.entities.PullRequestComment;
 import java.util.List;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface PrCommentRepository extends JpaRepository<PullRequestComment, UUID> {
 
   @Query("select prc from PullRequestComment prc join fetch prc.author where prc.pr.id = :prId")
-  @NonNull List<PullRequestComment> findAllByPrIdOrderByCreatedAtAsc(@NonNull UUID prId);
+  List<PullRequestComment> findAllByPrIdOrderByCreatedAtAsc(UUID prId);
 
-  long countByPrId(@NonNull UUID prId);
+  long countByPrId(UUID prId);
 }

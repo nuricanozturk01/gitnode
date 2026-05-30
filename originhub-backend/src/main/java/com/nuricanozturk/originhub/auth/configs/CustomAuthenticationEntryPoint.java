@@ -19,7 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Map;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
@@ -28,15 +28,16 @@ import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
+@NullMarked
 public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @Override
   public void commence(
-      final @NonNull HttpServletRequest httpServletRequest,
-      final @NonNull HttpServletResponse httpServletResponse,
-      final @NonNull AuthenticationException authenticationException)
+      final HttpServletRequest httpServletRequest,
+      final HttpServletResponse httpServletResponse,
+      final AuthenticationException authenticationException)
       throws IOException {
 
     httpServletResponse.setContentType(MediaType.APPLICATION_JSON_VALUE);

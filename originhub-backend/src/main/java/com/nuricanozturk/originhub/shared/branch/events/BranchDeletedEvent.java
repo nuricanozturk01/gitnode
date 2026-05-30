@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.shared.branch.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record BranchDeletedEvent(@NonNull UUID repoId, @NonNull String branchName) {}
+@NullMarked
+public record BranchDeletedEvent(UUID repoId, String branchName) {}

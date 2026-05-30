@@ -18,9 +18,11 @@ package com.nuricanozturk.originhub.tree.configs;
 import jakarta.annotation.PostConstruct;
 import org.eclipse.jgit.api.ArchiveCommand;
 import org.eclipse.jgit.archive.ZipFormat;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@NullMarked
 public class JGitArchiveConfiguration {
 
   @PostConstruct

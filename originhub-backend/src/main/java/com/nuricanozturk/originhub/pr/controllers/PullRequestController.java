@@ -29,7 +29,7 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,18 +47,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/repos/{owner}/{repo}/pulls")
 @RequiredArgsConstructor
+@NullMarked
 public class PullRequestController {
 
-  private final @NonNull PullRequestService prService;
-  private final @NonNull JwtUtils tokenService;
-  private final @NonNull RepoService repoService;
+  private final PullRequestService prService;
+  private final JwtUtils tokenService;
+  private final RepoService repoService;
 
   @PostMapping
-  public @NonNull ResponseEntity<PrDetail> create(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull PrForm form)
+  public ResponseEntity<PrDetail> create(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final PrForm form)
       throws IOException {
 
     final var authorId = this.tokenService.extractUserId(authHeader);
@@ -68,12 +69,12 @@ public class PullRequestController {
   }
 
   @PatchMapping("/{number}")
-  public @NonNull ResponseEntity<PrDetail> update(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<PrDetail> update(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @PathVariable final int number,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull PrUpdateForm form) {
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final PrUpdateForm form) {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -82,11 +83,11 @@ public class PullRequestController {
   }
 
   @DeleteMapping("/{number}")
-  public @NonNull ResponseEntity<Void> close(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<Void> close(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @PathVariable final int number,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -95,12 +96,12 @@ public class PullRequestController {
   }
 
   @PostMapping("/{number}/merge")
-  public @NonNull ResponseEntity<PrDetail> merge(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<PrDetail> merge(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @PathVariable final int number,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull PrMergeForm form)
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final PrMergeForm form)
       throws IOException {
 
     final var mergedById = this.tokenService.extractUserId(authHeader);
@@ -110,10 +111,10 @@ public class PullRequestController {
   }
 
   @GetMapping
-  public @NonNull ResponseEntity<List<PrInfo>> getAll(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestParam(defaultValue = "OPEN") final @NonNull String status,
+  public ResponseEntity<List<PrInfo>> getAll(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestParam(defaultValue = "OPEN") final String status,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
@@ -123,9 +124,9 @@ public class PullRequestController {
   }
 
   @GetMapping("/{number}")
-  public @NonNull ResponseEntity<PrDetail> get(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<PrDetail> get(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @PathVariable final int number,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
 
@@ -136,9 +137,9 @@ public class PullRequestController {
   }
 
   @GetMapping("/{number}/commits")
-  public @NonNull ResponseEntity<List<CommitInfo>> getPrCommits(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<List<CommitInfo>> getPrCommits(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @PathVariable final int number,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
@@ -150,9 +151,9 @@ public class PullRequestController {
   }
 
   @GetMapping("/{number}/diff")
-  public @NonNull ResponseEntity<List<FileDiff>> getPrDiff(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
+  public ResponseEntity<List<FileDiff>> getPrDiff(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
       @PathVariable final int number,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {

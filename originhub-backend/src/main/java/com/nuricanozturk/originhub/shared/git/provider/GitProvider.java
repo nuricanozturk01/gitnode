@@ -29,13 +29,14 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.TreeFormatter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@NullMarked
 public class GitProvider {
 
   private static final String DEFAULT_BRANCH = "main";
@@ -43,8 +44,7 @@ public class GitProvider {
   @Value("${originhub.git.repo-root}")
   private String repoRoot;
 
-  public @NonNull Repository open(final @NonNull String owner, final @NonNull String repoName)
-      throws IOException {
+  public Repository open(final String owner, final String repoName) throws IOException {
 
     final var path = Path.of(this.repoRoot, owner, repoName + ".git");
 
@@ -56,7 +56,7 @@ public class GitProvider {
     return new FileRepositoryBuilder().setGitDir(path.toFile()).readEnvironment().build();
   }
 
-  public void createJGitRepo(final @NonNull Path repoPath) throws IOException {
+  public void createJGitRepo(final Path repoPath) throws IOException {
 
     try (final var repo = new FileRepositoryBuilder().setGitDir(repoPath.toFile()).build()) {
 
@@ -69,7 +69,7 @@ public class GitProvider {
     }
   }
 
-  private void createInitialCommit(final @NonNull Repository repo) throws IOException {
+  private void createInitialCommit(final Repository repo) throws IOException {
 
     try (final var inserter = repo.newObjectInserter()) {
 

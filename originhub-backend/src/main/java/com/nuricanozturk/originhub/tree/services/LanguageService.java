@@ -31,7 +31,6 @@ import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 
@@ -42,11 +41,10 @@ public class LanguageService {
 
   private static final String PLAINTEXT = "plaintext";
 
-  private final @NonNull GitProvider gitProvider;
+  private final GitProvider gitProvider;
 
-  public @NonNull List<LanguageStats> detectLanguages(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String branch)
-      throws IOException {
+  public List<LanguageStats> detectLanguages(
+      final String owner, final String repoName, final String branch) throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
 
@@ -72,9 +70,7 @@ public class LanguageService {
   }
 
   private void aggregateLanguages(
-      final @NonNull TreeWalk treeWalk,
-      final @NonNull Repository gitRepo,
-      final @NonNull Map<String, Long> langBytes)
+      final TreeWalk treeWalk, final Repository gitRepo, final Map<String, Long> langBytes)
       throws IOException {
 
     while (treeWalk.next()) {
@@ -94,7 +90,7 @@ public class LanguageService {
     }
   }
 
-  private @NonNull List<LanguageStats> toSortedStats(final @NonNull Map<String, Long> langBytes) {
+  private List<LanguageStats> toSortedStats(final Map<String, Long> langBytes) {
 
     final long totalBytes = langBytes.values().stream().mapToLong(Long::longValue).sum();
 

@@ -20,20 +20,21 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
+@NullMarked
 public record SnippetInfo(
-    @NonNull UUID id,
-    @NonNull String title,
+    UUID id,
+    String title,
     @Nullable String description,
-    @NonNull Visibility visibility,
-    @NonNull SnippetOwnerInfo owner,
+    Visibility visibility,
+    SnippetOwnerInfo owner,
     int fileCount,
     int commentCount,
     int forkCount,
     @Nullable SnippetForkedFromInfo forkedFrom,
-    @NonNull List<SnippetLinkedRepoInfo> repos,
+    List<SnippetLinkedRepoInfo> repos,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

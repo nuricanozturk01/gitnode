@@ -34,11 +34,13 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.NullMarked;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "project_webhooks")
+@NullMarked
 public class ProjectWebhook {
 
   @Id

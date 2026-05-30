@@ -19,14 +19,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
+@NullMarked
 public record BoardInfo(
-    @NonNull UUID id,
-    @NonNull String name,
+    UUID id,
+    String name,
     int position,
-    @NonNull List<BoardColumnInfo> columns,
+    List<BoardColumnInfo> columns,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

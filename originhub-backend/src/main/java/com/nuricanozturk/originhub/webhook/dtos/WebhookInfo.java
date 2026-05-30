@@ -19,8 +19,10 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Builder;
+import org.jspecify.annotations.NullMarked;
 
 @Builder
+@NullMarked
 public record WebhookInfo(
     UUID id,
     String url,

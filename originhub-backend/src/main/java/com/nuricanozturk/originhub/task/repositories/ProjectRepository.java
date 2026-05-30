@@ -19,7 +19,7 @@ import com.nuricanozturk.originhub.task.entities.Project;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -29,43 +29,40 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
-  @NonNull List<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(@NonNull String ownerUsername);
+  List<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(String ownerUsername);
 
-  @NonNull List<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
-      @NonNull String ownerUsername);
+  List<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(String ownerUsername);
 
-  @NonNull Page<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(
-      @NonNull String ownerUsername, @NonNull Pageable pageable);
+  Page<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(String ownerUsername, Pageable pageable);
 
-  @NonNull Page<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
-      @NonNull String ownerUsername, @NonNull Pageable pageable);
+  Page<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
+      String ownerUsername, Pageable pageable);
 
-  @NonNull Optional<Project> findByOwnerUsernameAndCodePrefix(
-      @NonNull String ownerUsername, @NonNull String codePrefix);
+  Optional<Project> findByOwnerUsernameAndCodePrefix(String ownerUsername, String codePrefix);
 
-  @NonNull Optional<Project> findByOwnerUsernameAndCodePrefixAndIsPublicTrue(
-      @NonNull String ownerUsername, @NonNull String codePrefix);
+  Optional<Project> findByOwnerUsernameAndCodePrefixAndIsPublicTrue(
+      String ownerUsername, String codePrefix);
 
-  boolean existsByOwnerIdAndName(@NonNull UUID ownerId, @NonNull String name);
+  boolean existsByOwnerIdAndName(UUID ownerId, String name);
 
-  boolean existsByOwnerIdAndCodePrefix(@NonNull UUID ownerId, @NonNull String codePrefix);
+  boolean existsByOwnerIdAndCodePrefix(UUID ownerId, String codePrefix);
 
   @Modifying
   @Query("UPDATE Project p SET p.taskSeq = p.taskSeq + 1 WHERE p.id = :projectId")
-  void incrementTaskSeq(@NonNull UUID projectId);
+  void incrementTaskSeq(UUID projectId);
 
   @Query(
       "SELECT DISTINCT p FROM Project p JOIN p.repos r WHERE r.id = :repoId ORDER BY p.createdAt DESC")
-  @NonNull List<Project> findAllByRepoId(@NonNull UUID repoId);
+  List<Project> findAllByRepoId(UUID repoId);
 
   @Query(
       value =
           "SELECT DISTINCT p FROM Project p JOIN p.repos r WHERE r.id = :repoId ORDER BY p.createdAt DESC",
       countQuery = "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repos r WHERE r.id = :repoId")
-  @NonNull Page<Project> findAllByRepoId(
-      @Param("repoId") @NonNull UUID repoId, @NonNull Pageable pageable);
+  Page<Project> findAllByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Query(
       value =
@@ -74,8 +71,7 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
       countQuery =
           "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repos r "
               + "WHERE r.id = :repoId AND p.isPublic = true")
-  @NonNull Page<Project> findPublicByRepoId(
-      @Param("repoId") @NonNull UUID repoId, @NonNull Pageable pageable);
+  Page<Project> findPublicByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Query(
       value =
@@ -87,8 +83,8 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
           "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repos r "
               + "WHERE r.id = :repoId "
               + "AND (p.isPublic = true OR p.owner.username = :viewerUsername)")
-  @NonNull Page<Project> findVisibleByRepoId(
-      @Param("repoId") @NonNull UUID repoId,
-      @Param("viewerUsername") @NonNull String viewerUsername,
-      @NonNull Pageable pageable);
+  Page<Project> findVisibleByRepoId(
+      @Param("repoId") UUID repoId,
+      @Param("viewerUsername") String viewerUsername,
+      Pageable pageable);
 }

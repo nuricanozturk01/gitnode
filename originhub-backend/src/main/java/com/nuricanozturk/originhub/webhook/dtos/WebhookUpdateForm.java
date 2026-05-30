@@ -16,5 +16,7 @@
 package com.nuricanozturk.originhub.webhook.dtos;
 
 import java.util.Set;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public record WebhookUpdateForm(String url, String secret, Boolean enabled, Set<String> events) {}

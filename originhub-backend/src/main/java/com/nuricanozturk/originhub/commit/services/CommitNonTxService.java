@@ -48,25 +48,26 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class CommitNonTxService {
 
   private static final int MAX_FILES_PER_COMMIT = 50;
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
 
-  private final @NonNull GitProvider gitProvider;
-  private final @NonNull TenantRepository tenantRepository;
+  private final GitProvider gitProvider;
+  private final TenantRepository tenantRepository;
 
-  public @NonNull PagedResult<@NonNull CommitInfo> getCommits(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
+  public PagedResult<CommitInfo> getCommits(
+      final String owner,
+      final String repoName,
+      final String branch,
       final int page,
       final int size)
       throws IOException {
@@ -83,8 +84,7 @@ public class CommitNonTxService {
     }
   }
 
-  public @NonNull CommitDetail getCommit(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String sha)
+  public CommitDetail getCommit(final String owner, final String repoName, final String sha)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -99,8 +99,7 @@ public class CommitNonTxService {
     }
   }
 
-  public @NonNull List<@NonNull FileDiff> getCommitDiff(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String sha)
+  public List<FileDiff> getCommitDiff(final String owner, final String repoName, final String sha)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -115,7 +114,7 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull PagedResult<@NonNull CommitInfo> getCommits(
+  private PagedResult<CommitInfo> getCommits(
       final Repository gitRepo, final Ref branchRef, final int page, final int size)
       throws IOException {
 
@@ -148,16 +147,16 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull List<@NonNull FileDiff> getFileDiffs(
-      final @NonNull Repository gitRepo, final @NonNull ObjectId objectId) throws IOException {
+  private List<FileDiff> getFileDiffs(final Repository gitRepo, final ObjectId objectId)
+      throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
       return this.getFileDiffs(gitRepo, walk.parseCommit(objectId));
     }
   }
 
-  private @NonNull List<@NonNull FileDiff> getFileDiffs(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) throws IOException {
+  private List<FileDiff> getFileDiffs(final Repository gitRepo, final RevCommit commit)
+      throws IOException {
 
     try (final var formatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
       formatter.setRepository(gitRepo);
@@ -188,8 +187,8 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull AbstractTreeIterator getParent(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) throws IOException {
+  private AbstractTreeIterator getParent(final Repository gitRepo, final RevCommit commit)
+      throws IOException {
 
     if (commit.getParentCount() == 0) { // No Commit
       return new EmptyTreeIterator();
@@ -202,8 +201,8 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull CommitDetail getCommitDetail(
-      final @NonNull Repository gitRepo, final @NonNull ObjectId objectId) throws IOException {
+  private CommitDetail getCommitDetail(final Repository gitRepo, final ObjectId objectId)
+      throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
 
@@ -235,8 +234,7 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull CommitInfo toCommitInfo(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) {
+  private CommitInfo toCommitInfo(final Repository gitRepo, final RevCommit commit) {
 
     try {
       final var stats = this.computeCommitStatsLightweight(gitRepo, commit);
@@ -277,7 +275,7 @@ public class CommitNonTxService {
     return desc.isEmpty() ? null : desc;
   }
 
-  private @NonNull AuthorInfo resolveAuthor(final @NonNull RevCommit commit) {
+  private AuthorInfo resolveAuthor(final RevCommit commit) {
 
     final var ident = commit.getAuthorIdent();
 
@@ -287,20 +285,19 @@ public class CommitNonTxService {
         .orElse(new AuthorInfo(ident.getName(), ident.getEmailAddress(), null, null));
   }
 
-  private @NonNull AuthorInfo toAuthorInfo(
-      final @NonNull Tenant tenant, final @NonNull PersonIdent ident) {
+  private AuthorInfo toAuthorInfo(final Tenant tenant, final PersonIdent ident) {
 
     return new AuthorInfo(
         ident.getName(), ident.getEmailAddress(), tenant.getUsername(), tenant.getAvatarUrl());
   }
 
-  private @NonNull <T> PagedResult<T> getEmptyPage(final int page, final int size) {
+  private <T> PagedResult<T> getEmptyPage(final int page, final int size) {
 
     return new PagedResult<>(List.of(), page, size, 0, 0, false, false);
   }
 
-  private @NonNull CommitStats computeCommitStatsLightweight(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) throws IOException {
+  private CommitStats computeCommitStatsLightweight(
+      final Repository gitRepo, final RevCommit commit) throws IOException {
 
     try (final var formatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
       formatter.setRepository(gitRepo);

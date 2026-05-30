@@ -26,7 +26,7 @@ import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
@@ -35,14 +35,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class PrHeadBranchCleanupListener {
 
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull BranchProtocolService branchProtocolService;
+  private final RepoRepository repoRepository;
+  private final BranchProtocolService branchProtocolService;
 
   @Async
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void onPullRequestStatusChanged(final @NonNull PullRequestStatusChangedEvent event) {
+  public void onPullRequestStatusChanged(final PullRequestStatusChangedEvent event) {
 
     final var status = event.newStatus();
     final var isMerged = PrStatus.MERGED.name().equals(status);
@@ -79,7 +80,7 @@ public class PrHeadBranchCleanupListener {
       final String ownerUsername,
       final String repoName,
       final String source,
-      final @NonNull UUID prId,
+      final UUID prId,
       final String status) {
 
     try {

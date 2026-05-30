@@ -53,7 +53,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -62,26 +62,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class TaskService {
 
-  private final @NonNull TaskRepository taskRepository;
-  private final @NonNull SubtaskRepository subtaskRepository;
-  private final @NonNull BoardColumnRepository boardColumnRepository;
-  private final @NonNull ProjectRepository projectRepository;
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull PrRepository prRepository;
-  private final @NonNull IssueQueryService issueQueryService;
-  private final @NonNull ProjectService projectService;
-  private final @NonNull TaskMapper taskMapper;
-  private final @NonNull BranchProtocolService branchProtocolService;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final TaskRepository taskRepository;
+  private final SubtaskRepository subtaskRepository;
+  private final BoardColumnRepository boardColumnRepository;
+  private final ProjectRepository projectRepository;
+  private final RepoRepository repoRepository;
+  private final TenantRepository tenantRepository;
+  private final PrRepository prRepository;
+  private final IssueQueryService issueQueryService;
+  private final ProjectService projectService;
+  private final TaskMapper taskMapper;
+  private final BranchProtocolService branchProtocolService;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
-  public @NonNull TaskDetail create(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull TaskForm form) {
+  public TaskDetail create(
+      final String ownerUsername, final String projectCode, final TaskForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
 
@@ -132,10 +131,8 @@ public class TaskService {
     return this.toDetail(saved);
   }
 
-  public @NonNull List<TaskInfo> getAll(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @Nullable Tenant viewer) {
+  public List<TaskInfo> getAll(
+      final String ownerUsername, final String projectCode, final @Nullable Tenant viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.taskRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
@@ -149,10 +146,10 @@ public class TaskService {
         .toList();
   }
 
-  public @NonNull TaskDetail get(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
+  public TaskDetail get(
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
       final @Nullable Tenant viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
@@ -160,11 +157,11 @@ public class TaskService {
   }
 
   @Transactional
-  public @NonNull TaskDetail update(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
-      final @NonNull TaskUpdateForm form) {
+  public TaskDetail update(
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
+      final TaskUpdateForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
@@ -177,12 +174,12 @@ public class TaskService {
     return this.toDetail(saved);
   }
 
-  private void applyTaskUpdates(final @NonNull Task task, final @NonNull TaskUpdateForm form) {
+  private void applyTaskUpdates(final Task task, final TaskUpdateForm form) {
     this.applyScalarUpdates(task, form);
     this.applyRelationUpdates(task, form);
   }
 
-  private void applyScalarUpdates(final @NonNull Task task, final @NonNull TaskUpdateForm form) {
+  private void applyScalarUpdates(final Task task, final TaskUpdateForm form) {
     if (form.getTitle() != null) {
       task.setTitle(form.getTitle());
     }
@@ -201,7 +198,7 @@ public class TaskService {
     }
   }
 
-  private void applyRelationUpdates(final @NonNull Task task, final @NonNull TaskUpdateForm form) {
+  private void applyRelationUpdates(final Task task, final TaskUpdateForm form) {
     if (form.getBoardColumnId() != null) {
       final var column =
           this.boardColumnRepository
@@ -229,10 +226,7 @@ public class TaskService {
   }
 
   @Transactional
-  public void delete(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode) {
+  public void delete(final String ownerUsername, final String projectCode, final String taskCode) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
@@ -242,11 +236,11 @@ public class TaskService {
   }
 
   @Transactional
-  public @NonNull BranchInfo createBranch(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
-      final @NonNull CreateBranchFromTaskForm form)
+  public BranchInfo createBranch(
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
+      final CreateBranchFromTaskForm form)
       throws IOException {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
@@ -277,11 +271,11 @@ public class TaskService {
   }
 
   @Transactional
-  public @NonNull SubtaskInfo createSubtask(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
-      final @NonNull SubtaskForm form) {
+  public SubtaskInfo createSubtask(
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
+      final SubtaskForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
@@ -304,12 +298,12 @@ public class TaskService {
   }
 
   @Transactional
-  public @NonNull SubtaskInfo updateSubtask(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
-      final @NonNull UUID subtaskId,
-      final @NonNull SubtaskUpdateForm form) {
+  public SubtaskInfo updateSubtask(
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
+      final UUID subtaskId,
+      final SubtaskUpdateForm form) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
@@ -335,12 +329,12 @@ public class TaskService {
   }
 
   @Transactional
-  public @NonNull BranchInfo createBranchForSubtask(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
-      final @NonNull UUID subtaskId,
-      final @NonNull CreateBranchFromTaskForm form)
+  public BranchInfo createBranchForSubtask(
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
+      final UUID subtaskId,
+      final CreateBranchFromTaskForm form)
       throws IOException {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
@@ -374,10 +368,10 @@ public class TaskService {
 
   @Transactional
   public void deleteSubtask(
-      final @NonNull String ownerUsername,
-      final @NonNull String projectCode,
-      final @NonNull String taskCode,
-      final @NonNull UUID subtaskId) {
+      final String ownerUsername,
+      final String projectCode,
+      final String taskCode,
+      final UUID subtaskId) {
 
     final var project = this.projectService.findProject(ownerUsername, projectCode);
     final var task = this.findTask(project.getId(), taskCode);
@@ -386,8 +380,7 @@ public class TaskService {
   }
 
   @Transactional
-  public void linkPullRequest(
-      final @NonNull UUID repoId, final @NonNull String sourceBranch, final @NonNull UUID prId) {
+  public void linkPullRequest(final UUID repoId, final String sourceBranch, final UUID prId) {
 
     final var pr =
         this.prRepository
@@ -419,9 +412,7 @@ public class TaskService {
 
   @Transactional
   public void updateTaskStatusForPr(
-      final @NonNull UUID repoId,
-      final @NonNull String sourceBranch,
-      final @NonNull String prStatus) {
+      final UUID repoId, final String sourceBranch, final String prStatus) {
 
     if (!"MERGED".equals(prStatus)) {
       return;
@@ -448,7 +439,7 @@ public class TaskService {
             });
   }
 
-  private @NonNull TaskDetail toDetail(final @NonNull Task task) {
+  private TaskDetail toDetail(final Task task) {
     final var subtasks =
         this.subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId()).stream()
             .map(this::toSubtaskInfo)
@@ -460,7 +451,7 @@ public class TaskService {
         subtasks);
   }
 
-  private @NonNull SubtaskInfo toSubtaskInfo(final @NonNull Subtask subtask) {
+  private SubtaskInfo toSubtaskInfo(final Subtask subtask) {
     return SubtaskInfo.builder()
         .id(subtask.getId())
         .code(subtask.getCode())
@@ -507,8 +498,7 @@ public class TaskService {
         .orElse(null);
   }
 
-  private @NonNull BranchInfo createBranch(
-      final @NonNull String branchName, final @NonNull CreateBranchFromTaskForm form)
+  private BranchInfo createBranch(final String branchName, final CreateBranchFromTaskForm form)
       throws IOException {
 
     final var branchForm = new BranchForm();
@@ -518,19 +508,19 @@ public class TaskService {
     return this.branchProtocolService.create(form.getRepoOwner(), form.getRepoName(), branchForm);
   }
 
-  private @NonNull Task findTask(final @NonNull UUID projectId, final @NonNull String taskCode) {
+  private Task findTask(final UUID projectId, final String taskCode) {
     return this.taskRepository
         .findByProjectIdAndCode(projectId, taskCode)
         .orElseThrow(() -> new ItemNotFoundException("Task not found: " + taskCode));
   }
 
-  private @NonNull Subtask findSubtask(final @NonNull UUID subtaskId, final @NonNull UUID taskId) {
+  private Subtask findSubtask(final UUID subtaskId, final UUID taskId) {
     return this.subtaskRepository
         .findByIdAndTaskId(subtaskId, taskId)
         .orElseThrow(() -> new ItemNotFoundException("Subtask not found"));
   }
 
-  private @NonNull String validateStatus(final @NonNull String status) {
+  private String validateStatus(final String status) {
     final var valid = Arrays.stream(TaskStatus.values()).map(Enum::name).toList();
     if (!valid.contains(status)) {
       throw new ErrorOccurredException("Invalid status: " + status + ". Valid: " + valid);
@@ -538,7 +528,7 @@ public class TaskService {
     return status;
   }
 
-  private @NonNull String validateType(final @NonNull String type) {
+  private String validateType(final String type) {
     final var valid = Arrays.stream(TaskType.values()).map(Enum::name).toList();
     if (!valid.contains(type)) {
       throw new ErrorOccurredException("Invalid type: " + type + ". Valid: " + valid);
@@ -547,7 +537,7 @@ public class TaskService {
   }
 
   @SuppressWarnings("java:S5850")
-  private @NonNull String slugify(final @NonNull String input) {
+  private String slugify(final String input) {
     return input
         .toLowerCase()
         .replaceAll("[^a-z0-9-]", "-")

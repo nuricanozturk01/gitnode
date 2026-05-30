@@ -1,12 +1,9 @@
 package com.nuricanozturk.originhub.issue.dtos;
 
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 @Builder
+@NullMarked
 public record IssueLinkedTaskInfo(
-    @NonNull String taskCode,
-    @NonNull String taskTitle,
-    @NonNull String taskStatus,
-    @NonNull String projectCode,
-    @NonNull String projectName) {}
+    String taskCode, String taskTitle, String taskStatus, String projectCode, String projectName) {}

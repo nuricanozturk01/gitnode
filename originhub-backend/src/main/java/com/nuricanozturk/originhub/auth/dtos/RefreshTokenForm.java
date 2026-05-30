@@ -19,11 +19,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.NullMarked;
 
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@NullMarked
 public class RefreshTokenForm {
   private String refreshToken;
 }

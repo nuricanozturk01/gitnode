@@ -20,9 +20,11 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.jspecify.annotations.NullMarked;
 
 @AllArgsConstructor
 @Getter
+@NullMarked
 public class TenantInfo implements Serializable {
   private final UUID id;
   private final String username;

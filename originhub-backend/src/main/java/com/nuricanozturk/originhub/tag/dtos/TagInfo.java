@@ -17,9 +17,11 @@ package com.nuricanozturk.originhub.tag.dtos;
 
 import java.time.Instant;
 import lombok.Builder;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
+@NullMarked
 public record TagInfo(
     String name,
     String commitSha,

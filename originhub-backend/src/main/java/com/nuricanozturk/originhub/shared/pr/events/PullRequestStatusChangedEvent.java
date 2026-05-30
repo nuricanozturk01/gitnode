@@ -16,11 +16,8 @@
 package com.nuricanozturk.originhub.shared.pr.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public record PullRequestStatusChangedEvent(
-    @NonNull UUID prId,
-    @NonNull UUID repoId,
-    @NonNull String sourceBranch,
-    @NonNull String targetBranch,
-    @NonNull String newStatus) {}
+    UUID prId, UUID repoId, String sourceBranch, String targetBranch, String newStatus) {}

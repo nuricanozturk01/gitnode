@@ -32,11 +32,13 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.jspecify.annotations.NullMarked;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "ssh_keys")
+@NullMarked
 public class SshKey {
 
   @Id

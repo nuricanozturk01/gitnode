@@ -16,7 +16,9 @@
 package com.nuricanozturk.originhub.tag.dtos;
 
 import java.util.UUID;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public record TenantReleaseInfo(
     UUID id, String username, @Nullable String displayName, @Nullable String avatarUrl) {}

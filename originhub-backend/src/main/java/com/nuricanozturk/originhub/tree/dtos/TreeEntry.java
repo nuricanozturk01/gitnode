@@ -16,7 +16,9 @@
 package com.nuricanozturk.originhub.tree.dtos;
 
 import java.time.Instant;
+import org.jspecify.annotations.NullMarked;
 
+@NullMarked
 public record TreeEntry(
     String name,
     String path,

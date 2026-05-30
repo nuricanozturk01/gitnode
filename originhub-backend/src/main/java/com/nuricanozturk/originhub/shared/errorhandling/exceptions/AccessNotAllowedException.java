@@ -15,11 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.errorhandling.exceptions;
 
-import org.jspecify.annotations.NonNull;
-
 public class AccessNotAllowedException extends RuntimeException {
 
-  public AccessNotAllowedException(final @NonNull String msg) {
+  public AccessNotAllowedException(final String msg) {
 
     super(msg);
   }

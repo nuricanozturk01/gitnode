@@ -20,7 +20,7 @@ import com.nuricanozturk.originhub.snippet.entities.Visibility;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,48 +30,44 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
 
   @Query("SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.id = :id")
-  @NonNull Optional<Snippet> findByIdWithOwner(@Param("id") @NonNull UUID id);
+  Optional<Snippet> findByIdWithOwner(@Param("id") UUID id);
 
-  @NonNull Page<Snippet> findAllByVisibility(
-      @NonNull Visibility visibility, @NonNull Pageable pageable);
+  Page<Snippet> findAllByVisibility(Visibility visibility, Pageable pageable);
 
   @Query(
       "SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND ("
           + "LOWER(s.title) LIKE LOWER(CONCAT('%', :q, '%')) OR "
           + "LOWER(s.description) LIKE LOWER(CONCAT('%', :q, '%')))")
-  @NonNull Page<Snippet> searchPublic(@Param("q") @NonNull String q, @NonNull Pageable pageable);
+  Page<Snippet> searchPublic(@Param("q") String q, Pageable pageable);
 
   @Query("SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND s.owner.username = :username")
-  @NonNull Page<Snippet> findPublicByOwnerUsername(
-      @Param("username") @NonNull String username, @NonNull Pageable pageable);
+  Page<Snippet> findPublicByOwnerUsername(@Param("username") String username, Pageable pageable);
 
-  @NonNull List<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(@NonNull UUID ownerId);
+  List<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId);
 
-  @NonNull Page<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(
-      @NonNull UUID ownerId, @NonNull Pageable pageable);
+  Page<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId, Pageable pageable);
 
   @Query(
       "SELECT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId AND s.visibility = 'PUBLIC'")
-  @NonNull Page<Snippet> findPublicByRepoId(
-      @Param("repoId") @NonNull UUID repoId, @NonNull Pageable pageable);
+  Page<Snippet> findPublicByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Query("SELECT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId")
-  @NonNull Page<Snippet> findAllByRepoId(
-      @Param("repoId") @NonNull UUID repoId, @NonNull Pageable pageable);
+  Page<Snippet> findAllByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Modifying
   @Query("UPDATE Snippet s SET s.forkCount = s.forkCount + 1 WHERE s.id = :id")
-  void incrementForkCount(@Param("id") @NonNull UUID id);
+  void incrementForkCount(@Param("id") UUID id);
 
   @Modifying
   @Query("UPDATE Snippet s SET s.commentCount = s.commentCount + 1 WHERE s.id = :id")
-  void incrementCommentCount(@Param("id") @NonNull UUID id);
+  void incrementCommentCount(@Param("id") UUID id);
 
   @Modifying
   @Query(
       "UPDATE Snippet s SET s.commentCount = s.commentCount - 1 WHERE s.id = :id AND s.commentCount > 0")
-  void decrementCommentCount(@Param("id") @NonNull UUID id);
+  void decrementCommentCount(@Param("id") UUID id);
 }

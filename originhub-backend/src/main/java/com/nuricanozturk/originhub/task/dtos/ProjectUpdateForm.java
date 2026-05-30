@@ -19,10 +19,12 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.NullMarked;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@NullMarked
 public class ProjectUpdateForm {
 
   @Size(min = 1, max = 120)

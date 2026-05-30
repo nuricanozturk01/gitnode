@@ -19,14 +19,15 @@ import com.nuricanozturk.originhub.task.entities.Board;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface BoardRepository extends JpaRepository<Board, UUID> {
 
-  @NonNull List<Board> findAllByProjectIdOrderByPositionAsc(@NonNull UUID projectId);
+  List<Board> findAllByProjectIdOrderByPositionAsc(UUID projectId);
 
-  @NonNull Optional<Board> findByIdAndProjectId(@NonNull UUID id, @NonNull UUID projectId);
+  Optional<Board> findByIdAndProjectId(UUID id, UUID projectId);
 }

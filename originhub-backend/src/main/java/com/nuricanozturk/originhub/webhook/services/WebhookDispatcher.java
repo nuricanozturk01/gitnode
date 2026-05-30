@@ -52,6 +52,7 @@ import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
@@ -63,6 +64,7 @@ import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
+@NullMarked
 public class WebhookDispatcher {
 
   private final WebhookRepository webhookRepository;

@@ -31,6 +31,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
+import org.jspecify.annotations.NullMarked;
 
 @Data
 @Entity
@@ -38,6 +39,7 @@ import org.hibernate.annotations.CreationTimestamp;
 @NoArgsConstructor
 @ToString(exclude = {"tenant"})
 @EqualsAndHashCode(exclude = {"tenant"})
+@NullMarked
 public class Account {
 
   @Id

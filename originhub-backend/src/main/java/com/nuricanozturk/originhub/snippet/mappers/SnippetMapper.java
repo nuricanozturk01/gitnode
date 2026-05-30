@@ -34,15 +34,16 @@ import com.nuricanozturk.originhub.snippet.entities.SnippetRevisionFile;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@NullMarked
 public interface SnippetMapper {
 
-  default @NonNull SnippetOwnerInfo toOwnerInfo(final @NonNull Tenant tenant) {
+  default SnippetOwnerInfo toOwnerInfo(final Tenant tenant) {
     return SnippetOwnerInfo.builder()
         .id(tenant.getId())
         .username(tenant.getUsername())
@@ -50,8 +51,7 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetFileInfo toFileInfo(
-      final @NonNull SnippetFile file, final @NonNull String content) {
+  default SnippetFileInfo toFileInfo(final SnippetFile file, final String content) {
     return SnippetFileInfo.builder()
         .id(file.getId())
         .filename(file.getFilename())
@@ -60,8 +60,7 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetFileInfo toRevisionFileInfo(
-      final @NonNull SnippetRevisionFile file, final @NonNull String content) {
+  default SnippetFileInfo toRevisionFileInfo(final SnippetRevisionFile file, final String content) {
     return SnippetFileInfo.builder()
         .id(file.getId())
         .filename(file.getFilename())
@@ -81,11 +80,11 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetLinkedRepoInfo toLinkedRepoInfo(final @NonNull Repo repo) {
+  default SnippetLinkedRepoInfo toLinkedRepoInfo(final Repo repo) {
     return SnippetLinkedRepoInfo.builder().id(repo.getId()).name(repo.getName()).build();
   }
 
-  default @NonNull SnippetInfo toInfo(final @NonNull Snippet snippet) {
+  default SnippetInfo toInfo(final Snippet snippet) {
     return SnippetInfo.builder()
         .id(snippet.getId())
         .title(snippet.getTitle())
@@ -102,8 +101,7 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetDetail toDetail(
-      final @NonNull Snippet snippet, final @NonNull Map<UUID, String> contentByFileId) {
+  default SnippetDetail toDetail(final Snippet snippet, final Map<UUID, String> contentByFileId) {
     final var files =
         snippet.getFiles().stream()
             .map(f -> this.toFileInfo(f, contentByFileId.getOrDefault(f.getId(), "")))
@@ -126,7 +124,7 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetCommentInfo toCommentInfo(final @NonNull SnippetComment comment) {
+  default SnippetCommentInfo toCommentInfo(final SnippetComment comment) {
     return SnippetCommentInfo.builder()
         .id(comment.getId())
         .body(comment.getBody())
@@ -136,7 +134,7 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetRevisionInfo toRevisionInfo(final @NonNull SnippetRevision revision) {
+  default SnippetRevisionInfo toRevisionInfo(final SnippetRevision revision) {
     return SnippetRevisionInfo.builder()
         .id(revision.getId())
         .summary(revision.getSummary())
@@ -145,10 +143,10 @@ public interface SnippetMapper {
         .build();
   }
 
-  default @NonNull SnippetRevisionDetail toRevisionDetail(
-      final @NonNull SnippetRevision revision,
-      final @NonNull List<SnippetRevisionFile> files,
-      final @NonNull Map<UUID, String> contentByFileId) {
+  default SnippetRevisionDetail toRevisionDetail(
+      final SnippetRevision revision,
+      final List<SnippetRevisionFile> files,
+      final Map<UUID, String> contentByFileId) {
     return SnippetRevisionDetail.builder()
         .id(revision.getId())
         .title(revision.getTitle())

@@ -19,15 +19,15 @@ import com.nuricanozturk.originhub.task.entities.Subtask;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface SubtaskRepository extends JpaRepository<Subtask, UUID> {
 
-  @NonNull
   @Query(
       """
       SELECT s FROM Subtask s
@@ -36,14 +36,13 @@ public interface SubtaskRepository extends JpaRepository<Subtask, UUID> {
       WHERE s.task.id = :taskId
       ORDER BY s.position ASC
       """)
-  List<Subtask> findAllByTaskIdOrderByPositionAsc(@NonNull UUID taskId);
+  List<Subtask> findAllByTaskIdOrderByPositionAsc(UUID taskId);
 
-  @NonNull Optional<Subtask> findByIdAndTaskId(@NonNull UUID id, @NonNull UUID taskId);
+  Optional<Subtask> findByIdAndTaskId(UUID id, UUID taskId);
 
-  int countByTaskId(@NonNull UUID taskId);
+  int countByTaskId(UUID taskId);
 
-  int countByTaskIdAndStatus(@NonNull UUID taskId, @NonNull String status);
+  int countByTaskIdAndStatus(UUID taskId, String status);
 
-  @NonNull Optional<Subtask> findByBranchRepoIdAndBranchName(
-      @NonNull UUID branchRepoId, @NonNull String branchName);
+  Optional<Subtask> findByBranchRepoIdAndBranchName(UUID branchRepoId, String branchName);
 }

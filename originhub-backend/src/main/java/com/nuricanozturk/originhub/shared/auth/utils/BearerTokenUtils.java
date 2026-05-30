@@ -16,10 +16,11 @@
 package com.nuricanozturk.originhub.shared.auth.utils;
 
 import lombok.experimental.UtilityClass;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.util.StringUtils;
 
 @UtilityClass
+@NullMarked
 public class BearerTokenUtils {
 
   private static final String BEARER_PREFIX = "Bearer ";
@@ -28,7 +29,7 @@ public class BearerTokenUtils {
     return StringUtils.hasText(token) && token.startsWith(BEARER_PREFIX);
   }
 
-  public static String getJwtToken(final @NonNull String authorizationHeader) {
+  public static String getJwtToken(final String authorizationHeader) {
     return authorizationHeader.substring(BEARER_PREFIX.length());
   }
 }

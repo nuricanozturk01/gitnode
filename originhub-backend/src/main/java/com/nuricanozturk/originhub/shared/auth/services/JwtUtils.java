@@ -31,13 +31,14 @@ import java.util.function.Function;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
+@NullMarked
 public class JwtUtils {
 
   public static final int ACCESS_EXPIRATION_SECONDS = 24 * 3600;
@@ -57,7 +58,7 @@ public class JwtUtils {
     return Keys.hmacShaKeyFor(keyBytes);
   }
 
-  public @NonNull UUID extractUserId(final @NonNull String token) {
+  public UUID extractUserId(final String token) {
 
     try {
       final var jwt = isBearerToken(token) ? getJwtToken(token) : token;
@@ -67,13 +68,12 @@ public class JwtUtils {
     }
   }
 
-  private @NonNull <T> T extractClaim(
-      final @NonNull String token, final @NonNull Function<Claims, T> claimsResolver) {
+  private <T> T extractClaim(final String token, final Function<Claims, T> claimsResolver) {
     final Claims claims = this.extractAllClaims(token);
     return claimsResolver.apply(claims);
   }
 
-  private Claims extractAllClaims(final @NonNull String token) {
+  private Claims extractAllClaims(final String token) {
     return Jwts.parser()
         .verifyWith(this.getSigningKey())
         .build()
@@ -81,24 +81,22 @@ public class JwtUtils {
         .getPayload();
   }
 
-  public @NonNull String generateToken(final @NonNull Tenant user) {
+  public String generateToken(final Tenant user) {
 
     final var claims = Map.of(EMAIL, user.getEmail());
 
     return this.createToken(claims, user.getId(), ACCESS_EXPIRATION_HOUR);
   }
 
-  public @NonNull String generateRefreshToken(final @NonNull Tenant user) {
+  public String generateRefreshToken(final Tenant user) {
 
     final var claims = Map.of(EMAIL, user.getEmail());
 
     return this.createToken(claims, user.getId(), REFRESH_EXPIRATION_HOUR);
   }
 
-  private @NonNull String createToken(
-      final @NonNull Map<String, String> claims,
-      final @NonNull UUID subject,
-      final int expiration) {
+  private String createToken(
+      final Map<String, String> claims, final UUID subject, final int expiration) {
 
     final var currentTimeMillis = System.currentTimeMillis();
 
@@ -120,7 +118,7 @@ public class JwtUtils {
         .compact();
   }
 
-  public void verifyAndValidate(final @NonNull String jwt) {
+  public void verifyAndValidate(final String jwt) {
 
     try {
       Jwts.parser().verifyWith(this.getSigningKey()).build().parseSignedClaims(jwt);

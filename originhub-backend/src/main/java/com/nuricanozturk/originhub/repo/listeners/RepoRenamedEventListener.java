@@ -20,29 +20,29 @@ import com.nuricanozturk.originhub.shared.repo.events.RepoRenamedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class RepoRenamedEventListener {
 
-  private final @NonNull RepoStorageService repoStorageService;
-  private final @NonNull RepoService repoService;
+  private final RepoStorageService repoStorageService;
+  private final RepoService repoService;
 
   @Async
   @EventListener
-  public void onRepoNameChanged(final @NonNull RepoRenamedEvent event) {
+  public void onRepoNameChanged(final RepoRenamedEvent event) {
 
     this.repoStorageService.renameRepo(event.repoOwner(), event.oldRepoName(), event.newRepoName());
   }
 
   @Async
   @EventListener
-  public void onRepoRenameIOExceptionOccurred(
-      final @NonNull RepoRenameRollbackRequstedEvent event) {
+  public void onRepoRenameIOExceptionOccurred(final RepoRenameRollbackRequstedEvent event) {
 
     this.repoService.rollbackRepoName(event.owner(), event.oldRepoName(), event.newRepoName());
   }

@@ -27,7 +27,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,88 +44,89 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects/{owner}/{projectCode}/boards")
 @RequiredArgsConstructor
+@NullMarked
 public class BoardController {
 
-  private final @NonNull BoardService boardService;
+  private final BoardService boardService;
 
   @PostMapping
-  public @NonNull ResponseEntity<BoardInfo> createBoard(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @Valid @RequestBody final @NonNull BoardForm form) {
+  public ResponseEntity<BoardInfo> createBoard(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @Valid @RequestBody final BoardForm form) {
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.boardService.createBoard(owner, projectCode, form));
   }
 
   @GetMapping
-  public @NonNull ResponseEntity<List<BoardInfo>> getAllBoards(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
+  public ResponseEntity<List<BoardInfo>> getAllBoards(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
       @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
     return ResponseEntity.ok(this.boardService.getAllBoards(owner, projectCode, viewer));
   }
 
   @GetMapping("/{boardId}")
-  public @NonNull ResponseEntity<BoardInfo> getBoard(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId,
+  public ResponseEntity<BoardInfo> getBoard(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final UUID boardId,
       @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
     return ResponseEntity.ok(this.boardService.getBoard(owner, projectCode, boardId, viewer));
   }
 
   @PatchMapping("/{boardId}")
-  public @NonNull ResponseEntity<BoardInfo> updateBoard(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId,
-      @Valid @RequestBody final @NonNull BoardUpdateForm form) {
+  public ResponseEntity<BoardInfo> updateBoard(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final UUID boardId,
+      @Valid @RequestBody final BoardUpdateForm form) {
 
     return ResponseEntity.ok(this.boardService.updateBoard(owner, projectCode, boardId, form));
   }
 
   @DeleteMapping("/{boardId}")
-  public @NonNull ResponseEntity<Void> deleteBoard(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId) {
+  public ResponseEntity<Void> deleteBoard(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final UUID boardId) {
 
     this.boardService.deleteBoard(owner, projectCode, boardId);
     return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/{boardId}/columns")
-  public @NonNull ResponseEntity<BoardColumnInfo> createColumn(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId,
-      @Valid @RequestBody final @NonNull BoardColumnForm form) {
+  public ResponseEntity<BoardColumnInfo> createColumn(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final UUID boardId,
+      @Valid @RequestBody final BoardColumnForm form) {
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.boardService.createColumn(owner, projectCode, boardId, form));
   }
 
   @PatchMapping("/{boardId}/columns/{columnId}")
-  public @NonNull ResponseEntity<BoardColumnInfo> updateColumn(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId,
-      @PathVariable final @NonNull UUID columnId,
-      @Valid @RequestBody final @NonNull BoardColumnUpdateForm form) {
+  public ResponseEntity<BoardColumnInfo> updateColumn(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final UUID boardId,
+      @PathVariable final UUID columnId,
+      @Valid @RequestBody final BoardColumnUpdateForm form) {
 
     return ResponseEntity.ok(
         this.boardService.updateColumn(owner, projectCode, boardId, columnId, form));
   }
 
   @DeleteMapping("/{boardId}/columns/{columnId}")
-  public @NonNull ResponseEntity<Void> deleteColumn(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String projectCode,
-      @PathVariable final @NonNull UUID boardId,
-      @PathVariable final @NonNull UUID columnId) {
+  public ResponseEntity<Void> deleteColumn(
+      @PathVariable final String owner,
+      @PathVariable final String projectCode,
+      @PathVariable final UUID boardId,
+      @PathVariable final UUID columnId) {
 
     this.boardService.deleteColumn(owner, projectCode, boardId, columnId);
     return ResponseEntity.noContent().build();

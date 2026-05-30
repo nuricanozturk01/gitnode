@@ -23,7 +23,7 @@ import com.nuricanozturk.originhub.shared.repo.events.RepoRenamedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -42,16 +42,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/repo")
 @RequiredArgsConstructor
+@NullMarked
 public class RepoController {
 
-  private final @NonNull JwtUtils tokenService;
-  private final @NonNull RepoService repoService;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final JwtUtils tokenService;
+  private final RepoService repoService;
+  private final ApplicationEventPublisher eventPublisher;
 
   @PostMapping
-  public @NonNull ResponseEntity<RepoInfo> create(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      final @NonNull @Valid @RequestBody RepoForm repoForm) {
+  public ResponseEntity<RepoInfo> create(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody RepoForm repoForm) {
 
     final var tenantId = this.tokenService.extractUserId(authHeader);
 
@@ -61,7 +62,7 @@ public class RepoController {
   }
 
   @GetMapping("/{owner}/{repo}")
-  public @NonNull ResponseEntity<RepoInfo> getRepo(
+  public ResponseEntity<RepoInfo> getRepo(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
@@ -73,7 +74,7 @@ public class RepoController {
   }
 
   @GetMapping("/{owner}")
-  public @NonNull ResponseEntity<PageResponse<RepoInfo>> listUserRepos(
+  public ResponseEntity<PageResponse<RepoInfo>> listUserRepos(
       @PathVariable final String owner,
       @PageableDefault final Pageable pageable,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
@@ -84,8 +85,8 @@ public class RepoController {
   }
 
   @DeleteMapping("/{owner}/{repo}")
-  public @NonNull ResponseEntity<Void> delete(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+  public ResponseEntity<Void> delete(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo) {
 
@@ -97,8 +98,8 @@ public class RepoController {
   }
 
   @PatchMapping("/{owner}/{repo}")
-  public @NonNull ResponseEntity<RepoInfo> update(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+  public ResponseEntity<RepoInfo> update(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
       @Valid @RequestBody final RepoForm form) {

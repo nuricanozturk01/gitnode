@@ -20,15 +20,16 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @UtilityClass
+@NullMarked
 public class LanguageExtensionUtils {
 
-  private static final @NonNull Map<@NonNull String, @NonNull String> FILENAME_LANGUAGE_MAP;
-  private static final @NonNull Map<@NonNull String, @NonNull String> EXTENSION_LANGUAGE_MAP;
-  private static final @NonNull String DEFAULT_LANGUAGE = "plaintext";
+  private static final Map<String, String> FILENAME_LANGUAGE_MAP;
+  private static final Map<String, String> EXTENSION_LANGUAGE_MAP;
+  private static final String DEFAULT_LANGUAGE = "plaintext";
 
   static {
     final HashMap<String, String> fn = new HashMap<>();
@@ -222,7 +223,7 @@ public class LanguageExtensionUtils {
     EXTENSION_LANGUAGE_MAP = Collections.unmodifiableMap(ext);
   }
 
-  public static @NonNull String detectLanguage(final @Nullable String fileName) {
+  public static String detectLanguage(final @Nullable String fileName) {
 
     if (fileName == null) {
       return DEFAULT_LANGUAGE;

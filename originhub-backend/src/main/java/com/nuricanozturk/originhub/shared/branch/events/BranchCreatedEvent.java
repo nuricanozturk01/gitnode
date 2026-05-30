@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.shared.branch.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record BranchCreatedEvent(@NonNull UUID repoId, @NonNull String branchName) {}
+@NullMarked
+public record BranchCreatedEvent(UUID repoId, String branchName) {}

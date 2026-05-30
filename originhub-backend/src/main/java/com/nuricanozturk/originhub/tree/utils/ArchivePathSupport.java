@@ -17,9 +17,10 @@ package com.nuricanozturk.originhub.tree.utils;
 
 import java.util.Set;
 import lombok.experimental.UtilityClass;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 @UtilityClass
+@NullMarked
 public final class ArchivePathSupport {
 
   private static final char MIN_PRINTABLE_ASCII = 0x20;
@@ -29,27 +30,27 @@ public final class ArchivePathSupport {
   private static final String SINGLE_DASH = "-";
   private static final String FALLBACK_NAME = "archive";
 
-  public static @NonNull String attachmentFileName(
-      final @NonNull String owner, final @NonNull String repo, final @NonNull String branch) {
+  public static String attachmentFileName(
+      final String owner, final String repo, final String branch) {
 
     return sanitizePathToken(owner + SINGLE_DASH + repo + SINGLE_DASH + branch) + ".zip";
   }
 
   /** Root folder inside the ZIP (GitHub-style single top-level directory). */
-  public static @NonNull String archiveTreePrefix(
-      final @NonNull String owner, final @NonNull String repo, final @NonNull String branch) {
+  public static String archiveTreePrefix(
+      final String owner, final String repo, final String branch) {
 
     return sanitizePathToken(owner + SINGLE_DASH + repo + SINGLE_DASH + branch) + "/";
   }
 
-  static @NonNull String sanitizePathToken(final @NonNull String raw) {
+  static String sanitizePathToken(final String raw) {
     final var replaced = replaceInvalidChars(raw);
     final var collapsed = collapseDoubleDashes(replaced);
     final var stripped = collapsed.strip();
     return stripped.isEmpty() ? FALLBACK_NAME : stripped;
   }
 
-  private static @NonNull String replaceInvalidChars(final @NonNull String raw) {
+  private static String replaceInvalidChars(final String raw) {
     final var sb = new StringBuilder(raw.length());
     for (int i = 0; i < raw.length(); i++) {
       sb.append(isInvalidChar(raw.charAt(i)) ? '-' : raw.charAt(i));
@@ -61,7 +62,7 @@ public final class ArchivePathSupport {
     return c < MIN_PRINTABLE_ASCII || INVALID_CHARS.contains(c);
   }
 
-  private static @NonNull String collapseDoubleDashes(final @NonNull String s) {
+  private static String collapseDoubleDashes(final String s) {
     var result = s;
     while (result.contains(DOUBLE_DASH)) {
       result = result.replace(DOUBLE_DASH, SINGLE_DASH);

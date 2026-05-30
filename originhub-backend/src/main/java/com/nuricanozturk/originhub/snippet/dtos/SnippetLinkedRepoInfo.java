@@ -17,7 +17,8 @@ package com.nuricanozturk.originhub.snippet.dtos;
 
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
 @Builder
-public record SnippetLinkedRepoInfo(@NonNull UUID id, @NonNull String name) {}
+@NullMarked
+public record SnippetLinkedRepoInfo(UUID id, String name) {}

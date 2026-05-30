@@ -37,13 +37,14 @@ import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerSession;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@NullMarked
 public class OriginHubSshServer {
 
   private static final byte EC_POINT_UNCOMPRESSED_PREFIX = 0x04;
@@ -53,8 +54,8 @@ public class OriginHubSshServer {
   private static final AttributeRepository.AttributeKey<Tenant> TENANT_KEY =
       new AttributeRepository.AttributeKey<>();
 
-  private final @NonNull SshKeyService sshKeyService;
-  private final @NonNull RepoRepository repoRepository;
+  private final SshKeyService sshKeyService;
+  private final RepoRepository repoRepository;
 
   @Value("${originhub.ssh.port:2222}")
   private int sshPort;
@@ -96,7 +97,7 @@ public class OriginHubSshServer {
     }
   }
 
-  private @NonNull PublickeyAuthenticator buildPublicKeyAuthenticator() {
+  private PublickeyAuthenticator buildPublicKeyAuthenticator() {
     return (username, key, session) -> {
       try {
         final var wireBytes = toSshWireFormat(key);
@@ -114,7 +115,7 @@ public class OriginHubSshServer {
     };
   }
 
-  private static byte @NonNull [] toSshWireFormat(final @NonNull PublicKey key) throws IOException {
+  private static byte[] toSshWireFormat(final PublicKey key) throws IOException {
 
     final var baos = new ByteArrayOutputStream();
 
@@ -150,7 +151,7 @@ public class OriginHubSshServer {
     return baos.toByteArray();
   }
 
-  private static @NonNull String resolveCurveName(final @NonNull ECPublicKey key) {
+  private static String resolveCurveName(final ECPublicKey key) {
 
     final var bitLength = key.getParams().getCurve().getField().getFieldSize();
 
@@ -162,7 +163,7 @@ public class OriginHubSshServer {
     };
   }
 
-  private static byte @NonNull [] toUnsignedBytes(final byte @NonNull [] bytes) {
+  private static byte[] toUnsignedBytes(final byte[] bytes) {
 
     if (bytes.length > 1 && bytes[0] == 0) {
       final var result = new byte[bytes.length - 1];
@@ -173,8 +174,7 @@ public class OriginHubSshServer {
     return bytes;
   }
 
-  private static void writeString(final @NonNull DataOutputStream dos, final @NonNull String s)
-      throws IOException {
+  private static void writeString(final DataOutputStream dos, final String s) throws IOException {
 
     final var bytes = s.getBytes();
 
@@ -182,14 +182,14 @@ public class OriginHubSshServer {
     dos.write(bytes);
   }
 
-  private static void writeBytes(final @NonNull DataOutputStream dos, final byte @NonNull [] bytes)
+  private static void writeBytes(final DataOutputStream dos, final byte[] bytes)
       throws IOException {
 
     dos.writeInt(bytes.length);
     dos.write(bytes);
   }
 
-  private @NonNull GitPackCommandFactory buildCommandFactory() {
+  private GitPackCommandFactory buildCommandFactory() {
 
     final GitLocationResolver resolver =
         (_, args, session, _) -> {
@@ -213,7 +213,7 @@ public class OriginHubSshServer {
     return new GitPackCommandFactory(resolver);
   }
 
-  private @NonNull Tenant resolveTenant(final @NonNull ServerSession session) throws IOException {
+  private Tenant resolveTenant(final ServerSession session) throws IOException {
 
     final var tenant = session.getAttribute(TENANT_KEY);
 
@@ -224,7 +224,7 @@ public class OriginHubSshServer {
     return tenant;
   }
 
-  private @NonNull String[] parseRepoArg(final @NonNull String[] args) throws IOException {
+  private String[] parseRepoArg(final String[] args) throws IOException {
 
     if (args.length < 2) {
       throw new IOException("Invalid git command args");
@@ -241,7 +241,7 @@ public class OriginHubSshServer {
     return new String[] {parts[0], parts[1]};
   }
 
-  private @NonNull SimpleGeneratorHostKeyProvider createKeyProvider() {
+  private SimpleGeneratorHostKeyProvider createKeyProvider() {
 
     final var keyProvider = new SimpleGeneratorHostKeyProvider(Path.of(this.hostKeyPath));
     keyProvider.setAlgorithm("RSA");
@@ -250,10 +250,7 @@ public class OriginHubSshServer {
   }
 
   private void assertAccess(
-      final @NonNull Tenant tenant,
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final boolean isWrite)
+      final Tenant tenant, final String owner, final String repoName, final boolean isWrite)
       throws IOException {
 
     log.debug(

@@ -17,12 +17,9 @@ package com.nuricanozturk.originhub.ssh.dtos;
 
 import java.time.Instant;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public record SshKeyInfo(
-    @NonNull UUID id,
-    @NonNull String title,
-    @NonNull String fingerprint,
-    @Nullable Instant lastUsedAt,
-    @NonNull Instant createdAt) {}
+    UUID id, String title, String fingerprint, @Nullable Instant lastUsedAt, Instant createdAt) {}

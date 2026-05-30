@@ -25,7 +25,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -33,17 +33,16 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 @Component
 @RequiredArgsConstructor
+@NullMarked
 public class RepoAccessInterceptor implements HandlerInterceptor {
 
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull JwtUtils jwtUtils;
+  private final RepoRepository repoRepository;
+  private final TenantRepository tenantRepository;
+  private final JwtUtils jwtUtils;
 
   @Override
   public boolean preHandle(
-      final @NonNull HttpServletRequest request,
-      final @NonNull HttpServletResponse response,
-      final @NonNull Object handler)
+      final HttpServletRequest request, final HttpServletResponse response, final Object handler)
       throws IOException {
 
     if (!HttpMethod.GET.matches(request.getMethod())) {

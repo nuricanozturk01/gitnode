@@ -37,7 +37,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.lib.PersonIdent;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -57,24 +57,25 @@ import org.springframework.web.util.UriUtils;
 @RestController
 @RequestMapping("/api/repos/{owner}/{repo}")
 @RequiredArgsConstructor
+@NullMarked
 public class TreeController {
 
-  private static final @NonNull String TREE = "tree";
-  private static final @NonNull String BLOB = "blob";
-  private static final @NonNull String RAW = "raw";
+  private static final String TREE = "tree";
+  private static final String BLOB = "blob";
+  private static final String RAW = "raw";
 
-  private final @NonNull TreeNonTxService treeNonTxService;
-  private final @NonNull LanguageService languageService;
-  private final @NonNull RepoService repoService;
-  private final @NonNull TenantRepository tenantRepository;
+  private final TreeNonTxService treeNonTxService;
+  private final LanguageService languageService;
+  private final RepoService repoService;
+  private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
 
   @GetMapping({"/tree/{branch}", "/tree/{branch}/**"})
-  public @NonNull ResponseEntity<@NonNull TreeResponse> getTree(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch,
-      final @NonNull HttpServletRequest request)
+  public ResponseEntity<TreeResponse> getTree(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch,
+      final HttpServletRequest request)
       throws IOException {
 
     final var path = this.extractPath(request, branch, TREE);
@@ -85,11 +86,11 @@ public class TreeController {
   }
 
   @GetMapping("/blob/{branch}/**")
-  public @NonNull ResponseEntity<@NonNull BlobResponse> getBlob(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch,
-      final @NonNull HttpServletRequest request)
+  public ResponseEntity<BlobResponse> getBlob(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch,
+      final HttpServletRequest request)
       throws IOException {
 
     final var path = this.extractPath(request, branch, BLOB);
@@ -101,10 +102,10 @@ public class TreeController {
 
   @GetMapping("/raw/{branch}/**")
   public ResponseEntity<byte[]> getRaw(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch,
-      final @NonNull HttpServletRequest request)
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch,
+      final HttpServletRequest request)
       throws IOException {
 
     final var path = this.extractPath(request, branch, RAW);
@@ -119,11 +120,11 @@ public class TreeController {
   }
 
   @GetMapping("/archive/{branch}")
-  public @NonNull ResponseEntity<@NonNull StreamingResponseBody> downloadBranchArchive(
+  public ResponseEntity<StreamingResponseBody> downloadBranchArchive(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader,
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch)
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch)
       throws IOException {
 
     final var userId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -148,10 +149,10 @@ public class TreeController {
   }
 
   @GetMapping("/languages")
-  public @NonNull ResponseEntity<List<LanguageStats>> getLanguages(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestParam(defaultValue = "main") final @NonNull String branch,
+  public ResponseEntity<List<LanguageStats>> getLanguages(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestParam(defaultValue = "main") final String branch,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
       throws IOException {
 
@@ -163,13 +164,13 @@ public class TreeController {
   @PutMapping(
       value = {"/blob/{branch}", "/blob/{branch}/**"},
       consumes = MediaType.APPLICATION_JSON_VALUE)
-  public @NonNull ResponseEntity<@NonNull BlobResponse> updateFile(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch,
-      final @NonNull HttpServletRequest request,
-      @RequestBody @Valid final @NonNull UpdateFileRequest body,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader)
+  public ResponseEntity<BlobResponse> updateFile(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch,
+      final HttpServletRequest request,
+      @RequestBody @Valid final UpdateFileRequest body,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader)
       throws IOException {
 
     final var userId = this.jwtUtils.extractUserId(authHeader);
@@ -198,10 +199,8 @@ public class TreeController {
     return ResponseEntity.ok(result);
   }
 
-  private @NonNull String extractPath(
-      final @NonNull HttpServletRequest request,
-      final @NonNull String branch,
-      final @NonNull String type) {
+  private String extractPath(
+      final HttpServletRequest request, final String branch, final String type) {
 
     final var uri = UriUtils.decode(request.getRequestURI(), StandardCharsets.UTF_8);
     final var marker = "/" + type + "/" + branch + "/";

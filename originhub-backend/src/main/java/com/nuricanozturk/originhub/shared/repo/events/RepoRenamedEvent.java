@@ -15,7 +15,4 @@
  */
 package com.nuricanozturk.originhub.shared.repo.events;
 
-import org.jspecify.annotations.NonNull;
-
-public record RepoRenamedEvent(
-    @NonNull String repoOwner, @NonNull String oldRepoName, @NonNull String newRepoName) {}
+public record RepoRenamedEvent(String repoOwner, String oldRepoName, String newRepoName) {}

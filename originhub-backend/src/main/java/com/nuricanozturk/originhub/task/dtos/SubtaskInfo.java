@@ -18,16 +18,17 @@ package com.nuricanozturk.originhub.task.dtos;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
+@NullMarked
 public record SubtaskInfo(
-    @NonNull UUID id,
-    @NonNull String code,
-    @NonNull String title,
+    UUID id,
+    String code,
+    String title,
     @Nullable String description,
-    @NonNull String status,
+    String status,
     int position,
     @Nullable String branchName,
     @Nullable UUID branchRepoId,

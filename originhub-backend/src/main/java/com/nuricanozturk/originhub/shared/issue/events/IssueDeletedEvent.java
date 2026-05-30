@@ -1,6 +1,7 @@
 package com.nuricanozturk.originhub.shared.issue.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record IssueDeletedEvent(@NonNull UUID issueId) {}
+@NullMarked
+public record IssueDeletedEvent(UUID issueId) {}

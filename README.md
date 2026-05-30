@@ -145,7 +145,8 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 
 ### 🔐 Authentication
 
-- Username + password with JWT
+- Bearer Auth Username + password with JWT
+- Basic Auth for git repo operations
 - OAuth2: **Google**, **GitHub**, **GitLab**
 - SSH public keys for Git over SSH
 

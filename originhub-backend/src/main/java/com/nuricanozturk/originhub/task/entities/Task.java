@@ -15,7 +15,6 @@
  */
 package com.nuricanozturk.originhub.task.entities;
 
-import com.nuricanozturk.originhub.pr.entities.PullRequest;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
@@ -98,10 +97,8 @@ public class Task {
   @Column(name = "branch_name", length = 255)
   private String branchName;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @OnDelete(action = OnDeleteAction.SET_NULL)
-  @JoinColumn(name = "linked_pr_id")
-  private PullRequest linkedPr;
+  @Column(name = "linked_pr_id")
+  private UUID linkedPrId;
 
   @Column(name = "linked_issue_id")
   private UUID linkedIssueId;

@@ -16,8 +16,7 @@
 package com.nuricanozturk.originhub.task.services;
 
 import com.nuricanozturk.originhub.issue.api.IssueQueryService;
-import com.nuricanozturk.originhub.pr.entities.PullRequest;
-import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.pr.api.PrQueryPort;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
@@ -71,7 +70,7 @@ public class TaskService {
   private final ProjectRepository projectRepository;
   private final RepoRepository repoRepository;
   private final TenantRepository tenantRepository;
-  private final PrRepository prRepository;
+  private final PrQueryPort prQueryPort;
   private final IssueQueryService issueQueryService;
   private final ProjectService projectService;
   private final TaskMapper taskMapper;
@@ -382,15 +381,14 @@ public class TaskService {
   @Transactional
   public void linkPullRequest(final UUID repoId, final String sourceBranch, final UUID prId) {
 
-    final var pr =
-        this.prRepository
-            .findById(prId)
-            .orElseThrow(() -> new ItemNotFoundException("Pull request not found"));
+    if (this.prQueryPort.findById(prId).isEmpty()) {
+      throw new ItemNotFoundException("Pull request not found");
+    }
 
     final var taskOpt = this.taskRepository.findByBranchRepoIdAndBranchName(repoId, sourceBranch);
     if (taskOpt.isPresent()) {
       final var task = taskOpt.get();
-      task.setLinkedPr(pr);
+      task.setLinkedPrId(prId);
       if (task.getStatus().equals(TaskStatus.NOT_STARTED.name())) {
         task.setStatus(TaskStatus.IN_PROGRESS.name());
       }
@@ -402,7 +400,7 @@ public class TaskService {
         .findByBranchRepoIdAndBranchName(repoId, sourceBranch)
         .ifPresent(
             subtask -> {
-              subtask.setLinkedPr(pr);
+              subtask.setLinkedPrId(prId);
               if (subtask.getStatus().equals(TaskStatus.NOT_STARTED.name())) {
                 subtask.setStatus(TaskStatus.IN_PROGRESS.name());
               }
@@ -446,7 +444,7 @@ public class TaskService {
             .toList();
     return this.taskMapper.toDetail(
         task,
-        this.buildLinkedPrInfo(task.getLinkedPr()),
+        this.buildLinkedPrInfo(task.getLinkedPrId()),
         this.buildLinkedIssueInfo(task.getLinkedIssueId()),
         subtasks);
   }
@@ -461,24 +459,29 @@ public class TaskService {
         .position(subtask.getPosition())
         .branchName(subtask.getBranchName())
         .branchRepoId(subtask.getBranchRepo() != null ? subtask.getBranchRepo().getId() : null)
-        .linkedPr(this.buildLinkedPrInfo(subtask.getLinkedPr()))
+        .linkedPr(this.buildLinkedPrInfo(subtask.getLinkedPrId()))
         .createdAt(subtask.getCreatedAt())
         .updatedAt(subtask.getUpdatedAt())
         .build();
   }
 
-  private @Nullable LinkedPrInfo buildLinkedPrInfo(final @Nullable PullRequest pr) {
-    if (pr == null) {
+  private @Nullable LinkedPrInfo buildLinkedPrInfo(final @Nullable UUID prId) {
+    if (prId == null) {
       return null;
     }
-    return LinkedPrInfo.builder()
-        .id(pr.getId())
-        .number(pr.getNumber())
-        .title(pr.getTitle())
-        .status(pr.getStatus())
-        .sourceBranch(pr.getSourceBranch())
-        .targetBranch(pr.getTargetBranch())
-        .build();
+    return this.prQueryPort
+        .findById(prId)
+        .map(
+            pr ->
+                LinkedPrInfo.builder()
+                    .id(pr.id())
+                    .number(pr.number())
+                    .title(pr.title())
+                    .status(pr.status())
+                    .sourceBranch(pr.sourceBranch())
+                    .targetBranch(pr.targetBranch())
+                    .build())
+        .orElse(null);
   }
 
   private @Nullable LinkedIssueInfo buildLinkedIssueInfo(final @Nullable UUID issueId) {

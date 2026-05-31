@@ -21,10 +21,8 @@ import com.nuricanozturk.originhub.task.services.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Service
@@ -34,8 +32,7 @@ public class PrStatusTaskListener {
 
   private final TaskService taskService;
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onPullRequestCreated(final PullRequestCreatedEvent event) {
     log.debug(
         "PR created event received: prId={}, repoId={}, branch={}",
@@ -46,8 +43,7 @@ public class PrStatusTaskListener {
     this.taskService.linkPullRequest(event.repoId(), event.sourceBranch(), event.prId());
   }
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onPullRequestStatusChanged(final PullRequestStatusChangedEvent event) {
     log.debug(
         "PR status changed event received: prId={}, repoId={}, branch={}, status={}",

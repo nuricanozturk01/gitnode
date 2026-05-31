@@ -15,8 +15,7 @@
  */
 package com.nuricanozturk.originhub.task.services;
 
-import com.nuricanozturk.originhub.pr.entities.PrStatus;
-import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.pr.api.PrQueryPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -55,7 +54,7 @@ public class ProjectService {
   private final ProjectRepository projectRepository;
   private final TenantRepository tenantRepository;
   private final RepoRepository repoRepository;
-  private final PrRepository prRepository;
+  private final PrQueryPort prQueryPort;
   private final ProjectMapper projectMapper;
   private final TaskRepository taskRepository;
   private final ApplicationEventPublisher eventPublisher;
@@ -215,19 +214,16 @@ public class ProjectService {
     return repos.stream()
         .map(
             repo -> {
-              final var openPrs =
-                  this.prRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(
-                      repo.getId(), PrStatus.OPEN.name());
               final var openPrInfos =
-                  openPrs.stream()
+                  this.prQueryPort.findOpenByRepoId(repo.getId()).stream()
                       .map(
                           pr ->
                               OpenPrInfo.builder()
-                                  .id(pr.getId())
-                                  .number(pr.getNumber())
-                                  .title(pr.getTitle())
-                                  .sourceBranch(pr.getSourceBranch())
-                                  .targetBranch(pr.getTargetBranch())
+                                  .id(pr.id())
+                                  .number(pr.number())
+                                  .title(pr.title())
+                                  .sourceBranch(pr.sourceBranch())
+                                  .targetBranch(pr.targetBranch())
                                   .build())
                       .toList();
 

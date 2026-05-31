@@ -45,7 +45,7 @@ public interface TaskMapper {
         .boardColumnId(task.getBoardColumn().getId())
         .assignee(this.toAuthorInfo(task.getAssignee()))
         .branchName(task.getBranchName())
-        .hasLinkedPr(task.getLinkedPr() != null)
+        .hasLinkedPr(task.getLinkedPrId() != null)
         .hasLinkedIssue(task.getLinkedIssueId() != null)
         .subtaskCount(subtaskCount)
         .completedSubtaskCount(completedSubtaskCount)

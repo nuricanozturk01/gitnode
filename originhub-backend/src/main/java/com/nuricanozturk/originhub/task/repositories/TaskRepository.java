@@ -30,15 +30,14 @@ import org.springframework.stereotype.Repository;
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
   @Query(
-      """
+"""
       SELECT t FROM Task t
       JOIN FETCH t.boardColumn
       LEFT JOIN FETCH t.assignee
       LEFT JOIN FETCH t.branchRepo
-      LEFT JOIN FETCH t.linkedPr
       WHERE t.project.id = :projectId
       ORDER BY t.position ASC
-      """)
+""")
   List<Task> findAllByProjectIdOrderByPositionAsc(UUID projectId);
 
   @Query(
@@ -47,7 +46,6 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
       JOIN FETCH t.boardColumn
       LEFT JOIN FETCH t.assignee
       LEFT JOIN FETCH t.branchRepo
-      LEFT JOIN FETCH t.linkedPr
       WHERE t.project.id = :projectId AND t.code = :code
 """)
   Optional<Task> findByProjectIdAndCode(UUID projectId, String code);

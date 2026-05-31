@@ -18,17 +18,10 @@ package com.nuricanozturk.originhub.pr.services;
 import com.nuricanozturk.originhub.pr.dtos.PrCommentForm;
 import com.nuricanozturk.originhub.pr.dtos.PrCommentInfo;
 import com.nuricanozturk.originhub.pr.dtos.PrCommentUpdateForm;
-import com.nuricanozturk.originhub.pr.entities.PullRequest;
 import com.nuricanozturk.originhub.pr.entities.PullRequestComment;
 import com.nuricanozturk.originhub.pr.mappers.PrMapper;
 import com.nuricanozturk.originhub.pr.repositories.PrCommentRepository;
-import com.nuricanozturk.originhub.pr.repositories.PrRepository;
-import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
-import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -46,10 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class PullRequestCommentService {
 
   private final PrMapper prMapper;
-  private final PrRepository prRepository;
+  private final PrFinder prFinder;
   private final PrCommentRepository commentRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
 
   @Transactional
   public PrCommentInfo addComment(
@@ -59,9 +50,9 @@ public class PullRequestCommentService {
       final UUID authorId,
       final PrCommentForm form) {
 
-    final var repo = this.findRepo(owner, repoName);
-    final var pr = this.findPr(repo.getId(), number);
-    final var author = this.findTenant(authorId);
+    final var repo = this.prFinder.findRepo(owner, repoName);
+    final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var author = this.prFinder.findTenant(authorId);
 
     final var comment = new PullRequestComment();
     comment.setPr(pr);
@@ -108,8 +99,8 @@ public class PullRequestCommentService {
   public List<PrCommentInfo> getComments(
       final String owner, final String repoName, final int number) {
 
-    final var repo = this.findRepo(owner, repoName);
-    final var pr = this.findPr(repo.getId(), number);
+    final var repo = this.prFinder.findRepo(owner, repoName);
+    final var pr = this.prFinder.findPr(repo.getId(), number);
 
     return this.commentRepository.findAllByPrIdOrderByCreatedAtAsc(pr.getId()).stream()
         .map(this::toCommentInfo)
@@ -117,32 +108,6 @@ public class PullRequestCommentService {
   }
 
   private PrCommentInfo toCommentInfo(final PullRequestComment comment) {
-
-    final var author = this.toAuthorInfo(comment.getAuthor());
-
-    return this.prMapper.toCommentInfo(comment, author);
-  }
-
-  private AuthorInfo toAuthorInfo(final Tenant tenant) {
-    return new AuthorInfo(
-        tenant.getDisplayName(), tenant.getEmail(), tenant.getUsername(), tenant.getAvatarUrl());
-  }
-
-  private Repo findRepo(final String owner, final String repoName) {
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
-        .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
-  }
-
-  private PullRequest findPr(final UUID repoId, final int number) {
-    return this.prRepository
-        .findByRepoIdAndNumber(repoId, number)
-        .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
-  }
-
-  private Tenant findTenant(final UUID id) {
-    return this.tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new ItemNotFoundException("User not found"));
+    return this.prMapper.toCommentInfo(comment, this.prMapper.toAuthorInfo(comment.getAuthor()));
   }
 }

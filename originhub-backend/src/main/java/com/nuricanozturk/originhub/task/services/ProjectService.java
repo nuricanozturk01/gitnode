@@ -25,7 +25,6 @@ import com.nuricanozturk.originhub.shared.project.events.ProjectUpdatedEvent;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.task.dtos.OpenPrInfo;
 import com.nuricanozturk.originhub.task.dtos.ProjectForm;
 import com.nuricanozturk.originhub.task.dtos.ProjectInfo;
@@ -52,7 +51,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProjectService {
 
   private final ProjectRepository projectRepository;
-  private final TenantRepository tenantRepository;
   private final RepoRepository repoRepository;
   private final PrQueryPort prQueryPort;
   private final ProjectMapper projectMapper;
@@ -63,9 +61,7 @@ public class ProjectService {
   public ProjectInfo create(
       final String ownerUsername, final Tenant caller, final ProjectForm form) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     if (this.projectRepository.existsByOwnerIdAndName(caller.getId(), form.getName())) {
       throw new ErrorOccurredException("Project with this name already exists");
@@ -122,9 +118,7 @@ public class ProjectService {
       final Tenant caller,
       final ProjectUpdateForm form) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
 
@@ -154,9 +148,7 @@ public class ProjectService {
   @Transactional
   public void delete(final String ownerUsername, final String codePrefix, final Tenant caller) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
     this.eventPublisher.publishEvent(
@@ -168,9 +160,7 @@ public class ProjectService {
   public void linkRepo(
       final String ownerUsername, final String codePrefix, final UUID repoId, final Tenant caller) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
     final var repo =
@@ -192,9 +182,7 @@ public class ProjectService {
   public void unlinkRepo(
       final String ownerUsername, final String codePrefix, final UUID repoId, final Tenant caller) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
     final boolean removed = project.getRepos().removeIf(r -> r.getId().equals(repoId));
@@ -237,6 +225,12 @@ public class ProjectService {
                   .build();
             })
         .toList();
+  }
+
+  private void requireCallerIsOwner(final Tenant caller, final String ownerUsername) {
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
   }
 
   Project findProject(final String ownerUsername, final String codePrefix) {

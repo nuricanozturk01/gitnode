@@ -30,5 +30,6 @@ public interface TenantMapper {
       target = "displayName",
       expression =
           "java(tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername())")
+  @Mapping(target = "isAdmin", source = "admin")
   TenantInfo toTenantInfo(Tenant tenant);
 }

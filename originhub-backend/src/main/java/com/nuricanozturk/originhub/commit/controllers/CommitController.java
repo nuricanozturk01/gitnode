@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,7 +53,8 @@ public class CommitController {
       @RequestParam(defaultValue = "master") final String branch,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -66,7 +68,8 @@ public class CommitController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String sha,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -80,7 +83,8 @@ public class CommitController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String sha,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;

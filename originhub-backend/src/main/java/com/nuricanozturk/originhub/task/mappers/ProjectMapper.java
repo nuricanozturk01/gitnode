@@ -23,46 +23,25 @@ import com.nuricanozturk.originhub.task.entities.BoardColumn;
 import com.nuricanozturk.originhub.task.entities.Project;
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
 public interface ProjectMapper {
 
-  default ProjectInfo toInfo(final Project project, final long taskCount) {
-    return ProjectInfo.builder()
-        .id(project.getId())
-        .name(project.getName())
-        .description(project.getDescription())
-        .codePrefix(project.getCodePrefix())
-        .taskCount(taskCount)
-        .syncTaskStatusOnPrMerge(project.isSyncTaskStatusOnPrMerge())
-        .isPublic(project.isPublic())
-        .createdAt(project.getCreatedAt())
-        .updatedAt(project.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "taskCount", source = "taskCount")
+  @Mapping(target = "isPublic", source = "project.public")
+  ProjectInfo toInfo(Project project, long taskCount);
 
-  default BoardColumnInfo toBoardColumnInfo(final BoardColumn column) {
-    return BoardColumnInfo.builder()
-        .id(column.getId())
-        .name(column.getName())
-        .position(column.getPosition())
-        .color(column.getColor())
-        .createdAt(column.getCreatedAt())
-        .updatedAt(column.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  BoardColumnInfo toBoardColumnInfo(BoardColumn column);
 
-  default BoardInfo toBoardInfo(final Board board, final List<BoardColumnInfo> columns) {
-    return BoardInfo.builder()
-        .id(board.getId())
-        .name(board.getName())
-        .position(board.getPosition())
-        .columns(columns)
-        .createdAt(board.getCreatedAt())
-        .updatedAt(board.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "columns", source = "columns")
+  BoardInfo toBoardInfo(Board board, List<BoardColumnInfo> columns);
 }

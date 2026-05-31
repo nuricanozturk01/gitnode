@@ -36,8 +36,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
@@ -121,7 +123,8 @@ public class TreeController {
 
   @GetMapping("/archive/{branch}")
   public ResponseEntity<StreamingResponseBody> downloadBranchArchive(
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String branch)
@@ -153,7 +156,8 @@ public class TreeController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @RequestParam(defaultValue = "main") final String branch,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -183,12 +187,15 @@ public class TreeController {
 
     final var rawContent = body.content().getBytes(StandardCharsets.UTF_8);
     final var fullMessage =
-        body.commitDescription() != null && !body.commitDescription().isBlank()
+        StringUtils.isNotBlank(body.commitDescription())
             ? body.commitMessage() + "\n\n" + body.commitDescription()
             : body.commitMessage();
 
     final var authorName =
-        tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername();
+        StringUtils.isNotBlank(tenant.getDisplayName())
+            ? tenant.getDisplayName()
+            : tenant.getUsername();
+
     final var author =
         new PersonIdent(authorName, tenant.getEmail(), Instant.now(), ZoneOffset.UTC);
 

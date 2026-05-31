@@ -59,6 +59,9 @@ public interface PrMapper {
   @Mapping(target = "isResolved", source = "comment.resolved")
   PrCommentInfo toCommentInfo(PullRequestComment comment, AuthorInfo author);
 
+  @Mapping(target = "name", source = "displayName")
+  AuthorInfo toAuthorInfo(Tenant tenant);
+
   default PullRequest buildPr(
       final PrForm form,
       final Repo repo,

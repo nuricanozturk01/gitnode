@@ -38,9 +38,7 @@ import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.shared.pr.events.PullRequestCreatedEvent;
 import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -88,8 +86,7 @@ public class PullRequestService {
 
   private final PrRepository prRepository;
   private final PrCommentRepository commentRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
+  private final PrFinder prFinder;
   private final GitProvider gitProvider;
   private final PrMapper prMapper;
   private final ApplicationEventPublisher eventPublisher;
@@ -556,30 +553,19 @@ public class PullRequestService {
   }
 
   private AuthorInfo toAuthorInfo(final Tenant tenant) {
-
-    return new AuthorInfo(
-        tenant.getDisplayName(), tenant.getEmail(), tenant.getUsername(), tenant.getAvatarUrl());
+    return this.prMapper.toAuthorInfo(tenant);
   }
 
   private Repo findRepo(final String owner, final String repoName) {
-
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
-        .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
+    return this.prFinder.findRepo(owner, repoName);
   }
 
   private PullRequest findPr(final UUID repoId, final int number) {
-
-    return this.prRepository
-        .findByRepoIdAndNumber(repoId, number)
-        .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
+    return this.prFinder.findPr(repoId, number);
   }
 
   private Tenant findTenant(final UUID id) {
-
-    return this.tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new ItemNotFoundException("User not found"));
+    return this.prFinder.findTenant(id);
   }
 
   private void checkOpenPrRules(final Repository gitRepo, final PrForm form, final Repo repo)

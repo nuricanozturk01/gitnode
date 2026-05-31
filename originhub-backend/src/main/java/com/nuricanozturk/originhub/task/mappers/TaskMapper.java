@@ -26,64 +26,49 @@ import com.nuricanozturk.originhub.task.entities.Task;
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
 public interface TaskMapper {
 
-  default TaskInfo toInfo(
-      final Task task, final int subtaskCount, final int completedSubtaskCount) {
-    return TaskInfo.builder()
-        .id(task.getId())
-        .code(task.getCode())
-        .title(task.getTitle())
-        .status(task.getStatus())
-        .type(task.getType())
-        .position(task.getPosition())
-        .boardColumnId(task.getBoardColumn().getId())
-        .assignee(this.toAuthorInfo(task.getAssignee()))
-        .branchName(task.getBranchName())
-        .hasLinkedPr(task.getLinkedPrId() != null)
-        .hasLinkedIssue(task.getLinkedIssueId() != null)
-        .subtaskCount(subtaskCount)
-        .completedSubtaskCount(completedSubtaskCount)
-        .createdAt(task.getCreatedAt())
-        .updatedAt(task.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "boardColumnId", source = "task.boardColumn.id")
+  @Mapping(target = "hasLinkedPr", expression = "java(task.getLinkedPrId() != null)")
+  @Mapping(target = "hasLinkedIssue", expression = "java(task.getLinkedIssueId() != null)")
+  @Mapping(target = "subtaskCount", source = "subtaskCount")
+  @Mapping(target = "completedSubtaskCount", source = "completedSubtaskCount")
+  TaskInfo toInfo(Task task, int subtaskCount, int completedSubtaskCount);
 
-  default TaskDetail toDetail(
-      final Task task,
-      final @Nullable LinkedPrInfo linkedPr,
-      final @Nullable LinkedIssueInfo linkedIssue,
-      final List<SubtaskInfo> subtasks) {
-    return TaskDetail.builder()
-        .id(task.getId())
-        .code(task.getCode())
-        .title(task.getTitle())
-        .description(task.getDescription())
-        .status(task.getStatus())
-        .type(task.getType())
-        .position(task.getPosition())
-        .boardColumnId(task.getBoardColumn().getId())
-        .assignee(this.toAuthorInfo(task.getAssignee()))
-        .branchName(task.getBranchName())
-        .branchRepoId(task.getBranchRepo() != null ? task.getBranchRepo().getId() : null)
-        .linkedPr(linkedPr)
-        .linkedIssue(linkedIssue)
-        .subtasks(subtasks)
-        .createdAt(task.getCreatedAt())
-        .updatedAt(task.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "id", source = "task.id")
+  @Mapping(target = "code", source = "task.code")
+  @Mapping(target = "title", source = "task.title")
+  @Mapping(target = "description", source = "task.description")
+  @Mapping(target = "status", source = "task.status")
+  @Mapping(target = "type", source = "task.type")
+  @Mapping(target = "position", source = "task.position")
+  @Mapping(target = "boardColumnId", source = "task.boardColumn.id")
+  @Mapping(target = "assignee", source = "task.assignee")
+  @Mapping(target = "branchName", source = "task.branchName")
+  @Mapping(
+      target = "branchRepoId",
+      expression = "java(task.getBranchRepo() != null ? task.getBranchRepo().getId() : null)")
+  @Mapping(target = "linkedPr", source = "linkedPr")
+  @Mapping(target = "linkedIssue", source = "linkedIssue")
+  @Mapping(target = "subtasks", source = "subtasks")
+  @Mapping(target = "createdAt", source = "task.createdAt")
+  @Mapping(target = "updatedAt", source = "task.updatedAt")
+  TaskDetail toDetail(
+      Task task,
+      @Nullable LinkedPrInfo linkedPr,
+      @Nullable LinkedIssueInfo linkedIssue,
+      List<SubtaskInfo> subtasks);
 
-  default @Nullable AuthorInfo toAuthorInfo(final @Nullable Tenant tenant) {
-    if (tenant == null) {
-      return null;
-    }
-    return new AuthorInfo(
-        tenant.getDisplayName(), tenant.getEmail(), tenant.getUsername(), tenant.getAvatarUrl());
-  }
+  @Mapping(target = "name", source = "displayName")
+  @Nullable AuthorInfo toAuthorInfo(@Nullable Tenant tenant);
 }

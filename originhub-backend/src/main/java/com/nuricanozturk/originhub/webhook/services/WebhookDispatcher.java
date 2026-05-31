@@ -53,6 +53,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.MediaType;
@@ -389,39 +390,23 @@ public class WebhookDispatcher {
 
   private void deliverProjectWebhookAsync(
       final ProjectWebhook webhook, final WebhookEventType type, final Map<String, Object> data) {
-    try {
-      final var payload = new LinkedHashMap<String, Object>();
-      payload.put("event", type.getValue());
-      payload.put("timestamp", Instant.now().toString());
-      payload.put("data", data);
-
-      final var body = this.objectMapper.writeValueAsString(payload);
-
-      var spec =
-          this.restClient
-              .post()
-              .uri(webhook.getUrl())
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(body);
-
-      if (webhook.getSecret() != null && !webhook.getSecret().isBlank()) {
-        spec =
-            spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, webhook.getSecret()));
-      }
-
-      spec.retrieve().toBodilessEntity();
-
-    } catch (final Exception ex) {
-      log.warn(
-          "Project webhook delivery failed id={} url={}: {}",
-          webhook.getId(),
-          webhook.getUrl(),
-          ex.getMessage());
-    }
+    this.deliverWebhookCore(
+        webhook.getId(), webhook.getUrl(), webhook.getSecret(), "Project webhook", type, data);
   }
 
   private void deliverUserWebhookAsync(
       final UserWebhook webhook, final WebhookEventType type, final Map<String, Object> data) {
+    this.deliverWebhookCore(
+        webhook.getId(), webhook.getUrl(), webhook.getSecret(), "User webhook", type, data);
+  }
+
+  private void deliverWebhookCore(
+      final UUID id,
+      final String url,
+      final @Nullable String secret,
+      final String logLabel,
+      final WebhookEventType type,
+      final Map<String, Object> data) {
     try {
       final var payload = new LinkedHashMap<String, Object>();
       payload.put("event", type.getValue());
@@ -430,26 +415,16 @@ public class WebhookDispatcher {
 
       final var body = this.objectMapper.writeValueAsString(payload);
 
-      var spec =
-          this.restClient
-              .post()
-              .uri(webhook.getUrl())
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(body);
+      var spec = this.restClient.post().uri(url).contentType(MediaType.APPLICATION_JSON).body(body);
 
-      if (webhook.getSecret() != null && !webhook.getSecret().isBlank()) {
-        spec =
-            spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, webhook.getSecret()));
+      if (secret != null && !secret.isBlank()) {
+        spec = spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, secret));
       }
 
       spec.retrieve().toBodilessEntity();
 
     } catch (final Exception ex) {
-      log.warn(
-          "User webhook delivery failed id={} url={}: {}",
-          webhook.getId(),
-          webhook.getUrl(),
-          ex.getMessage());
+      log.warn("{} delivery failed id={} url={}: {}", logLabel, id, url, ex.getMessage());
     }
   }
 

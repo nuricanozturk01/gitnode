@@ -36,70 +36,42 @@ import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
 public interface SnippetMapper {
 
-  default SnippetOwnerInfo toOwnerInfo(final Tenant tenant) {
-    return SnippetOwnerInfo.builder()
-        .id(tenant.getId())
-        .username(tenant.getUsername())
-        .avatarUrl(null)
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "avatarUrl", ignore = true)
+  SnippetOwnerInfo toOwnerInfo(Tenant tenant);
 
-  default SnippetFileInfo toFileInfo(final SnippetFile file, final String content) {
-    return SnippetFileInfo.builder()
-        .id(file.getId())
-        .filename(file.getFilename())
-        .content(content)
-        .position(file.getPosition())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "content", source = "content")
+  SnippetFileInfo toFileInfo(SnippetFile file, String content);
 
-  default SnippetFileInfo toRevisionFileInfo(final SnippetRevisionFile file, final String content) {
-    return SnippetFileInfo.builder()
-        .id(file.getId())
-        .filename(file.getFilename())
-        .content(content)
-        .position(file.getPosition())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "content", source = "content")
+  SnippetFileInfo toRevisionFileInfo(SnippetRevisionFile file, String content);
 
-  default @Nullable SnippetForkedFromInfo toForkedFromInfo(final @Nullable Snippet forkedFrom) {
-    if (forkedFrom == null) {
-      return null;
-    }
-    return SnippetForkedFromInfo.builder()
-        .id(forkedFrom.getId())
-        .title(forkedFrom.getTitle())
-        .owner(this.toOwnerInfo(forkedFrom.getOwner()))
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Nullable SnippetForkedFromInfo toForkedFromInfo(@Nullable Snippet forkedFrom);
 
-  default SnippetLinkedRepoInfo toLinkedRepoInfo(final Repo repo) {
-    return SnippetLinkedRepoInfo.builder().id(repo.getId()).name(repo.getName()).build();
-  }
+  @BeanMapping(builder = @Builder())
+  SnippetLinkedRepoInfo toLinkedRepoInfo(Repo repo);
 
-  default SnippetInfo toInfo(final Snippet snippet) {
-    return SnippetInfo.builder()
-        .id(snippet.getId())
-        .title(snippet.getTitle())
-        .description(snippet.getDescription())
-        .visibility(snippet.getVisibility())
-        .owner(this.toOwnerInfo(snippet.getOwner()))
-        .fileCount(snippet.getFileCount())
-        .commentCount(snippet.getCommentCount())
-        .forkCount(snippet.getForkCount())
-        .forkedFrom(this.toForkedFromInfo(snippet.getForkedFrom()))
-        .repos(snippet.getRepos().stream().map(this::toLinkedRepoInfo).toList())
-        .createdAt(snippet.getCreatedAt())
-        .updatedAt(snippet.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  SnippetInfo toInfo(Snippet snippet);
+
+  @BeanMapping(builder = @Builder())
+  SnippetCommentInfo toCommentInfo(SnippetComment comment);
+
+  @BeanMapping(builder = @Builder())
+  SnippetRevisionInfo toRevisionInfo(SnippetRevision revision);
 
   default SnippetDetail toDetail(final Snippet snippet, final Map<UUID, String> contentByFileId) {
     final var files =
@@ -121,25 +93,6 @@ public interface SnippetMapper {
         .files(files)
         .createdAt(snippet.getCreatedAt())
         .updatedAt(snippet.getUpdatedAt())
-        .build();
-  }
-
-  default SnippetCommentInfo toCommentInfo(final SnippetComment comment) {
-    return SnippetCommentInfo.builder()
-        .id(comment.getId())
-        .body(comment.getBody())
-        .author(this.toOwnerInfo(comment.getAuthor()))
-        .createdAt(comment.getCreatedAt())
-        .updatedAt(comment.getUpdatedAt())
-        .build();
-  }
-
-  default SnippetRevisionInfo toRevisionInfo(final SnippetRevision revision) {
-    return SnippetRevisionInfo.builder()
-        .id(revision.getId())
-        .summary(revision.getSummary())
-        .author(this.toOwnerInfo(revision.getAuthor()))
-        .createdAt(revision.getCreatedAt())
         .build();
   }
 

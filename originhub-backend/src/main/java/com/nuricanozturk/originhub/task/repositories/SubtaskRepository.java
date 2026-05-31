@@ -29,13 +29,12 @@ import org.springframework.stereotype.Repository;
 public interface SubtaskRepository extends JpaRepository<Subtask, UUID> {
 
   @Query(
-      """
+"""
       SELECT s FROM Subtask s
       LEFT JOIN FETCH s.branchRepo
-      LEFT JOIN FETCH s.linkedPr
       WHERE s.task.id = :taskId
       ORDER BY s.position ASC
-      """)
+""")
   List<Subtask> findAllByTaskIdOrderByPositionAsc(UUID taskId);
 
   Optional<Subtask> findByIdAndTaskId(UUID id, UUID taskId);

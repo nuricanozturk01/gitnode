@@ -19,45 +19,26 @@ import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
 import com.nuricanozturk.originhub.webhook.entities.ProjectWebhook;
 import com.nuricanozturk.originhub.webhook.entities.UserWebhook;
 import com.nuricanozturk.originhub.webhook.entities.Webhook;
-import java.util.HashSet;
 import org.jspecify.annotations.NullMarked;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
 public interface WebhookMapper {
 
-  default WebhookInfo toInfo(final Webhook webhook) {
-    return WebhookInfo.builder()
-        .id(webhook.getId())
-        .url(webhook.getUrl())
-        .enabled(webhook.isEnabled())
-        .events(new HashSet<>(webhook.getSubscribedEvents()))
-        .createdAt(webhook.getCreatedAt())
-        .updatedAt(webhook.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "events", source = "subscribedEvents")
+  WebhookInfo toInfo(Webhook webhook);
 
-  default WebhookInfo toInfoFromUser(final UserWebhook webhook) {
-    return WebhookInfo.builder()
-        .id(webhook.getId())
-        .url(webhook.getUrl())
-        .enabled(webhook.isEnabled())
-        .events(new HashSet<>(webhook.getSubscribedEvents()))
-        .createdAt(webhook.getCreatedAt())
-        .updatedAt(webhook.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "events", source = "subscribedEvents")
+  WebhookInfo toInfoFromUser(UserWebhook webhook);
 
-  default WebhookInfo toInfoFromProject(final ProjectWebhook webhook) {
-    return WebhookInfo.builder()
-        .id(webhook.getId())
-        .url(webhook.getUrl())
-        .enabled(webhook.isEnabled())
-        .events(new HashSet<>(webhook.getSubscribedEvents()))
-        .createdAt(webhook.getCreatedAt())
-        .updatedAt(webhook.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "events", source = "subscribedEvents")
+  WebhookInfo toInfoFromProject(ProjectWebhook webhook);
 }

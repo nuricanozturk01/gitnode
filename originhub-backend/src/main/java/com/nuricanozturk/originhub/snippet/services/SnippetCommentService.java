@@ -21,6 +21,7 @@ import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetCommentForm;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetCommentInfo;
+import com.nuricanozturk.originhub.snippet.entities.Snippet;
 import com.nuricanozturk.originhub.snippet.entities.SnippetComment;
 import com.nuricanozturk.originhub.snippet.entities.Visibility;
 import com.nuricanozturk.originhub.snippet.mappers.SnippetMapper;
@@ -56,10 +57,7 @@ public class SnippetCommentService {
             .findByIdWithOwner(snippetId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
-    if (snippet.getVisibility() == Visibility.PRIVATE
-        && (callerId == null || !callerId.equals(snippet.getOwner().getId()))) {
-      throw new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND);
-    }
+    this.requireSnippetReadAccess(snippet, callerId);
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
     return PageResponse.from(
@@ -77,10 +75,7 @@ public class SnippetCommentService {
             .findByIdWithOwner(snippetId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
-    if (snippet.getVisibility() == Visibility.PRIVATE
-        && !tenantId.equals(snippet.getOwner().getId())) {
-      throw new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND);
-    }
+    this.requireSnippetReadAccess(snippet, tenantId);
 
     final var author =
         this.tenantRepository
@@ -96,6 +91,13 @@ public class SnippetCommentService {
     this.snippetRepository.incrementCommentCount(snippetId);
 
     return this.snippetMapper.toCommentInfo(saved);
+  }
+
+  private void requireSnippetReadAccess(final Snippet snippet, final @Nullable UUID callerId) {
+    if (snippet.getVisibility() == Visibility.PRIVATE
+        && (callerId == null || !callerId.equals(snippet.getOwner().getId()))) {
+      throw new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND);
+    }
   }
 
   @Transactional

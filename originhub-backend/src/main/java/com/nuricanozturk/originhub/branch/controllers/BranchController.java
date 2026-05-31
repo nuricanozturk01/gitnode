@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -95,7 +96,8 @@ public class BranchController {
   public ResponseEntity<List<BranchInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -109,7 +111,8 @@ public class BranchController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String branch,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;

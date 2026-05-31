@@ -40,12 +40,5 @@ public interface RepoMapper {
   @Mapping(target = "isArchived", source = "archived")
   RepoInfo toDto(Repo repo);
 
-  default TenantRepoInfo mapOwner(final Tenant owner) {
-
-    if (owner == null) {
-      return null;
-    }
-
-    return new TenantRepoInfo(owner.getId(), owner.getUsername(), owner.getAvatarUrl());
-  }
+  TenantRepoInfo mapOwner(Tenant owner);
 }

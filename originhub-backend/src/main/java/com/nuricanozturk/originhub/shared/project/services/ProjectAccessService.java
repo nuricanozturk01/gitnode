@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.project;
+package com.nuricanozturk.originhub.shared.project.services;
 
+import com.nuricanozturk.originhub.shared.project.dtos.ProjectSummary;
 import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 

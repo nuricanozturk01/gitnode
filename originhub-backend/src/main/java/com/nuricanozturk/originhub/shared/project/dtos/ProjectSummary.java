@@ -13,14 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.service;
+package com.nuricanozturk.originhub.shared.project.dtos;
 
-import com.nuricanozturk.originhub.migration.entities.MigrationJob;
-import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
+import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public interface CloudMigrationService {
-
-  void process(MigrationJob job, String accessToken, Tenant tenant);
-}
+public record ProjectSummary(UUID id, String ownerUsername) {}

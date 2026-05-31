@@ -19,7 +19,7 @@ import com.nuricanozturk.originhub.migration.dtos.MigrationForm;
 import com.nuricanozturk.originhub.migration.dtos.MigrationJobResponse;
 import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;
 import com.nuricanozturk.originhub.migration.entities.MigrationJob;
-import com.nuricanozturk.originhub.migration.service.GitMigrationService;
+import com.nuricanozturk.originhub.migration.services.GitMigrationService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import jakarta.validation.Valid;
 import java.util.UUID;

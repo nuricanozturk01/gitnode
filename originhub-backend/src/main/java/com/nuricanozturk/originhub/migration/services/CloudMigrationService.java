@@ -13,8 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.dtos;
+package com.nuricanozturk.originhub.migration.services;
 
-public enum MigrationService {
-  GITHUB
+import com.nuricanozturk.originhub.migration.entities.MigrationJob;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+public interface CloudMigrationService {
+
+  void process(MigrationJob job, String accessToken, Tenant tenant);
 }

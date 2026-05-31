@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.migration.entities;
 
 import com.nuricanozturk.originhub.migration.dtos.MigrationItem;
-import com.nuricanozturk.originhub.migration.dtos.MigrationService;
+import com.nuricanozturk.originhub.migration.dtos.MigrationServiceProvider;
 import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -49,7 +49,7 @@ public class MigrationJob {
   private UUID id;
 
   @Enumerated(EnumType.STRING)
-  private MigrationService service;
+  private MigrationServiceProvider service;
 
   @Enumerated(EnumType.STRING)
   private MigrationStatus status;

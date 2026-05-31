@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.webhook.services;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
@@ -122,7 +123,7 @@ public class WebhookService {
   private UUID resolveRepoId(final String owner, final String repoName) {
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)
-        .map(repo -> repo.getId())
+        .map(Repo::getId)
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
   }
 

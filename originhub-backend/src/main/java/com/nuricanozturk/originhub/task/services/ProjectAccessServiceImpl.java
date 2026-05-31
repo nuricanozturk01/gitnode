@@ -15,8 +15,8 @@
  */
 package com.nuricanozturk.originhub.task.services;
 
-import com.nuricanozturk.originhub.shared.project.ProjectAccessService;
-import com.nuricanozturk.originhub.shared.project.ProjectSummary;
+import com.nuricanozturk.originhub.shared.project.dtos.ProjectSummary;
+import com.nuricanozturk.originhub.shared.project.services.ProjectAccessService;
 import com.nuricanozturk.originhub.task.repositories.ProjectRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

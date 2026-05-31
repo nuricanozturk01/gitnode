@@ -3,9 +3,6 @@ server:
   tomcat:
     connection-timeout: 20000
     max-part-count: 50
-    threads:
-      max: 50
-      min-spare: 5
     accept-count: 50
   compression:
     enabled: true
@@ -28,6 +25,9 @@ app:
   schema: public
 
 spring:
+  threads:
+    virtual:
+      enabled: true
   jackson:
     deserialization:
       fail-on-null-for-primitives: false
@@ -47,8 +47,8 @@ spring:
     username: ${SPRING_DATASOURCE_USERNAME:admin}
     password: ${SPRING_DATASOURCE_PASSWORD:admin123}
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: 15
+      minimum-idle: 3
       connection-timeout: 20000
       idle-timeout: 300000
       max-lifetime: 600000

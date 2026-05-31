@@ -20,11 +20,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
-@NullMarked
 public record TaskDetail(
     UUID id,
     String code,

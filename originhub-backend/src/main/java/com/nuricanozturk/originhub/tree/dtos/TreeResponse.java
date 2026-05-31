@@ -16,7 +16,5 @@
 package com.nuricanozturk.originhub.tree.dtos;
 
 import java.util.List;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public record TreeResponse(String branch, String path, String sha, List<TreeEntry> entries) {}

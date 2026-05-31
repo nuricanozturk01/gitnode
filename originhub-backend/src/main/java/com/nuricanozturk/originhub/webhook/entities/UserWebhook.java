@@ -34,13 +34,12 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "user_webhooks")
-@NullMarked
 public class UserWebhook {
 
   @Id
@@ -54,7 +53,8 @@ public class UserWebhook {
   @Column(name = "url", nullable = false, length = 500)
   private String url;
 
-  @Column(name = "secret", length = 255)
+  @Column(name = "secret")
+  @Nullable
   private String secret;
 
   @ColumnDefault("false")

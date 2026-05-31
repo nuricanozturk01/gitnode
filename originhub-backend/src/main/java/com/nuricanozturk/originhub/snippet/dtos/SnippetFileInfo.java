@@ -17,8 +17,6 @@ package com.nuricanozturk.originhub.snippet.dtos;
 
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 
 @Builder
-@NullMarked
 public record SnippetFileInfo(UUID id, String filename, String content, int position) {}

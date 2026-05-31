@@ -33,6 +33,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -123,28 +125,48 @@ public class CommitNonTxService {
       walk.sort(RevSort.COMMIT_TIME_DESC);
 
       int toSkip = page * size;
-      int collected = 0;
-      int totalCount = 0;
-      final var pageCommits = new ArrayList<CommitInfo>();
+      final var pageRevCommits = new ArrayList<RevCommit>(size);
+      RevCommit cmt;
 
-      for (final RevCommit cmt : walk) {
-        totalCount++;
-
+      while ((cmt = walk.next()) != null) {
         if (toSkip > 0) {
           toSkip--;
           continue;
         }
-
-        if (collected < size) {
-          pageCommits.add(this.toCommitInfo(gitRepo, cmt));
-          collected++;
-        }
+        pageRevCommits.add(cmt);
+        if (pageRevCommits.size() == size) break;
       }
 
-      final var totalPages = (int) Math.ceil((double) totalCount / size);
-      return new PagedResult<>(
-          pageCommits, page, size, totalCount, totalPages, page < totalPages - 1, page > 0);
+      final boolean hasNext = walk.next() != null;
+
+      if (pageRevCommits.isEmpty()) {
+        return this.buildPageResult(List.of(), page, size, hasNext);
+      }
+
+      final var emails =
+          pageRevCommits.stream()
+              .map(c -> c.getAuthorIdent().getEmailAddress())
+              .collect(Collectors.toSet());
+      final var tenantsByEmail =
+          this.tenantRepository.findAllByEmailIn(emails).stream()
+              .collect(Collectors.toMap(Tenant::getEmail, t -> t));
+
+      final var pageCommits = new ArrayList<CommitInfo>(pageRevCommits.size());
+      for (final var rc : pageRevCommits) {
+        pageCommits.add(this.toCommitInfo(gitRepo, rc, tenantsByEmail));
+      }
+
+      return this.buildPageResult(pageCommits, page, size, hasNext);
     }
+  }
+
+  private PagedResult<CommitInfo> buildPageResult(
+      final List<CommitInfo> items, final int page, final int size, final boolean hasNext) {
+
+    final boolean hasPrevious = page > 0;
+    final int totalPages = hasNext ? page + 2 : (hasPrevious ? page + 1 : 1);
+    final long totalItems = (long) page * size + items.size() + (hasNext ? 1 : 0);
+    return new PagedResult<>(items, page, size, totalItems, totalPages, hasNext, hasPrevious);
   }
 
   private List<FileDiff> getFileDiffs(final Repository gitRepo, final ObjectId objectId)
@@ -234,12 +256,13 @@ public class CommitNonTxService {
     }
   }
 
-  private CommitInfo toCommitInfo(final Repository gitRepo, final RevCommit commit) {
+  private CommitInfo toCommitInfo(
+      final Repository gitRepo, final RevCommit commit, final Map<String, Tenant> tenantsByEmail) {
 
     try {
       final var stats = this.computeCommitStatsLightweight(gitRepo, commit);
       final var description = this.extractDescription(commit.getFullMessage());
-      final var author = this.resolveAuthor(commit);
+      final var author = this.resolveAuthor(commit, tenantsByEmail);
       final var parentShas = Arrays.stream(commit.getParents()).map(RevCommit::getName).toList();
 
       return CommitInfo.builder()
@@ -283,6 +306,19 @@ public class CommitNonTxService {
         .findByUsernameOrEmail(ident.getEmailAddress())
         .map(t -> this.toAuthorInfo(t, ident))
         .orElse(new AuthorInfo(ident.getName(), ident.getEmailAddress(), null, null));
+  }
+
+  private AuthorInfo resolveAuthor(
+      final RevCommit commit, final Map<String, Tenant> tenantsByEmail) {
+
+    final var ident = commit.getAuthorIdent();
+    final var tenant = tenantsByEmail.get(ident.getEmailAddress());
+
+    if (tenant != null) {
+      return this.toAuthorInfo(tenant, ident);
+    }
+
+    return new AuthorInfo(ident.getName(), ident.getEmailAddress(), null, null);
   }
 
   private AuthorInfo toAuthorInfo(final Tenant tenant, final PersonIdent ident) {

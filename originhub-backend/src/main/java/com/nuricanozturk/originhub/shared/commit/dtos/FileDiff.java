@@ -17,9 +17,7 @@ package com.nuricanozturk.originhub.shared.commit.dtos;
 
 import java.util.List;
 import org.eclipse.jgit.diff.DiffEntry;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public record FileDiff(
     String oldPath,
     String newPath,

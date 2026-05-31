@@ -18,10 +18,8 @@ package com.nuricanozturk.originhub.pr.dtos;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
 import java.util.UUID;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
-@NullMarked
 public record PrInfo(
     UUID id,
     int number,

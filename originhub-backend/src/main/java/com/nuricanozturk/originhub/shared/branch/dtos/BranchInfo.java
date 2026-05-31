@@ -17,10 +17,8 @@ package com.nuricanozturk.originhub.shared.branch.dtos;
 
 import java.time.Instant;
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 
 @Builder
-@NullMarked
 public record BranchInfo(
     String name,
     String lastCommitSha,

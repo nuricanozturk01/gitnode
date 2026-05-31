@@ -22,13 +22,11 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.jspecify.annotations.NullMarked;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@NullMarked
 public class UpdateUsernameForm {
 
   @NotBlank(message = "usernameRequired")

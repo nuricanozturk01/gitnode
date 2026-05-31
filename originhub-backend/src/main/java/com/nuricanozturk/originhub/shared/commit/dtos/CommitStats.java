@@ -16,8 +16,6 @@
 package com.nuricanozturk.originhub.shared.commit.dtos;
 
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 
 @Builder
-@NullMarked
 public record CommitStats(int additions, int deletions, int filesChanged) {}

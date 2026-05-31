@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.webhook.services;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
@@ -26,13 +27,14 @@ import com.nuricanozturk.originhub.webhook.entities.UserWebhook;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.mappers.WebhookMapper;
 import com.nuricanozturk.originhub.webhook.repositories.UserWebhookRepository;
-import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,14 +48,13 @@ public class UserWebhookService {
   private static final int MAX_WEBHOOKS_PER_USER = 3;
 
   private static final Set<String> USER_VALID_EVENTS =
-      EnumSet.of(
+      Stream.of(
               WebhookEventType.PROJECT_CREATED,
               WebhookEventType.PROJECT_DELETED,
               WebhookEventType.PROJECT_UPDATED,
               WebhookEventType.SNIPPET_CREATED,
               WebhookEventType.SNIPPET_DELETED,
               WebhookEventType.SNIPPET_UPDATED)
-          .stream()
           .map(Enum::name)
           .collect(Collectors.toUnmodifiableSet());
 
@@ -96,11 +97,11 @@ public class UserWebhookService {
     final var userId = this.resolveUserId(username);
     final var webhook = this.findWebhook(webhookId, userId);
 
-    if (form.url() != null) {
+    if (StringUtils.isNotBlank(form.url())) {
       this.applyUrlUpdate(webhook, userId, form.url());
     }
-    if (form.secret() != null) {
-      webhook.setSecret(form.secret().isBlank() ? null : form.secret());
+    if (StringUtils.isNotBlank(form.secret())) {
+      webhook.setSecret(StringUtils.isNotBlank(form.secret()) ? form.secret() : null);
     }
     if (form.enabled() != null) {
       webhook.setEnabled(form.enabled());
@@ -131,7 +132,7 @@ public class UserWebhookService {
   private UUID resolveUserId(final String username) {
     return this.tenantRepository
         .findByUsername(username)
-        .map(t -> t.getId())
+        .map(Tenant::getId)
         .orElseThrow(() -> new ItemNotFoundException("User not found"));
   }
 

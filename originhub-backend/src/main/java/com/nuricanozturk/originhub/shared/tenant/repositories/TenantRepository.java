@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.shared.tenant.repositories;
 
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.validation.constraints.NotNull;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -46,4 +47,7 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID> {
   Optional<Tenant> findByUsername(String username);
 
   List<Tenant> findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc(String prefix);
+
+  @Query("from Tenant t where t.email in :emails")
+  List<Tenant> findAllByEmailIn(Collection<String> emails);
 }

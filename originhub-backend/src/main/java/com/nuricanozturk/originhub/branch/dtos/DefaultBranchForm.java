@@ -20,12 +20,10 @@ import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.jspecify.annotations.NullMarked;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@NullMarked
 public class DefaultBranchForm {
 
   @NotNull

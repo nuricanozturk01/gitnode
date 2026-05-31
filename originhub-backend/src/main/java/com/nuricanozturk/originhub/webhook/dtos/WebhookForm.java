@@ -19,9 +19,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import java.util.Set;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public record WebhookForm(
     @NotBlank @Size(max = 500) String url,
     String secret,

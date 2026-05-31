@@ -19,12 +19,10 @@ import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.jspecify.annotations.NullMarked;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@NullMarked
 public class CreateBranchFromTaskForm {
 
   @NotNull private String repoOwner;

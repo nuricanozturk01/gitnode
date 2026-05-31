@@ -16,7 +16,5 @@
 package com.nuricanozturk.originhub.migration.dtos;
 
 import java.util.UUID;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public record MigrationJobResponse(UUID jobId, MigrationStatus status) {}

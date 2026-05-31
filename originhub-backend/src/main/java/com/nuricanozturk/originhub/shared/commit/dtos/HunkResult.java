@@ -16,8 +16,6 @@
 package com.nuricanozturk.originhub.shared.commit.dtos;
 
 import java.util.List;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public record HunkResult(
     List<DiffLine> lines, int additions, int deletions, int lineCount, boolean truncated) {}

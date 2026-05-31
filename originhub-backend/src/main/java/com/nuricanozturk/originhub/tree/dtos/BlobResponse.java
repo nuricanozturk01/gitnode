@@ -16,10 +16,8 @@
 package com.nuricanozturk.originhub.tree.dtos;
 
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 
 @Builder
-@NullMarked
 public record BlobResponse(
     String path,
     String name,

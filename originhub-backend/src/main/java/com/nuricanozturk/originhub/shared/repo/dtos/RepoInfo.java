@@ -22,11 +22,9 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.jspecify.annotations.NullMarked;
 
 @AllArgsConstructor
 @Getter
-@NullMarked
 public class RepoInfo implements Serializable {
   private final UUID id;
   private final TenantRepoInfo owner;

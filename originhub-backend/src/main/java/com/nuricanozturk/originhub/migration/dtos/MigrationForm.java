@@ -21,10 +21,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.util.List;
 import lombok.Data;
-import org.jspecify.annotations.NullMarked;
 
 @Data
-@NullMarked
 public class MigrationForm {
 
   @NotNull private MigrationService service;

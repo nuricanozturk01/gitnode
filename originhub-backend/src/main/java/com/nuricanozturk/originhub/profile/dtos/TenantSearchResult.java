@@ -18,11 +18,9 @@ package com.nuricanozturk.originhub.profile.dtos;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.jspecify.annotations.NullMarked;
 
 @AllArgsConstructor
 @Getter
-@NullMarked
 public class TenantSearchResult implements Serializable {
   private final String username;
   private final String displayName;

@@ -17,12 +17,10 @@ package com.nuricanozturk.originhub.tag.dtos;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
-@NullMarked
 public class UpdateReleaseForm {
 
   @Nullable private String name;

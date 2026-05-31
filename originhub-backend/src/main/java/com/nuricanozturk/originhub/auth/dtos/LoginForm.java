@@ -22,13 +22,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.jspecify.annotations.NullMarked;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@NullMarked
 public class LoginForm {
   @NotNull
   @Size(min = 3, max = 150)

@@ -16,9 +16,7 @@
 package com.nuricanozturk.originhub.shared.commit.dtos;
 
 import java.util.List;
-import org.jspecify.annotations.NullMarked;
 
-@NullMarked
 public record PagedResult<T>(
     List<T> items,
     int page,

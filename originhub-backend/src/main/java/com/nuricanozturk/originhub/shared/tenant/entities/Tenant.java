@@ -27,13 +27,12 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "tenant")
-@NullMarked
 public class Tenant {
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
@@ -59,6 +58,7 @@ public class Tenant {
   private String avatarUrl;
 
   @Column(name = "password_recovery_code", length = 300)
+  @Nullable
   private String passwordRecoveryCode;
 
   @Column(name = "bio", length = 300)

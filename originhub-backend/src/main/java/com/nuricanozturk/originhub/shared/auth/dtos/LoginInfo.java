@@ -17,11 +17,9 @@ package com.nuricanozturk.originhub.shared.auth.dtos;
 
 import lombok.Builder;
 import lombok.Data;
-import org.jspecify.annotations.NullMarked;
 
 @Data
 @Builder
-@NullMarked
 public class LoginInfo {
   private String email;
   private String username;

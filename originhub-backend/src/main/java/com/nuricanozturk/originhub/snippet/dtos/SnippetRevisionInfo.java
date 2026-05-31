@@ -18,10 +18,8 @@ package com.nuricanozturk.originhub.snippet.dtos;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
-@NullMarked
 public record SnippetRevisionInfo(
     UUID id, @Nullable String summary, SnippetOwnerInfo author, @Nullable Instant createdAt) {}

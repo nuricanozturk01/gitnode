@@ -18,11 +18,9 @@ package com.nuricanozturk.originhub.task.dtos;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 @Builder
-@NullMarked
 public record ProjectInfo(
     UUID id,
     String name,

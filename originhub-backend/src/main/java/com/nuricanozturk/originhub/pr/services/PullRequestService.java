@@ -52,6 +52,7 @@ import java.util.function.BiFunction;
 import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.RawTextComparator;
 import org.eclipse.jgit.lib.CommitBuilder;
@@ -340,7 +341,9 @@ public class PullRequestService {
       final var commitIds = this.collectRebaseCommits(gitRepo, sourceObjectId, targetObjectId);
 
       final var authorName =
-          mergedBy.getDisplayName() != null ? mergedBy.getDisplayName() : mergedBy.getUsername();
+          StringUtils.isNotBlank(mergedBy.getDisplayName())
+              ? mergedBy.getDisplayName()
+              : mergedBy.getUsername();
 
       try (final var walk = new RevWalk(gitRepo)) {
         final var lastCommitId =

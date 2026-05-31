@@ -17,9 +17,7 @@ package com.nuricanozturk.originhub.task.dtos;
 
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NullMarked;
 
 @Builder
-@NullMarked
 public record LinkedPrInfo(
     UUID id, int number, String title, String status, String sourceBranch, String targetBranch) {}

@@ -16,15 +16,14 @@
 package com.nuricanozturk.originhub.tree.dtos;
 
 import java.time.Instant;
-import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
-@NullMarked
 public record TreeEntry(
     String name,
     String path,
     EntryType type,
     String sha,
     long size,
-    String lastCommitSha,
-    String lastCommitMessage,
-    Instant lastCommitDate) {}
+    @Nullable String lastCommitSha,
+    @Nullable String lastCommitMessage,
+    @Nullable Instant lastCommitDate) {}

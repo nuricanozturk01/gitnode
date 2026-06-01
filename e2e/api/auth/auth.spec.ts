@@ -1,6 +1,6 @@
 import { loadSession } from '@helpers/auth-store';
 import { getApiBaseUrl } from '@helpers/env';
-import { authApi } from '@helpers/paths';
+import { authApi, usersApi } from '@helpers/paths';
 import { E2E_PASSWORD, uniqueEmail, uniqueUsername } from '@helpers/test-user';
 import type { LoginInfo } from '@helpers/types';
 import { expect, request as playwrightRequest, test } from '@playwright/test';
@@ -19,6 +19,11 @@ test.describe('Auth API — all endpoints', () => {
       expect(body.username).toBe(username);
       expect(body.token).toBeTruthy();
       expect(body.refreshToken).toBeTruthy();
+
+      const deleteResponse = await ctx.delete(`${usersApi}/me`, {
+        headers: { Authorization: `Bearer ${body.token}` },
+      });
+      expect(deleteResponse.status()).toBe(204);
     } finally {
       await ctx.dispose();
     }

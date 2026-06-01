@@ -2,7 +2,7 @@ import './helpers/load-env';
 
 import fs from 'node:fs';
 
-import { saveSession, SESSION_FILE } from '@helpers/auth-store';
+import { loadSession, saveSession, SESSION_FILE } from '@helpers/auth-store';
 import { getApiBaseUrl } from '@helpers/env';
 import { seedReadmeOnMain } from '@helpers/seed-repo';
 import { E2E_PASSWORD, uniqueEmail, uniqueUsername } from '@helpers/test-user';
@@ -15,6 +15,8 @@ import {
   resolveOwner,
   shouldPreserveUsers,
 } from './helpers/e2e-credentials';
+import { refreshE2eSession } from './helpers/session-auth';
+import { uniqueProjectCodePrefix } from './helpers/unique-id';
 
 type RequestContext = Awaited<ReturnType<typeof playwrightRequest.newContext>>;
 
@@ -34,17 +36,34 @@ async function registerUser(request: RequestContext, username: string): Promise<
 }
 
 async function globalSetup(): Promise<void> {
+  const baseUrl = getApiBaseUrl();
+
+  if (fs.existsSync(SESSION_FILE)) {
+    try {
+      const existing = loadSession();
+      if (existing.baseUrl !== baseUrl) {
+        fs.unlinkSync(SESSION_FILE);
+        console.log(
+          `[e2e] Removed stale session.json (was for ${existing.baseUrl}, now ${baseUrl})`,
+        );
+      }
+    } catch {
+      fs.unlinkSync(SESSION_FILE);
+    }
+  }
+
+  const request = await playwrightRequest.newContext({ baseURL: baseUrl });
+
   if (process.env.E2E_TEARDOWN_ONLY === '1' && fs.existsSync(SESSION_FILE)) {
-    console.log(`[e2e] Teardown-only: reusing session at ${SESSION_FILE}`);
+    console.log(`[e2e] Teardown-only: refreshing tokens for ${SESSION_FILE}`);
+    await refreshE2eSession(request, loadSession());
+    await request.dispose();
     return;
   }
 
-  const baseUrl = getApiBaseUrl();
   const runId = Date.now().toString(36);
   const generatedOwner = uniqueUsername('e2e');
   const generatedIntruder = uniqueUsername('e2eint');
-
-  const request = await playwrightRequest.newContext({ baseURL: baseUrl });
 
   try {
     const owner = await resolveOwner(request, (u) => registerUser(request, u), generatedOwner);
@@ -69,11 +88,11 @@ async function globalSetup(): Promise<void> {
 
     await seedReadmeOnMain(request, username, repo.name, authorization);
 
-    const projectCode = `E2E${runId.slice(-4).toUpperCase()}`.slice(0, 10);
+    const projectCode = uniqueProjectCodePrefix();
     const createProjectResponse = await request.post(`/api/projects/${username}`, {
       headers: { Authorization: authorization },
       data: {
-        name: `E2E Project ${runId}`,
+        name: `E2E project ${runId}-${Math.random().toString(36).slice(2, 8)}`,
         description: 'Shared E2E project',
         codePrefix: projectCode,
         isPublic: true,

@@ -1,6 +1,7 @@
-import { loadSession } from '@helpers/auth-store';
+import type { E2eSession } from '@helpers/types';
 import { type APIRequestContext, test as base } from '@playwright/test';
 
+import { loadValidSession } from '../../helpers/session-auth';
 import { getApiBaseUrl } from '../helpers/env';
 import { createScenarioRepo, sessionIntruder, sessionOwner } from '../helpers/scenario-api';
 import type { ScenarioRepo, ScenarioUser } from '../helpers/types';
@@ -8,6 +9,7 @@ import type { ScenarioRepo, ScenarioUser } from '../helpers/types';
 interface ScenarioFixtures {
   apiBaseUrl: string;
   bareApi: APIRequestContext;
+  session: E2eSession;
   owner: ScenarioUser;
   intruder: ScenarioUser;
   privateRepo: ScenarioRepo;
@@ -25,12 +27,24 @@ export const test = base.extend<ScenarioFixtures>({
     await ctx.dispose();
   },
 
-  owner: async ({}, use) => {
-    await use(sessionOwner(loadSession()));
+  session: [
+    async ({ playwright }, use) => {
+      const request = await playwright.request.newContext({ baseURL: getApiBaseUrl() });
+      try {
+        await use(await loadValidSession(request));
+      } finally {
+        await request.dispose();
+      }
+    },
+    { scope: 'worker' },
+  ],
+
+  owner: async ({ session }, use) => {
+    await use(sessionOwner(session));
   },
 
-  intruder: async ({}, use) => {
-    await use(sessionIntruder(loadSession()));
+  intruder: async ({ session }, use) => {
+    await use(sessionIntruder(session));
   },
 
   privateRepo: async ({ bareApi, owner }, use) => {

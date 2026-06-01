@@ -7,6 +7,12 @@ import {
 } from '@helpers/paths';
 import type { APIRequestContext } from '@playwright/test';
 
+import {
+  uniqueProjectCodePrefix,
+  uniqueScenarioBoardName,
+  uniqueScenarioColumnName,
+  uniqueScenarioProjectName,
+} from '../../helpers/unique-id';
 import type { ScenarioRepo, ScenarioUser } from './types';
 import { waitUntil } from './wait';
 
@@ -42,12 +48,13 @@ export async function bootstrapScenarioProject(
   user: ScenarioUser,
   repo: ScenarioRepo,
 ): Promise<ScenarioProjectBoard> {
-  const codePrefix = `SC${Date.now().toString(36).slice(-4).toUpperCase()}`.slice(0, 10);
+  const codePrefix = uniqueProjectCodePrefix();
+  const projectName = uniqueScenarioProjectName();
 
   const projectResponse = await request.post(projectsApi(user.username), {
     headers: { Authorization: user.authorization },
     data: {
-      name: `Scenario project ${codePrefix}`,
+      name: projectName,
       description: 'E2E task scenario',
       codePrefix,
       isPublic: true,
@@ -73,7 +80,7 @@ export async function bootstrapScenarioProject(
 
   const boardResponse = await request.post(projectBoardsApi(user.username, projectCode), {
     headers: { Authorization: user.authorization },
-    data: { name: 'Scenario board', position: 0 },
+    data: { name: uniqueScenarioBoardName(), position: 0 },
   });
   if (!boardResponse.ok()) {
     throw new Error(
@@ -86,7 +93,7 @@ export async function bootstrapScenarioProject(
     `${projectBoardsApi(user.username, projectCode)}/${boardId}/columns`,
     {
       headers: { Authorization: user.authorization },
-      data: { name: 'Todo', position: 0, color: '#64748b' },
+      data: { name: uniqueScenarioColumnName(), position: 0, color: '#64748b' },
     },
   );
   if (!columnResponse.ok()) {
@@ -281,7 +288,23 @@ export async function waitForTaskLinkedPr(
   let detail!: TaskDetailResponse;
   await waitUntil(async () => {
     detail = await getTaskDetail(request, user, projectCode, taskCode);
-    return detail.linkedPr?.sourceBranch === sourceBranch;
+    const pr = detail.linkedPr;
+    return pr != null && pr.number > 0 && pr.sourceBranch === sourceBranch && pr.status === 'OPEN';
+  });
+  return detail;
+}
+
+/** After PR merge: task COMPLETED (sync on) and linked PR MERGED (async Modulith listeners). */
+export async function waitForTaskCompletedAfterPrMerge(
+  request: APIRequestContext,
+  user: ScenarioUser,
+  projectCode: string,
+  taskCode: string,
+): Promise<TaskDetailResponse> {
+  let detail!: TaskDetailResponse;
+  await waitUntil(async () => {
+    detail = await getTaskDetail(request, user, projectCode, taskCode);
+    return detail.status === 'COMPLETED' && detail.linkedPr?.status === 'MERGED';
   });
   return detail;
 }

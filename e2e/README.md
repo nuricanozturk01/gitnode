@@ -44,3 +44,5 @@ Optional file: `e2e/.env` (see [.env.example](.env.example)).
 | `E2E_PRESERVE_USERS`                              | `1` if any account came from `.env` | Teardown skips `DELETE /api/users/me` |
 
 CI does not use `.env`; it auto-registers users and deletes them in the teardown job ([workflow](../.github/workflows/originhub-e2e.yaml)).
+
+If you see `TokenExpiredException` / `invalidToken`, delete `e2e/.auth/session.json` or re-run tests (fixtures refresh tokens via `/api/auth/refresh-token` when needed). Ensure `ORIGINHUB_API_BASE_URL` matches the environment where the session was created.

@@ -1,7 +1,9 @@
 import { ApiClient } from '@helpers/api-client';
-import { loadSession } from '@helpers/auth-store';
 import type { E2eSession } from '@helpers/types';
 import { type APIRequestContext, test as base } from '@playwright/test';
+
+import { loadValidSession } from '../../helpers/session-auth';
+import { getApiBaseUrl } from '../helpers/env';
 
 interface AuthenticatedFixtures {
   session: E2eSession;
@@ -10,9 +12,17 @@ interface AuthenticatedFixtures {
 }
 
 export const test = base.extend<AuthenticatedFixtures>({
-  session: async ({}, use) => {
-    await use(loadSession());
-  },
+  session: [
+    async ({ playwright }, use) => {
+      const request = await playwright.request.newContext({ baseURL: getApiBaseUrl() });
+      try {
+        await use(await loadValidSession(request));
+      } finally {
+        await request.dispose();
+      }
+    },
+    { scope: 'worker' },
+  ],
 
   authedRequest: async ({ playwright, session }, use) => {
     const context = await playwright.request.newContext({

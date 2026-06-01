@@ -4,6 +4,7 @@ import type { E2eSession, RepoInfo } from '@helpers/types';
 import type { APIRequestContext } from '@playwright/test';
 
 import type { ScenarioRepo, ScenarioUser } from './types';
+import { waitUntil } from './wait';
 
 export function sessionOwner(session: E2eSession): ScenarioUser {
   return {
@@ -225,6 +226,20 @@ export async function getPullRequest(
     throw new Error(`get pull failed (${response.status()}): ${await response.text()}`);
   }
   return (await response.json()) as { number: number; status: string; sourceBranch: string };
+}
+
+export async function waitForPullRequestStatus(
+  request: APIRequestContext,
+  authorization: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+  status: string,
+): Promise<void> {
+  await waitUntil(async () => {
+    const pr = await getPullRequest(request, authorization, owner, repo, prNumber);
+    return pr.status === status;
+  });
 }
 
 export async function listCommitMessages(

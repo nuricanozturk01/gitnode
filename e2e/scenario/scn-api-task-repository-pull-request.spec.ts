@@ -21,6 +21,7 @@ import {
   mergePullRequest,
   prepareFeatureBranch,
   putBlob,
+  waitForPullRequestStatus,
 } from './helpers/scenario-api';
 import {
   bootstrapScenarioProject,
@@ -34,8 +35,8 @@ import {
   listCommitsOnBranch,
   patchProject,
   waitForSubtaskLinkedPr,
+  waitForTaskCompletedAfterPrMerge,
   waitForTaskLinkedPr,
-  waitForTaskStatus,
 } from './helpers/task-api';
 
 test.describe('SCN-TASK — task, repository, and pull request linkage', () => {
@@ -171,13 +172,22 @@ test.describe('SCN-TASK — task, repository, and pull request linkage', () => {
       pr.number,
     );
 
-    const task = await waitForTaskStatus(
+    await waitForPullRequestStatus(
+      bareApi,
+      owner.authorization,
+      owner.username,
+      privateRepo.name,
+      pr.number,
+      'MERGED',
+    );
+
+    const task = await waitForTaskCompletedAfterPrMerge(
       bareApi,
       owner,
       project.projectCode,
       taskCode,
-      'COMPLETED',
     );
+    expect(task.status).toBe('COMPLETED');
     expect(task.linkedPr?.status).toBe('MERGED');
   });
 
@@ -279,6 +289,15 @@ test.describe('SCN-TASK — task, repository, and pull request linkage', () => {
       owner.username,
       privateRepo.name,
       pr.number,
+    );
+
+    await waitForPullRequestStatus(
+      bareApi,
+      owner.authorization,
+      owner.username,
+      privateRepo.name,
+      pr.number,
+      'MERGED',
     );
 
     const task = await getTaskDetail(bareApi, owner, project.projectCode, taskCode);
@@ -495,6 +514,6 @@ test.describe('SCN-TASK — task, repository, and pull request linkage', () => {
       'main',
     );
     expect(messages.some((m) => m.toLowerCase().includes('merge'))).toBe(true);
-    await waitForTaskStatus(bareApi, owner, project.projectCode, taskCode, 'COMPLETED');
+    await waitForTaskCompletedAfterPrMerge(bareApi, owner, project.projectCode, taskCode);
   });
 });

@@ -11,7 +11,8 @@
     "baseUrl": ".",
     "paths": {
       "@helpers/*": ["api/helpers/*"],
-      "@fixtures/*": ["api/fixtures/*"]
+      "@fixtures/*": ["api/fixtures/*"],
+      "@e2e-helpers/*": ["helpers/*"]
     }
   },
   "include": ["**/*.ts"],

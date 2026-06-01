@@ -6,7 +6,7 @@ REST coverage for Spring `@RestController` endpoints. One shared **owner** sessi
 
 1. **`global-setup.ts`** — resolves **owner** and **intruder** (login from `.env` or auto-register), creates shared repo + project, writes `e2e/.auth/session.json`.
 2. **`fixtures/authenticated-api.ts`** — `session`, `authedRequest`, `api`.
-3. **`auth/auth.spec.ts`** — still registers a **new** user for the register endpoint test.
+3. **`auth/auth.spec.ts`** — registers a disposable user (`reg_*`) for the register test, then **`DELETE /api/users/me`** in the same test (not left for teardown).
 
 `DELETE /api/users/me` is **not** tested here (see [teardown](../teardown/README.md)).
 

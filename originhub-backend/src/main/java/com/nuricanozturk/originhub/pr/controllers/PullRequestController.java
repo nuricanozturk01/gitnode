@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.pr.services.PullRequestService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -31,7 +32,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -113,7 +113,7 @@ public class PullRequestController {
   }
 
   @GetMapping
-  public ResponseEntity<Page<PrInfo>> getAll(
+  public ResponseEntity<PageResponse<PrInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @RequestParam(defaultValue = "OPEN") final String status,
@@ -125,7 +125,7 @@ public class PullRequestController {
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var prs = this.prService.getAll(owner, repo, status, page, size);
-    return ResponseEntity.ok(prs);
+    return ResponseEntity.ok(PageResponse.from(prs));
   }
 
   @GetMapping("/{number}")

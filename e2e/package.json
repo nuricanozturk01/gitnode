@@ -1,0 +1,18 @@
+{
+  "name": "originhub-e2e",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:api": "playwright test --project=api",
+    "test:e2e:ui": "playwright test --ui",
+    "postinstall": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.0",
+    "typescript": "~5.9.3"
+  }
+}

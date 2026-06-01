@@ -20,13 +20,13 @@ import com.nuricanozturk.originhub.pr.dtos.PrCommentInfo;
 import com.nuricanozturk.originhub.pr.dtos.PrCommentUpdateForm;
 import com.nuricanozturk.originhub.pr.services.PullRequestCommentService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -97,7 +97,7 @@ public class PullRequestCommitController {
   }
 
   @GetMapping("/comments")
-  public ResponseEntity<Page<PrCommentInfo>> getComments(
+  public ResponseEntity<PageResponse<PrCommentInfo>> getComments(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final int number,
@@ -109,6 +109,6 @@ public class PullRequestCommitController {
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var comments = this.prService.getComments(owner, repo, number, page, size);
-    return ResponseEntity.ok(comments);
+    return ResponseEntity.ok(PageResponse.from(comments));
   }
 }

@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.task.controllers;
 
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
+import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.task.dtos.CreateBranchFromTaskForm;
 import com.nuricanozturk.originhub.task.dtos.SubtaskForm;
@@ -32,7 +33,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -65,14 +65,15 @@ public class TaskController {
   }
 
   @GetMapping
-  public ResponseEntity<Page<TaskInfo>> getAll(
+  public ResponseEntity<PageResponse<TaskInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "500") final int size,
       @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.taskService.getAll(owner, projectCode, viewer, page, size));
+    return ResponseEntity.ok(
+        PageResponse.from(this.taskService.getAll(owner, projectCode, viewer, page, size)));
   }
 
   @GetMapping("/{taskCode}")

@@ -2,12 +2,22 @@ name: OriginHub E2E
 
 on:
   schedule:
-    # Three runs per day (UTC): 06:00, 14:00, 22:00
+    # Four runs per day (UTC): 06:00, 14:00, 16:00, 22:00
     - cron: "0 6 * * *"
     - cron: "0 14 * * *"
     - cron: "0 16 * * *"
     - cron: "0 22 * * *"
   workflow_dispatch:
+    inputs:
+      suite:
+        description: E2E suite to run (scheduled runs always use full)
+        type: choice
+        default: full
+        options:
+          - full
+          - api
+          - scenario
+          - teardown
 
 concurrency:
   group: originhub-e2e-${{ github.workflow }}-${{ github.ref }}
@@ -21,6 +31,10 @@ env:
 jobs:
   e2e-api:
     name: E2E API
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      github.event.inputs.suite == 'full' ||
+      github.event.inputs.suite == 'api'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -70,6 +84,12 @@ jobs:
   e2e-scenario:
     name: E2E Scenario
     needs: e2e-api
+    if: >-
+      always() &&
+      (needs.e2e-api.result == 'success' || needs.e2e-api.result == 'skipped') &&
+      (github.event_name != 'workflow_dispatch' ||
+        github.event.inputs.suite == 'full' ||
+        github.event.inputs.suite == 'scenario')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -130,7 +150,15 @@ jobs:
   e2e-teardown:
     name: E2E Teardown
     needs: e2e-scenario
-    if: always()
+    if: >-
+      always() &&
+      (needs.e2e-scenario.result == 'success' ||
+        needs.e2e-scenario.result == 'failure' ||
+        needs.e2e-scenario.result == 'skipped') &&
+      (github.event_name != 'workflow_dispatch' ||
+        github.event.inputs.suite == 'full' ||
+        github.event.inputs.suite == 'scenario' ||
+        github.event.inputs.suite == 'teardown')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:

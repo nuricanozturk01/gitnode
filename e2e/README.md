@@ -21,28 +21,23 @@ cp .env.example .env   # optional — local credentials and API URL
 ## How to run
 
 | Command                       | What runs                                                             |
-| ----------------------------- | --------------------------------------------------------------------- |
+|-------------------------------|-----------------------------------------------------------------------|
 | `pnpm test:e2e`               | **API** → **scenario** → **teardown** (full suite)                    |
 | `pnpm test:e2e:api`           | API project only (teardown does **not** run)                          |
 | `pnpm test:e2e:scenario`      | Scenario + teardown (`E2E_SCENARIO_ONLY=1`, skips API project)        |
 | `pnpm test:e2e:scenario:only` | Scenario only (used in CI before the teardown job)                    |
 | `pnpm test:e2e:teardown`      | Teardown only (`E2E_TEARDOWN_ONLY=1`, needs `e2e/.auth/session.json`) |
 
-Lint/format/typecheck: `pnpm run lint`, `pnpm run typecheck`, `pnpm run check` (both), `pnpm run format`.
-
-IDE: open the repo root; ESLint uses [`.vscode/settings.json`](../.vscode/settings.json) with `e2e` as a working directory so rules apply under `e2e/`. TypeScript errors (e.g. Playwright header types) need `tsc` / type-aware ESLint — not syntax-only rules alone.
-
 ## Environment (`.env`)
 
 Optional file: `e2e/.env` (see [.env.example](.env.example)).
 
 | Variable                                          | When unset                          | When set                              |
-| ------------------------------------------------- | ----------------------------------- | ------------------------------------- |
+|---------------------------------------------------|-------------------------------------|---------------------------------------|
 | `ORIGINHUB_API_BASE_URL`                          | `http://localhost:8080`             | Used for all requests                 |
 | `E2E_OWNER_USERNAME` + `E2E_OWNER_PASSWORD`       | Owner is **auto-registered**        | Owner logs in via `/api/auth/login`   |
 | `E2E_INTRUDER_USERNAME` + `E2E_INTRUDER_PASSWORD` | Intruder is **auto-registered**     | Intruder logs in                      |
 | `E2E_PRESERVE_USERS`                              | `1` if any account came from `.env` | Teardown skips `DELETE /api/users/me` |
 
-CI does not use `.env`; it auto-registers users and deletes them in the teardown job ([workflow](../.github/workflows/originhub-e2e.yaml)).
-
-If you see `TokenExpiredException` / `invalidToken`, delete `e2e/.auth/session.json` or re-run tests (fixtures refresh tokens via `/api/auth/refresh-token` when needed). Ensure `ORIGINHUB_API_BASE_URL` matches the environment where the session was created.
+CI does not use `.env`; it auto-registers users and deletes them in the teardown
+job ([workflow](../.github/workflows/originhub-e2e.yaml)).

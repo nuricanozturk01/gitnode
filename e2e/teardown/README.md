@@ -20,5 +20,3 @@ pnpm test:e2e:teardown
 ```
 
 Needs `e2e/.auth/session.json` from a prior run. With `E2E_TEARDOWN_ONLY=1`, `global-setup` does not re-register users.
-
-[`global-teardown.ts`](../global-teardown.ts) also removes temp dirs when the teardown project did not run (e.g. `test:e2e:api` only).

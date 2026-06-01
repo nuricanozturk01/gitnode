@@ -64,8 +64,11 @@ public class ProfileService {
     final var oldUsername = tenant.getUsername().toLowerCase(Locale.getDefault());
     final var newUsername = form.getUsername().toLowerCase(Locale.getDefault());
 
-    if (this.tenantRepository.existsByUsername(newUsername) && !newUsername.equals(oldUsername)) {
+    if (oldUsername.equals(newUsername)) {
+      return this.tenantMapper.toTenantInfo(tenant);
+    }
 
+    if (this.tenantRepository.existsByUsername(newUsername)) {
       throw new ItemAlreadyExistsException("usernameTaken");
     }
 

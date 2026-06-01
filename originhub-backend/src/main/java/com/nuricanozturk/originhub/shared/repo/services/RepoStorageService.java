@@ -89,6 +89,10 @@ public class RepoStorageService {
 
   public void renameBaseDir(final String oldUsername, final String newUsername) {
 
+    if (oldUsername.equals(newUsername)) {
+      return;
+    }
+
     final var oldPath = Path.of(this.repoRoot, oldUsername);
     final var newPath = Path.of(this.repoRoot, newUsername);
 

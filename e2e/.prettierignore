@@ -1,0 +1,8 @@
+node_modules
+playwright-report
+test-results
+blob-report
+.auth
+scenario/.workdirs
+.git-workdirs
+pnpm-lock.yaml

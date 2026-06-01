@@ -1,5 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { snippetsApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Snippet API — all endpoints', () => {
   let snippetId: string;
@@ -61,22 +62,14 @@ test.describe.serial('Snippet API — all endpoints', () => {
     revisionId = body.content[0].id;
   });
 
-  test('GET /api/snippets/{snippetId}/revisions/{revisionId}', async ({
-    authedRequest,
-  }) => {
-    const response = await authedRequest.get(
-      `${snippetsApi}/${snippetId}/revisions/${revisionId}`,
-    );
+  test('GET /api/snippets/{snippetId}/revisions/{revisionId}', async ({ authedRequest }) => {
+    const response = await authedRequest.get(`${snippetsApi}/${snippetId}/revisions/${revisionId}`);
     expect(response.status()).toBe(200);
     expect((await response.json()).id).toBe(revisionId);
   });
 
-  test('GET /api/snippets/{snippetId}/files/{fileId}/raw', async ({
-    authedRequest,
-  }) => {
-    const response = await authedRequest.get(
-      `${snippetsApi}/${snippetId}/files/${fileId}/raw`,
-    );
+  test('GET /api/snippets/{snippetId}/files/{fileId}/raw', async ({ authedRequest }) => {
+    const response = await authedRequest.get(`${snippetsApi}/${snippetId}/files/${fileId}/raw`);
     expect(response.status()).toBe(200);
     expect(await response.text()).toContain('export');
   });
@@ -87,13 +80,8 @@ test.describe.serial('Snippet API — all endpoints', () => {
     forkId = (await response.json()).id;
   });
 
-  test('PUT /api/snippets/{snippetId}/repo/{repoId}', async ({
-    authedRequest,
-    session,
-  }) => {
-    const response = await authedRequest.put(
-      `${snippetsApi}/${snippetId}/repo/${session.repoId}`,
-    );
+  test('PUT /api/snippets/{snippetId}/repo/{repoId}', async ({ authedRequest, session }) => {
+    const response = await authedRequest.put(`${snippetsApi}/${snippetId}/repo/${session.repoId}`);
     expect(response.status()).toBe(200);
   });
 
@@ -104,9 +92,7 @@ test.describe.serial('Snippet API — all endpoints', () => {
   });
 
   test('GET /api/snippets/repo/{owner}/{repoName}', async ({ authedRequest, api }) => {
-    const response = await authedRequest.get(
-      `${snippetsApi}/repo/${api.owner}/${api.repo}`,
-    );
+    const response = await authedRequest.get(`${snippetsApi}/repo/${api.owner}/${api.repo}`);
     expect(response.status()).toBe(200);
     expect(Array.isArray((await response.json()).content)).toBe(true);
   });
@@ -125,19 +111,14 @@ test.describe.serial('Snippet API — all endpoints', () => {
     commentId = (await response.json()).id;
   });
 
-  test('DELETE /api/snippets/{snippetId}/comments/{commentId}', async ({
-    authedRequest,
-  }) => {
+  test('DELETE /api/snippets/{snippetId}/comments/{commentId}', async ({ authedRequest }) => {
     const response = await authedRequest.delete(
       `${snippetsApi}/${snippetId}/comments/${commentId}`,
     );
     expect(response.status()).toBe(204);
   });
 
-  test('DELETE /api/snippets/{snippetId}/repo/{repoId}', async ({
-    authedRequest,
-    session,
-  }) => {
+  test('DELETE /api/snippets/{snippetId}/repo/{repoId}', async ({ authedRequest, session }) => {
     const response = await authedRequest.delete(
       `${snippetsApi}/${snippetId}/repo/${session.repoId}`,
     );

@@ -1,30 +1,33 @@
-import type { APIRequestContext } from '@playwright/test';
-
 import { repoApi } from '@helpers/paths';
 import { seedReadmeOnMain } from '@helpers/seed-repo';
-import { E2E_PASSWORD, uniqueEmail, uniqueUsername } from '@helpers/test-user';
-import type { LoginInfo, RepoInfo } from '@helpers/types';
+import type { E2eSession, RepoInfo } from '@helpers/types';
+import type { APIRequestContext } from '@playwright/test';
 
 import type { ScenarioRepo, ScenarioUser } from './types';
 
-export async function registerScenarioUser(
-  request: APIRequestContext,
-): Promise<ScenarioUser> {
-  const username = uniqueUsername('scn');
-  const email = uniqueEmail(username);
-  const password = E2E_PASSWORD;
-  const response = await request.post('/api/auth/register', {
-    data: { username, email, password },
-  });
-  if (!response.ok()) {
-    throw new Error(`register failed (${response.status()}): ${await response.text()}`);
-  }
-  const login = (await response.json()) as LoginInfo;
+export function sessionOwner(session: E2eSession): ScenarioUser {
   return {
-    ...login,
-    email,
-    password,
-    authorization: `Bearer ${login.token}`,
+    username: session.username,
+    email: session.email,
+    password: session.password,
+    token: session.accessToken,
+    refreshToken: session.refreshToken,
+    expiresIn: 0,
+    refreshExpiresIn: 0,
+    authorization: session.authorization,
+  };
+}
+
+export function sessionIntruder(session: E2eSession): ScenarioUser {
+  return {
+    username: session.intruderUsername,
+    email: session.intruderEmail,
+    password: session.intruderPassword,
+    token: session.intruderAccessToken,
+    refreshToken: session.intruderRefreshToken,
+    expiresIn: 0,
+    refreshExpiresIn: 0,
+    authorization: session.intruderAuthorization,
   };
 }
 
@@ -33,7 +36,7 @@ export async function createScenarioRepo(
   user: ScenarioUser,
   options: { isPrivate: boolean; namePrefix?: string },
 ): Promise<ScenarioRepo> {
-  const name = `${options.namePrefix ?? 'scn-repo'}-${Date.now().toString(36)}`;
+  const name = `${options.namePrefix ?? 'scn-repo'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const response = await request.post(repoApi, {
     headers: { Authorization: user.authorization },
     data: { name, description: 'Scenario E2E repo', isPrivate: options.isPrivate },
@@ -95,13 +98,10 @@ export async function putBlob(
   content: string,
   commitMessage: string,
 ): Promise<void> {
-  const response = await request.put(
-    `/api/repos/${owner}/${repo}/blob/${branch}/${filePath}`,
-    {
-      headers: { Authorization: authorization },
-      data: { content, commitMessage },
-    },
-  );
+  const response = await request.put(`/api/repos/${owner}/${repo}/blob/${branch}/${filePath}`, {
+    headers: { Authorization: authorization },
+    data: { content, commitMessage },
+  });
   if (!response.ok()) {
     throw new Error(`put blob failed (${response.status()}): ${await response.text()}`);
   }
@@ -142,13 +142,10 @@ export async function mergePullRequest(
   repo: string,
   prNumber: number,
 ): Promise<void> {
-  const response = await request.post(
-    `/api/repos/${owner}/${repo}/pulls/${prNumber}/merge`,
-    {
-      headers: { Authorization: authorization },
-      data: { strategy: 'MERGE_COMMIT', commitMessage: `Merge PR #${prNumber}` },
-    },
-  );
+  const response = await request.post(`/api/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
+    headers: { Authorization: authorization },
+    data: { strategy: 'MERGE_COMMIT', commitMessage: `Merge PR #${prNumber}` },
+  });
   if (!response.ok()) {
     throw new Error(`merge PR failed (${response.status()}): ${await response.text()}`);
   }
@@ -161,10 +158,9 @@ export async function closePullRequest(
   repo: string,
   prNumber: number,
 ): Promise<void> {
-  const response = await request.delete(
-    `/api/repos/${owner}/${repo}/pulls/${prNumber}`,
-    { headers: { Authorization: authorization } },
-  );
+  const response = await request.delete(`/api/repos/${owner}/${repo}/pulls/${prNumber}`, {
+    headers: { Authorization: authorization },
+  });
   if (!response.ok()) {
     throw new Error(`close PR failed (${response.status()}): ${await response.text()}`);
   }
@@ -181,6 +177,88 @@ export async function branchExists(
     headers: { Authorization: authorization },
   });
   return response.ok();
+}
+
+export async function getRepo(
+  request: APIRequestContext,
+  authorization: string | undefined,
+  owner: string,
+  repo: string,
+): Promise<RepoInfo> {
+  const response = await request.get(`${repoApi}/${owner}/${repo}`, {
+    headers: authorization ? { Authorization: authorization } : undefined,
+  });
+  if (!response.ok()) {
+    throw new Error(`get repo failed (${response.status()}): ${await response.text()}`);
+  }
+  return (await response.json()) as RepoInfo;
+}
+
+export async function listPullRequests(
+  request: APIRequestContext,
+  authorization: string | undefined,
+  owner: string,
+  repo: string,
+  status = 'OPEN',
+): Promise<{ content: { number: number; title: string }[] }> {
+  const response = await request.get(`/api/repos/${owner}/${repo}/pulls`, {
+    headers: authorization ? { Authorization: authorization } : undefined,
+    params: { status, page: '0', size: '25' },
+  });
+  if (!response.ok()) {
+    throw new Error(`list pulls failed (${response.status()}): ${await response.text()}`);
+  }
+  return (await response.json()) as { content: { number: number; title: string }[] };
+}
+
+export async function getPullRequest(
+  request: APIRequestContext,
+  authorization: string,
+  owner: string,
+  repo: string,
+  prNumber: number,
+): Promise<{ number: number; status: string; sourceBranch: string }> {
+  const response = await request.get(`/api/repos/${owner}/${repo}/pulls/${prNumber}`, {
+    headers: { Authorization: authorization },
+  });
+  if (!response.ok()) {
+    throw new Error(`get pull failed (${response.status()}): ${await response.text()}`);
+  }
+  return (await response.json()) as { number: number; status: string; sourceBranch: string };
+}
+
+export async function listCommitMessages(
+  request: APIRequestContext,
+  authorization: string,
+  owner: string,
+  repo: string,
+  branch: string,
+): Promise<string[]> {
+  const response = await request.get(`/api/repos/${owner}/${repo}/commits`, {
+    headers: { Authorization: authorization },
+    params: { branch, page: '0', size: '20' },
+  });
+  if (!response.ok()) {
+    throw new Error(`list commits failed (${response.status()}): ${await response.text()}`);
+  }
+  const body = (await response.json()) as { items: { message: string }[] };
+  return body.items.map((c) => c.message);
+}
+
+export async function setDefaultBranch(
+  request: APIRequestContext,
+  authorization: string,
+  owner: string,
+  repo: string,
+  branchName: string,
+): Promise<void> {
+  const response = await request.patch(`/api/repos/${owner}/${repo}/branches/default`, {
+    headers: { Authorization: authorization },
+    data: { branchName },
+  });
+  if (!response.ok()) {
+    throw new Error(`set default branch failed (${response.status()}): ${await response.text()}`);
+  }
 }
 
 export async function prepareFeatureBranch(

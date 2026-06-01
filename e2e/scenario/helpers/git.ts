@@ -34,10 +34,21 @@ export function removeWorkDir(dir: string): void {
   fs.rmSync(dir, { recursive: true, force: true });
 }
 
-export function runGit(args: string[], options?: { cwd?: string; expectFailure?: boolean }): string {
+/** Removes all scenario Git working directories (see global-teardown). */
+export function removeAllWorkDirs(): void {
+  fs.rmSync(WORK_ROOT, { recursive: true, force: true });
+}
+
+/** Disables OS/keychain credential helpers so auth comes only from the remote URL. */
+const GIT_NO_CREDENTIALS = ['-c', 'credential.helper='];
+
+export function runGit(
+  args: string[],
+  options?: { cwd?: string; expectFailure?: boolean },
+): string {
   const cwd = options?.cwd;
   try {
-    return execFileSync('git', args, {
+    return execFileSync('git', [...GIT_NO_CREDENTIALS, ...args], {
       cwd,
       encoding: 'utf8',
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -55,6 +66,10 @@ export function runGit(args: string[], options?: { cwd?: string; expectFailure?:
     }
     throw error;
   }
+}
+
+export function gitCheckout(repoDir: string, branch: string): void {
+  runGit(['-C', repoDir, 'checkout', branch], {});
 }
 
 export function gitClone(remote: string, targetDir: string, expectFailure = false): void {

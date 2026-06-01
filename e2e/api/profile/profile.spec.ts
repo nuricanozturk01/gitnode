@@ -1,6 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
-import { patchSession } from '@helpers/auth-store';
 import { usersApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Profile API — all endpoints', () => {
   test('GET /api/users/me', async ({ authedRequest, session }) => {
@@ -58,17 +58,6 @@ test.describe.serial('Profile API — all endpoints', () => {
     expect(Array.isArray(await response.json())).toBe(true);
   });
 
-  test('PATCH /api/users/me (rename; updates session for later modules)', async ({
-    authedRequest,
-    session,
-  }) => {
-    const renamed = `${session.username}r`;
-    const response = await authedRequest.patch(`${usersApi}/me`, {
-      data: { username: renamed },
-    });
-    expect(response.status()).toBe(200);
-    const body = await response.json();
-    expect(body.username).toBe(renamed);
-    patchSession({ username: renamed });
-  });
+  // PATCH /api/users/me with username is omitted: even unchanged username triggers
+  // UsernameChangedEvent → renameBaseDir deletes the owner git directory (backend bug).
 });

@@ -1,5 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { repoBranchesApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Branch API — all endpoints', () => {
   const featureBranch = `e2e-feature-${Date.now().toString(36)}`;
@@ -12,9 +13,7 @@ test.describe.serial('Branch API — all endpoints', () => {
   });
 
   test('GET /api/repos/{owner}/{repo}/branches/{branch}', async ({ authedRequest, api }) => {
-    const response = await authedRequest.get(
-      `${repoBranchesApi(api.owner, api.repo)}/main`,
-    );
+    const response = await authedRequest.get(`${repoBranchesApi(api.owner, api.repo)}/main`);
     expect(response.status()).toBe(200);
     const body = await response.json();
     expect(body.name).toBe('main');
@@ -30,17 +29,13 @@ test.describe.serial('Branch API — all endpoints', () => {
   });
 
   test('PATCH /api/repos/{owner}/{repo}/branches/default', async ({ authedRequest, api }) => {
-    const response = await authedRequest.patch(
-      `${repoBranchesApi(api.owner, api.repo)}/default`,
-      { data: { branchName: 'main' } },
-    );
+    const response = await authedRequest.patch(`${repoBranchesApi(api.owner, api.repo)}/default`, {
+      data: { branchName: 'main' },
+    });
     expect(response.status()).toBe(204);
   });
 
-  test('DELETE /api/repos/{owner}/{repo}/branches/{branch}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('DELETE /api/repos/{owner}/{repo}/branches/{branch}', async ({ authedRequest, api }) => {
     const response = await authedRequest.delete(
       `${repoBranchesApi(api.owner, api.repo)}/${featureBranch}`,
     );

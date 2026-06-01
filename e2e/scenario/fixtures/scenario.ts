@@ -1,17 +1,18 @@
-import { test as base, type APIRequestContext } from '@playwright/test';
+import { loadSession } from '@helpers/auth-store';
+import { type APIRequestContext, test as base } from '@playwright/test';
 
 import { getApiBaseUrl } from '../helpers/env';
-import { createScenarioRepo, registerScenarioUser } from '../helpers/scenario-api';
+import { createScenarioRepo, sessionIntruder, sessionOwner } from '../helpers/scenario-api';
 import type { ScenarioRepo, ScenarioUser } from '../helpers/types';
 
-type ScenarioFixtures = {
+interface ScenarioFixtures {
   apiBaseUrl: string;
   bareApi: APIRequestContext;
   owner: ScenarioUser;
   intruder: ScenarioUser;
   privateRepo: ScenarioRepo;
   publicRepo: ScenarioRepo;
-};
+}
 
 export const test = base.extend<ScenarioFixtures>({
   apiBaseUrl: async ({}, use) => {
@@ -24,14 +25,12 @@ export const test = base.extend<ScenarioFixtures>({
     await ctx.dispose();
   },
 
-  owner: async ({ bareApi }, use) => {
-    const user = await registerScenarioUser(bareApi);
-    await use(user);
+  owner: async ({}, use) => {
+    await use(sessionOwner(loadSession()));
   },
 
-  intruder: async ({ bareApi }, use) => {
-    const user = await registerScenarioUser(bareApi);
-    await use(user);
+  intruder: async ({}, use) => {
+    await use(sessionIntruder(loadSession()));
   },
 
   privateRepo: async ({ bareApi, owner }, use) => {

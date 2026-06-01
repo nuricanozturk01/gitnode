@@ -1,14 +1,13 @@
-import { test as base, type APIRequestContext } from '@playwright/test';
-
 import { ApiClient } from '@helpers/api-client';
 import { loadSession } from '@helpers/auth-store';
 import type { E2eSession } from '@helpers/types';
+import { type APIRequestContext, test as base } from '@playwright/test';
 
-type AuthenticatedFixtures = {
+interface AuthenticatedFixtures {
   session: E2eSession;
   authedRequest: APIRequestContext;
   api: ApiClient;
-};
+}
 
 export const test = base.extend<AuthenticatedFixtures>({
   session: async ({}, use) => {

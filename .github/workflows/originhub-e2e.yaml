@@ -1,0 +1,189 @@
+name: OriginHub E2E
+
+on:
+  schedule:
+    # Three runs per day (UTC): 06:00, 14:00, 22:00
+    - cron: "0 6 * * *"
+    - cron: "0 14 * * *"
+    - cron: "0 16 * * *"
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: originhub-e2e-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+  ORIGINHUB_API_BASE_URL: https://originhub.nuricanozturk.com
+  ORIGINHUB_FRONTEND_BASE_URL: https://originhub.nuricanozturk.com
+
+jobs:
+  e2e-api:
+    name: E2E API
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@10 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "${ORIGINHUB_API_BASE_URL}/actuator/health" >/dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 10
+          done
+          echo "API did not become healthy in time"
+          exit 1
+
+      - name: Run API E2E tests
+        run: pnpm test:e2e:api
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-api
+          path: e2e/playwright-report/
+          retention-days: 7
+
+  e2e-scenario:
+    name: E2E Scenario
+    needs: e2e-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@10 --activate
+
+      - name: Install Git
+        run: sudo apt-get update && sudo apt-get install -y git
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "${ORIGINHUB_API_BASE_URL}/actuator/health" >/dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 10
+          done
+          echo "API did not become healthy in time"
+          exit 1
+
+      - name: Run scenario E2E tests
+        run: pnpm test:e2e:scenario:only
+
+      - name: Upload E2E session for teardown
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-session
+          path: e2e/.auth/session.json
+          if-no-files-found: ignore
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-scenario
+          path: e2e/playwright-report/
+          retention-days: 7
+
+  e2e-teardown:
+    name: E2E Teardown
+    needs: e2e-scenario
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@10 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download E2E session
+        uses: actions/download-artifact@v4
+        with:
+          name: e2e-session
+          path: .auth
+
+      - name: Wait for API health
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS "${ORIGINHUB_API_BASE_URL}/actuator/health" >/dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            echo "Waiting for API... ($i/30)"
+            sleep 10
+          done
+          echo "API did not become healthy in time"
+          exit 1
+
+      - name: Run E2E teardown
+        run: |
+          if [ ! -f .auth/session.json ]; then
+            echo "No session artifact from scenario job; skipping user teardown"
+            exit 0
+          fi
+          pnpm test:e2e:teardown
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-teardown
+          path: e2e/playwright-report/
+          retention-days: 7

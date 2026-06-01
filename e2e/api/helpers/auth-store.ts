@@ -13,7 +13,7 @@ export function saveSession(session: E2eSession): void {
 export function loadSession(): E2eSession {
   if (!fs.existsSync(SESSION_FILE)) {
     throw new Error(
-      `E2E session not found at ${SESSION_FILE}. Run global setup (playwright test --project=api).`,
+      `E2E session not found at ${SESSION_FILE}. Run global setup (pnpm test:e2e or pnpm test:e2e:api).`,
     );
   }
   return JSON.parse(fs.readFileSync(SESSION_FILE, 'utf8')) as E2eSession;

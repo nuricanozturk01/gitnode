@@ -1,9 +1,6 @@
+import { projectWebhooksApi, repoWebhooksApi, userWebhooksApi } from '@helpers/paths';
+
 import { expect, test } from '../fixtures/authenticated-api';
-import {
-  projectWebhooksApi,
-  repoWebhooksApi,
-  userWebhooksApi,
-} from '@helpers/paths';
 
 test.describe.serial('Webhook API — all endpoints', () => {
   let repoWebhookId: string;
@@ -45,10 +42,7 @@ test.describe.serial('Webhook API — all endpoints', () => {
     repoWebhookId = (await response.json()).id;
   });
 
-  test('PATCH /api/repos/.../settings/webhooks/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('PATCH /api/repos/.../settings/webhooks/{id}', async ({ authedRequest, api }) => {
     const response = await authedRequest.patch(
       `${repoWebhooksApi(api.owner, api.repo)}/${repoWebhookId}`,
       { data: { ...repoWebhookPayload, enabled: false } },
@@ -56,29 +50,20 @@ test.describe.serial('Webhook API — all endpoints', () => {
     expect(response.status()).toBe(200);
   });
 
-  test('DELETE /api/repos/.../settings/webhooks/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('DELETE /api/repos/.../settings/webhooks/{id}', async ({ authedRequest, api }) => {
     const response = await authedRequest.delete(
       `${repoWebhooksApi(api.owner, api.repo)}/${repoWebhookId}`,
     );
     expect(response.status()).toBe(204);
   });
 
-  test('GET /api/users/{username}/settings/webhooks', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/users/{username}/settings/webhooks', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(userWebhooksApi(api.owner));
     expect(response.status()).toBe(200);
     expect(Array.isArray(await response.json())).toBe(true);
   });
 
-  test('POST /api/users/{username}/settings/webhooks', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('POST /api/users/{username}/settings/webhooks', async ({ authedRequest, api }) => {
     const response = await authedRequest.post(userWebhooksApi(api.owner), {
       data: userWebhookPayload,
     });
@@ -86,51 +71,31 @@ test.describe.serial('Webhook API — all endpoints', () => {
     userWebhookId = (await response.json()).id;
   });
 
-  test('PATCH /api/users/{username}/settings/webhooks/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.patch(
-      `${userWebhooksApi(api.owner)}/${userWebhookId}`,
-      {
-        data: {
-          ...userWebhookPayload,
-          url: 'https://example.com/hooks/user-e2e-patched',
-        },
+  test('PATCH /api/users/{username}/settings/webhooks/{id}', async ({ authedRequest, api }) => {
+    const response = await authedRequest.patch(`${userWebhooksApi(api.owner)}/${userWebhookId}`, {
+      data: {
+        ...userWebhookPayload,
+        url: 'https://example.com/hooks/user-e2e-patched',
       },
-    );
+    });
     expect(response.status()).toBe(200);
   });
 
-  test('DELETE /api/users/{username}/settings/webhooks/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.delete(
-      `${userWebhooksApi(api.owner)}/${userWebhookId}`,
-    );
+  test('DELETE /api/users/{username}/settings/webhooks/{id}', async ({ authedRequest, api }) => {
+    const response = await authedRequest.delete(`${userWebhooksApi(api.owner)}/${userWebhookId}`);
     expect(response.status()).toBe(204);
   });
 
-  test('GET /api/{owner}/projects/{code}/settings/webhooks', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.get(
-      projectWebhooksApi(api.owner, api.projectCode),
-    );
+  test('GET /api/{owner}/projects/{code}/settings/webhooks', async ({ authedRequest, api }) => {
+    const response = await authedRequest.get(projectWebhooksApi(api.owner, api.projectCode));
     expect(response.status()).toBe(200);
     expect(Array.isArray(await response.json())).toBe(true);
   });
 
-  test('POST /api/{owner}/projects/{code}/settings/webhooks', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.post(
-      projectWebhooksApi(api.owner, api.projectCode),
-      { data: projectWebhookPayload },
-    );
+  test('POST /api/{owner}/projects/{code}/settings/webhooks', async ({ authedRequest, api }) => {
+    const response = await authedRequest.post(projectWebhooksApi(api.owner, api.projectCode), {
+      data: projectWebhookPayload,
+    });
     expect(response.status()).toBe(201);
     projectWebhookId = (await response.json()).id;
   });

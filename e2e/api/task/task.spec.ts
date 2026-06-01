@@ -1,10 +1,6 @@
+import { projectApi, projectBoardsApi, projectsApi, projectTasksApi } from '@helpers/paths';
+
 import { expect, test } from '../fixtures/authenticated-api';
-import {
-  projectApi,
-  projectBoardsApi,
-  projectTasksApi,
-  projectsApi,
-} from '@helpers/paths';
 
 test.describe.serial('Task module API — all endpoints', () => {
   const extraProjectCode = `X${Date.now().toString(36).slice(-3).toUpperCase()}`;
@@ -56,52 +52,31 @@ test.describe.serial('Task module API — all endpoints', () => {
     expect(response.status()).toBe(204);
   });
 
-  test('GET /api/projects/{owner}/{projectCode}/repos', async ({
-    authedRequest,
-    api,
-    session,
-  }) => {
-    const response = await authedRequest.get(
-      `${projectApi(api.owner, api.projectCode)}/repos`,
-    );
+  test('GET /api/projects/{owner}/{projectCode}/repos', async ({ authedRequest, api, session }) => {
+    const response = await authedRequest.get(`${projectApi(api.owner, api.projectCode)}/repos`);
     expect(response.status()).toBe(200);
     const repos = await response.json();
     expect(repos.some((r: { id: string }) => r.id === session.repoId)).toBe(true);
   });
 
-  test('GET /api/projects/{owner}/by-repo/{repoId}', async ({
-    authedRequest,
-    api,
-    session,
-  }) => {
-    const response = await authedRequest.get(
-      `${projectsApi(api.owner)}/by-repo/${session.repoId}`,
-    );
+  test('GET /api/projects/{owner}/by-repo/{repoId}', async ({ authedRequest, api, session }) => {
+    const response = await authedRequest.get(`${projectsApi(api.owner)}/by-repo/${session.repoId}`);
     expect(response.status()).toBe(200);
     expect((await response.json()).content.length).toBeGreaterThan(0);
   });
 
-  test('POST /api/projects/{owner}/{projectCode}/boards', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.post(
-      projectBoardsApi(api.owner, api.projectCode),
-      { data: { name: 'E2E Board', position: 0 } },
-    );
+  test('POST /api/projects/{owner}/{projectCode}/boards', async ({ authedRequest, api }) => {
+    const response = await authedRequest.post(projectBoardsApi(api.owner, api.projectCode), {
+      data: { name: 'E2E Board', position: 0 },
+    });
     expect(response.status()).toBe(201);
     boardId = (await response.json()).id;
   });
 
-  test('GET /api/projects/{owner}/{projectCode}/boards', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/projects/{owner}/{projectCode}/boards', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(projectBoardsApi(api.owner, api.projectCode));
     expect(response.status()).toBe(200);
-    expect((await response.json()).some((b: { id: string }) => b.id === boardId)).toBe(
-      true,
-    );
+    expect((await response.json()).some((b: { id: string }) => b.id === boardId)).toBe(true);
   });
 
   test('GET /api/projects/{owner}/{projectCode}/boards/{boardId}', async ({
@@ -149,30 +124,21 @@ test.describe.serial('Task module API — all endpoints', () => {
     expect(response.status()).toBe(200);
   });
 
-  test('POST /api/projects/{owner}/{projectCode}/tasks', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.post(
-      projectTasksApi(api.owner, api.projectCode),
-      {
-        data: {
-          title: 'E2E task',
-          description: 'API',
-          boardColumnId: columnId,
-          type: 'TASK',
-          position: 0,
-        },
+  test('POST /api/projects/{owner}/{projectCode}/tasks', async ({ authedRequest, api }) => {
+    const response = await authedRequest.post(projectTasksApi(api.owner, api.projectCode), {
+      data: {
+        title: 'E2E task',
+        description: 'API',
+        boardColumnId: columnId,
+        type: 'TASK',
+        position: 0,
       },
-    );
+    });
     expect(response.status()).toBe(201);
     taskCode = (await response.json()).code;
   });
 
-  test('GET /api/projects/{owner}/{projectCode}/tasks', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/projects/{owner}/{projectCode}/tasks', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(projectTasksApi(api.owner, api.projectCode));
     expect(response.status()).toBe(200);
     expect((await response.json()).content.length).toBeGreaterThan(0);
@@ -200,10 +166,7 @@ test.describe.serial('Task module API — all endpoints', () => {
     expect(response.status()).toBe(200);
   });
 
-  test('POST /api/projects/.../tasks/{taskCode}/subtasks', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('POST /api/projects/.../tasks/{taskCode}/subtasks', async ({ authedRequest, api }) => {
     const response = await authedRequest.post(
       `${projectTasksApi(api.owner, api.projectCode)}/${taskCode}/subtasks`,
       { data: { title: 'Subtask 1', position: 0 } },
@@ -234,10 +197,7 @@ test.describe.serial('Task module API — all endpoints', () => {
     expect(response.status()).toBe(201);
   });
 
-  test('POST /api/projects/.../tasks/{taskCode}/branch', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('POST /api/projects/.../tasks/{taskCode}/branch', async ({ authedRequest, api }) => {
     const response = await authedRequest.post(
       `${projectTasksApi(api.owner, api.projectCode)}/${taskCode}/branch`,
       { data: { repoOwner: api.owner, repoName: api.repo, sourceBranch: 'main' } },
@@ -297,13 +257,8 @@ test.describe.serial('Task module API — all endpoints', () => {
     expect(response.status()).toBe(204);
   });
 
-  test('DELETE /api/projects/{owner}/{projectCode} (extra)', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.delete(
-      projectApi(api.owner, extraProjectCode),
-    );
+  test('DELETE /api/projects/{owner}/{projectCode} (extra)', async ({ authedRequest, api }) => {
+    const response = await authedRequest.delete(projectApi(api.owner, extraProjectCode));
     expect(response.status()).toBe(204);
   });
 });

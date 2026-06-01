@@ -38,11 +38,7 @@ export class ApiClient {
     return (await response.json()) as LoginInfo;
   }
 
-  async register(
-    username: string,
-    email: string,
-    password: string,
-  ): Promise<LoginInfo> {
+  async register(username: string, email: string, password: string): Promise<LoginInfo> {
     const response = await this.request.post('/api/auth/register', {
       data: { username, email, password },
     });

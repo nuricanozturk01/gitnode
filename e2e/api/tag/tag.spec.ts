@@ -1,5 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { repoReleasesApi, repoTagsApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Tag & release API — all endpoints', () => {
   const tagName = `v1.0-e2e-${Date.now().toString(36)}`;
@@ -7,10 +8,9 @@ test.describe.serial('Tag & release API — all endpoints', () => {
   let releaseId: string;
 
   test.beforeAll(async ({ authedRequest, api }) => {
-    const commits = await authedRequest.get(
-      `/api/repos/${api.owner}/${api.repo}/commits`,
-      { params: { branch: 'main', page: '0', size: '1' } },
-    );
+    const commits = await authedRequest.get(`/api/repos/${api.owner}/${api.repo}/commits`, {
+      params: { branch: 'main', page: '0', size: '1' },
+    });
     const body = await commits.json();
     headSha = body.items[0].sha;
   });
@@ -28,13 +28,8 @@ test.describe.serial('Tag & release API — all endpoints', () => {
     expect(response.status()).toBe(201);
   });
 
-  test('GET /api/repos/{owner}/{repo}/tags/{tag}', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.get(
-      `${repoTagsApi(api.owner, api.repo)}/${tagName}`,
-    );
+  test('GET /api/repos/{owner}/{repo}/tags/{tag}', async ({ authedRequest, api }) => {
+    const response = await authedRequest.get(`${repoTagsApi(api.owner, api.repo)}/${tagName}`);
     expect(response.status()).toBe(200);
     expect((await response.json()).name).toBe(tagName);
   });
@@ -60,10 +55,7 @@ test.describe.serial('Tag & release API — all endpoints', () => {
     releaseId = (await response.json()).id;
   });
 
-  test('GET /api/repos/{owner}/{repo}/releases/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/repos/{owner}/{repo}/releases/{id}', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(
       `${repoReleasesApi(api.owner, api.repo)}/${releaseId}`,
     );
@@ -71,30 +63,19 @@ test.describe.serial('Tag & release API — all endpoints', () => {
     expect((await response.json()).id).toBe(releaseId);
   });
 
-  test('GET /api/repos/{owner}/{repo}/releases/latest', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.get(
-      `${repoReleasesApi(api.owner, api.repo)}/latest`,
-    );
+  test('GET /api/repos/{owner}/{repo}/releases/latest', async ({ authedRequest, api }) => {
+    const response = await authedRequest.get(`${repoReleasesApi(api.owner, api.repo)}/latest`);
     expect([200, 404]).toContain(response.status());
   });
 
-  test('GET /api/repos/{owner}/{repo}/releases/tag/{tagName}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/repos/{owner}/{repo}/releases/tag/{tagName}', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(
       `${repoReleasesApi(api.owner, api.repo)}/tag/${tagName}`,
     );
     expect(response.status()).toBe(200);
   });
 
-  test('PATCH /api/repos/{owner}/{repo}/releases/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('PATCH /api/repos/{owner}/{repo}/releases/{id}', async ({ authedRequest, api }) => {
     const response = await authedRequest.patch(
       `${repoReleasesApi(api.owner, api.repo)}/${releaseId}`,
       { data: { name: 'E2E Release patched' } },
@@ -102,23 +83,15 @@ test.describe.serial('Tag & release API — all endpoints', () => {
     expect(response.status()).toBe(200);
   });
 
-  test('DELETE /api/repos/{owner}/{repo}/releases/{id}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('DELETE /api/repos/{owner}/{repo}/releases/{id}', async ({ authedRequest, api }) => {
     const response = await authedRequest.delete(
       `${repoReleasesApi(api.owner, api.repo)}/${releaseId}`,
     );
     expect(response.status()).toBe(204);
   });
 
-  test('DELETE /api/repos/{owner}/{repo}/tags/{tag}', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.delete(
-      `${repoTagsApi(api.owner, api.repo)}/${tagName}`,
-    );
+  test('DELETE /api/repos/{owner}/{repo}/tags/{tag}', async ({ authedRequest, api }) => {
+    const response = await authedRequest.delete(`${repoTagsApi(api.owner, api.repo)}/${tagName}`);
     expect(response.status()).toBe(204);
   });
 });

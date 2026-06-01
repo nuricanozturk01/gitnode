@@ -1,5 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { repoIssuesApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Issue API — all endpoints', () => {
   let issueNumber: number;
@@ -19,15 +20,10 @@ test.describe.serial('Issue API — all endpoints', () => {
     });
     expect(response.status()).toBe(200);
     const body = await response.json();
-    expect(body.content.some((i: { number: number }) => i.number === issueNumber)).toBe(
-      true,
-    );
+    expect(body.content.some((i: { number: number }) => i.number === issueNumber)).toBe(true);
   });
 
-  test('GET /api/repos/{owner}/{repo}/issues/{number}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/repos/{owner}/{repo}/issues/{number}', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(
       `${repoIssuesApi(api.owner, api.repo)}/${issueNumber}`,
     );
@@ -35,10 +31,7 @@ test.describe.serial('Issue API — all endpoints', () => {
     expect((await response.json()).number).toBe(issueNumber);
   });
 
-  test('PATCH /api/repos/{owner}/{repo}/issues/{number}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('PATCH /api/repos/{owner}/{repo}/issues/{number}', async ({ authedRequest, api }) => {
     const response = await authedRequest.patch(
       `${repoIssuesApi(api.owner, api.repo)}/${issueNumber}`,
       { data: { title: 'E2E issue updated', status: 'OPEN' } },
@@ -58,10 +51,7 @@ test.describe.serial('Issue API — all endpoints', () => {
     expect(Array.isArray(await response.json())).toBe(true);
   });
 
-  test('GET /api/repos/{owner}/{repo}/issues/{number}/comments', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/repos/{owner}/{repo}/issues/{number}/comments', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(
       `${repoIssuesApi(api.owner, api.repo)}/${issueNumber}/comments`,
     );
@@ -103,10 +93,7 @@ test.describe.serial('Issue API — all endpoints', () => {
     expect(response.status()).toBe(204);
   });
 
-  test('DELETE /api/repos/{owner}/{repo}/issues/{number}', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('DELETE /api/repos/{owner}/{repo}/issues/{number}', async ({ authedRequest, api }) => {
     const response = await authedRequest.delete(
       `${repoIssuesApi(api.owner, api.repo)}/${issueNumber}`,
     );

@@ -1,64 +1,46 @@
-# OriginHub E2E tests
+# OriginHub E2E
 
-Playwright-based tests for OriginHub. Two top-level areas:
+Playwright tests for the OriginHub API and scenario flows. See also:
 
-| Path | Purpose |
-|------|---------|
-| `api/` | REST API tests against every Spring `@RestController` endpoint |
-| `scenario/` | Scaffold for future browser/UI flows |
+- [API tests](api/README.md) — REST coverage, auth, modules
+- [Scenario tests](scenario/README.md) — SCN-\* catalog, HTTP Git, expected outcomes
+- [Teardown](teardown/README.md) — user cleanup after a full run
 
 ## Prerequisites
 
-1. **PostgreSQL + API** at `http://localhost:8080` (default).
-
-   ```bash
-   make up
-   ```
-
-   Or local Spring Boot with `local` profile.
-
-2. **Node.js 24** (`engines` in `package.json`).
-
-## Install & run
+- **Node.js 24** (`engines` in `package.json`)
+- **API** reachable (default `http://localhost:8080`), e.g. `make up` or Spring Boot with `local` profile
+- **Git** on `PATH` for scenario tests only
 
 ```bash
 cd e2e
 pnpm install
-pnpm test:e2e:api
+cp .env.example .env   # optional — local credentials and API URL
 ```
 
-| Variable | Default |
-|----------|---------|
-| `ORIGINHUB_API_BASE_URL` | `http://localhost:8080` |
+## How to run
 
-Tests run **serially** (`fullyParallel: false`) because they share one registered user and fixture repo/project.
+| Command                       | What runs                                                             |
+| ----------------------------- | --------------------------------------------------------------------- |
+| `pnpm test:e2e`               | **API** → **scenario** → **teardown** (full suite)                    |
+| `pnpm test:e2e:api`           | API project only (teardown does **not** run)                          |
+| `pnpm test:e2e:scenario`      | Scenario + teardown (`E2E_SCENARIO_ONLY=1`, skips API project)        |
+| `pnpm test:e2e:scenario:only` | Scenario only (used in CI before the teardown job)                    |
+| `pnpm test:e2e:teardown`      | Teardown only (`E2E_TEARDOWN_ONLY=1`, needs `e2e/.auth/session.json`) |
 
-## Single-user auth
+Lint/format/typecheck: `pnpm run lint`, `pnpm run typecheck`, `pnpm run check` (both), `pnpm run format`.
 
-1. **`api/global-setup.ts`** — register once, create shared repo + project, seed `README.md` on `main`, write `e2e/.auth/session.json`.
-2. **`api/fixtures/authenticated-api.ts`** — `session`, `authedRequest`, `api`.
-3. Module specs use the shared session; `auth/auth.spec.ts` still registers a **new** user for the register endpoint test.
+IDE: open the repo root; ESLint uses [`.vscode/settings.json`](../.vscode/settings.json) with `e2e` as a working directory so rules apply under `e2e/`. TypeScript errors (e.g. Playwright header types) need `tsc` / type-aware ESLint — not syntax-only rules alone.
 
-## Module layout & endpoint coverage
+## Environment (`.env`)
 
-| Folder | Controllers covered | Endpoints |
-|--------|---------------------|-----------|
-| `auth/` | `AuthController` | register, login, refresh-token, send-password-recovery-mail, recover-password |
-| `profile/` | `ProfileController` | me GET/PATCH, display-name, profile, password, public profile, search |
-| `ssh/` | `SshKeyController` | list, add, delete |
-| `repo/` | `RepoController` | create, get, list, patch, delete |
-| `branch/` | `BranchController` | list, get, create, set default, delete |
-| `commit/` | `CommitController` | list, get, diff |
-| `tree/` | `TreeController` | tree, blob, raw, languages, archive, PUT blob |
-| `snippet/` | `SnippetController`, `SnippetCommentController` | full CRUD, fork, revisions, repo link, by-owner, by-repo, raw file, comments |
-| `issue/` | `IssueController` | CRUD, linked-tasks, comments CRUD |
-| `task/` | `ProjectController`, `BoardController`, `TaskController` | projects, boards, columns, tasks, subtasks, branches |
-| `pr/` | `PullRequestController`, `PullRequestCommitController` | CRUD, merge, commits, diff, comments |
-| `tag/` | `TagController`, `ReleaseController` | tags + releases |
-| `webhook/` | repo / user / project webhook controllers | CRUD each |
-| `migration/` | `RepoMigrationController` | GET job, POST validation |
-| `shared/` | actuator | `/actuator/health` |
+Optional file: `e2e/.env` (see [.env.example](.env.example)).
 
-**Not covered (no REST controller):** Git smart HTTP (`/git/**`), SSH git protocol (port 2222), `DELETE /api/users/me` (would destroy the shared session user).
+| Variable                                          | When unset                          | When set                              |
+| ------------------------------------------------- | ----------------------------------- | ------------------------------------- |
+| `ORIGINHUB_API_BASE_URL`                          | `http://localhost:8080`             | Used for all requests                 |
+| `E2E_OWNER_USERNAME` + `E2E_OWNER_PASSWORD`       | Owner is **auto-registered**        | Owner logs in via `/api/auth/login`   |
+| `E2E_INTRUDER_USERNAME` + `E2E_INTRUDER_PASSWORD` | Intruder is **auto-registered**     | Intruder logs in                      |
+| `E2E_PRESERVE_USERS`                              | `1` if any account came from `.env` | Teardown skips `DELETE /api/users/me` |
 
-Frontend E2E remains under `scenario/` for later.
+CI does not use `.env`; it auto-registers users and deletes them in the teardown job ([workflow](../.github/workflows/originhub-e2e.yaml)).

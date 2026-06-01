@@ -1,10 +1,9 @@
-import { expect, request as playwrightRequest, test } from '@playwright/test';
-
 import { loadSession } from '@helpers/auth-store';
-import { authApi } from '@helpers/paths';
 import { getApiBaseUrl } from '@helpers/env';
+import { authApi } from '@helpers/paths';
 import { E2E_PASSWORD, uniqueEmail, uniqueUsername } from '@helpers/test-user';
 import type { LoginInfo } from '@helpers/types';
+import { expect, request as playwrightRequest, test } from '@playwright/test';
 
 test.describe('Auth API — all endpoints', () => {
   test('POST /api/auth/register', async () => {

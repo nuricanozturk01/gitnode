@@ -1,5 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { sshKeysApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 /** Valid ed25519 public key for E2E only (not a real deployed key). */
 const E2E_SSH_PUBLIC_KEY =

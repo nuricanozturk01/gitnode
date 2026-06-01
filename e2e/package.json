@@ -7,12 +7,28 @@
   "scripts": {
     "test:e2e": "playwright test",
     "test:e2e:api": "playwright test --project=api",
+    "test:e2e:scenario": "E2E_SCENARIO_ONLY=1 playwright test --project=scenario --project=teardown",
+    "test:e2e:scenario:only": "E2E_SCENARIO_ONLY=1 playwright test --project=scenario",
+    "test:e2e:teardown": "E2E_TEARDOWN_ONLY=1 playwright test --project=teardown",
     "test:e2e:ui": "playwright test --ui",
-    "postinstall": "playwright install chromium"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint-fix": "eslint . --fix",
+    "check": "pnpm run typecheck && pnpm run lint",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },
   "devDependencies": {
+    "dotenv": "^16.6.1",
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.52.0",
     "@types/node": "^22.15.0",
-    "typescript": "~5.9.3"
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.0.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.50.1"
   }
 }

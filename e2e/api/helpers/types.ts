@@ -41,4 +41,13 @@ export interface E2eSession {
   repoName: string;
   repoId: string;
   projectCode: string;
+  /** Second user for scenario intrusion tests (registered once in global setup). */
+  intruderUsername: string;
+  intruderEmail: string;
+  intruderPassword: string;
+  intruderAccessToken: string;
+  intruderRefreshToken: string;
+  intruderAuthorization: string;
+  /** When true, teardown skips DELETE /api/users/me (accounts from .env). */
+  preserveUsers?: boolean;
 }

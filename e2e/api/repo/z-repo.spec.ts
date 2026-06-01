@@ -1,5 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { repoApi } from '@helpers/paths';
+
+import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Repo API — all endpoints', () => {
   const disposableName = `e2e-disposable-${Date.now().toString(36)}`;
@@ -40,9 +41,7 @@ test.describe.serial('Repo API — all endpoints', () => {
   });
 
   test('DELETE /api/repo/{owner}/{repo} (disposable)', async ({ authedRequest, api }) => {
-    const response = await authedRequest.delete(
-      `${repoApi}/${api.owner}/${disposableName}`,
-    );
+    const response = await authedRequest.delete(`${repoApi}/${api.owner}/${disposableName}`);
     expect(response.status()).toBe(204);
     const list = await authedRequest.get(`${repoApi}/${api.owner}`, {
       params: { page: '0', size: '50' },

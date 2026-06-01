@@ -1,10 +1,9 @@
-import { expect, test } from '../fixtures/authenticated-api';
 import { migrationApi } from '@helpers/paths';
 
+import { expect, test } from '../fixtures/authenticated-api';
+
 test.describe('Migration API — all endpoints', () => {
-  test('GET /api/migration/{jobId} returns 404 for unknown job', async ({
-    authedRequest,
-  }) => {
+  test('GET /api/migration/{jobId} returns 404 for unknown job', async ({ authedRequest }) => {
     const response = await authedRequest.get(
       `${migrationApi}/00000000-0000-0000-0000-000000000000`,
     );

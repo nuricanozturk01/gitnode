@@ -1,10 +1,6 @@
-import { expect, test } from '../fixtures/authenticated-api';
-import {
-  repoBranchesApi,
-  repoPullApi,
-  repoPullsApi,
-  reposApi,
-} from '@helpers/paths';
+import { repoBranchesApi, repoPullApi, repoPullsApi, reposApi } from '@helpers/paths';
+
+import { expect, test } from './fixtures/authenticated-api';
 
 test.describe.serial('Pull request API — all endpoints', () => {
   const featureBranch = `e2e-pr-${Date.now().toString(36)}`;
@@ -48,32 +44,20 @@ test.describe.serial('Pull request API — all endpoints', () => {
     expect((await response.json()).content.length).toBeGreaterThan(0);
   });
 
-  test('GET /api/repos/{owner}/{repo}/pulls/{number}', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.get(
-      repoPullApi(api.owner, api.repo, prNumber),
-    );
+  test('GET /api/repos/{owner}/{repo}/pulls/{number}', async ({ authedRequest, api }) => {
+    const response = await authedRequest.get(repoPullApi(api.owner, api.repo, prNumber));
     expect(response.status()).toBe(200);
     expect((await response.json()).number).toBe(prNumber);
   });
 
-  test('PATCH /api/repos/{owner}/{repo}/pulls/{number}', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.patch(
-      repoPullApi(api.owner, api.repo, prNumber),
-      { data: { title: 'E2E PR updated', isDraft: true } },
-    );
+  test('PATCH /api/repos/{owner}/{repo}/pulls/{number}', async ({ authedRequest, api }) => {
+    const response = await authedRequest.patch(repoPullApi(api.owner, api.repo, prNumber), {
+      data: { title: 'E2E PR updated', isDraft: true },
+    });
     expect(response.status()).toBe(200);
   });
 
-  test('GET /api/repos/{owner}/{repo}/pulls/{number}/commits', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/repos/{owner}/{repo}/pulls/{number}/commits', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(
       `${repoPullApi(api.owner, api.repo, prNumber)}/commits`,
     );
@@ -81,31 +65,20 @@ test.describe.serial('Pull request API — all endpoints', () => {
     expect(Array.isArray(await response.json())).toBe(true);
   });
 
-  test('GET /api/repos/{owner}/{repo}/pulls/{number}/diff', async ({
-    authedRequest,
-    api,
-  }) => {
-    const response = await authedRequest.get(
-      `${repoPullApi(api.owner, api.repo, prNumber)}/diff`,
-    );
+  test('GET /api/repos/{owner}/{repo}/pulls/{number}/diff', async ({ authedRequest, api }) => {
+    const response = await authedRequest.get(`${repoPullApi(api.owner, api.repo, prNumber)}/diff`);
     expect(response.status()).toBe(200);
     expect(Array.isArray(await response.json())).toBe(true);
   });
 
-  test('GET /api/repos/{owner}/{repo}/pulls/{number}/comments', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('GET /api/repos/{owner}/{repo}/pulls/{number}/comments', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(
       `${repoPullApi(api.owner, api.repo, prNumber)}/comments`,
     );
     expect(response.status()).toBe(200);
   });
 
-  test('POST /api/repos/{owner}/{repo}/pulls/{number}/comments', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('POST /api/repos/{owner}/{repo}/pulls/{number}/comments', async ({ authedRequest, api }) => {
     const response = await authedRequest.post(
       `${repoPullApi(api.owner, api.repo, prNumber)}/comments`,
       { data: { body: 'PR review comment' } },
@@ -136,17 +109,13 @@ test.describe.serial('Pull request API — all endpoints', () => {
   });
 
   test('PATCH pull open for merge', async ({ authedRequest, api }) => {
-    const response = await authedRequest.patch(
-      repoPullApi(api.owner, api.repo, prNumber),
-      { data: { isDraft: false } },
-    );
+    const response = await authedRequest.patch(repoPullApi(api.owner, api.repo, prNumber), {
+      data: { isDraft: false },
+    });
     expect(response.status()).toBe(200);
   });
 
-  test('POST /api/repos/{owner}/{repo}/pulls/{number}/merge', async ({
-    authedRequest,
-    api,
-  }) => {
+  test('POST /api/repos/{owner}/{repo}/pulls/{number}/merge', async ({ authedRequest, api }) => {
     const response = await authedRequest.post(
       `${repoPullApi(api.owner, api.repo, prNumber)}/merge`,
       { data: { strategy: 'MERGE_COMMIT', commitMessage: 'Merge E2E PR' } },
@@ -172,9 +141,7 @@ test.describe.serial('Pull request API — all endpoints', () => {
       },
     });
     const num = (await create.json()).number;
-    const response = await authedRequest.delete(
-      repoPullApi(api.owner, api.repo, num),
-    );
+    const response = await authedRequest.delete(repoPullApi(api.owner, api.repo, num));
     expect(response.status()).toBe(204);
   });
 });

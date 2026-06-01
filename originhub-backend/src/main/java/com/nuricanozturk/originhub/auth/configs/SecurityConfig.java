@@ -20,6 +20,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -42,10 +43,19 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
   private static final long MAX_AGE = 3600L;
+  private static final List<String> ALLOWED_METHODS =
+      List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD");
+  private static final List<String> ALLOWED_HEADERS =
+      List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin");
+  private static final List<String> EXPOSED_HEADERS =
+      List.of("Authorization", "Content-Disposition");
 
   private final CustomOauth2SuccessHandler successHandler;
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final CustomAuthenticationEntryPoint authenticationEntryPoint;
+
+  @Value("${originhub.cors.allowed-origins}")
+  private List<String> allowedOrigins;
 
   @Bean
   public SecurityFilterChain doFilter(final HttpSecurity http) {
@@ -113,11 +123,11 @@ public class SecurityConfig {
 
     final var configuration = new CorsConfiguration();
 
-    configuration.setAllowedOriginPatterns(List.of("*"));
+    configuration.setAllowedOriginPatterns(this.allowedOrigins);
     configuration.setAllowCredentials(false);
-    configuration.setAllowedMethods(List.of("*"));
-    configuration.setAllowedHeaders(List.of("*"));
-    configuration.setExposedHeaders(List.of("*"));
+    configuration.setAllowedMethods(ALLOWED_METHODS);
+    configuration.setAllowedHeaders(ALLOWED_HEADERS);
+    configuration.setExposedHeaders(EXPOSED_HEADERS);
     configuration.setMaxAge(MAX_AGE);
 
     final var source = new UrlBasedCorsConfigurationSource();

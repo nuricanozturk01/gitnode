@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -28,6 +28,7 @@ import { ToastService } from '../../../core/toast/toast.service';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-branches',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, LucideAngularModule, RelativeTimePipe],

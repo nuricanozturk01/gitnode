@@ -28,11 +28,11 @@ import com.nuricanozturk.originhub.task.dtos.TaskUpdateForm;
 import com.nuricanozturk.originhub.task.services.TaskService;
 import jakarta.validation.Valid;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,6 +43,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -64,12 +65,14 @@ public class TaskController {
   }
 
   @GetMapping
-  public ResponseEntity<List<TaskInfo>> getAll(
+  public ResponseEntity<Page<TaskInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "500") final int size,
       @AuthenticationPrincipal final @Nullable Tenant viewer) {
 
-    return ResponseEntity.ok(this.taskService.getAll(owner, projectCode, viewer));
+    return ResponseEntity.ok(this.taskService.getAll(owner, projectCode, viewer, page, size));
   }
 
   @GetMapping("/{taskCode}")

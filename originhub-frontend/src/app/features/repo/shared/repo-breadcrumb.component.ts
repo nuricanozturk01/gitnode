@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 export interface BreadcrumbItem {
@@ -24,6 +24,7 @@ export interface BreadcrumbItem {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-breadcrumb',
   standalone: true,
   imports: [RouterLink],

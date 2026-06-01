@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -7,6 +7,7 @@ import { IssueService } from '../../../core/issue/services/issue.service';
 import { ToastService } from '../../../core/toast/toast.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-new-issue',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, FormsModule],

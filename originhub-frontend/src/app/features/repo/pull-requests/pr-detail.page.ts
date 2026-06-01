@@ -14,10 +14,8 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, effect, NgZone } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { merge } from 'rxjs';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -36,6 +34,7 @@ import type { DiffLine } from '../../../domain/commit/models/diff-line.model';
 import type { CommitInfo } from '../../../domain/commit/models/commit-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pr-detail',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, FormsModule, RelativeTimePipe, AvatarComponent],
@@ -50,7 +49,6 @@ export class PrDetailPage {
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
   readonly repoContext = inject(RepoContextService);
-  private readonly ngZone = inject(NgZone);
 
   readonly pr = signal<PullRequestDetail | null>(null);
   readonly currentUser = signal<{ avatarUrl: string | null; email: string; username: string } | null>(null);
@@ -120,10 +118,29 @@ export class PrDetailPage {
 
   readonly generalComments = computed(() => this.comments().filter((c) => !c.filePath && !c.lineNumber));
 
+  private readonly lineCommentsByKey = computed(() => {
+    const map = new Map<string, PrCommentInfo[]>();
+    for (const c of this.comments()) {
+      if (!c.filePath || c.lineNumber == null) continue;
+      const key = `${c.filePath}\0${c.lineNumber}\0${c.lineSide ?? ''}`;
+      const bucket = map.get(key);
+      if (bucket) bucket.push(c);
+      else map.set(key, [c]);
+    }
+    return map;
+  });
+
+  private readonly routeKey = computed(() => `${this.owner()}/${this.repoName()}/${this.number()}`);
+
   constructor() {
-    merge(this.route.parent!.paramMap, this.route.paramMap)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => void this.loadData());
+    effect(() => {
+      this.routeKey();
+      if (!this.owner() || !this.repoName() || !this.number()) {
+        this.loading.set(false);
+        return;
+      }
+      void this.loadData();
+    });
     if (this.tokenService.isLoggedIn()) {
       this.userService
         .getMe()
@@ -163,19 +180,15 @@ export class PrDetailPage {
         this.prService.getPullRequest(owner, repo, num),
         this.prService.getComments(owner, repo, num),
       ]);
-      this.ngZone.run(() => {
-        this.pr.set(prData);
-        this.comments.set(commentsData);
-        this.filesLoaded.set(false);
-        this.commitsLoaded.set(false);
-        this.loading.set(false);
-      });
+      this.pr.set(prData);
+      this.comments.set(commentsData.content);
+      this.filesLoaded.set(false);
+      this.commitsLoaded.set(false);
+      this.loading.set(false);
     } catch {
-      this.ngZone.run(() => {
-        this.pr.set(null);
-        this.comments.set([]);
-        this.loading.set(false);
-      });
+      this.pr.set(null);
+      this.comments.set([]);
+      this.loading.set(false);
     }
   }
 
@@ -187,18 +200,14 @@ export class PrDetailPage {
     this.filesLoading.set(true);
     try {
       const diff = await this.prService.getPrDiff(owner, repo, num);
-      this.ngZone.run(() => {
-        this.files.set(diff);
-        if (diff.length > 0) this.expandedFiles.set(new Set(diff.map((f) => f.newPath || f.oldPath)));
-        this.filesLoading.set(false);
-        this.filesLoaded.set(true);
-      });
+      this.files.set(diff);
+      if (diff.length > 0) this.expandedFiles.set(new Set(diff.map((f) => f.newPath || f.oldPath)));
+      this.filesLoading.set(false);
+      this.filesLoaded.set(true);
     } catch {
-      this.ngZone.run(() => {
-        this.files.set([]);
-        this.filesLoading.set(false);
-        this.filesLoaded.set(true);
-      });
+      this.files.set([]);
+      this.filesLoading.set(false);
+      this.filesLoaded.set(true);
     }
   }
 
@@ -210,17 +219,13 @@ export class PrDetailPage {
     this.commitsLoading.set(true);
     try {
       const commits = await this.prService.getPrCommits(owner, repo, num);
-      this.ngZone.run(() => {
-        this.commits.set(commits);
-        this.commitsLoading.set(false);
-        this.commitsLoaded.set(true);
-      });
+      this.commits.set(commits);
+      this.commitsLoading.set(false);
+      this.commitsLoaded.set(true);
     } catch {
-      this.ngZone.run(() => {
-        this.commits.set([]);
-        this.commitsLoading.set(false);
-        this.commitsLoaded.set(true);
-      });
+      this.commits.set([]);
+      this.commitsLoading.set(false);
+      this.commitsLoaded.set(true);
     }
   }
 
@@ -296,9 +301,8 @@ export class PrDetailPage {
   }
 
   getCommentsForFileLine(filePath: string, lineNumber: number, lineSide: string): PrCommentInfo[] {
-    return this.comments().filter(
-      (c) => c.filePath === filePath && c.lineNumber === lineNumber && c.lineSide === lineSide,
-    );
+    const key = `${filePath}\0${lineNumber}\0${lineSide}`;
+    return this.lineCommentsByKey().get(key) ?? [];
   }
 
   startReplyToLine(filePath: string, lineNumber: number, lineSide: string, line: DiffLine): void {

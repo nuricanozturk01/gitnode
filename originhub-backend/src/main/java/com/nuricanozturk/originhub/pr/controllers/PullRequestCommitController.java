@@ -22,11 +22,11 @@ import com.nuricanozturk.originhub.pr.services.PullRequestCommentService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -96,16 +97,18 @@ public class PullRequestCommitController {
   }
 
   @GetMapping("/comments")
-  public ResponseEntity<List<PrCommentInfo>> getComments(
+  public ResponseEntity<Page<PrCommentInfo>> getComments(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final int number,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "50") final int size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var comments = this.prService.getComments(owner, repo, number);
+    final var comments = this.prService.getComments(owner, repo, number, page, size);
     return ResponseEntity.ok(comments);
   }
 }

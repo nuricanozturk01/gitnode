@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { SnippetService } from '../../../core/snippet/services/snippet.service';
@@ -24,6 +24,7 @@ import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import type { SnippetInfo, SnippetPage } from '../../../domain/snippet/models/snippet.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-snippets',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],

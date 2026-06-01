@@ -15,34 +15,11 @@
 ///
 
 import { Pipe, PipeTransform } from '@angular/core';
-import moment, { type Moment } from 'moment';
-
-/** Backend uses `Instant.EPOCH` when a branch has no commits yet (e.g. unborn HEAD). */
-const SENTINEL_EPOCH_MS = 0;
+import { formatRelativeTime } from '../utils/relative-time.util';
 
 @Pipe({ name: 'relativeTime', standalone: true })
 export class RelativeTimePipe implements PipeTransform {
   transform(value: string | Date | number | null | undefined): string {
-    const m = this.parse(value);
-    if (m == null || !m.isValid()) return '';
-    if (m.valueOf() === SENTINEL_EPOCH_MS) return '';
-    return m.fromNow();
-  }
-
-  private parse(value: string | Date | number | null | undefined): Moment | null {
-    if (value == null || value === '') return null;
-    if (value instanceof Date) return moment(value);
-    if (typeof value === 'number') {
-      return value < 1e12 ? moment.unix(value) : moment(value);
-    }
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      if (/^\d+$/.test(trimmed)) {
-        const n = Number(trimmed);
-        return n < 1e12 ? moment.unix(n) : moment(n);
-      }
-      return moment(trimmed);
-    }
-    return null;
+    return formatRelativeTime(value);
   }
 }

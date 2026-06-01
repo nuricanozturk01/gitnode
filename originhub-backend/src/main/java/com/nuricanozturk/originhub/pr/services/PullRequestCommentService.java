@@ -22,11 +22,12 @@ import com.nuricanozturk.originhub.pr.entities.PullRequestComment;
 import com.nuricanozturk.originhub.pr.mappers.PrMapper;
 import com.nuricanozturk.originhub.pr.repositories.PrCommentRepository;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,15 +97,16 @@ public class PullRequestCommentService {
     this.commentRepository.delete(comment);
   }
 
-  public List<PrCommentInfo> getComments(
-      final String owner, final String repoName, final int number) {
+  public Page<PrCommentInfo> getComments(
+      final String owner, final String repoName, final int number, final int page, final int size) {
 
     final var repo = this.prFinder.findRepo(owner, repoName);
     final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var pageable = PageRequest.of(page, size);
 
-    return this.commentRepository.findAllByPrIdOrderByCreatedAtAsc(pr.getId()).stream()
-        .map(this::toCommentInfo)
-        .toList();
+    return this.commentRepository
+        .findAllByPrIdOrderByCreatedAtAsc(pr.getId(), pageable)
+        .map(this::toCommentInfo);
   }
 
   private PrCommentInfo toCommentInfo(final PullRequestComment comment) {

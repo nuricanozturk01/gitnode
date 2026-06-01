@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -9,6 +9,7 @@ import { RepoContextService } from '../../../core/repo/services/repo-context.ser
 import type { IssueInfo, IssueStatus } from '../../../domain/repository/models/issue.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-issues',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],

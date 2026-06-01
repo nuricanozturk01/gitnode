@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, DestroyRef, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal, computed } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { LucideAngularModule } from 'lucide-angular';
@@ -24,6 +24,7 @@ import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signa
 import type { SnippetInfo } from '../../../domain/snippet/models/snippet.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-snippets',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],

@@ -115,3 +115,11 @@ export interface CreateBranchFromTaskForm {
   sourceBranch: string;
   branchName?: string;
 }
+
+export interface TaskPage {
+  content: TaskInfo[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}

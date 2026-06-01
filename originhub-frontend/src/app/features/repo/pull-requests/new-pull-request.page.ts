@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
@@ -27,6 +27,7 @@ import { ToastService } from '../../../core/toast/toast.service';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-new-pull-request',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, FormsModule],

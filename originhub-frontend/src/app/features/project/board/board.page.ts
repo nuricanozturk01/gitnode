@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ProjectService } from '../../../core/project/services/project.service';
@@ -32,6 +32,7 @@ export const COLUMN_COLORS: ColumnColor[] = [
 ];
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-board',
   standalone: true,
   imports: [RouterLink, LucideAngularModule],
@@ -97,10 +98,25 @@ export class BoardPage implements OnInit {
     return this.boards().find((b) => b.id === id) ?? this.boards()[0] ?? null;
   });
 
-  tasksByColumn(columnId: string): TaskInfo[] {
-    return this.tasks()
-      .filter((t) => t.boardColumnId === columnId)
-      .sort((a, b) => a.position - b.position);
+  private readonly tasksByColumnMap = computed(() => {
+    const map = new Map<string, TaskInfo[]>();
+    for (const task of this.tasks()) {
+      const list = map.get(task.boardColumnId);
+      if (list) list.push(task);
+      else map.set(task.boardColumnId, [task]);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => a.position - b.position);
+    }
+    return map;
+  });
+
+  columnTasks(columnId: string): TaskInfo[] {
+    return this.tasksByColumnMap().get(columnId) ?? [];
+  }
+
+  columnTaskCount(columnId: string): number {
+    return this.columnTasks(columnId).length;
   }
 
   columnColor(col: BoardColumnInfo): string {
@@ -145,7 +161,7 @@ export class BoardPage implements OnInit {
       ]);
       this.project.set(project);
       this.boards.set(boards);
-      this.tasks.set(tasks);
+      this.tasks.set(tasks.content);
       if (boards.length > 0) this.selectedBoardId.set(boards[0].id);
     } catch {
       this.toastService.error('Failed to load board');
@@ -329,7 +345,7 @@ export class BoardPage implements OnInit {
     event.dataTransfer!.dropEffect = 'move';
     this.dragOverColumnId.set(columnId);
     // If drag is over empty column area (not over a task card), set indicator at end
-    const tasks = this.tasksByColumn(columnId);
+    const tasks = this.columnTasks(columnId);
     if (this.dropIndicatorColumnId() !== columnId) {
       this.dropIndicatorColumnId.set(columnId);
       this.dropIndicatorIndex.set(tasks.length);
@@ -371,7 +387,7 @@ export class BoardPage implements OnInit {
     const task = this.tasks().find((t) => t.id === taskId);
     if (!task) return;
 
-    const targetTasks = this.tasksByColumn(targetColumnId);
+    const targetTasks = this.columnTasks(targetColumnId);
     let insertIndex = this.dropIndicatorIndex() >= 0 ? this.dropIndicatorIndex() : targetTasks.length;
 
     // same column: adjust for removed item

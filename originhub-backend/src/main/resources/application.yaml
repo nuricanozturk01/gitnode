@@ -10,12 +10,17 @@ server:
     min-response-size: 2048
 
 originhub:
+  http:
+    enabled: ${ORIGINHUB_HTTP_ENABLED:true}
+    port: 8080
   ssh:
     port: 2222
     host-path: ${originhub.git.repo-root}/.hosts
     host-key-path: ${originhub.ssh.host-path}/ssh_host_key
   jwt:
-    secret: ${ORIGINHUB_JWT_SECRET:995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0}
+    secret: ${ORIGINHUB_JWT_SECRET}
+  cors:
+    allowed-origins: ${ORIGINHUB_CORS_ALLOWED_ORIGINS:http://localhost:4200,https://originhub.nuricanozturk.com}
   frontend:
     base-url: ${ORIGINHUB_FRONTEND_BASE_URL:http://localhost:4200}
   git:

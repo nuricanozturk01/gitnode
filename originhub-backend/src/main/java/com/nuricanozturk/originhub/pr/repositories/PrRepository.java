@@ -16,10 +16,11 @@
 package com.nuricanozturk.originhub.pr.repositories;
 
 import com.nuricanozturk.originhub.pr.entities.PullRequest;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -29,14 +30,18 @@ import org.springframework.stereotype.Repository;
 public interface PrRepository extends JpaRepository<PullRequest, UUID> {
 
   @Query(
-      """
+      value =
+          """
     SELECT pr FROM PullRequest pr
     JOIN FETCH pr.author
     LEFT JOIN FETCH pr.mergedBy
     WHERE pr.repo.id = :repoId AND pr.status = :status
     ORDER BY pr.createdAt DESC
-    """)
-  List<PullRequest> findAllByRepoIdAndStatusOrderByCreatedAtDesc(UUID repoId, String status);
+    """,
+      countQuery =
+          "SELECT count(pr) FROM PullRequest pr WHERE pr.repo.id = :repoId AND pr.status = :status")
+  Page<PullRequest> findAllByRepoIdAndStatusOrderByCreatedAtDesc(
+      UUID repoId, String status, Pageable pageable);
 
   @Query(
       """

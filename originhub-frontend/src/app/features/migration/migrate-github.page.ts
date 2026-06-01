@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, OnDestroy } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -34,14 +34,16 @@ export interface ParsedGithubRepo {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-migrate-github',
   standalone: true,
   imports: [ReactiveFormsModule, LucideAngularModule, AvatarComponent],
   templateUrl: './migrate-github.page.html',
   styleUrl: './migrate-github.page.css',
 })
-export class MigrateGithubPage {
+export class MigrateGithubPage implements OnDestroy {
   private readonly fb = inject(FormBuilder);
+  private pollInterval: ReturnType<typeof setInterval> | null = null;
   private readonly router = inject(Router);
   private readonly migrationService = inject(MigrationService);
   private readonly toast = inject(ToastService);
@@ -77,6 +79,10 @@ export class MigrateGithubPage {
       }
       void this.loadUser();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.clearPollInterval();
   }
 
   private async loadUser(): Promise<void> {
@@ -229,32 +235,40 @@ export class MigrateGithubPage {
   }
 
   private startPolling(jobId: string): void {
-    const maxAttempts = 16; // 16 * 15sn = 4 dakika
+    this.clearPollInterval();
+    const maxAttempts = 16; // 16 * 10s ≈ 2.5 min
     let attempts = 0;
 
-    const interval = setInterval(async () => {
+    this.pollInterval = setInterval(async () => {
       attempts++;
       try {
         const job = await this.migrationService.getJob(jobId);
 
         if (job.status === 'COMPLETED') {
-          clearInterval(interval);
+          this.clearPollInterval();
           this.toast.success('Git Repo Migration completed successfully!', 45_000);
           return;
         }
 
         if (job.status === 'FAILED') {
-          clearInterval(interval);
+          this.clearPollInterval();
           this.toast.error(job.errorMessage?.trim() || 'Migration failed');
           return;
         }
       } catch {
-        clearInterval(interval);
+        this.clearPollInterval();
       }
 
       if (attempts >= maxAttempts) {
-        clearInterval(interval);
+        this.clearPollInterval();
       }
     }, 10_000);
+  }
+
+  private clearPollInterval(): void {
+    if (this.pollInterval !== null) {
+      clearInterval(this.pollInterval);
+      this.pollInterval = null;
+    }
   }
 }

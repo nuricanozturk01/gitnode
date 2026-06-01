@@ -14,11 +14,12 @@
 /// limitations under the License.
 ///
 
-import { Component, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { ToastComponent } from '../../shared/components/toast/toast.component';
 import { ToastService } from './toast.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-toast-host',
   standalone: true,
   imports: [ToastComponent],

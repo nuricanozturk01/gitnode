@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, OnInit, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ProjectService } from '../../../core/project/services/project.service';
@@ -13,6 +13,7 @@ import type { ProjectRepoInfo } from '../../../domain/project/models/project-rep
 import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-project-settings',
   standalone: true,
   imports: [RouterLink, LucideAngularModule],

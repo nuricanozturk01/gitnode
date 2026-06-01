@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -30,15 +32,17 @@ import org.springframework.stereotype.Repository;
 public interface TaskRepository extends JpaRepository<Task, UUID> {
 
   @Query(
-"""
+      value =
+          """
       SELECT t FROM Task t
       JOIN FETCH t.boardColumn
       LEFT JOIN FETCH t.assignee
       LEFT JOIN FETCH t.branchRepo
       WHERE t.project.id = :projectId
       ORDER BY t.position ASC
-""")
-  List<Task> findAllByProjectIdOrderByPositionAsc(UUID projectId);
+      """,
+      countQuery = "SELECT count(t) FROM Task t WHERE t.project.id = :projectId")
+  Page<Task> findAllByProjectIdOrderByPositionAsc(UUID projectId, Pageable pageable);
 
   @Query(
 """

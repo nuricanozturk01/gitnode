@@ -49,12 +49,13 @@ import com.nuricanozturk.originhub.task.repositories.SubtaskRepository;
 import com.nuricanozturk.originhub.task.repositories.TaskRepository;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -130,19 +131,25 @@ public class TaskService {
     return this.toDetail(saved);
   }
 
-  public List<TaskInfo> getAll(
-      final String ownerUsername, final String projectCode, final @Nullable Tenant viewer) {
+  public Page<TaskInfo> getAll(
+      final String ownerUsername,
+      final String projectCode,
+      final @Nullable Tenant viewer,
+      final int page,
+      final int size) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
-    return this.taskRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
+    final var pageable = PageRequest.of(page, size);
+
+    return this.taskRepository
+        .findAllByProjectIdOrderByPositionAsc(project.getId(), pageable)
         .map(
             task -> {
               final int total = this.subtaskRepository.countByTaskId(task.getId());
               final int completed =
                   this.subtaskRepository.countByTaskIdAndStatus(task.getId(), "COMPLETED");
               return this.taskMapper.toInfo(task, total, completed);
-            })
-        .toList();
+            });
   }
 
   public TaskDetail get(

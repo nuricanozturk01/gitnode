@@ -14,20 +14,10 @@
 /// limitations under the License.
 ///
 
-import type { LoginForm } from '../models/login-form.model';
-import type { RegisterForm } from '../models/register-form.model';
-
 export interface TokenResponse {
   token: string;
   refreshToken: string;
   expiresIn?: number;
   refreshExpiresIn?: number;
   username?: string;
-}
-
-export interface AuthPort {
-  login(form: LoginForm): Promise<TokenResponse>;
-  register(form: RegisterForm): Promise<TokenResponse>;
-  logout(): Promise<void>;
-  refreshToken(): Promise<TokenResponse>;
 }

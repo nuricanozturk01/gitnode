@@ -14,11 +14,12 @@
 /// limitations under the License.
 ///
 
-import { Component, input, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import type { ToastType } from '../../../core/toast/toast.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-toast',
   standalone: true,
   imports: [LucideAngularModule],

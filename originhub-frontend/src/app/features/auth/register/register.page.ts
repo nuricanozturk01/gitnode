@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -24,6 +24,7 @@ import { AuthService } from '../../../core/auth/services/auth.service';
 import { ToastService } from '../../../core/toast/toast.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-register',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, LucideAngularModule],

@@ -31,6 +31,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -112,16 +113,18 @@ public class PullRequestController {
   }
 
   @GetMapping
-  public ResponseEntity<List<PrInfo>> getAll(
+  public ResponseEntity<Page<PrInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @RequestParam(defaultValue = "OPEN") final String status,
+      @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(defaultValue = "25") final int size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var prs = this.prService.getAll(owner, repo, status);
+    final var prs = this.prService.getAll(owner, repo, status, page, size);
     return ResponseEntity.ok(prs);
   }
 

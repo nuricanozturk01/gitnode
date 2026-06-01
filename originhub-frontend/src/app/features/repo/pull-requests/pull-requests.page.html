@@ -15,7 +15,6 @@
             >
               <lucide-icon name="git-pull-request" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               <span class="whitespace-nowrap">Open</span>
-              <span class="badge-pill badge-pill--count">{{ openCount() }}</span>
             </button>
             <button
               type="button"
@@ -27,7 +26,6 @@
             >
               <lucide-icon name="gitMerge" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               <span class="whitespace-nowrap">Merged</span>
-              <span class="badge-pill badge-pill--count">{{ mergedCount() }}</span>
             </button>
             <button
               type="button"
@@ -39,7 +37,6 @@
             >
               <lucide-icon name="x-circle" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               <span class="whitespace-nowrap">Closed</span>
-              <span class="badge-pill badge-pill--count">{{ closedCount() }}</span>
             </button>
           </div>
         </div>
@@ -54,6 +51,9 @@
       </a>
       }
     </div>
+    @if (totalElements() > 0) {
+    <span class="text-base-content/50 px-3 pb-2 text-sm sm:px-4">{{ totalElements() }} {{ tab() }} pull requests</span>
+    }
   </div>
 
   @if (loading()) {
@@ -68,7 +68,7 @@
     </div>
     }
   </div>
-  } @else if (filteredPulls().length === 0) {
+  } @else if (pulls().length === 0) {
   <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16 sm:py-20">
     <div
       class="bg-base-200/80 text-base-content/35 mb-1 flex size-16 items-center justify-center rounded-2xl sm:size-20"
@@ -88,7 +88,7 @@
   </div>
   } @else {
   <div class="divide-base-300 divide-y">
-    @for (pr of filteredPulls(); track pr.id) {
+    @for (pr of pulls(); track pr.id) {
     <a
       [routerLink]="['/', owner(), repoName(), 'pulls', pr.number]"
       class="hover:bg-base-200/45 group flex gap-3 px-3 py-4 transition-colors sm:gap-4 sm:px-4 sm:py-5"
@@ -161,5 +161,17 @@
     </a>
     }
   </div>
-  }
+  @if (totalPages() > 1) {
+  <div class="border-base-300 flex items-center justify-between border-t px-4 py-3">
+    <button type="button" class="btn btn-sm btn-ghost gap-1.5" [disabled]="!hasPrev()" (click)="prevPage()">
+      <lucide-icon name="chevronLeft" class="size-3.5" [size]="14"></lucide-icon>
+      Previous
+    </button>
+    <span class="text-base-content/50 text-sm">{{ page() + 1 }} / {{ totalPages() }}</span>
+    <button type="button" class="btn btn-sm btn-ghost gap-1.5" [disabled]="!hasNext()" (click)="nextPage()">
+      Next
+      <lucide-icon name="chevronRight" class="size-3.5" [size]="14"></lucide-icon>
+    </button>
+  </div>
+  } }
 </section>

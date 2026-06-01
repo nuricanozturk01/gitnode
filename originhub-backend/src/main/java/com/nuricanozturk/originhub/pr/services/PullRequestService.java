@@ -73,6 +73,8 @@ import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -207,14 +209,19 @@ public class PullRequestService {
     return this.toDetail(saved);
   }
 
-  public List<PrInfo> getAll(final String owner, final String repoName, final String status) {
+  public Page<PrInfo> getAll(
+      final String owner,
+      final String repoName,
+      final String status,
+      final int page,
+      final int size) {
 
     final var repo = this.findRepo(owner, repoName);
+    final var pageable = PageRequest.of(page, size);
 
-    final var prs =
-        this.prRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(repo.getId(), status);
-
-    return prs.stream().map(this::toInfo).toList();
+    return this.prRepository
+        .findAllByRepoIdAndStatusOrderByCreatedAtDesc(repo.getId(), status, pageable)
+        .map(this::toInfo);
   }
 
   public PrDetail get(final String owner, final String repoName, final int number) {

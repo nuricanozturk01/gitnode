@@ -16,7 +16,6 @@
 package com.nuricanozturk.originhub.shared.repo.repositories;
 
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
@@ -38,8 +37,6 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   Optional<Repo> findByIdWithOwner(@Param("id") UUID id);
 
   Optional<Repo> findByOwnerUsernameAndName(String repoOwner, String repoName);
-
-  List<Repo> findAllByOwnerUsername(String ownerUsername);
 
   Page<Repo> findAllByOwnerUsername(String ownerUsername, Pageable pageable);
 

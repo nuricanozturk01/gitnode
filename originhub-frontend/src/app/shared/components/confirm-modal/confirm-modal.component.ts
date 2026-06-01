@@ -14,11 +14,12 @@
 /// limitations under the License.
 ///
 
-import { Component, input, output, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
 
 export type ConfirmVariant = 'danger' | 'primary';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-confirm-modal',
   standalone: true,
   template: `

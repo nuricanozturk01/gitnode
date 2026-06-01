@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +43,9 @@ public class PrQueryAdapter implements PrQueryPort {
 
   @Override
   public List<PrData> findOpenByRepoId(final UUID repoId) {
-    return this.prRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(repoId, "OPEN").stream()
+    return this.prRepository
+        .findAllByRepoIdAndStatusOrderByCreatedAtDesc(repoId, "OPEN", Pageable.unpaged())
+        .stream()
         .map(this::toData)
         .toList();
   }

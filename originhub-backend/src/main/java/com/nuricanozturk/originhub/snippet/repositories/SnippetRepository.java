@@ -52,10 +52,19 @@ public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
   Page<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId, Pageable pageable);
 
   @Query(
-      "SELECT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId AND s.visibility = 'PUBLIC'")
+      value =
+          """
+          SELECT DISTINCT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE
+            r.id = :repoId AND s.visibility = 'PUBLIC'
+        """,
+      countQuery =
+          "SELECT COUNT(DISTINCT s) FROM Snippet s JOIN s.repos r WHERE r.id = :repoId AND s.visibility = 'PUBLIC'")
   Page<Snippet> findPublicByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
-  @Query("SELECT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId")
+  @Query(
+      value =
+          "SELECT DISTINCT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId",
+      countQuery = "SELECT COUNT(DISTINCT s) FROM Snippet s JOIN s.repos r WHERE r.id = :repoId")
   Page<Snippet> findAllByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Modifying

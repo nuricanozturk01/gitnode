@@ -14,7 +14,17 @@
 /// limitations under the License.
 ///
 
-import { Component, HostListener, inject, signal, computed, SecurityContext, OnDestroy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  HostListener,
+  OnDestroy,
+  SecurityContext,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -45,6 +55,7 @@ import type { LanguageStats } from '../../../domain/language/models/language-sta
 marked.use({ gfm: true, breaks: false });
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-home',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, FileSizePipe, RelativeTimePipe, LanguageBarComponent],
@@ -52,6 +63,7 @@ marked.use({ gfm: true, breaks: false });
   styleUrl: './repo-home.page.css',
 })
 export class RepoHomePage implements OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly http = inject(HttpClient);
   private readonly branchService = inject(BranchService);
@@ -114,7 +126,7 @@ export class RepoHomePage implements OnDestroy {
       this.loading.set(false);
       return;
     }
-    parent.paramMap.pipe(takeUntilDestroyed()).subscribe(() => {
+    parent.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.selectedBranch.set('');
       void this.loadData();
     });
@@ -331,7 +343,10 @@ export class RepoHomePage implements OnDestroy {
     this.zipDownloading.set(true);
     this.http
       .get(url, { responseType: 'blob', observe: 'response' })
-      .pipe(finalize(() => this.zipDownloading.set(false)))
+      .pipe(
+        finalize(() => this.zipDownloading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (resp) => {
           const blob = resp.body;

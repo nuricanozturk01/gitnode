@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -24,6 +24,7 @@ import { AuthService } from '../../../core/auth/services/auth.service';
 import { ToastService } from '../../../core/toast/toast.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-login',
   standalone: true,
   imports: [ReactiveFormsModule, RouterLink, LucideAngularModule],

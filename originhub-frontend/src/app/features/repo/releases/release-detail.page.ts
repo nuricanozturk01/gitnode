@@ -14,7 +14,15 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, SecurityContext } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  SecurityContext,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -34,12 +42,14 @@ import type { ReleaseInfo } from '../../../domain/release/models/release-info.mo
 marked.use({ gfm: true, breaks: false });
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-release-detail',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
   templateUrl: './release-detail.page.html',
 })
 export class ReleaseDetailPage {
+  private readonly destroyRef = inject(DestroyRef);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
@@ -59,7 +69,7 @@ export class ReleaseDetailPage {
   readonly repoName = computed(() => this.routeParams().get('repo') ?? '');
 
   constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
       const tagName = params.get('tagName');
       if (tagName) void this.loadRelease(tagName);
     });
@@ -95,7 +105,10 @@ export class ReleaseDetailPage {
     this.zipDownloading.set(true);
     this.http
       .get(url, { responseType: 'blob', observe: 'response' })
-      .pipe(finalize(() => this.zipDownloading.set(false)))
+      .pipe(
+        finalize(() => this.zipDownloading.set(false)),
+        takeUntilDestroyed(this.destroyRef),
+      )
       .subscribe({
         next: (resp) => {
           const blob = resp.body;

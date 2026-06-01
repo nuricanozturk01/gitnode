@@ -17,12 +17,18 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { TokenService } from '../../../core/auth/services/token.service';
 import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
+import type { ReleaseInfo } from '../../../domain/release/models/release-info.model';
 
 @Injectable({ providedIn: 'root' })
 export class RepoContextService {
   private readonly tokenService = inject(TokenService);
 
   readonly repo = signal<RepoInfo | null>(null);
+  /** `owner/repo` key for the cached bundle below. */
+  readonly repoRouteKey = signal<string | null>(null);
+  readonly releases = signal<ReleaseInfo[] | null>(null);
+  readonly openPrCount = signal(0);
+  readonly openIssueCount = signal(0);
   readonly defaultBranch = computed(() => this.repo()?.defaultBranch ?? 'main');
 
   readonly isLoggedIn = computed(() => this.tokenService.isLoggedIn());
@@ -32,4 +38,24 @@ export class RepoContextService {
     const u = this.tokenService.getUsername();
     return !!(r && u && r.owner.username.toLowerCase() === u.toLowerCase());
   });
+
+  setRepoBundle(
+    routeKey: string,
+    repo: RepoInfo,
+    counts: { openPrs: number; openIssues: number; releases: ReleaseInfo[] },
+  ): void {
+    this.repoRouteKey.set(routeKey);
+    this.repo.set(repo);
+    this.openPrCount.set(counts.openPrs);
+    this.openIssueCount.set(counts.openIssues);
+    this.releases.set(counts.releases);
+  }
+
+  clearRepo(): void {
+    this.repoRouteKey.set(null);
+    this.repo.set(null);
+    this.releases.set(null);
+    this.openPrCount.set(0);
+    this.openIssueCount.set(0);
+  }
 }

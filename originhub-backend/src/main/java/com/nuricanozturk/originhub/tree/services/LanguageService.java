@@ -99,7 +99,7 @@ public class LanguageService {
     }
 
     return langBytes.entrySet().stream()
-        .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
+        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
         .map(
             e -> {
               final double pct = (double) e.getValue() / totalBytes * 100.0;

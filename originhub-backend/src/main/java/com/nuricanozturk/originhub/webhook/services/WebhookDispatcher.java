@@ -38,7 +38,6 @@ import com.nuricanozturk.originhub.shared.task.events.TaskUpdatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.webhook.entities.ProjectWebhook;
 import com.nuricanozturk.originhub.webhook.entities.UserWebhook;
-import com.nuricanozturk.originhub.webhook.entities.Webhook;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.repositories.ProjectWebhookRepository;
 import com.nuricanozturk.originhub.webhook.repositories.UserWebhookRepository;
@@ -280,14 +279,12 @@ public class WebhookDispatcher {
 
   @ApplicationModuleListener
   void onSnippetCreated(final SnippetCreatedEvent event) {
-    final var data = new LinkedHashMap<String, Object>();
-    data.put("snippetId", event.snippetId());
-    data.put("title", event.title());
-    data.put("owner", event.ownerUsername());
-    if (event.repoId() != null) {
-      data.put("repoId", event.repoId());
-    }
-    this.dispatchToUserWebhooks(event.ownerUsername(), WebhookEventType.SNIPPET_CREATED, data);
+    this.dispatchSnippetEvent(
+        event.snippetId(),
+        event.title(),
+        event.ownerUsername(),
+        event.repoId(),
+        WebhookEventType.SNIPPET_CREATED);
   }
 
   @ApplicationModuleListener
@@ -303,14 +300,28 @@ public class WebhookDispatcher {
 
   @ApplicationModuleListener
   void onSnippetUpdated(final SnippetUpdatedEvent event) {
+    this.dispatchSnippetEvent(
+        event.snippetId(),
+        event.title(),
+        event.ownerUsername(),
+        event.repoId(),
+        WebhookEventType.SNIPPET_UPDATED);
+  }
+
+  private void dispatchSnippetEvent(
+      final UUID snippetId,
+      final String title,
+      final String ownerUsername,
+      final @Nullable UUID repoId,
+      final WebhookEventType type) {
     final var data = new LinkedHashMap<String, Object>();
-    data.put("snippetId", event.snippetId());
-    data.put("title", event.title());
-    data.put("owner", event.ownerUsername());
-    if (event.repoId() != null) {
-      data.put("repoId", event.repoId());
+    data.put("snippetId", snippetId);
+    data.put("title", title);
+    data.put("owner", ownerUsername);
+    if (repoId != null) {
+      data.put("repoId", repoId);
     }
-    this.dispatchToUserWebhooks(event.ownerUsername(), WebhookEventType.SNIPPET_UPDATED, data);
+    this.dispatchToUserWebhooks(ownerUsername, type, data);
   }
 
   // ── Core dispatch logic ────────────────────────────────────────────────
@@ -346,64 +357,35 @@ public class WebhookDispatcher {
     final var webhooks = this.webhookRepository.findAllByRepoIdAndEnabledTrue(repoId);
     for (var webhook : webhooks) {
       if (webhook.getSubscribedEvents().contains(type.name())) {
-        this.deliverAsync(webhook, type, repoId, data);
+        this.deliverWebhookCore(
+            webhook.getId(), webhook.getUrl(), webhook.getSecret(), repoId, "Webhook", type, data);
       }
-    }
-  }
-
-  private void deliverAsync(
-      final Webhook webhook,
-      final WebhookEventType type,
-      final UUID repoId,
-      final Map<String, Object> data) {
-    try {
-      final var payload = new LinkedHashMap<String, Object>();
-      payload.put("event", type.getValue());
-      payload.put("timestamp", Instant.now().toString());
-      payload.put("repoId", repoId.toString());
-      payload.put("data", data);
-
-      final var body = this.objectMapper.writeValueAsString(payload);
-
-      var spec =
-          this.restClient
-              .post()
-              .uri(webhook.getUrl())
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(body);
-
-      if (webhook.getSecret() != null && !webhook.getSecret().isBlank()) {
-        spec =
-            spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, webhook.getSecret()));
-      }
-
-      spec.retrieve().toBodilessEntity();
-
-    } catch (final Exception ex) {
-      log.warn(
-          "Webhook delivery failed id={} url={}: {}",
-          webhook.getId(),
-          webhook.getUrl(),
-          ex.getMessage());
     }
   }
 
   private void deliverProjectWebhookAsync(
       final ProjectWebhook webhook, final WebhookEventType type, final Map<String, Object> data) {
     this.deliverWebhookCore(
-        webhook.getId(), webhook.getUrl(), webhook.getSecret(), "Project webhook", type, data);
+        webhook.getId(),
+        webhook.getUrl(),
+        webhook.getSecret(),
+        null,
+        "Project webhook",
+        type,
+        data);
   }
 
   private void deliverUserWebhookAsync(
       final UserWebhook webhook, final WebhookEventType type, final Map<String, Object> data) {
     this.deliverWebhookCore(
-        webhook.getId(), webhook.getUrl(), webhook.getSecret(), "User webhook", type, data);
+        webhook.getId(), webhook.getUrl(), webhook.getSecret(), null, "User webhook", type, data);
   }
 
   private void deliverWebhookCore(
       final UUID id,
       final String url,
       final @Nullable String secret,
+      final @Nullable UUID repoId,
       final String logLabel,
       final WebhookEventType type,
       final Map<String, Object> data) {
@@ -411,6 +393,9 @@ public class WebhookDispatcher {
       final var payload = new LinkedHashMap<String, Object>();
       payload.put("event", type.getValue());
       payload.put("timestamp", Instant.now().toString());
+      if (repoId != null) {
+        payload.put("repoId", repoId.toString());
+      }
       payload.put("data", data);
 
       final var body = this.objectMapper.writeValueAsString(payload);

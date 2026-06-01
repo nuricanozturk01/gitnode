@@ -34,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
@@ -193,11 +194,11 @@ public class ProfileService {
     return "https://www.gravatar.com/avatar/" + hash + "?d=identicon";
   }
 
-  private static String trimOrNull(final String value) {
-    return value != null && !value.isBlank() ? value.trim() : null;
+  private static @Nullable String trimOrNull(final String value) {
+    return StringUtils.isNotBlank(value) ? value.trim() : null;
   }
 
-  private static String blankOrNull(final String value) {
-    return value != null && !value.isBlank() ? value : null;
+  private static @Nullable String blankOrNull(final String value) {
+    return StringUtils.isNotBlank(value) ? value : null;
   }
 }

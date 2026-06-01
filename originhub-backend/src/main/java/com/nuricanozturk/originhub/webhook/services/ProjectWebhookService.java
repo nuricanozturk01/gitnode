@@ -27,6 +27,7 @@ import com.nuricanozturk.originhub.webhook.entities.ProjectWebhook;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.mappers.WebhookMapper;
 import com.nuricanozturk.originhub.webhook.repositories.ProjectWebhookRepository;
+import com.nuricanozturk.originhub.webhook.utils.WebhookValidator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -43,8 +44,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @NullMarked
 public class ProjectWebhookService {
-
-  private static final int MAX_WEBHOOKS_PER_PROJECT = 3;
 
   private static final Set<String> PROJECT_VALID_EVENTS =
       Stream.of(
@@ -71,14 +70,15 @@ public class ProjectWebhookService {
     final var project = this.resolveProject(ownerUsername, projectCode);
     this.requireOwner(project.ownerUsername(), ownerUsername);
 
-    if (this.projectWebhookRepository.countByProjectId(project.id()) >= MAX_WEBHOOKS_PER_PROJECT) {
+    if (this.projectWebhookRepository.countByProjectId(project.id())
+        >= WebhookValidator.MAX_WEBHOOKS) {
       throw new ErrorOccurredException(
-          "Maximum of " + MAX_WEBHOOKS_PER_PROJECT + " webhooks per project allowed");
+          "Maximum of " + WebhookValidator.MAX_WEBHOOKS + " webhooks per project allowed");
     }
     if (this.projectWebhookRepository.existsByProjectIdAndUrl(project.id(), form.url())) {
-      throw new ErrorOccurredException("Webhook with this URL already exists");
+      throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
-    this.validateEvents(form.events());
+    WebhookValidator.validateEvents(form.events(), PROJECT_VALID_EVENTS);
 
     final var webhook = new ProjectWebhook();
     webhook.setProjectId(project.id());
@@ -110,7 +110,7 @@ public class ProjectWebhookService {
       webhook.setEnabled(form.enabled());
     }
     if (form.events() != null) {
-      this.validateEvents(form.events());
+      WebhookValidator.validateEvents(form.events(), PROJECT_VALID_EVENTS);
       webhook.setSubscribedEvents(new HashSet<>(form.events()));
     }
 
@@ -129,7 +129,7 @@ public class ProjectWebhookService {
       final ProjectWebhook webhook, final UUID projectId, final String newUrl) {
     if (!newUrl.equals(webhook.getUrl())
         && this.projectWebhookRepository.existsByProjectIdAndUrl(projectId, newUrl)) {
-      throw new ErrorOccurredException("Webhook with this URL already exists");
+      throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
     webhook.setUrl(newUrl);
   }
@@ -144,23 +144,16 @@ public class ProjectWebhookService {
     final var webhook =
         this.projectWebhookRepository
             .findById(webhookId)
-            .orElseThrow(() -> new ItemNotFoundException("Webhook not found"));
+            .orElseThrow(() -> new ItemNotFoundException(WebhookValidator.ERR_NOT_FOUND));
     if (!projectId.equals(webhook.getProjectId())) {
-      throw new AccessNotAllowedException("notAuthorized");
+      throw new AccessNotAllowedException(WebhookValidator.ERR_NOT_AUTHORIZED);
     }
     return webhook;
   }
 
   private void requireOwner(final String actualOwner, final String callerUsername) {
     if (!actualOwner.equals(callerUsername)) {
-      throw new AccessNotAllowedException("notAuthorized");
-    }
-  }
-
-  private void validateEvents(final Set<String> events) {
-    final var invalid = events.stream().filter(e -> !PROJECT_VALID_EVENTS.contains(e)).toList();
-    if (!invalid.isEmpty()) {
-      throw new ErrorOccurredException("Invalid event types: " + invalid);
+      throw new AccessNotAllowedException(WebhookValidator.ERR_NOT_AUTHORIZED);
     }
   }
 }

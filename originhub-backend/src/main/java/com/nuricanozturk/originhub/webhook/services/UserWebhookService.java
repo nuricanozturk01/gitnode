@@ -27,6 +27,7 @@ import com.nuricanozturk.originhub.webhook.entities.UserWebhook;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.mappers.WebhookMapper;
 import com.nuricanozturk.originhub.webhook.repositories.UserWebhookRepository;
+import com.nuricanozturk.originhub.webhook.utils.WebhookValidator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -44,8 +45,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @NullMarked
 public class UserWebhookService {
-
-  private static final int MAX_WEBHOOKS_PER_USER = 3;
 
   private static final Set<String> USER_VALID_EVENTS =
       Stream.of(
@@ -72,14 +71,14 @@ public class UserWebhookService {
   @Transactional
   public WebhookInfo create(final String username, final WebhookForm form) {
     final var userId = this.resolveUserId(username);
-    if (this.userWebhookRepository.countByUserId(userId) >= MAX_WEBHOOKS_PER_USER) {
+    if (this.userWebhookRepository.countByUserId(userId) >= WebhookValidator.MAX_WEBHOOKS) {
       throw new ErrorOccurredException(
-          "Maximum of " + MAX_WEBHOOKS_PER_USER + " webhooks per user allowed");
+          "Maximum of " + WebhookValidator.MAX_WEBHOOKS + " webhooks per user allowed");
     }
     if (this.userWebhookRepository.existsByUserIdAndUrl(userId, form.url())) {
-      throw new ErrorOccurredException("Webhook with this URL already exists");
+      throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
-    this.validateEvents(form.events());
+    WebhookValidator.validateEvents(form.events(), USER_VALID_EVENTS);
 
     final var webhook = new UserWebhook();
     webhook.setUserId(userId);
@@ -107,7 +106,7 @@ public class UserWebhookService {
       webhook.setEnabled(form.enabled());
     }
     if (form.events() != null) {
-      this.validateEvents(form.events());
+      WebhookValidator.validateEvents(form.events(), USER_VALID_EVENTS);
       webhook.setSubscribedEvents(new HashSet<>(form.events()));
     }
 
@@ -124,7 +123,7 @@ public class UserWebhookService {
   private void applyUrlUpdate(final UserWebhook webhook, final UUID userId, final String newUrl) {
     if (!newUrl.equals(webhook.getUrl())
         && this.userWebhookRepository.existsByUserIdAndUrl(userId, newUrl)) {
-      throw new ErrorOccurredException("Webhook with this URL already exists");
+      throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
     webhook.setUrl(newUrl);
   }
@@ -140,17 +139,10 @@ public class UserWebhookService {
     final var webhook =
         this.userWebhookRepository
             .findById(webhookId)
-            .orElseThrow(() -> new ItemNotFoundException("Webhook not found"));
+            .orElseThrow(() -> new ItemNotFoundException(WebhookValidator.ERR_NOT_FOUND));
     if (!userId.equals(webhook.getUserId())) {
-      throw new AccessNotAllowedException("notAuthorized");
+      throw new AccessNotAllowedException(WebhookValidator.ERR_NOT_AUTHORIZED);
     }
     return webhook;
-  }
-
-  private void validateEvents(final Set<String> events) {
-    final var invalid = events.stream().filter(e -> !USER_VALID_EVENTS.contains(e)).toList();
-    if (!invalid.isEmpty()) {
-      throw new ErrorOccurredException("Invalid event types: " + invalid);
-    }
   }
 }

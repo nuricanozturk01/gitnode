@@ -24,15 +24,12 @@ import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookUpdateForm;
 import com.nuricanozturk.originhub.webhook.entities.Webhook;
-import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.mappers.WebhookMapper;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookRepository;
-import java.util.Arrays;
+import com.nuricanozturk.originhub.webhook.utils.WebhookValidator;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
@@ -43,8 +40,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @NullMarked
 public class WebhookService {
-
-  private static final int MAX_WEBHOOKS_PER_REPO = 3;
 
   private final WebhookRepository webhookRepository;
   private final RepoRepository repoRepository;
@@ -60,14 +55,14 @@ public class WebhookService {
   @Transactional
   public WebhookInfo create(final String owner, final String repoName, final WebhookForm form) {
     final var repoId = this.resolveRepoId(owner, repoName);
-    if (this.webhookRepository.countByRepoId(repoId) >= MAX_WEBHOOKS_PER_REPO) {
+    if (this.webhookRepository.countByRepoId(repoId) >= WebhookValidator.MAX_WEBHOOKS) {
       throw new ErrorOccurredException(
-          "Maximum of " + MAX_WEBHOOKS_PER_REPO + " webhooks per repository allowed");
+          "Maximum of " + WebhookValidator.MAX_WEBHOOKS + " webhooks per repository allowed");
     }
     if (this.webhookRepository.existsByRepoIdAndUrl(repoId, form.url())) {
-      throw new ErrorOccurredException("Webhook with this URL already exists");
+      throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
-    this.validateEvents(form.events());
+    WebhookValidator.validateEvents(form.events(), WebhookValidator.ALL_EVENTS);
 
     final var webhook = new Webhook();
     webhook.setRepoId(repoId);
@@ -98,7 +93,7 @@ public class WebhookService {
       webhook.setEnabled(form.enabled());
     }
     if (form.events() != null) {
-      this.validateEvents(form.events());
+      WebhookValidator.validateEvents(form.events(), WebhookValidator.ALL_EVENTS);
       webhook.setSubscribedEvents(new HashSet<>(form.events()));
     }
 
@@ -115,7 +110,7 @@ public class WebhookService {
   private void applyUrlUpdate(final Webhook webhook, final UUID repoId, final String newUrl) {
     if (!newUrl.equals(webhook.getUrl())
         && this.webhookRepository.existsByRepoIdAndUrl(repoId, newUrl)) {
-      throw new ErrorOccurredException("Webhook with this URL already exists");
+      throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
     webhook.setUrl(newUrl);
   }
@@ -131,19 +126,10 @@ public class WebhookService {
     final var webhook =
         this.webhookRepository
             .findById(webhookId)
-            .orElseThrow(() -> new ItemNotFoundException("Webhook not found"));
+            .orElseThrow(() -> new ItemNotFoundException(WebhookValidator.ERR_NOT_FOUND));
     if (!repoId.equals(webhook.getRepoId())) {
-      throw new AccessNotAllowedException("notAuthorized");
+      throw new AccessNotAllowedException(WebhookValidator.ERR_NOT_AUTHORIZED);
     }
     return webhook;
-  }
-
-  private void validateEvents(final Set<String> events) {
-    final var valid =
-        Arrays.stream(WebhookEventType.values()).map(Enum::name).collect(Collectors.toSet());
-    final var invalid = events.stream().filter(e -> !valid.contains(e)).toList();
-    if (!invalid.isEmpty()) {
-      throw new ErrorOccurredException("Invalid event types: " + invalid);
-    }
   }
 }

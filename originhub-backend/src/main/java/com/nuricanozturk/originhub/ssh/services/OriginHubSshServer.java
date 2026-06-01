@@ -27,7 +27,6 @@ import java.nio.file.Path;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPublicKey;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.i2p.crypto.eddsa.EdDSAPublicKey;
 import org.apache.sshd.common.AttributeRepository;
@@ -38,12 +37,12 @@ import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerSession;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 @NullMarked
 public class OriginHubSshServer {
 
@@ -57,6 +56,8 @@ public class OriginHubSshServer {
   private final SshKeyService sshKeyService;
   private final RepoRepository repoRepository;
 
+  @Nullable private SshServer sshServer;
+
   @Value("${originhub.ssh.port:2222}")
   private int sshPort;
 
@@ -69,11 +70,14 @@ public class OriginHubSshServer {
   @Value("${originhub.ssh.host-path}")
   private String hostPath;
 
-  private SshServer sshServer;
+  public OriginHubSshServer(
+      final SshKeyService sshKeyService, final RepoRepository repoRepository) {
+    this.sshKeyService = sshKeyService;
+    this.repoRepository = repoRepository;
+  }
 
   @PostConstruct
-  public void start() throws IOException {
-
+  public void init() throws IOException {
     Files.createDirectories(Path.of(this.hostPath));
 
     final var keyProvider = this.createKeyProvider();

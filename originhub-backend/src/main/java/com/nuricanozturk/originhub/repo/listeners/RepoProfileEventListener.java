@@ -20,10 +20,8 @@ import com.nuricanozturk.originhub.shared.profile.events.UsernameChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 @RequiredArgsConstructor
@@ -32,15 +30,13 @@ public class RepoProfileEventListener {
 
   private final RepoStorageService repoStorageService;
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onUsernameChanged(final UsernameChangedEvent event) {
 
     this.repoStorageService.renameBaseDir(event.oldUsername(), event.newUsername());
   }
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onTenantDeleted(final TenantDeletedEvent event) {
 
     this.repoStorageService.deleteTenantRepos(event.username());

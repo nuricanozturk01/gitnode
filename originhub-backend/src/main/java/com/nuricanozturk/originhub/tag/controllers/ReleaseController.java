@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -58,7 +59,8 @@ public class ReleaseController {
   public ResponseEntity<List<ReleaseInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -69,7 +71,8 @@ public class ReleaseController {
   public ResponseEntity<ReleaseInfo> getLatest(
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -84,7 +87,8 @@ public class ReleaseController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String tagName,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -99,7 +103,8 @@ public class ReleaseController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final UUID id,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);

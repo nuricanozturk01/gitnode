@@ -18,16 +18,17 @@ package com.nuricanozturk.originhub.pr.dtos;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 public record PrCommentInfo(
-    UUID id,
-    AuthorInfo author,
-    String body,
+    @NonNull UUID id,
+    @NonNull AuthorInfo author,
+    @NonNull String body,
     @Nullable String filePath,
     @Nullable String commitSha,
     @Nullable Integer lineNumber,
     @Nullable String lineSide,
     boolean isResolved,
-    Instant createdAt,
-    Instant updatedAt) {}
+    @NonNull Instant createdAt,
+    @NonNull Instant updatedAt) {}

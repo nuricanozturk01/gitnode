@@ -283,22 +283,7 @@ public class IssueService implements IssueQueryService {
       final UUID commentId,
       final IssueCommentUpdateForm form,
       final UUID requesterId) {
-
-    final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
-            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
-
-    final var issue =
-        this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
-            .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
-
-    final var comment =
-        this.commentRepository
-            .findByIdAndIssueId(commentId, issue.getId())
-            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
-
+    final var comment = this.findCommentOrThrow(owner, repoName, number, commentId);
     this.assertCanModify(requesterId, comment.getAuthor(), owner);
     comment.setBody(form.getBody());
     return this.issueMapper.toCommentInfo(this.commentRepository.save(comment));
@@ -311,24 +296,24 @@ public class IssueService implements IssueQueryService {
       final int number,
       final UUID commentId,
       final UUID requesterId) {
+    final var comment = this.findCommentOrThrow(owner, repoName, number, commentId);
+    this.assertCanModify(requesterId, comment.getAuthor(), owner);
+    this.commentRepository.delete(comment);
+  }
 
+  private IssueComment findCommentOrThrow(
+      final String owner, final String repoName, final int number, final UUID commentId) {
     final var repo =
         this.repoRepository
             .findByOwnerUsernameAndName(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
-
     final var issue =
         this.issueRepository
             .findByRepoIdAndNumber(repo.getId(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
-
-    final var comment =
-        this.commentRepository
-            .findByIdAndIssueId(commentId, issue.getId())
-            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
-
-    this.assertCanModify(requesterId, comment.getAuthor(), owner);
-    this.commentRepository.delete(comment);
+    return this.commentRepository
+        .findByIdAndIssueId(commentId, issue.getId())
+        .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
   }
 
   public List<IssueLinkedTaskInfo> getLinkedTasks(

@@ -23,10 +23,9 @@ import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Service
 @RequiredArgsConstructor
@@ -36,15 +35,13 @@ public class RepoCreatedEventListener {
   private final RepoStorageService repoStorageService;
   private final RepoService repoService;
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onRepoCreated(final RepoCreatedEvent event) {
 
     this.repoStorageService.initRepo(event.repoOwner(), event.repoName());
   }
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onRepoDeleted(final RepoDeletedEvent event) {
 
     this.repoStorageService.deleteRepo(event.repoOwner(), event.repoName());

@@ -27,10 +27,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Service
@@ -41,8 +39,7 @@ public class PrHeadBranchCleanupListener {
   private final RepoRepository repoRepository;
   private final BranchProtocolService branchProtocolService;
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+  @ApplicationModuleListener
   public void onPullRequestStatusChanged(final PullRequestStatusChangedEvent event) {
 
     final var status = event.newStatus();

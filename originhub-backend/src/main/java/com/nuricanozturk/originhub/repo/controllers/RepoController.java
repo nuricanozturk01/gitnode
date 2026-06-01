@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -65,7 +66,8 @@ public class RepoController {
   public ResponseEntity<RepoInfo> getRepo(
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     final var repoInfo = this.repoService.findByOwnerAndName(owner, repo, requesterId);
@@ -77,7 +79,8 @@ public class RepoController {
   public ResponseEntity<PageResponse<RepoInfo>> listUserRepos(
       @PathVariable final String owner,
       @PageableDefault final Pageable pageable,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     final var repos = this.repoService.findAllByOwner(owner, pageable, requesterId);

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,7 +52,8 @@ public class TagController {
   public ResponseEntity<List<TagInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -64,7 +66,8 @@ public class TagController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String tag,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;

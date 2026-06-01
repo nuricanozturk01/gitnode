@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -57,7 +58,7 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
     return this.checkAuthorization(request, response, repo);
   }
 
-  private Repo resolvePrivateRepo(final HttpServletRequest request) {
+  private @Nullable Repo resolvePrivateRepo(final HttpServletRequest request) {
 
     final var parsed = parseOwnerRepo(request.getRequestURI());
 

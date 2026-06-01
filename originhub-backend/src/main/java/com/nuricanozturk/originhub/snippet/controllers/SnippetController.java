@@ -67,7 +67,7 @@ public class SnippetController {
   @GetMapping
   public ResponseEntity<PageResponse<SnippetInfo>> listPublic(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
-          final @Nullable String authHeader,
+          final @Nullable String ignored,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
       @RequestParam(required = false) final @Nullable String q) {

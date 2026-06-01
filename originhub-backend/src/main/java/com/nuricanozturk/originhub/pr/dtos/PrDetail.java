@@ -19,24 +19,25 @@ import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @Builder
 public record PrDetail(
-    UUID id,
+    @NonNull UUID id,
     int number,
-    String title,
+    @NonNull String title,
     @Nullable String description,
     String status,
     boolean isDraft,
-    AuthorInfo author,
+    @NonNull AuthorInfo author,
     @Nullable AuthorInfo mergedBy,
-    String sourceBranch,
+    @NonNull String sourceBranch,
     @Nullable String sourceSha,
-    String targetBranch,
+    @NonNull String targetBranch,
     @Nullable String mergeSha,
     int commentCount,
-    Instant createdAt,
+    @NonNull Instant createdAt,
     @Nullable Instant updatedAt,
     @Nullable Instant mergedAt,
     @Nullable Instant closedAt) {}

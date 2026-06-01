@@ -129,6 +129,7 @@ public class ProjectController {
     return ResponseEntity.ok(this.projectService.getLinkedRepos(owner, projectCode, viewer));
   }
 
+  @SuppressWarnings("unused")
   @GetMapping("/by-repo/{repoId}")
   public ResponseEntity<PageResponse<ProjectInfo>> getByRepo(
       @PathVariable final String owner,

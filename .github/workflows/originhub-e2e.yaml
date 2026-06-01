@@ -1,4 +1,4 @@
-name: OriginHub E2E
+name: E2E | OriginHub
 
 on:
   schedule:

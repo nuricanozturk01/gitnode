@@ -13,19 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.config;
+package com.nuricanozturk.originhub.migration.services;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.scheduling.annotation.EnableAsync;
-import org.springframework.web.client.RestClient;
+import com.nuricanozturk.originhub.migration.entities.MigrationJob;
+import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
+import org.jspecify.annotations.NullMarked;
 
-@Configuration
-@EnableAsync
-public class MigrationConfig {
+@NullMarked
+public interface CloudMigrationService {
 
-  @Bean
-  public RestClient restClient() {
-    return RestClient.builder().defaultHeader("Accept", "application/vnd.github+json").build();
-  }
+  void process(MigrationJob job, String accessToken, Tenant tenant);
 }

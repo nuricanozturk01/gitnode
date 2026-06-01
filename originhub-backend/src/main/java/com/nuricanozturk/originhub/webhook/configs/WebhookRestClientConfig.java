@@ -15,12 +15,14 @@
  */
 package com.nuricanozturk.originhub.webhook.configs;
 
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 @Configuration
+@NullMarked
 public class WebhookRestClientConfig {
 
   @Bean(name = "webhookRestClient")

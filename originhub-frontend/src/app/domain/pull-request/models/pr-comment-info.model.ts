@@ -28,3 +28,11 @@ export interface PrCommentInfo {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PrCommentPage {
+  content: PrCommentInfo[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}

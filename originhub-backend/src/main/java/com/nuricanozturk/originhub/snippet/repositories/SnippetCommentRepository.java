@@ -17,15 +17,15 @@ package com.nuricanozturk.originhub.snippet.repositories;
 
 import com.nuricanozturk.originhub.snippet.entities.SnippetComment;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface SnippetCommentRepository extends JpaRepository<SnippetComment, UUID> {
 
-  @NonNull Page<SnippetComment> findAllBySnippetIdOrderByCreatedAtAsc(
-      @NonNull UUID snippetId, @NonNull Pageable pageable);
+  Page<SnippetComment> findAllBySnippetIdOrderByCreatedAtAsc(UUID snippetId, Pageable pageable);
 }

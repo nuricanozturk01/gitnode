@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -28,6 +28,7 @@ import type { WebhookInfo } from '../../../domain/webhook/webhook.model';
 import { WEBHOOK_EVENT_GROUPS } from '../../../domain/webhook/webhook.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-settings',
   standalone: true,
   imports: [LucideAngularModule, FormsModule],

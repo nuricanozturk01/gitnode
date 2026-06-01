@@ -14,10 +14,9 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, ChangeDetectionStrategy, effect, inject, signal, computed } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
-import { merge } from 'rxjs';
 import { grandParentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -29,6 +28,7 @@ import type { BreadcrumbItem } from '../shared/repo-breadcrumb.component';
 import { RepoBreadcrumbComponent } from '../shared/repo-breadcrumb.component';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-tree',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, FileSizePipe, RepoBreadcrumbComponent],
@@ -46,8 +46,16 @@ export class TreePage {
   readonly path = signal('');
 
   private readonly repoRootParams = grandParentParamMapSignal(this.route);
+  private readonly urlSegments = toSignal(this.route.url, { initialValue: this.route.snapshot.url });
   readonly owner = computed(() => this.repoRootParams().get('owner') ?? '');
   readonly repoName = computed(() => this.repoRootParams().get('repo') ?? '');
+
+  private readonly routeKey = computed(() => {
+    const path = this.urlSegments()
+      .map((s) => s.path)
+      .join('/');
+    return `${this.owner()}/${this.repoName()}/${path}`;
+  });
 
   readonly breadcrumbItems = computed((): BreadcrumbItem[] => {
     const p = this.path();
@@ -60,10 +68,10 @@ export class TreePage {
   });
 
   constructor() {
-    const gp = this.route.parent?.parent;
-    merge(gp?.paramMap ?? this.route.paramMap, this.route.paramMap, this.route.url)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => this.parseUrlAndLoad());
+    effect(() => {
+      this.routeKey();
+      this.parseUrlAndLoad();
+    });
   }
 
   private parseUrlAndLoad(): void {

@@ -28,7 +28,7 @@ public record PrDetail(
     int number,
     @NonNull String title,
     @Nullable String description,
-    @NonNull String status,
+    String status,
     boolean isDraft,
     @NonNull AuthorInfo author,
     @Nullable AuthorInfo mergedBy,

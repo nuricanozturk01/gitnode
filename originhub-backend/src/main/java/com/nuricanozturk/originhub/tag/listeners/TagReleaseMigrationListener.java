@@ -34,7 +34,6 @@ import org.springframework.web.client.RestClient;
 @Component
 @RequiredArgsConstructor
 @NullMarked
-@SuppressWarnings("unchecked")
 public class TagReleaseMigrationListener {
 
   private static final String GITHUB_API_BASE = "https://api.github.com";
@@ -90,7 +89,7 @@ public class TagReleaseMigrationListener {
     }
 
     try {
-      this.ensureTagExists(event, tenantUsername, repoName, tagName, release);
+      this.ensureTagExists(tenantUsername, repoName, tagName, release);
 
       final var form = this.buildReleaseForm(release, tagName);
       this.releaseTxService.create(tenantUsername, repoName, event.getTenantId(), form);
@@ -100,7 +99,6 @@ public class TagReleaseMigrationListener {
   }
 
   private void ensureTagExists(
-      final TagReleaseMigrationRequestedEvent event,
       final String tenantUsername,
       final String repoName,
       final String tagName,
@@ -109,7 +107,7 @@ public class TagReleaseMigrationListener {
 
     try {
       this.tagNonTxService.get(tenantUsername, repoName, tagName);
-    } catch (final Exception missing) {
+    } catch (final Exception _) {
       final var tagBody = (String) release.getOrDefault("tag_name", tagName);
       final var tagMsg = (String) release.get("body");
       log.debug("Tag {} bulunamadı, oluşturuluyor...", tagBody);

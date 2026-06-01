@@ -25,7 +25,7 @@ import lombok.Data;
 @Data
 public class MigrationForm {
 
-  @NotNull private MigrationService service;
+  @NotNull private MigrationServiceProvider service;
 
   @NotNull
   @NotBlank

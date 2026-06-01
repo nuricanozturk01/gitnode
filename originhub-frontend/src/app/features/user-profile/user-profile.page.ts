@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { Location } from '@angular/common';
@@ -43,6 +43,7 @@ import {
 type ProfileTab = 'overview' | 'repositories' | 'projects' | 'snippets';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-profile',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent, MarkdownPipe],

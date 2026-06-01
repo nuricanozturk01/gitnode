@@ -27,7 +27,7 @@ import com.nuricanozturk.originhub.snippet.services.SnippetService;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -48,15 +48,16 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/snippets")
 @RequiredArgsConstructor
+@NullMarked
 public class SnippetController {
 
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull SnippetService snippetService;
+  private final JwtUtils jwtUtils;
+  private final SnippetService snippetService;
 
   @PostMapping
-  public @NonNull ResponseEntity<SnippetDetail> create(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @Valid @RequestBody final @NonNull SnippetForm form) {
+  public ResponseEntity<SnippetDetail> create(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @Valid @RequestBody final SnippetForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -64,9 +65,9 @@ public class SnippetController {
   }
 
   @GetMapping
-  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listPublic(
+  public ResponseEntity<PageResponse<SnippetInfo>> listPublic(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
-          final @Nullable String authHeader,
+          final @Nullable String ignored,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size,
       @RequestParam(required = false) final @Nullable String q) {
@@ -75,8 +76,8 @@ public class SnippetController {
   }
 
   @GetMapping("/me")
-  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listMine(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+  public ResponseEntity<PageResponse<SnippetInfo>> listMine(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size) {
 
@@ -85,29 +86,29 @@ public class SnippetController {
   }
 
   @GetMapping("/{snippetId}")
-  public @NonNull ResponseEntity<SnippetDetail> get(
+  public ResponseEntity<SnippetDetail> get(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull UUID snippetId) {
+      @PathVariable final UUID snippetId) {
 
     final var callerId = this.extractOptionalCaller(authHeader);
     return ResponseEntity.ok(this.snippetService.get(snippetId, callerId));
   }
 
   @PatchMapping("/{snippetId}")
-  public @NonNull ResponseEntity<SnippetDetail> update(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @Valid @RequestBody final @NonNull SnippetUpdateForm form) {
+  public ResponseEntity<SnippetDetail> update(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId,
+      @Valid @RequestBody final SnippetUpdateForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.ok(this.snippetService.update(tenantId, snippetId, form));
   }
 
   @DeleteMapping("/{snippetId}")
-  public @NonNull ResponseEntity<Void> delete(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId) {
+  public ResponseEntity<Void> delete(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     this.snippetService.delete(tenantId, snippetId);
@@ -115,9 +116,9 @@ public class SnippetController {
   }
 
   @PostMapping("/{snippetId}/fork")
-  public @NonNull ResponseEntity<SnippetDetail> fork(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId) {
+  public ResponseEntity<SnippetDetail> fork(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -125,10 +126,10 @@ public class SnippetController {
   }
 
   @GetMapping("/{snippetId}/revisions")
-  public @NonNull ResponseEntity<PageResponse<SnippetRevisionInfo>> listRevisions(
+  public ResponseEntity<PageResponse<SnippetRevisionInfo>> listRevisions(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
+      @PathVariable final UUID snippetId,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "10") final int size) {
 
@@ -137,41 +138,41 @@ public class SnippetController {
   }
 
   @GetMapping("/{snippetId}/revisions/{revisionId}")
-  public @NonNull ResponseEntity<SnippetRevisionDetail> getRevision(
+  public ResponseEntity<SnippetRevisionDetail> getRevision(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @PathVariable final @NonNull UUID revisionId) {
+      @PathVariable final UUID snippetId,
+      @PathVariable final UUID revisionId) {
 
     final var callerId = this.extractOptionalCaller(authHeader);
     return ResponseEntity.ok(this.snippetService.getRevision(snippetId, revisionId, callerId));
   }
 
   @PutMapping("/{snippetId}/repo/{repoId}")
-  public @NonNull ResponseEntity<SnippetDetail> linkRepo(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @PathVariable final @NonNull UUID repoId) {
+  public ResponseEntity<SnippetDetail> linkRepo(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId,
+      @PathVariable final UUID repoId) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.ok(this.snippetService.linkRepo(tenantId, snippetId, repoId));
   }
 
   @DeleteMapping("/{snippetId}/repo/{repoId}")
-  public @NonNull ResponseEntity<SnippetDetail> unlinkRepo(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @PathVariable final @NonNull UUID repoId) {
+  public ResponseEntity<SnippetDetail> unlinkRepo(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final UUID snippetId,
+      @PathVariable final UUID repoId) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.ok(this.snippetService.unlinkRepo(tenantId, snippetId, repoId));
   }
 
   @GetMapping("/by-owner/{username}")
-  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listByOwner(
+  public ResponseEntity<PageResponse<SnippetInfo>> listByOwner(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull String username,
+      @PathVariable final String username,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size) {
 
@@ -181,11 +182,11 @@ public class SnippetController {
   }
 
   @GetMapping("/repo/{owner}/{repoName}")
-  public @NonNull ResponseEntity<PageResponse<SnippetInfo>> listByRepo(
+  public ResponseEntity<PageResponse<SnippetInfo>> listByRepo(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repoName,
+      @PathVariable final String owner,
+      @PathVariable final String repoName,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size) {
 
@@ -194,11 +195,11 @@ public class SnippetController {
   }
 
   @GetMapping("/{snippetId}/files/{fileId}/raw")
-  public @NonNull ResponseEntity<String> getRawFile(
+  public ResponseEntity<String> getRawFile(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
-      @PathVariable final @NonNull UUID snippetId,
-      @PathVariable final @NonNull UUID fileId) {
+      @PathVariable final UUID snippetId,
+      @PathVariable final UUID fileId) {
 
     final var callerId = this.extractOptionalCaller(authHeader);
     final var detail = this.snippetService.get(snippetId, callerId);

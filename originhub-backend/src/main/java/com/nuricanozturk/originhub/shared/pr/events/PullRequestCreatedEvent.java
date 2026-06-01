@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.shared.pr.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record PullRequestCreatedEvent(
-    @NonNull UUID prId, @NonNull UUID repoId, @NonNull String sourceBranch) {}
+@NullMarked
+public record PullRequestCreatedEvent(UUID prId, UUID repoId, String sourceBranch) {}

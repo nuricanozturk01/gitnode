@@ -15,8 +15,7 @@
  */
 package com.nuricanozturk.originhub.task.services;
 
-import com.nuricanozturk.originhub.pr.entities.PrStatus;
-import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.pr.api.PrQueryPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -26,7 +25,6 @@ import com.nuricanozturk.originhub.shared.project.events.ProjectUpdatedEvent;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.task.dtos.OpenPrInfo;
 import com.nuricanozturk.originhub.task.dtos.ProjectForm;
 import com.nuricanozturk.originhub.task.dtos.ProjectInfo;
@@ -39,7 +37,7 @@ import com.nuricanozturk.originhub.task.repositories.TaskRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
@@ -49,25 +47,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class ProjectService {
 
-  private final @NonNull ProjectRepository projectRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull PrRepository prRepository;
-  private final @NonNull ProjectMapper projectMapper;
-  private final @NonNull TaskRepository taskRepository;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final ProjectRepository projectRepository;
+  private final RepoRepository repoRepository;
+  private final PrQueryPort prQueryPort;
+  private final ProjectMapper projectMapper;
+  private final TaskRepository taskRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
-  public @NonNull ProjectInfo create(
-      final @NonNull String ownerUsername,
-      final @NonNull Tenant caller,
-      final @NonNull ProjectForm form) {
+  public ProjectInfo create(
+      final String ownerUsername, final Tenant caller, final ProjectForm form) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     if (this.projectRepository.existsByOwnerIdAndName(caller.getId(), form.getName())) {
       throw new ErrorOccurredException("Project with this name already exists");
@@ -92,11 +86,8 @@ public class ProjectService {
     return this.projectMapper.toInfo(saved, this.taskRepository.countByProjectId(saved.getId()));
   }
 
-  public @NonNull PageResponse<ProjectInfo> getAll(
-      final @NonNull String ownerUsername,
-      final @Nullable Tenant viewer,
-      final int page,
-      final int size) {
+  public PageResponse<ProjectInfo> getAll(
+      final String ownerUsername, final @Nullable Tenant viewer, final int page, final int size) {
 
     final boolean isOwner = viewer != null && viewer.getUsername().equals(ownerUsername);
     final var pageable = PageRequest.of(page, size);
@@ -112,10 +103,8 @@ public class ProjectService {
             p -> this.projectMapper.toInfo(p, this.taskRepository.countByProjectId(p.getId()))));
   }
 
-  public @NonNull ProjectInfo get(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @Nullable Tenant viewer) {
+  public ProjectInfo get(
+      final String ownerUsername, final String codePrefix, final @Nullable Tenant viewer) {
 
     final var project = this.findProjectAsViewer(ownerUsername, codePrefix, viewer);
     return this.projectMapper.toInfo(
@@ -123,15 +112,13 @@ public class ProjectService {
   }
 
   @Transactional
-  public @NonNull ProjectInfo update(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @NonNull Tenant caller,
-      final @NonNull ProjectUpdateForm form) {
+  public ProjectInfo update(
+      final String ownerUsername,
+      final String codePrefix,
+      final Tenant caller,
+      final ProjectUpdateForm form) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
 
@@ -159,14 +146,9 @@ public class ProjectService {
   }
 
   @Transactional
-  public void delete(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @NonNull Tenant caller) {
+  public void delete(final String ownerUsername, final String codePrefix, final Tenant caller) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
     this.eventPublisher.publishEvent(
@@ -176,14 +158,9 @@ public class ProjectService {
 
   @Transactional
   public void linkRepo(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @NonNull UUID repoId,
-      final @NonNull Tenant caller) {
+      final String ownerUsername, final String codePrefix, final UUID repoId, final Tenant caller) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
     final var repo =
@@ -203,14 +180,9 @@ public class ProjectService {
 
   @Transactional
   public void unlinkRepo(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @NonNull UUID repoId,
-      final @NonNull Tenant caller) {
+      final String ownerUsername, final String codePrefix, final UUID repoId, final Tenant caller) {
 
-    if (!caller.getUsername().equals(ownerUsername)) {
-      throw new AccessNotAllowedException("accessDenied");
-    }
+    this.requireCallerIsOwner(caller, ownerUsername);
 
     final var project = this.findProject(ownerUsername, codePrefix);
     final boolean removed = project.getRepos().removeIf(r -> r.getId().equals(repoId));
@@ -221,10 +193,8 @@ public class ProjectService {
     this.projectRepository.save(project);
   }
 
-  public @NonNull List<ProjectRepoInfo> getLinkedRepos(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @Nullable Tenant viewer) {
+  public List<ProjectRepoInfo> getLinkedRepos(
+      final String ownerUsername, final String codePrefix, final @Nullable Tenant viewer) {
 
     final var project = this.findProjectAsViewer(ownerUsername, codePrefix, viewer);
     final var repos = project.getRepos();
@@ -232,19 +202,16 @@ public class ProjectService {
     return repos.stream()
         .map(
             repo -> {
-              final var openPrs =
-                  this.prRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(
-                      repo.getId(), PrStatus.OPEN.name());
               final var openPrInfos =
-                  openPrs.stream()
+                  this.prQueryPort.findOpenByRepoId(repo.getId()).stream()
                       .map(
                           pr ->
                               OpenPrInfo.builder()
-                                  .id(pr.getId())
-                                  .number(pr.getNumber())
-                                  .title(pr.getTitle())
-                                  .sourceBranch(pr.getSourceBranch())
-                                  .targetBranch(pr.getTargetBranch())
+                                  .id(pr.id())
+                                  .number(pr.number())
+                                  .title(pr.title())
+                                  .sourceBranch(pr.sourceBranch())
+                                  .targetBranch(pr.targetBranch())
                                   .build())
                       .toList();
 
@@ -260,15 +227,20 @@ public class ProjectService {
         .toList();
   }
 
-  @NonNull Project findProject(
-      final @NonNull String ownerUsername, final @NonNull String codePrefix) {
+  private void requireCallerIsOwner(final Tenant caller, final String ownerUsername) {
+    if (!caller.getUsername().equals(ownerUsername)) {
+      throw new AccessNotAllowedException("accessDenied");
+    }
+  }
+
+  Project findProject(final String ownerUsername, final String codePrefix) {
     return this.projectRepository
         .findByOwnerUsernameAndCodePrefix(ownerUsername, codePrefix)
         .orElseThrow(() -> new ItemNotFoundException("Project not found: " + codePrefix));
   }
 
-  public @NonNull PageResponse<ProjectInfo> getLinkedProjects(
-      final @NonNull UUID repoId, final @Nullable Tenant viewer, final int page, final int size) {
+  public PageResponse<ProjectInfo> getLinkedProjects(
+      final UUID repoId, final @Nullable Tenant viewer, final int page, final int size) {
 
     final var repo =
         this.repoRepository
@@ -293,10 +265,8 @@ public class ProjectService {
             p -> this.projectMapper.toInfo(p, this.taskRepository.countByProjectId(p.getId()))));
   }
 
-  @NonNull Project findProjectAsViewer(
-      final @NonNull String ownerUsername,
-      final @NonNull String codePrefix,
-      final @Nullable Tenant viewer) {
+  Project findProjectAsViewer(
+      final String ownerUsername, final String codePrefix, final @Nullable Tenant viewer) {
 
     final var project =
         this.projectRepository

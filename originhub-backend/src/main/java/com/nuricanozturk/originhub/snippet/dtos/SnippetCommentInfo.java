@@ -18,13 +18,12 @@ package com.nuricanozturk.originhub.snippet.dtos;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @Builder
 public record SnippetCommentInfo(
-    @NonNull UUID id,
-    @NonNull String body,
-    @NonNull SnippetOwnerInfo author,
+    UUID id,
+    String body,
+    SnippetOwnerInfo author,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt) {}

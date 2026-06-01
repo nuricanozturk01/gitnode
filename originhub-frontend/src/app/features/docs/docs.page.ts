@@ -14,13 +14,14 @@
 /// limitations under the License.
 ///
 
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnDestroy, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/toast/toast.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-docs',
   standalone: true,
   imports: [RouterLink, LucideAngularModule],

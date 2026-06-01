@@ -18,32 +18,44 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import { TokenService } from '../../auth/services/token.service';
 import type { User } from '../../../domain/auth/models/user.model';
-
-export interface UserSearchResult {
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-}
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
   private readonly http = inject(HttpClient);
-  private readonly tokenService = inject(TokenService);
 
   private readonly api = `${environment.apiUrl}/api/users`;
+  private meCache: Promise<User> | null = null;
+  private meSnapshot: User | null = null;
 
   updateUsername(username: string): Promise<User> {
-    return firstValueFrom(this.http.patch<User>(`${this.api}/me`, { username }));
+    return this.patchMeAndCache(`${this.api}/me`, { username });
   }
 
   getMe(): Promise<User> {
-    return firstValueFrom(this.http.get<User>(`${this.api}/me`));
+    if (this.meSnapshot) return Promise.resolve(this.meSnapshot);
+    if (!this.meCache) {
+      this.meCache = firstValueFrom(this.http.get<User>(`${this.api}/me`))
+        .then((user) => {
+          this.meSnapshot = user;
+          return user;
+        })
+        .catch((err) => {
+          this.meCache = null;
+          throw err;
+        });
+    }
+    return this.meCache;
+  }
+
+  /** Clears cached profile (call on logout or after account changes). */
+  invalidateMe(): void {
+    this.meCache = null;
+    this.meSnapshot = null;
   }
 
   updateDisplayName(displayName: string): Promise<User> {
-    return firstValueFrom(this.http.patch<User>(`${this.api}/me/display-name`, { displayName }));
+    return this.patchMeAndCache(`${this.api}/me/display-name`, { displayName });
   }
 
   changePassword(currentPassword: string, newPassword: string): Promise<void> {
@@ -56,7 +68,9 @@ export class UserService {
   }
 
   deleteAccount(): Promise<void> {
-    return firstValueFrom(this.http.delete<void>(`${this.api}/me`));
+    return firstValueFrom(this.http.delete<void>(`${this.api}/me`)).then(() => {
+      this.invalidateMe();
+    });
   }
 
   getPublicProfile(username: string): Promise<UserPublicProfile> {
@@ -64,7 +78,15 @@ export class UserService {
   }
 
   updateProfile(form: UpdateProfileForm): Promise<User> {
-    return firstValueFrom(this.http.patch<User>(`${this.api}/me/profile`, form));
+    return this.patchMeAndCache(`${this.api}/me/profile`, form);
+  }
+
+  private patchMeAndCache(url: string, body: unknown): Promise<User> {
+    return firstValueFrom(this.http.patch<User>(url, body)).then((user) => {
+      this.meSnapshot = user;
+      this.meCache = Promise.resolve(user);
+      return user;
+    });
   }
 }
 

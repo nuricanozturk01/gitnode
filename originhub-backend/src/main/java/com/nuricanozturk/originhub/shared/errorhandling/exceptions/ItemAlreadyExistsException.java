@@ -15,11 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.errorhandling.exceptions;
 
-import org.jspecify.annotations.NonNull;
-
 public class ItemAlreadyExistsException extends RuntimeException {
 
-  public ItemAlreadyExistsException(final @NonNull String msg) {
+  public ItemAlreadyExistsException(final String msg) {
 
     super(msg);
   }

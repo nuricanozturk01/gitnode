@@ -14,10 +14,11 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { distinctUntilChanged, filter, map } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { paramMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { RepoService } from '../../../core/repo/services/repo.service';
@@ -28,6 +29,7 @@ import { ReleaseService } from '../../../core/release/services/release.service';
 import { TokenService } from '../../../core/auth/services/token.service';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-layout',
   standalone: true,
   imports: [RouterLink, RouterLinkActive, RouterOutlet, LucideAngularModule],
@@ -56,7 +58,14 @@ export class RepoLayoutComponent {
   readonly releaseCount = signal(0);
 
   constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => void this.loadRepo());
+    this.route.paramMap
+      .pipe(
+        map((p) => `${p.get('owner') ?? ''}/${p.get('repo') ?? ''}`),
+        filter((key) => key !== '/'),
+        distinctUntilChanged(),
+        takeUntilDestroyed(),
+      )
+      .subscribe(() => void this.loadRepo());
   }
 
   private async loadRepo(): Promise<void> {
@@ -64,23 +73,21 @@ export class RepoLayoutComponent {
     const repo = this.repoName();
     if (!owner || !repo) {
       this.loading.set(false);
-      this.repoContext.repo.set(null);
+      this.repoContext.clearRepo();
       return;
     }
+    const routeKey = `${owner}/${repo}`;
     this.loading.set(true);
     try {
-      const [repoData, prList, issueList, releaseList] = await Promise.all([
-        this.repoService.getRepo(owner, repo),
-        this.prService.getPullRequests(owner, repo, 'OPEN').catch(() => []),
-        this.issueService
-          .getAll(owner, repo, 'OPEN')
-          .catch(() => ({ content: [], number: 0, size: 0, totalElements: 0, totalPages: 0 })),
-        this.releaseService.getAll(owner, repo).catch(() => []),
-      ]);
-      this.repoContext.repo.set(repoData);
-      this.prCount.set(prList.length);
-      this.issueCount.set(issueList.totalElements);
-      this.releaseCount.set(releaseList.length);
+      const repoData = await this.repoService.getRepo(owner, repo);
+      this.repoContext.setRepoBundle(routeKey, repoData, {
+        openPrs: 0,
+        openIssues: 0,
+        releases: [],
+      });
+      this.prCount.set(0);
+      this.issueCount.set(0);
+      this.releaseCount.set(0);
     } catch (err) {
       if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
         if (!this.tokenService.getAccessToken()) {
@@ -88,9 +95,38 @@ export class RepoLayoutComponent {
           return;
         }
       }
-      this.repoContext.repo.set(null);
+      this.repoContext.clearRepo();
     } finally {
       this.loading.set(false);
+    }
+    void this.loadTabCounts(owner, repo, routeKey);
+  }
+
+  private async loadTabCounts(owner: string, repo: string, routeKey: string): Promise<void> {
+    try {
+      const [prList, issueList, releaseList] = await Promise.all([
+        this.prService
+          .getPullRequests(owner, repo, 'OPEN')
+          .catch(() => ({ content: [], number: 0, size: 0, totalElements: 0, totalPages: 0 })),
+        this.issueService
+          .getAll(owner, repo, 'OPEN')
+          .catch(() => ({ content: [], number: 0, size: 0, totalElements: 0, totalPages: 0 })),
+        this.releaseService.getAll(owner, repo).catch(() => []),
+      ]);
+      if (this.repoContext.repoRouteKey() !== routeKey) return;
+      const currentRepo = this.repoContext.repo();
+      if (!currentRepo) return;
+
+      this.repoContext.setRepoBundle(routeKey, currentRepo, {
+        openPrs: prList.totalElements,
+        openIssues: issueList.totalElements,
+        releases: releaseList,
+      });
+      this.prCount.set(prList.totalElements);
+      this.issueCount.set(issueList.totalElements);
+      this.releaseCount.set(releaseList.length);
+    } catch {
+      // Tab badges are optional; repo shell stays usable.
     }
   }
 }

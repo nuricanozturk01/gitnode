@@ -6,19 +6,20 @@ import com.nuricanozturk.originhub.task.repositories.TaskRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class TaskQueryAdapter implements TaskQueryPort {
 
-  private final @NonNull TaskRepository taskRepository;
+  private final TaskRepository taskRepository;
 
   @Override
-  public List<LinkedTaskData> findByLinkedIssueId(final @NonNull UUID issueId) {
+  public List<LinkedTaskData> findByLinkedIssueId(final UUID issueId) {
     return this.taskRepository.findByLinkedIssueId(issueId).stream()
         .map(
             t ->

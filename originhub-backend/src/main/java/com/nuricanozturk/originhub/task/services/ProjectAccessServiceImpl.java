@@ -15,25 +15,26 @@
  */
 package com.nuricanozturk.originhub.task.services;
 
-import com.nuricanozturk.originhub.shared.project.ProjectAccessService;
-import com.nuricanozturk.originhub.shared.project.ProjectSummary;
+import com.nuricanozturk.originhub.shared.project.dtos.ProjectSummary;
+import com.nuricanozturk.originhub.shared.project.services.ProjectAccessService;
 import com.nuricanozturk.originhub.task.repositories.ProjectRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@NullMarked
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 class ProjectAccessServiceImpl implements ProjectAccessService {
 
-  private final @NonNull ProjectRepository projectRepository;
+  private final ProjectRepository projectRepository;
 
   @Override
-  public @NonNull Optional<ProjectSummary> findByOwnerAndCode(
-      final @NonNull String ownerUsername, final @NonNull String codePrefix) {
+  public Optional<ProjectSummary> findByOwnerAndCode(
+      final String ownerUsername, final String codePrefix) {
     return this.projectRepository
         .findByOwnerUsernameAndCodePrefix(ownerUsername, codePrefix)
         .map(p -> new ProjectSummary(p.getId(), p.getOwner().getUsername()));

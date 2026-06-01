@@ -26,7 +26,7 @@ import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -36,15 +36,15 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
+@NullMarked
 @RequiredArgsConstructor
 class AuthController {
 
-  private final @NonNull AuthService authService;
-  private final @NonNull JwtUtils jwtUtils;
+  private final AuthService authService;
+  private final JwtUtils jwtUtils;
 
   @PostMapping("/login")
-  public @NonNull ResponseEntity<LoginInfo> login(
-      @RequestBody @Valid final @NonNull LoginForm form) {
+  public ResponseEntity<LoginInfo> login(@RequestBody @Valid final LoginForm form) {
 
     final var loginInfo = this.authService.login(form);
 
@@ -52,8 +52,7 @@ class AuthController {
   }
 
   @PostMapping("/register")
-  public @NonNull ResponseEntity<LoginInfo> register(
-      @RequestBody @Valid final @NonNull RegistrationForm form) {
+  public ResponseEntity<LoginInfo> register(@RequestBody @Valid final RegistrationForm form) {
 
     final var loginInfo = this.authService.register(form);
 
@@ -63,8 +62,7 @@ class AuthController {
   }
 
   @PostMapping("/recover-password")
-  public @NonNull ResponseEntity<Void> recoverPassword(
-      @RequestBody @Valid final @NonNull RecoverPasswordForm form) {
+  public ResponseEntity<Void> recoverPassword(@RequestBody @Valid final RecoverPasswordForm form) {
 
     this.authService.recoverPassword(form);
 
@@ -72,8 +70,7 @@ class AuthController {
   }
 
   @PostMapping("/refresh-token")
-  public @NonNull ResponseEntity<LoginInfo> refreshToken(
-      @RequestBody @Valid final @NonNull RefreshTokenForm form) {
+  public ResponseEntity<LoginInfo> refreshToken(@RequestBody @Valid final RefreshTokenForm form) {
 
     this.jwtUtils.verifyAndValidate(form.getRefreshToken());
 
@@ -85,8 +82,8 @@ class AuthController {
   }
 
   @PostMapping("/send-password-recovery-mail")
-  public @NonNull ResponseEntity<Boolean> sendPasswordRecoveryMail(
-      @RequestBody @Valid final @NonNull RecoveryCodeRequestForm form) {
+  public ResponseEntity<Boolean> sendPasswordRecoveryMail(
+      @RequestBody @Valid final RecoveryCodeRequestForm form) {
 
     final var response = this.authService.getPasswordRecoveryCode(form);
 

@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ProjectService } from '../../../core/project/services/project.service';
@@ -9,6 +9,7 @@ import type { ProjectInfo, ProjectForm } from '../../../domain/project/models/pr
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-projects',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],

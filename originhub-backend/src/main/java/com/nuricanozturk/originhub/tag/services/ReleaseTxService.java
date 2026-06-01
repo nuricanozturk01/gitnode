@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -47,17 +46,17 @@ public class ReleaseTxService {
   private static final String ERR_REPO_NOT_FOUND = "Repo not found.";
   private static final String ERR_RELEASE_NOT_FOUND = "Release not found.";
 
-  private final @NonNull ReleaseRepository releaseRepository;
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull ReleaseMapper releaseMapper;
+  private final ReleaseRepository releaseRepository;
+  private final RepoRepository repoRepository;
+  private final TenantRepository tenantRepository;
+  private final ReleaseMapper releaseMapper;
 
   @Transactional
-  public @NonNull ReleaseInfo create(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull UUID authorId,
-      final @NonNull CreateReleaseForm form) {
+  public ReleaseInfo create(
+      final String owner,
+      final String repoName,
+      final UUID authorId,
+      final CreateReleaseForm form) {
 
     final var repo = this.findRepo(owner, repoName);
     final var author =
@@ -73,8 +72,7 @@ public class ReleaseTxService {
     return this.releaseMapper.toInfo(this.releaseRepository.save(release));
   }
 
-  public @NonNull List<ReleaseInfo> getAll(
-      final @NonNull String owner, final @NonNull String repoName) {
+  public List<ReleaseInfo> getAll(final String owner, final String repoName) {
 
     final var repo = this.findRepo(owner, repoName);
     return this.releaseRepository.findAllByRepoIdOrderByCreatedAtDesc(repo.getId()).stream()
@@ -82,15 +80,15 @@ public class ReleaseTxService {
         .toList();
   }
 
-  public @NonNull ReleaseInfo getById(final @NonNull UUID id) {
+  public ReleaseInfo getById(final UUID id) {
     return this.releaseRepository
         .findById(id)
         .map(this.releaseMapper::toInfo)
         .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
   }
 
-  public @NonNull Optional<ReleaseInfo> findByTagName(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String tagName) {
+  public Optional<ReleaseInfo> findByTagName(
+      final String owner, final String repoName, final String tagName) {
 
     final var repo = this.findRepo(owner, repoName);
     return this.releaseRepository
@@ -98,8 +96,7 @@ public class ReleaseTxService {
         .map(this.releaseMapper::toInfo);
   }
 
-  public @NonNull Optional<ReleaseInfo> findLatest(
-      final @NonNull String owner, final @NonNull String repoName) {
+  public Optional<ReleaseInfo> findLatest(final String owner, final String repoName) {
 
     final var repo = this.findRepo(owner, repoName);
     return this.releaseRepository
@@ -108,11 +105,11 @@ public class ReleaseTxService {
   }
 
   @Transactional
-  public @NonNull ReleaseInfo update(
-      final @NonNull UUID id,
-      final @NonNull UUID requesterId,
-      final @NonNull String repoOwnerUsername,
-      final @NonNull UpdateReleaseForm form) {
+  public ReleaseInfo update(
+      final UUID id,
+      final UUID requesterId,
+      final String repoOwnerUsername,
+      final UpdateReleaseForm form) {
 
     final var release =
         this.releaseRepository
@@ -125,10 +122,7 @@ public class ReleaseTxService {
   }
 
   @Transactional
-  public void delete(
-      final @NonNull UUID id,
-      final @NonNull UUID requesterId,
-      final @NonNull String repoOwnerUsername) {
+  public void delete(final UUID id, final UUID requesterId, final String repoOwnerUsername) {
 
     final var release =
         this.releaseRepository
@@ -140,31 +134,26 @@ public class ReleaseTxService {
   }
 
   @Transactional
-  public void deleteByTagName(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String tagName) {
+  public void deleteByTagName(final String owner, final String repoName, final String tagName) {
 
     final var repo = this.findRepo(owner, repoName);
     this.releaseRepository.deleteByRepoIdAndTagName(repo.getId(), tagName);
   }
 
-  public @NonNull Optional<ReleaseInfo> findByRepoIdAndTagName(
-      final @NonNull UUID repoId, final @NonNull String tagName) {
+  public Optional<ReleaseInfo> findByRepoIdAndTagName(final UUID repoId, final String tagName) {
 
     return this.releaseRepository
         .findByRepoIdAndTagName(repoId, tagName)
         .map(this.releaseMapper::toInfo);
   }
 
-  public @NonNull Repo findRepo(final @NonNull String owner, final @NonNull String repoName) {
+  public Repo findRepo(final String owner, final String repoName) {
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)
         .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
   }
 
-  private @NonNull Release buildRelease(
-      final @NonNull Repo repo,
-      final @NonNull Tenant author,
-      final @NonNull CreateReleaseForm form) {
+  private Release buildRelease(final Repo repo, final Tenant author, final CreateReleaseForm form) {
 
     final var release = new Release();
     release.setRepo(repo);
@@ -182,7 +171,7 @@ public class ReleaseTxService {
     return release;
   }
 
-  private void applyUpdates(final @NonNull UpdateReleaseForm form, final @NonNull Release release) {
+  private void applyUpdates(final UpdateReleaseForm form, final Release release) {
     if (form.getName() != null) {
       release.setName(form.getName());
     }
@@ -201,9 +190,7 @@ public class ReleaseTxService {
   }
 
   private void assertCanModify(
-      final @NonNull UUID requesterId,
-      final @NonNull Tenant author,
-      final @NonNull String repoOwnerUsername) {
+      final UUID requesterId, final Tenant author, final String repoOwnerUsername) {
 
     if (requesterId.equals(author.getId())) {
       return;

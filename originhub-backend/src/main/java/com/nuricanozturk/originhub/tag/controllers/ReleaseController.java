@@ -29,7 +29,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -46,18 +47,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/repos/{owner}/{repo}/releases")
 @RequiredArgsConstructor
+@NullMarked
 public class ReleaseController {
 
-  private final @NonNull ReleaseTxService releaseTxService;
-  private final @NonNull TagNonTxService tagNonTxService;
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull RepoService repoService;
+  private final ReleaseTxService releaseTxService;
+  private final TagNonTxService tagNonTxService;
+  private final JwtUtils jwtUtils;
+  private final RepoService repoService;
 
   @GetMapping
-  public @NonNull ResponseEntity<List<ReleaseInfo>> getAll(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+  public ResponseEntity<List<ReleaseInfo>> getAll(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -65,10 +68,11 @@ public class ReleaseController {
   }
 
   @GetMapping("/latest")
-  public @NonNull ResponseEntity<ReleaseInfo> getLatest(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+  public ResponseEntity<ReleaseInfo> getLatest(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -79,11 +83,12 @@ public class ReleaseController {
   }
 
   @GetMapping("/tag/{tagName}")
-  public @NonNull ResponseEntity<ReleaseInfo> getByTag(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String tagName,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+  public ResponseEntity<ReleaseInfo> getByTag(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String tagName,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -94,11 +99,12 @@ public class ReleaseController {
   }
 
   @GetMapping("/{id}")
-  public @NonNull ResponseEntity<ReleaseInfo> getById(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull UUID id,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader) {
+  public ResponseEntity<ReleaseInfo> getById(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID id,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -106,11 +112,11 @@ public class ReleaseController {
   }
 
   @PostMapping
-  public @NonNull ResponseEntity<ReleaseInfo> create(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull CreateReleaseForm form)
+  public ResponseEntity<ReleaseInfo> create(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final CreateReleaseForm form)
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
@@ -125,12 +131,12 @@ public class ReleaseController {
   }
 
   @PatchMapping("/{id}")
-  public @NonNull ResponseEntity<ReleaseInfo> update(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull UUID id,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @RequestBody final @NonNull UpdateReleaseForm form) {
+  public ResponseEntity<ReleaseInfo> update(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID id,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestBody final UpdateReleaseForm form) {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -138,11 +144,11 @@ public class ReleaseController {
   }
 
   @DeleteMapping("/{id}")
-  public @NonNull ResponseEntity<Void> delete(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull UUID id,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
+  public ResponseEntity<Void> delete(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID id,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
@@ -151,10 +157,7 @@ public class ReleaseController {
   }
 
   private void createTagIfNeeded(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull CreateReleaseForm form)
-      throws IOException {
+      final String owner, final String repoName, final CreateReleaseForm form) throws IOException {
 
     final var tagForm = new CreateTagForm();
     tagForm.setName(form.getTagName());

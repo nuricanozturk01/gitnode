@@ -20,30 +20,20 @@ import com.nuricanozturk.originhub.tag.dtos.ReleaseInfo;
 import com.nuricanozturk.originhub.tag.dtos.TenantReleaseInfo;
 import com.nuricanozturk.originhub.tag.entities.Release;
 import org.jspecify.annotations.NullMarked;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
 public interface ReleaseMapper {
 
-  default ReleaseInfo toInfo(final Release release) {
-    return ReleaseInfo.builder()
-        .id(release.getId())
-        .tagName(release.getTagName())
-        .name(release.getName())
-        .body(release.getBody())
-        .isDraft(release.isDraft())
-        .isPrerelease(release.isPrerelease())
-        .author(this.toTenantInfo(release.getAuthor()))
-        .publishedAt(release.getPublishedAt())
-        .createdAt(release.getCreatedAt())
-        .updatedAt(release.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "isDraft", source = "draft")
+  @Mapping(target = "isPrerelease", source = "prerelease")
+  ReleaseInfo toInfo(Release release);
 
-  default TenantReleaseInfo toTenantInfo(final Tenant tenant) {
-    return new TenantReleaseInfo(
-        tenant.getId(), tenant.getUsername(), tenant.getDisplayName(), tenant.getAvatarUrl());
-  }
+  TenantReleaseInfo toTenantInfo(Tenant tenant);
 }

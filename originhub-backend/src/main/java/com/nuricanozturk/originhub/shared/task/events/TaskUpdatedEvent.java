@@ -16,10 +16,7 @@
 package com.nuricanozturk.originhub.shared.task.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record TaskUpdatedEvent(
-    @NonNull UUID taskId,
-    @NonNull UUID projectId,
-    @NonNull String code,
-    @NonNull String ownerUsername) {}
+@NullMarked
+public record TaskUpdatedEvent(UUID taskId, UUID projectId, String code, String ownerUsername) {}

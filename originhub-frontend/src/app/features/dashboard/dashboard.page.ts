@@ -5,7 +5,7 @@
 /// you may not use this file except in compliance with the License.
 ///
 
-import { Component, inject, NgZone, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
@@ -27,6 +27,7 @@ export interface DashboardRepo {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-dashboard',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
@@ -34,7 +35,6 @@ export interface DashboardRepo {
   styleUrl: './dashboard.page.css',
 })
 export class DashboardPage {
-  private readonly ngZone = inject(NgZone);
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
   private readonly repoService = inject(RepoService);
@@ -170,9 +170,7 @@ export class DashboardPage {
   }
 
   private patchReposAndLoading(nextRepos: DashboardRepo[], loading: boolean): void {
-    this.ngZone.run(() => {
-      this.repos.set(nextRepos);
-      this.loading.set(loading);
-    });
+    this.repos.set(nextRepos);
+    this.loading.set(loading);
   }
 }

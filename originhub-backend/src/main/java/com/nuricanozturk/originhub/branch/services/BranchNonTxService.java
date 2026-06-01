@@ -242,6 +242,7 @@ public class BranchNonTxService implements BranchProtocolService {
   }
 
   private void checkCreateResult(final RefUpdate.Result result) {
+
     if (result != RefUpdate.Result.NEW) {
       throw new RuntimeException("Failed to create branch: " + result);
     }

@@ -1,7 +1,5 @@
-import { Component, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, ChangeDetectionStrategy, effect, inject, signal, computed } from '@angular/core';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
-import { merge } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
@@ -16,6 +14,7 @@ import { ToastService } from '../../../core/toast/toast.service';
 import type { IssueDetail, IssueCommentInfo, IssueLinkedTaskInfo } from '../../../domain/repository/models/issue.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-issue-detail',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, FormsModule, RelativeTimePipe, AvatarComponent],
@@ -57,10 +56,23 @@ export class IssueDetailPage {
   readonly hasPrevComments = computed(() => this.commentPage() > 0);
   readonly hasNextComments = computed(() => this.commentPage() < this.commentTotalPages() - 1);
 
+  private readonly routeKey = computed(() => `${this.owner()}/${this.repoName()}/${this.issueNumber()}`);
+
   constructor() {
-    merge(this.route.parent!.paramMap, this.route.paramMap)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => void this.load());
+    effect(() => {
+      this.routeKey();
+      if (!this.owner() || !this.repoName() || !this.issueNumber()) {
+        this.loading.set(false);
+        return;
+      }
+      void this.load();
+    });
+    if (this.tokenService.isLoggedIn()) {
+      void this.userService
+        .getMe()
+        .then((user) => this.currentUser.set(user))
+        .catch(() => this.currentUser.set(null));
+    }
   }
 
   private async load(): Promise<void> {
@@ -73,10 +85,9 @@ export class IssueDetailPage {
     }
     this.loading.set(true);
     try {
-      const [issue, commentPage, user, linkedTasks] = await Promise.all([
+      const [issue, commentPage, linkedTasks] = await Promise.all([
         this.issueService.get(owner, repo, number),
         this.issueService.getComments(owner, repo, number, 0),
-        this.userService.getMe().catch(() => null),
         this.issueService.getLinkedTasks(owner, repo, number).catch(() => []),
       ]);
       this.issue.set(issue);
@@ -84,7 +95,6 @@ export class IssueDetailPage {
       this.commentPage.set(commentPage.number);
       this.commentTotalPages.set(commentPage.totalPages);
       this.commentTotalElements.set(commentPage.totalElements);
-      this.currentUser.set(user);
       this.linkedTasks.set(linkedTasks);
     } catch {
       this.issue.set(null);

@@ -15,11 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.errorhandling.exceptions;
 
-import org.jspecify.annotations.NonNull;
-
 public class ItemNotFoundException extends RuntimeException {
 
-  public ItemNotFoundException(final @NonNull String msg) {
+  public ItemNotFoundException(final String msg) {
 
     super(msg);
   }

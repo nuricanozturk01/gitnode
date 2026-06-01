@@ -29,7 +29,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -46,17 +46,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
+@NullMarked
 public class ProfileController {
 
   private static final int MIN_LEN = 3;
 
-  private final @NonNull TenantSearchService tenantSearchService;
-  private final @NonNull ProfileService profileService;
-  private final @NonNull JwtUtils jwtUtils;
+  private final TenantSearchService tenantSearchService;
+  private final ProfileService profileService;
+  private final JwtUtils jwtUtils;
 
   @GetMapping("/me")
-  public @NonNull ResponseEntity<TenantInfo> getMe(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+  public ResponseEntity<TenantInfo> getMe(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
@@ -66,9 +67,9 @@ public class ProfileController {
   }
 
   @PatchMapping("/me")
-  public @NonNull ResponseEntity<TenantInfo> updateMe(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      final @Valid @RequestBody @NonNull UpdateUsernameForm form) {
+  public ResponseEntity<TenantInfo> updateMe(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody UpdateUsernameForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
@@ -78,9 +79,9 @@ public class ProfileController {
   }
 
   @PatchMapping("/me/display-name")
-  public @NonNull ResponseEntity<TenantInfo> updateDisplayName(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      final @Valid @RequestBody @NonNull UpdateDisplayNameForm form) {
+  public ResponseEntity<TenantInfo> updateDisplayName(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody UpdateDisplayNameForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
@@ -90,9 +91,9 @@ public class ProfileController {
   }
 
   @PatchMapping("/me/profile")
-  public @NonNull ResponseEntity<TenantInfo> updateProfile(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      final @Valid @RequestBody @NonNull UpdateProfileForm form) {
+  public ResponseEntity<TenantInfo> updateProfile(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody UpdateProfileForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
@@ -102,9 +103,9 @@ public class ProfileController {
   }
 
   @PatchMapping("/me/password")
-  public @NonNull ResponseEntity<Void> changePassword(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
-      final @Valid @RequestBody @NonNull ChangePasswordForm form) {
+  public ResponseEntity<Void> changePassword(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody ChangePasswordForm form) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
@@ -114,8 +115,8 @@ public class ProfileController {
   }
 
   @DeleteMapping("/me")
-  public @NonNull ResponseEntity<Void> deleteAccount(
-      final @NonNull @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+  public ResponseEntity<Void> deleteAccount(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
 
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
 
@@ -125,8 +126,8 @@ public class ProfileController {
   }
 
   @GetMapping("/{username}")
-  public @NonNull ResponseEntity<TenantPublicProfileDto> getPublicProfile(
-      @PathVariable final @NonNull String username) {
+  public ResponseEntity<TenantPublicProfileDto> getPublicProfile(
+      @PathVariable final String username) {
 
     final var profile = this.profileService.getPublicProfile(username);
 
@@ -134,8 +135,7 @@ public class ProfileController {
   }
 
   @GetMapping("/search")
-  public @NonNull ResponseEntity<List<TenantSearchResult>> search(
-      @RequestParam("q") final @NonNull String query) {
+  public ResponseEntity<List<TenantSearchResult>> search(@RequestParam("q") final String query) {
 
     final var trimmed = query.trim();
 

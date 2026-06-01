@@ -14,12 +14,13 @@
 /// limitations under the License.
 ///
 
-import { Component, input, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 import { gravatarUrl } from '../../../core/gravatar/gravatar.util';
 
 type AvatarSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-avatar',
   standalone: true,
   template: `

@@ -19,22 +19,23 @@ import com.nuricanozturk.originhub.ssh.entities.SshKey;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface SshKeyRepository extends JpaRepository<SshKey, UUID> {
 
-  @NonNull List<SshKey> findAllByTenantIdOrderByCreatedAtDesc(@NonNull UUID tenantId);
+  List<SshKey> findAllByTenantIdOrderByCreatedAtDesc(UUID tenantId);
 
-  @NonNull Optional<SshKey> findByFingerprint(@NonNull String fingerprint);
+  Optional<SshKey> findByFingerprint(String fingerprint);
 
-  boolean existsByTenantIdAndTitle(@NonNull UUID tenantId, @NonNull String title);
+  boolean existsByTenantIdAndTitle(UUID tenantId, String title);
 
-  void deleteByIdAndTenantId(@NonNull UUID id, @NonNull UUID tenantId);
+  void deleteByIdAndTenantId(UUID id, UUID tenantId);
 
   @Query("SELECT s FROM SshKey s JOIN FETCH s.tenant WHERE s.fingerprint = :fingerprint")
-  @NonNull Optional<SshKey> findByFingerprintWithTenant(@NonNull String fingerprint);
+  Optional<SshKey> findByFingerprintWithTenant(String fingerprint);
 }

@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 import type {
-  TaskInfo,
+  TaskPage,
   TaskDetail,
   TaskForm,
   TaskUpdateForm,
@@ -22,8 +22,9 @@ export class TaskService {
     return `${environment.apiUrl}/api/projects/${owner}/${projectCode}/tasks`;
   }
 
-  getAll(owner: string, projectCode: string): Promise<TaskInfo[]> {
-    return firstValueFrom(this.http.get<TaskInfo[]>(this.base(owner, projectCode)));
+  getAll(owner: string, projectCode: string, page = 0, size = 500): Promise<TaskPage> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return firstValueFrom(this.http.get<TaskPage>(this.base(owner, projectCode), { params }));
   }
 
   get(owner: string, projectCode: string, taskCode: string): Promise<TaskDetail> {

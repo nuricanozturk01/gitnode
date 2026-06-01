@@ -20,22 +20,20 @@ import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEven
 import com.nuricanozturk.originhub.task.services.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
-import org.springframework.scheduling.annotation.Async;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class PrStatusTaskListener {
 
-  private final @NonNull TaskService taskService;
+  private final TaskService taskService;
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void onPullRequestCreated(final @NonNull PullRequestCreatedEvent event) {
+  @ApplicationModuleListener
+  public void onPullRequestCreated(final PullRequestCreatedEvent event) {
     log.debug(
         "PR created event received: prId={}, repoId={}, branch={}",
         event.prId(),
@@ -45,9 +43,8 @@ public class PrStatusTaskListener {
     this.taskService.linkPullRequest(event.repoId(), event.sourceBranch(), event.prId());
   }
 
-  @Async
-  @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-  public void onPullRequestStatusChanged(final @NonNull PullRequestStatusChangedEvent event) {
+  @ApplicationModuleListener
+  public void onPullRequestStatusChanged(final PullRequestStatusChangedEvent event) {
     log.debug(
         "PR status changed event received: prId={}, repoId={}, branch={}, status={}",
         event.prId(),

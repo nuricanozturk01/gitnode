@@ -19,14 +19,15 @@ import com.nuricanozturk.originhub.task.entities.BoardColumn;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface BoardColumnRepository extends JpaRepository<BoardColumn, UUID> {
 
-  @NonNull List<BoardColumn> findAllByBoardIdOrderByPositionAsc(@NonNull UUID boardId);
+  List<BoardColumn> findAllByBoardIdOrderByPositionAsc(UUID boardId);
 
-  @NonNull Optional<BoardColumn> findByIdAndBoardId(@NonNull UUID id, @NonNull UUID boardId);
+  Optional<BoardColumn> findByIdAndBoardId(UUID id, UUID boardId);
 }

@@ -14,10 +14,18 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, ViewEncapsulation, OnDestroy } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  effect,
+  inject,
+  signal,
+  computed,
+  ViewEncapsulation,
+  OnDestroy,
+} from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import { merge } from 'rxjs';
 import { grandParentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
@@ -32,13 +40,14 @@ import { DomSanitizer, SafeHtml, SafeResourceUrl, SafeUrl } from '@angular/platf
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { decodeBase64Utf8 } from '../shared/utils/encoding';
-import hljs from 'highlight.js';
+import type { HLJSApi } from 'highlight.js';
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'bmp', 'avif']);
 
 const TEXT_SIZE_LIMIT = 512 * 1024; // 512KB - avoid loading huge text into memory
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-blob',
   standalone: true,
   imports: [LucideAngularModule, FileSizePipe, RepoBreadcrumbComponent],
@@ -76,10 +85,20 @@ export class BlobPage implements OnDestroy {
 
   private objectUrlToRevoke: string | null = null;
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
+  private hljsModule: Promise<HLJSApi> | null = null;
+  private highlightGeneration = 0;
 
   private readonly repoRootParams = grandParentParamMapSignal(this.route);
+  private readonly urlSegments = toSignal(this.route.url, { initialValue: this.route.snapshot.url });
   readonly owner = computed(() => this.repoRootParams().get('owner') ?? '');
   readonly repoName = computed(() => this.repoRootParams().get('repo') ?? '');
+
+  private readonly routeKey = computed(() => {
+    const path = this.urlSegments()
+      .map((s) => s.path)
+      .join('/');
+    return `${this.owner()}/${this.repoName()}/${path}`;
+  });
 
   readonly fileName = computed(() => {
     const p = this.path();
@@ -112,10 +131,10 @@ export class BlobPage implements OnDestroy {
   });
 
   constructor() {
-    const gp = this.route.parent?.parent;
-    merge(gp?.paramMap ?? this.route.paramMap, this.route.paramMap, this.route.url)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => this.parseUrlAndLoad());
+    effect(() => {
+      this.routeKey();
+      this.parseUrlAndLoad();
+    });
   }
 
   private parseUrlAndLoad(): void {
@@ -142,6 +161,7 @@ export class BlobPage implements OnDestroy {
       this.loading.set(false);
       return;
     }
+    this.highlightGeneration++;
     this.revokeBlobUrl();
     this.pdfObjectUrl.set(null);
     this.imageObjectUrl.set(null);
@@ -291,18 +311,36 @@ export class BlobPage implements OnDestroy {
       this.highlightedLines.set([]);
       return;
     }
+    const generation = ++this.highlightGeneration;
+    void this.applySyntaxHighlight(b, generation);
+  }
 
+  private loadHljs(): Promise<HLJSApi> {
+    if (!this.hljsModule) {
+      this.hljsModule = import('highlight.js').then((m) => m.default);
+    }
+    return this.hljsModule;
+  }
+
+  private async applySyntaxHighlight(b: BlobResponse, generation: number): Promise<void> {
     const raw = atob(b.content);
     let highlighted: string;
 
-    if (b.language && b.language !== 'plaintext' && hljs.getLanguage(b.language)) {
-      highlighted = hljs.highlight(raw, { language: b.language, ignoreIllegals: true }).value;
+    if (b.language && b.language !== 'plaintext') {
+      const hljs = await this.loadHljs();
+      if (generation !== this.highlightGeneration) return;
+      if (hljs.getLanguage(b.language)) {
+        highlighted = hljs.highlight(raw, { language: b.language, ignoreIllegals: true }).value;
+      } else {
+        highlighted = escapeHtml(raw);
+      }
     } else {
-      highlighted = raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      highlighted = escapeHtml(raw);
     }
 
-    const lines = highlighted.split('\n').map((line) => this.sanitizer.bypassSecurityTrustHtml(line || '&nbsp;'));
+    if (generation !== this.highlightGeneration) return;
 
+    const lines = highlighted.split('\n').map((line) => this.sanitizer.bypassSecurityTrustHtml(line || '&nbsp;'));
     this.highlightedLines.set(lines);
   }
 
@@ -325,4 +363,8 @@ export class BlobPage implements OnDestroy {
       this.copiedTimer = null;
     }, 2000);
   }
+}
+
+function escapeHtml(raw: string): string {
+  return raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

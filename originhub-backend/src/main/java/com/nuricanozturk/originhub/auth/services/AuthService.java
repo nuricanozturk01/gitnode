@@ -32,23 +32,24 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
+@NullMarked
 public class AuthService {
 
   private static final int RECOVERY_CODE_LENGTH = 150;
   private static final int SALT_LENGTH = 16;
 
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull JwtUtils jwtUtils;
+  private final TenantRepository tenantRepository;
+  private final JwtUtils jwtUtils;
 
   @Transactional
-  public boolean getPasswordRecoveryCode(final @NonNull RecoveryCodeRequestForm form) {
+  public boolean getPasswordRecoveryCode(final RecoveryCodeRequestForm form) {
 
     final var tenantOptional =
         this.tenantRepository.findByUsernameOrEmail(
@@ -68,7 +69,7 @@ public class AuthService {
   }
 
   @Transactional
-  public @NonNull LoginInfo register(final @NonNull RegistrationForm form) {
+  public LoginInfo register(final RegistrationForm form) {
 
     final var formUsername = form.getUsername().toLowerCase(Locale.getDefault());
     final var email = form.getEmail().toLowerCase(Locale.getDefault());
@@ -81,7 +82,7 @@ public class AuthService {
   }
 
   @Transactional
-  public @NonNull LoginInfo login(final @NonNull LoginForm form) {
+  public LoginInfo login(final LoginForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -94,7 +95,7 @@ public class AuthService {
   }
 
   @Transactional
-  public void recoverPassword(final @NonNull RecoverPasswordForm form) {
+  public void recoverPassword(final RecoverPasswordForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -110,7 +111,7 @@ public class AuthService {
     this.tenantRepository.save(tenant);
   }
 
-  public @NonNull LoginInfo getTenantById(final @NonNull UUID tenantId) {
+  public LoginInfo getTenantById(final UUID tenantId) {
 
     final var tenant =
         this.tenantRepository
@@ -120,7 +121,7 @@ public class AuthService {
     return this.createLoginInfo(tenant);
   }
 
-  private void checkPasswordRecoveryCode(final @NonNull Tenant tenant) {
+  private void checkPasswordRecoveryCode(final Tenant tenant) {
 
     final var recoveryCode = tenant.getPasswordRecoveryCode();
 
@@ -133,7 +134,7 @@ public class AuthService {
     this.tenantRepository.updatePasswordRecoveryCode(tenant.getId(), verificationCode);
   }
 
-  private @NonNull LoginInfo createLoginInfo(final @NonNull Tenant tenant) {
+  private LoginInfo createLoginInfo(final Tenant tenant) {
 
     final var accessToken = this.jwtUtils.generateToken(tenant);
     final var refreshToken = this.jwtUtils.generateRefreshToken(tenant);
@@ -148,8 +149,7 @@ public class AuthService {
         .build();
   }
 
-  private void checkUsernameAndEmailInReserved(
-      final @NonNull String username, final @NonNull String email) {
+  private void checkUsernameAndEmailInReserved(final String username, final String email) {
 
     if (this.tenantRepository.existsByUsername(username)) {
       throw new BadRequestException("usernameInUse");
@@ -160,7 +160,7 @@ public class AuthService {
     }
   }
 
-  private void checkPassword(final @NonNull Tenant tenant, final @NonNull LoginForm form) {
+  private void checkPassword(final Tenant tenant, final LoginForm form) {
 
     final var hash = DigestUtils.sha256Hex(form.getPassword() + tenant.getSalt());
 
@@ -169,10 +169,8 @@ public class AuthService {
     }
   }
 
-  private @NonNull Tenant createTenant(
-      final @NonNull String formUsername,
-      final @NonNull String email,
-      final @NonNull Optional<String> password) {
+  private Tenant createTenant(
+      final String formUsername, final String email, final Optional<String> password) {
 
     final var salt = RandomStringUtils.secure().nextAlphanumeric(SALT_LENGTH);
 

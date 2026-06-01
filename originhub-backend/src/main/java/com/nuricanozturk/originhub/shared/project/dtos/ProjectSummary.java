@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.dtos;
+package com.nuricanozturk.originhub.shared.project.dtos;
 
-public enum MigrationService {
-  GITHUB
-}
+import java.util.UUID;
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
+public record ProjectSummary(UUID id, String ownerUsername) {}

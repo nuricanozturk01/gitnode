@@ -17,12 +17,7 @@ package com.nuricanozturk.originhub.task.dtos;
 
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
 
 @Builder
 public record OpenPrInfo(
-    @NonNull UUID id,
-    int number,
-    @NonNull String title,
-    @NonNull String sourceBranch,
-    @NonNull String targetBranch) {}
+    UUID id, int number, String title, String sourceBranch, String targetBranch) {}

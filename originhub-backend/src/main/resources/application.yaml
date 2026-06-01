@@ -1,19 +1,26 @@
 server:
   port: 8080
   tomcat:
-    connection-timeout: 120000
+    connection-timeout: 20000
     max-part-count: 50
+    accept-count: 50
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/plain
+    min-response-size: 2048
 
 originhub:
+  http:
+    enabled: ${ORIGINHUB_HTTP_ENABLED:true}
+    port: 8080
   ssh:
     port: 2222
     host-path: ${originhub.git.repo-root}/.hosts
     host-key-path: ${originhub.ssh.host-path}/ssh_host_key
-  http:
-    enabled: ${ORIGINHUB_HTTP_ENABLED:true}
-    port: 8080
   jwt:
-    secret: ${ORIGINHUB_JWT_SECRET:995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0}
+    secret: ${ORIGINHUB_JWT_SECRET}
+  cors:
+    allowed-origins: ${ORIGINHUB_CORS_ALLOWED_ORIGINS:http://localhost:4200,https://originhub.nuricanozturk.com}
   frontend:
     base-url: ${ORIGINHUB_FRONTEND_BASE_URL:http://localhost:4200}
   git:
@@ -23,6 +30,9 @@ app:
   schema: public
 
 spring:
+  threads:
+    virtual:
+      enabled: true
   jackson:
     deserialization:
       fail-on-null-for-primitives: false
@@ -41,6 +51,12 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/originhub}
     username: ${SPRING_DATASOURCE_USERNAME:admin}
     password: ${SPRING_DATASOURCE_PASSWORD:admin123}
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 3
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 600000
 
   jpa:
     show-sql: false

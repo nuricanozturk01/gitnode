@@ -31,7 +31,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.api.Git;
@@ -50,22 +54,22 @@ import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.AndTreeFilter;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class TreeNonTxService {
 
-  private final @NonNull GitProvider gitProvider;
+  private record RawEntry(String name, String entryPath, boolean isTree, String sha, long size) {}
 
-  public @NonNull TreeResponse getTree(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String path)
+  private final GitProvider gitProvider;
+
+  public TreeResponse getTree(
+      final String owner, final String repoName, final String branch, final String path)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -84,11 +88,8 @@ public class TreeNonTxService {
     }
   }
 
-  public @NonNull BlobResponse getBlob(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String filePath)
+  public BlobResponse getBlob(
+      final String owner, final String repoName, final String branch, final String filePath)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -132,10 +133,7 @@ public class TreeNonTxService {
   }
 
   public byte[] getRawContent(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String filePath)
+      final String owner, final String repoName, final String branch, final String filePath)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -165,8 +163,7 @@ public class TreeNonTxService {
    * Ensures a branch or tag ref exists so a streaming ZIP response can return 404 before headers
    * are committed.
    */
-  public void assertBranchExists(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String branch)
+  public void assertBranchExists(final String owner, final String repoName, final String branch)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -181,10 +178,7 @@ public class TreeNonTxService {
    * memory. Call {@link #assertBranchExists} first so missing refs surface as 404.
    */
   public void writeBranchZip(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull OutputStream out)
+      final String owner, final String repoName, final String branch, final OutputStream out)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -219,8 +213,7 @@ public class TreeNonTxService {
     }
   }
 
-  private @Nullable Ref resolveRef(final @NonNull Repository gitRepo, final @NonNull String name)
-      throws IOException {
+  private @Nullable Ref resolveRef(final Repository gitRepo, final String name) throws IOException {
     final var branchRef = gitRepo.findRef(Constants.R_HEADS + name);
     if (branchRef != null) {
       return branchRef;
@@ -228,11 +221,29 @@ public class TreeNonTxService {
     return gitRepo.findRef(Constants.R_TAGS + name);
   }
 
-  private @NonNull List<TreeEntry> listTree(
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit headCommit,
-      final @NonNull String path)
-      throws IOException {
+  private List<TreeEntry> listTree(
+      final Repository gitRepo, final RevCommit headCommit, final String path) throws IOException {
+
+    final var rawEntries = this.collectRawEntries(gitRepo, headCommit, path);
+
+    if (rawEntries.isEmpty()) {
+      return List.of();
+    }
+
+    final var paths = rawEntries.stream().map(RawEntry::entryPath).collect(Collectors.toSet());
+    final var lastCommits = this.findLastCommitsForPaths(gitRepo, headCommit, paths);
+    final var entries = this.buildTreeEntries(rawEntries, lastCommits);
+
+    entries.sort(
+        Comparator.comparing((TreeEntry e) -> e.type() == EntryType.TREE ? 0 : 1)
+            .thenComparing(TreeEntry::name));
+    return entries;
+  }
+
+  private List<RawEntry> collectRawEntries(
+      final Repository gitRepo, final RevCommit headCommit, final String path) throws IOException {
+
+    final var rawEntries = new ArrayList<RawEntry>();
 
     try (final var treeWalk = new TreeWalk(gitRepo)) {
       treeWalk.addTree(headCommit.getTree());
@@ -242,81 +253,83 @@ public class TreeNonTxService {
         this.processForNonEmptyPath(treeWalk, path);
       }
 
-      final var entries = new ArrayList<TreeEntry>();
+      while (treeWalk.next()) {
+        final var entryPath = treeWalk.getPathString();
+        final var relativePath = this.resolveRelativePath(entryPath, path);
 
-      this.walkInTree(treeWalk, entries, path, gitRepo, headCommit);
+        if (relativePath == null || relativePath.contains("/")) {
+          continue;
+        }
 
-      entries.sort(
-          Comparator.comparing((TreeEntry e) -> e.type() == EntryType.TREE ? 0 : 1)
-              .thenComparing(TreeEntry::name));
-
-      return entries;
+        final var isTree = treeWalk.getFileMode(0) == FileMode.TREE;
+        final var objectId = treeWalk.getObjectId(0);
+        final long size = isTree ? 0L : gitRepo.open(objectId).getSize();
+        rawEntries.add(
+            new RawEntry(treeWalk.getNameString(), entryPath, isTree, objectId.getName(), size));
+      }
     }
+
+    return rawEntries;
   }
 
-  @SuppressWarnings("java:S135")
-  private void walkInTree(
-      final @NonNull TreeWalk treeWalk,
-      final @NonNull List<TreeEntry> entries,
-      final @NonNull String path,
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit headCommit)
+  private @Nullable String resolveRelativePath(final String entryPath, final String path) {
+    if (path.isEmpty()) {
+      return entryPath;
+    }
+    if (entryPath.equals(path)) {
+      return null;
+    }
+    if (entryPath.startsWith(path + "/")) {
+      return entryPath.substring(path.length() + 1);
+    }
+    return null;
+  }
+
+  private ArrayList<TreeEntry> buildTreeEntries(
+      final List<RawEntry> rawEntries, final Map<String, RevCommit> lastCommits) {
+
+    final var entries = new ArrayList<TreeEntry>(rawEntries.size());
+    for (final var raw : rawEntries) {
+      final var lc = lastCommits.get(raw.entryPath());
+      entries.add(
+          new TreeEntry(
+              raw.name(),
+              raw.entryPath(),
+              raw.isTree() ? EntryType.TREE : EntryType.BLOB,
+              raw.sha(),
+              raw.size(),
+              lc != null ? lc.getName() : null,
+              lc != null ? lc.getShortMessage() : null,
+              lc != null ? lc.getAuthorIdent().getWhenAsInstant() : null));
+    }
+    return entries;
+  }
+
+  private Map<String, RevCommit> findLastCommitsForPaths(
+      final Repository gitRepo, final RevCommit startCommit, final Set<String> paths)
       throws IOException {
 
-    while (treeWalk.next()) {
-      final var entryPath = treeWalk.getPathString();
+    final Map<String, RevCommit> result = HashMap.newHashMap(paths.size());
+    if (paths.isEmpty()) return result;
 
-      final String relativePath;
-
-      if (path.isEmpty()) {
-        relativePath = entryPath;
-      } else if (entryPath.equals(path)) {
-        // The directory itself — skip
-        continue;
-      } else if (entryPath.startsWith(path + "/")) {
-        relativePath = entryPath.substring(path.length() + 1);
-      } else {
-        // Unrelated path — skip
-        continue;
+    // Separate RevWalk per path: reset() does not clear SEEN flags on already-parsed commits,
+    // so reusing a single walk causes markStart() to silently no-op for commits visited in a
+    // prior iteration, returning a stale or null result for subsequent paths.
+    for (final String p : paths) {
+      try (final var walk = new RevWalk(gitRepo)) {
+        walk.setTreeFilter(AndTreeFilter.create(PathFilter.create(p), TreeFilter.ANY_DIFF));
+        walk.markStart(walk.parseCommit(startCommit.getId()));
+        final var commit = walk.next();
+        if (commit != null) {
+          result.put(p, commit);
+        }
       }
-
-      // Only direct children — no slashes in relative path
-      if (relativePath.contains("/")) {
-        continue;
-      }
-
-      this.addToTreeList(treeWalk, gitRepo, headCommit, entryPath, entries);
     }
+
+    return result;
   }
 
-  private void addToTreeList(
-      final @NonNull TreeWalk treeWalk,
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit headCommit,
-      final @NonNull String entryPath,
-      final @NonNull List<TreeEntry> entries)
-      throws IOException {
-
-    final var isTree = treeWalk.getFileMode(0) == FileMode.TREE;
-    final var objectId = treeWalk.getObjectId(0);
-    final var sha = objectId.getName();
-    final var name = treeWalk.getNameString();
-    final var lastCommit = this.findLastCommitForPath(gitRepo, headCommit, entryPath);
-    final long size = isTree ? 0L : gitRepo.open(objectId).getSize();
-
-    entries.add(
-        new TreeEntry(
-            name,
-            entryPath,
-            isTree ? EntryType.TREE : EntryType.BLOB,
-            sha,
-            size,
-            lastCommit != null ? lastCommit.getName() : null,
-            lastCommit != null ? lastCommit.getShortMessage() : null,
-            lastCommit != null ? lastCommit.getAuthorIdent().getWhenAsInstant() : null));
-  }
-
-  private void processForNonEmptyPath(final TreeWalk treeWalk, final @NonNull String path)
+  private void processForNonEmptyPath(final TreeWalk treeWalk, final String path)
       throws IOException {
 
     treeWalk.setFilter(PathFilter.create(path));
@@ -340,31 +353,14 @@ public class TreeNonTxService {
     treeWalk.setFilter(TreeFilter.ALL);
   }
 
-  private @Nullable RevCommit findLastCommitForPath(
-      final @NonNull Repository gitRepo,
-      final @NonNull RevCommit startCommit,
-      final @NonNull String filePath)
-      throws IOException {
-
-    try (final var walk = new RevWalk(gitRepo)) {
-      walk.setTreeFilter(AndTreeFilter.create(PathFilter.create(filePath), TreeFilter.ANY_DIFF));
-      // Re-parse the commit so each RevWalk starts with a clean flag state.
-      // Sharing the same RevCommit object across multiple RevWalk instances causes
-      // the SEEN/PARSED flags from a previous walk to bleed through, making all
-      // calls after the first return null.
-      walk.markStart(walk.parseCommit(startCommit.getId()));
-      return walk.next();
-    }
-  }
-
-  public @NonNull BlobResponse updateFile(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
-      final @NonNull String filePath,
-      final @NonNull byte[] newContent,
-      final @NonNull String commitMessage,
-      final @NonNull PersonIdent author)
+  public BlobResponse updateFile(
+      final String owner,
+      final String repoName,
+      final String branch,
+      final String filePath,
+      final byte[] newContent,
+      final String commitMessage,
+      final PersonIdent author)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName);
@@ -430,7 +426,7 @@ public class TreeNonTxService {
             .path(filePath)
             .name(fileName)
             .sha(newBlobId.getName())
-            .size((long) newContent.length)
+            .size(newContent.length)
             .content(Base64.getEncoder().encodeToString(newContent))
             .isBinary(isBinary)
             .language(detectLanguage(fileName))

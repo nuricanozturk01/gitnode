@@ -20,6 +20,7 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { TokenService } from './token.service';
+import { UserService } from '../../user/services/user.service';
 import type { LoginForm } from '../../../domain/auth/models/login-form.model';
 import type { RegisterForm } from '../../../domain/auth/models/register-form.model';
 import type { TokenResponse } from '../../../domain/auth/ports/auth.port';
@@ -29,6 +30,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly tokenService = inject(TokenService);
+  private readonly userService = inject(UserService);
 
   private readonly api = `${environment.apiUrl}`;
   private logoutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -67,6 +69,7 @@ export class AuthService {
 
   async login(form: LoginForm): Promise<TokenResponse> {
     const res = await firstValueFrom(this.http.post<TokenResponse>(`${this.api}/api/auth/login`, form));
+    this.userService.invalidateMe();
     this.tokenService.saveTokens(res);
     this.scheduleAutoLogout();
     return res;
@@ -74,6 +77,7 @@ export class AuthService {
 
   async register(form: RegisterForm): Promise<TokenResponse> {
     const res = await firstValueFrom(this.http.post<TokenResponse>(`${this.api}/api/auth/register`, form));
+    this.userService.invalidateMe();
     this.tokenService.saveTokens(res);
     this.scheduleAutoLogout();
     return res;
@@ -82,6 +86,7 @@ export class AuthService {
   async logout(): Promise<void> {
     this.cancelAutoLogout();
     this.tokenService.clearTokens();
+    this.userService.invalidateMe();
     this.router.navigate(['/login']);
   }
 
@@ -99,6 +104,7 @@ export class AuthService {
       refreshExpiresIn,
       username,
     };
+    this.userService.invalidateMe();
     this.tokenService.saveTokens(tokens);
     this.scheduleAutoLogout();
   }

@@ -21,8 +21,8 @@ import { environment } from '../../../../environments/environment';
 import type { CommitInfo } from '../../../domain/commit/models/commit-info.model';
 import type { FileDiff } from '../../../domain/commit/models/file-diff.model';
 import type { PullRequestDetail } from '../../../domain/pull-request/models/pull-request-detail.model';
-import type { PullRequestInfo } from '../../../domain/pull-request/models/pull-request-info.model';
-import type { PrCommentInfo } from '../../../domain/pull-request/models/pr-comment-info.model';
+import type { PrPage } from '../../../domain/pull-request/models/pull-request-info.model';
+import type { PrCommentInfo, PrCommentPage } from '../../../domain/pull-request/models/pr-comment-info.model';
 
 @Injectable({ providedIn: 'root' })
 export class PullRequestService {
@@ -36,9 +36,11 @@ export class PullRequestService {
     owner: string,
     repo: string,
     status: 'OPEN' | 'MERGED' | 'CLOSED' = 'OPEN',
-  ): Promise<PullRequestInfo[]> {
-    const params = new HttpParams().set('status', status);
-    return firstValueFrom(this.http.get<PullRequestInfo[]>(this.base(owner, repo), { params }));
+    page = 0,
+    size = 25,
+  ): Promise<PrPage> {
+    const params = new HttpParams().set('status', status).set('page', page).set('size', size);
+    return firstValueFrom(this.http.get<PrPage>(this.base(owner, repo), { params }));
   }
 
   getPullRequest(owner: string, repo: string, number: number): Promise<PullRequestDetail> {
@@ -80,8 +82,9 @@ export class PullRequestService {
     return firstValueFrom(this.http.get<FileDiff[]>(`${this.base(owner, repo)}/${number}/diff`));
   }
 
-  getComments(owner: string, repo: string, number: number): Promise<PrCommentInfo[]> {
-    return firstValueFrom(this.http.get<PrCommentInfo[]>(`${this.base(owner, repo)}/${number}/comments`));
+  getComments(owner: string, repo: string, number: number, page = 0, size = 50): Promise<PrCommentPage> {
+    const params = new HttpParams().set('page', page).set('size', size);
+    return firstValueFrom(this.http.get<PrCommentPage>(`${this.base(owner, repo)}/${number}/comments`, { params }));
   }
 
   addComment(

@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.tree.dtos;
 
 import java.time.Instant;
+import org.jspecify.annotations.Nullable;
 
 public record TreeEntry(
     String name,
@@ -23,6 +24,6 @@ public record TreeEntry(
     EntryType type,
     String sha,
     long size,
-    String lastCommitSha,
-    String lastCommitMessage,
-    Instant lastCommitDate) {}
+    @Nullable String lastCommitSha,
+    @Nullable String lastCommitMessage,
+    @Nullable Instant lastCommitDate) {}

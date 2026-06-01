@@ -34,6 +34,7 @@ import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
@@ -52,14 +53,15 @@ public class UserWebhook {
   @Column(name = "url", nullable = false, length = 500)
   private String url;
 
-  @Column(name = "secret", length = 255)
+  @Column(name = "secret")
+  @Nullable
   private String secret;
 
   @ColumnDefault("false")
   @Column(name = "enabled", nullable = false)
   private boolean enabled = false;
 
-  @ElementCollection(fetch = FetchType.EAGER)
+  @ElementCollection(fetch = FetchType.LAZY)
   @CollectionTable(name = "user_webhook_events", joinColumns = @JoinColumn(name = "webhook_id"))
   @Column(name = "event_type", length = 50)
   private Set<String> subscribedEvents = new HashSet<>();

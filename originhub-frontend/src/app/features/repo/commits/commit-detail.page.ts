@@ -14,10 +14,8 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, ChangeDetectionStrategy, effect, inject, signal, computed } from '@angular/core';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { merge } from 'rxjs';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
@@ -28,6 +26,7 @@ import type { CommitDetail } from '../../../domain/commit/models/commit-detail.m
 import type { DiffLine } from '../../../domain/commit/models/diff-line.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-commit-detail',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent],
@@ -51,10 +50,17 @@ export class CommitDetailPage {
   readonly sha = computed(() => this.localPm().get('sha') ?? '');
   readonly defaultBranch = this.repoContext.defaultBranch;
 
+  private readonly routeKey = computed(() => `${this.owner()}/${this.repoName()}/${this.sha()}`);
+
   constructor() {
-    merge(this.route.parent!.paramMap, this.route.paramMap)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => void this.loadCommit());
+    effect(() => {
+      this.routeKey();
+      if (!this.owner() || !this.repoName() || !this.sha()) {
+        this.loading.set(false);
+        return;
+      }
+      void this.loadCommit();
+    });
   }
 
   private async loadCommit(): Promise<void> {

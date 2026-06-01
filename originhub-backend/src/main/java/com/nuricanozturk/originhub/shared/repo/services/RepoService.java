@@ -28,7 +28,7 @@ import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,20 +38,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class RepoService {
 
   /** Initial branch name for new repositories; not client-configurable. */
-  public static final @NonNull String NEW_REPO_DEFAULT_BRANCH = "main";
+  public static final String NEW_REPO_DEFAULT_BRANCH = "main";
 
-  public static final @NonNull String ERR_REPO_NOT_FOUND = "repoNotFound";
+  public static final String ERR_REPO_NOT_FOUND = "repoNotFound";
 
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull RepoMapper repoMapper;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final RepoRepository repoRepository;
+  private final TenantRepository tenantRepository;
+  private final RepoMapper repoMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
-  public @NonNull RepoInfo create(final @NonNull UUID tenantId, final @NonNull RepoForm form) {
+  public RepoInfo create(final UUID tenantId, final RepoForm form) {
 
     final var tenant = this.getTenantById(tenantId);
 
@@ -77,11 +78,8 @@ public class RepoService {
   }
 
   @Transactional
-  public @NonNull RepoInfo update(
-      final @NonNull UUID tenantId,
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull RepoForm form) {
+  public RepoInfo update(
+      final UUID tenantId, final String owner, final String repoName, final RepoForm form) {
 
     final var tenant = this.getTenantById(tenantId);
     final var repoOwner = this.getTenantByUsername(owner);
@@ -117,7 +115,7 @@ public class RepoService {
   }
 
   @Transactional
-  public void delete(final @NonNull String repoOwner, final @NonNull String repoName) {
+  public void delete(final String repoOwner, final String repoName) {
 
     final var repo = this.findByOwnerUsernameAndName(repoOwner, repoName);
 
@@ -125,8 +123,7 @@ public class RepoService {
   }
 
   @Transactional
-  public void rollbackRepoName(
-      final @NonNull String owner, final @NonNull String oldName, final @NonNull String newName) {
+  public void rollbackRepoName(final String owner, final String oldName, final String newName) {
 
     final var repo = this.findByOwnerUsernameAndName(owner, newName);
 
@@ -136,8 +133,7 @@ public class RepoService {
   }
 
   @Transactional
-  public void delete(
-      final @NonNull UUID tenantId, final @NonNull String repoName, final @NonNull String owner) {
+  public void delete(final UUID tenantId, final String repoName, final String owner) {
 
     final var ownerTenant = this.getTenantByUsername(owner);
 
@@ -155,9 +151,9 @@ public class RepoService {
     this.eventPublisher.publishEvent(new RepoDeletedEvent(owner, repoName));
   }
 
-  public @NonNull Page<RepoInfo> findAllByOwner(
-      final @NonNull String owner,
-      final @NonNull Pageable pageable,
+  public Page<RepoInfo> findAllByOwner(
+      final String owner,
+      final Pageable pageable,
       final @org.jspecify.annotations.Nullable UUID requesterId) {
 
     final var ownerTenant = this.tenantRepository.findByUsername(owner);
@@ -177,9 +173,9 @@ public class RepoService {
         .map(this.repoMapper::toDto);
   }
 
-  public @NonNull RepoInfo findByOwnerAndName(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+  public RepoInfo findByOwnerAndName(
+      final String owner,
+      final String repoName,
       final @org.jspecify.annotations.Nullable UUID requesterId) {
 
     final var repo = this.findByOwnerUsernameAndName(owner, repoName);
@@ -201,8 +197,8 @@ public class RepoService {
 
   public void assertUserCanAccessRepo(
       final @org.jspecify.annotations.Nullable UUID tenantId,
-      final @NonNull String owner,
-      final @NonNull String repoName) {
+      final String owner,
+      final String repoName) {
 
     final var repo = this.findByOwnerUsernameAndName(owner, repoName);
 
@@ -216,12 +212,11 @@ public class RepoService {
     }
   }
 
-  private boolean isAdmin(final @NonNull UUID tenantId) {
+  private boolean isAdmin(final UUID tenantId) {
     return this.tenantRepository.findById(tenantId).map(Tenant::isAdmin).orElse(false);
   }
 
-  private void checkIsRepoOwnerOrAdmin(
-      final @NonNull Tenant tenant, final @NonNull Tenant repoOwner) {
+  private void checkIsRepoOwnerOrAdmin(final Tenant tenant, final Tenant repoOwner) {
 
     if (tenant.getId().equals(repoOwner.getId()) || tenant.isAdmin()) {
       return;
@@ -230,22 +225,21 @@ public class RepoService {
     throw new AccessNotAllowedException("repoAccessDenied");
   }
 
-  private @NonNull Tenant getTenantById(final @NonNull UUID tenantId) {
+  private Tenant getTenantById(final UUID tenantId) {
 
     return this.tenantRepository
         .findById(tenantId)
         .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
   }
 
-  private @NonNull Tenant getTenantByUsername(final @NonNull String username) {
+  private Tenant getTenantByUsername(final String username) {
 
     return this.tenantRepository
         .findByUsername(username)
         .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
   }
 
-  private @NonNull Repo findByOwnerUsernameAndName(
-      final @NonNull String owner, final @NonNull String repoName) {
+  private Repo findByOwnerUsernameAndName(final String owner, final String repoName) {
 
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)

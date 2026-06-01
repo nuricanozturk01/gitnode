@@ -32,7 +32,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.Hibernate;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,14 +40,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class SshKeyService {
 
-  private final @NonNull SshKeyRepository sshKeyRepository;
-  private final @NonNull TenantRepository tenantRepository;
+  private final SshKeyRepository sshKeyRepository;
+  private final TenantRepository tenantRepository;
 
   @Transactional
-  public @NonNull SshKeyInfo addKey(
-      final @NonNull UUID tenantId, final @NonNull AddSshKeyForm form) {
+  public SshKeyInfo addKey(final UUID tenantId, final AddSshKeyForm form) {
 
     final var tenant =
         this.tenantRepository
@@ -76,7 +76,7 @@ public class SshKeyService {
   }
 
   @Transactional
-  public void deleteKey(final @NonNull UUID keyId, final @NonNull UUID tenantId) {
+  public void deleteKey(final UUID keyId, final UUID tenantId) {
     if (!this.sshKeyRepository.existsById(keyId)) {
       throw new ItemNotFoundException("SSH key not found");
     }
@@ -84,7 +84,7 @@ public class SshKeyService {
     this.sshKeyRepository.deleteByIdAndTenantId(keyId, tenantId);
   }
 
-  public @NonNull List<SshKeyInfo> listKeys(final @NonNull UUID tenantId) {
+  public List<SshKeyInfo> listKeys(final UUID tenantId) {
 
     return this.sshKeyRepository.findAllByTenantIdOrderByCreatedAtDesc(tenantId).stream()
         .map(this::toInfo)
@@ -92,7 +92,7 @@ public class SshKeyService {
   }
 
   @Transactional
-  public @NonNull Tenant findTenantByFingerprint(final @NonNull String fingerprint) {
+  public Tenant findTenantByFingerprint(final String fingerprint) {
 
     final var sshKey =
         this.sshKeyRepository
@@ -107,15 +107,14 @@ public class SshKeyService {
     return tenant;
   }
 
-  static @NonNull String fingerprintFromWireBytes(final byte @NonNull [] wireBytes)
-      throws NoSuchAlgorithmException {
+  static String fingerprintFromWireBytes(final byte[] wireBytes) throws NoSuchAlgorithmException {
 
     final var hash = MessageDigest.getInstance("SHA-256").digest(wireBytes);
 
     return "SHA256:" + Base64.getEncoder().withoutPadding().encodeToString(hash);
   }
 
-  private @NonNull String resolveFingerprint(final @NonNull String publicKey) {
+  private String resolveFingerprint(final String publicKey) {
 
     try {
       final var normalized = publicKey.trim().replaceAll("[\\r\\n\\t]+", " ").replaceAll(" +", " ");
@@ -136,7 +135,7 @@ public class SshKeyService {
     }
   }
 
-  private @NonNull SshKeyInfo toInfo(final @NonNull SshKey key) {
+  private SshKeyInfo toInfo(final SshKey key) {
 
     return new SshKeyInfo(
         key.getId(), key.getTitle(), key.getFingerprint(), key.getLastUsedAt(), key.getCreatedAt());

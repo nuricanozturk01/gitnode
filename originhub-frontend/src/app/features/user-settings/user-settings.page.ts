@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 import { RouterLink } from '@angular/router';
@@ -30,6 +30,7 @@ import type { WebhookInfo } from '../../domain/webhook/webhook.model';
 import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-settings',
   standalone: true,
   imports: [LucideAngularModule, FormsModule, RouterLink, MarkdownPipe],

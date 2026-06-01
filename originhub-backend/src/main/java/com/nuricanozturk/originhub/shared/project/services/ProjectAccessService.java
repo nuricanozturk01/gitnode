@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.service;
+package com.nuricanozturk.originhub.shared.project.services;
 
-import com.nuricanozturk.originhub.migration.entities.MigrationJob;
-import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
+import com.nuricanozturk.originhub.shared.project.dtos.ProjectSummary;
+import java.util.Optional;
+import org.jspecify.annotations.NullMarked;
 
-public interface CloudMigrationService {
+@NullMarked
+public interface ProjectAccessService {
 
-  void process(MigrationJob job, String accessToken, Tenant tenant);
+  Optional<ProjectSummary> findByOwnerAndCode(String ownerUsername, String codePrefix);
 }

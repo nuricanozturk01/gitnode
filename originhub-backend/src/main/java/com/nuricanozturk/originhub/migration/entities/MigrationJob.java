@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.migration.entities;
 
 import com.nuricanozturk.originhub.migration.dtos.MigrationItem;
-import com.nuricanozturk.originhub.migration.dtos.MigrationService;
+import com.nuricanozturk.originhub.migration.dtos.MigrationServiceProvider;
 import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -32,16 +32,22 @@ import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Table(name = "migration_jobs")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"migrationItems"})
 public class MigrationJob {
 
   @Id
@@ -49,7 +55,7 @@ public class MigrationJob {
   private UUID id;
 
   @Enumerated(EnumType.STRING)
-  private MigrationService service;
+  private MigrationServiceProvider service;
 
   @Enumerated(EnumType.STRING)
   private MigrationStatus status;

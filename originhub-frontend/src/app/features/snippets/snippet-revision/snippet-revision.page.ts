@@ -14,7 +14,16 @@
 /// limitations under the License.
 ///
 
-import { Component, OnInit, SecurityContext, ViewEncapsulation, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  OnInit,
+  SecurityContext,
+  ViewEncapsulation,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { LucideAngularModule } from 'lucide-angular';
@@ -36,6 +45,7 @@ interface HighlightedFile {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-snippet-revision',
   standalone: true,
   encapsulation: ViewEncapsulation.None,

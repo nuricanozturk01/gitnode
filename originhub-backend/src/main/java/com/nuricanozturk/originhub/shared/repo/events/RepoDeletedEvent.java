@@ -15,6 +15,4 @@
  */
 package com.nuricanozturk.originhub.shared.repo.events;
 
-import org.jspecify.annotations.NonNull;
-
-public record RepoDeletedEvent(@NonNull String repoOwner, @NonNull String repoName) {}
+public record RepoDeletedEvent(String repoOwner, String repoName) {}

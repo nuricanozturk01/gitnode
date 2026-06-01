@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.auth.entities;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -26,18 +27,20 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 
-@Data
+@Getter
+@Setter
 @Entity
 @Table(name = "sso_account")
 @NoArgsConstructor
-@ToString(exclude = {"tenant"})
-@EqualsAndHashCode(exclude = {"tenant"})
+@ToString(of = {"id", "accountType", "subjectId"})
+@EqualsAndHashCode(of = "id")
 public class Account {
 
   @Id
@@ -64,7 +67,7 @@ public class Account {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
-  @ManyToOne
+  @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "tenant_id", nullable = false)
   private Tenant tenant;
 }

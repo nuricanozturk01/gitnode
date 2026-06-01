@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, input, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 import type { LanguageStats } from '../../../domain/language/models/language-stats.model';
 
 const LANGUAGE_COLORS: Record<string, string> = {
@@ -98,6 +98,7 @@ const LANGUAGE_COLORS: Record<string, string> = {
 const DEFAULT_COLOR = '#8b949e';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-language-bar',
   standalone: true,
   templateUrl: './language-bar.component.html',

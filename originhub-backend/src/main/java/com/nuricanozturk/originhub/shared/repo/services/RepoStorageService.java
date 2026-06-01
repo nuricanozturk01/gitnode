@@ -27,7 +27,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -36,15 +36,16 @@ import org.springframework.util.FileSystemUtils;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class RepoStorageService {
 
-  private final @NonNull GitProvider gitProvider;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final GitProvider gitProvider;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Value("${originhub.git.repo-root}")
   private String repoRoot;
 
-  public void initRepo(final @NonNull String repoOwner, final @NonNull String repoName) {
+  public void initRepo(final String repoOwner, final String repoName) {
 
     final var repoPath = Path.of(this.repoRoot, repoOwner, repoName + ".git");
 
@@ -60,10 +61,7 @@ public class RepoStorageService {
     }
   }
 
-  public void renameRepo(
-      final @NonNull String owner,
-      final @NonNull String oldName,
-      final @NonNull String newRepoName) {
+  public void renameRepo(final String owner, final String oldName, final String newRepoName) {
 
     try {
       final var oldPath = Path.of(this.repoRoot, owner, oldName + ".git");
@@ -77,7 +75,7 @@ public class RepoStorageService {
     }
   }
 
-  public void deleteRepo(final @NonNull String owner, final @NonNull String repoName) {
+  public void deleteRepo(final String owner, final String repoName) {
 
     try {
       final var path = Path.of(this.repoRoot, owner, repoName + ".git");
@@ -89,7 +87,7 @@ public class RepoStorageService {
     }
   }
 
-  public void renameBaseDir(final @NonNull String oldUsername, final @NonNull String newUsername) {
+  public void renameBaseDir(final String oldUsername, final String newUsername) {
 
     final var oldPath = Path.of(this.repoRoot, oldUsername);
     final var newPath = Path.of(this.repoRoot, newUsername);
@@ -103,7 +101,7 @@ public class RepoStorageService {
     }
   }
 
-  public void deleteTenantRepos(final @NonNull String username) {
+  public void deleteTenantRepos(final String username) {
 
     try {
       final var path = Path.of(this.repoRoot, username);

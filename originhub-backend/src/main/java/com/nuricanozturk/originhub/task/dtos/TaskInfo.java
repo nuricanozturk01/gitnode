@@ -19,18 +19,17 @@ import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @Builder
 public record TaskInfo(
-    @NonNull UUID id,
-    @NonNull String code,
-    @NonNull String title,
-    @NonNull String status,
-    @NonNull String type,
+    UUID id,
+    String code,
+    String title,
+    String status,
+    String type,
     int position,
-    @NonNull UUID boardColumnId,
+    UUID boardColumnId,
     @Nullable AuthorInfo assignee,
     @Nullable String branchName,
     boolean hasLinkedPr,

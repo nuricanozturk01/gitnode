@@ -15,7 +15,5 @@
  */
 package com.nuricanozturk.originhub.shared.repo.events;
 
-import org.jspecify.annotations.NonNull;
-
 public record RepoRenameRollbackRequstedEvent(
-    @NonNull String owner, @NonNull String oldRepoName, @NonNull String newRepoName) {}
+    String owner, String oldRepoName, String newRepoName) {}

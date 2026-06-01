@@ -15,11 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.errorhandling.exceptions;
 
-import org.jspecify.annotations.NonNull;
-
 public class TokenExpiredException extends RuntimeException {
 
-  public TokenExpiredException(final @NonNull String msg) {
+  public TokenExpiredException(final String msg) {
 
     super(msg);
   }

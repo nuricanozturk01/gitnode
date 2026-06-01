@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
@@ -57,6 +58,7 @@ public class Tenant {
   private String avatarUrl;
 
   @Column(name = "password_recovery_code", length = 300)
+  @Nullable
   private String passwordRecoveryCode;
 
   @Column(name = "bio", length = 300)

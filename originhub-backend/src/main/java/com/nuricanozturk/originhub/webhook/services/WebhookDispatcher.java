@@ -36,33 +36,26 @@ import com.nuricanozturk.originhub.shared.task.events.TaskCreatedEvent;
 import com.nuricanozturk.originhub.shared.task.events.TaskDeletedEvent;
 import com.nuricanozturk.originhub.shared.task.events.TaskUpdatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
-import com.nuricanozturk.originhub.webhook.entities.ProjectWebhook;
-import com.nuricanozturk.originhub.webhook.entities.UserWebhook;
-import com.nuricanozturk.originhub.webhook.entities.Webhook;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.repositories.ProjectWebhookRepository;
 import com.nuricanozturk.originhub.webhook.repositories.UserWebhookRepository;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookRepository;
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.event.EventListener;
-import org.springframework.http.MediaType;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Component
+@NullMarked
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class WebhookDispatcher {
 
   private final WebhookRepository webhookRepository;
@@ -70,25 +63,7 @@ public class WebhookDispatcher {
   private final ProjectWebhookRepository projectWebhookRepository;
   private final RepoRepository repoRepository;
   private final TenantRepository tenantRepository;
-  private final ObjectMapper objectMapper;
-  private final RestClient restClient;
-
-  public WebhookDispatcher(
-      final WebhookRepository webhookRepository,
-      final UserWebhookRepository userWebhookRepository,
-      final ProjectWebhookRepository projectWebhookRepository,
-      final RepoRepository repoRepository,
-      final TenantRepository tenantRepository,
-      final ObjectMapper objectMapper,
-      @Qualifier("webhookRestClient") final RestClient restClient) {
-    this.webhookRepository = webhookRepository;
-    this.userWebhookRepository = userWebhookRepository;
-    this.projectWebhookRepository = projectWebhookRepository;
-    this.repoRepository = repoRepository;
-    this.tenantRepository = tenantRepository;
-    this.objectMapper = objectMapper;
-    this.restClient = restClient;
-  }
+  private final WebhookDeliveryService deliveryService;
 
   // ── PR events ──────────────────────────────────────────────────────────
 
@@ -277,14 +252,12 @@ public class WebhookDispatcher {
 
   @ApplicationModuleListener
   void onSnippetCreated(final SnippetCreatedEvent event) {
-    final var data = new LinkedHashMap<String, Object>();
-    data.put("snippetId", event.snippetId());
-    data.put("title", event.title());
-    data.put("owner", event.ownerUsername());
-    if (event.repoId() != null) {
-      data.put("repoId", event.repoId());
-    }
-    this.dispatchToUserWebhooks(event.ownerUsername(), WebhookEventType.SNIPPET_CREATED, data);
+    this.dispatchSnippetEvent(
+        event.snippetId(),
+        event.title(),
+        event.ownerUsername(),
+        event.repoId(),
+        WebhookEventType.SNIPPET_CREATED);
   }
 
   @ApplicationModuleListener
@@ -300,14 +273,28 @@ public class WebhookDispatcher {
 
   @ApplicationModuleListener
   void onSnippetUpdated(final SnippetUpdatedEvent event) {
+    this.dispatchSnippetEvent(
+        event.snippetId(),
+        event.title(),
+        event.ownerUsername(),
+        event.repoId(),
+        WebhookEventType.SNIPPET_UPDATED);
+  }
+
+  private void dispatchSnippetEvent(
+      final UUID snippetId,
+      final String title,
+      final String ownerUsername,
+      final @Nullable UUID repoId,
+      final WebhookEventType type) {
     final var data = new LinkedHashMap<String, Object>();
-    data.put("snippetId", event.snippetId());
-    data.put("title", event.title());
-    data.put("owner", event.ownerUsername());
-    if (event.repoId() != null) {
-      data.put("repoId", event.repoId());
+    data.put("snippetId", snippetId);
+    data.put("title", title);
+    data.put("owner", ownerUsername);
+    if (repoId != null) {
+      data.put("repoId", repoId);
     }
-    this.dispatchToUserWebhooks(event.ownerUsername(), WebhookEventType.SNIPPET_UPDATED, data);
+    this.dispatchToUserWebhooks(ownerUsername, type, data);
   }
 
   // ── Core dispatch logic ────────────────────────────────────────────────
@@ -317,7 +304,14 @@ public class WebhookDispatcher {
     final var webhooks = this.projectWebhookRepository.findAllByProjectIdAndEnabledTrue(projectId);
     for (var webhook : webhooks) {
       if (webhook.getSubscribedEvents().contains(type.name())) {
-        this.deliverProjectWebhookAsync(webhook, type, data);
+        this.deliveryService.deliver(
+            webhook.getId(),
+            webhook.getUrl(),
+            webhook.getSecret(),
+            null,
+            "Project webhook",
+            type,
+            data);
       }
     }
   }
@@ -332,7 +326,14 @@ public class WebhookDispatcher {
                   this.userWebhookRepository.findAllByUserIdAndEnabledTrue(tenant.getId());
               for (var webhook : webhooks) {
                 if (webhook.getSubscribedEvents().contains(type.name())) {
-                  this.deliverUserWebhookAsync(webhook, type, data);
+                  this.deliveryService.deliver(
+                      webhook.getId(),
+                      webhook.getUrl(),
+                      webhook.getSecret(),
+                      null,
+                      "User webhook",
+                      type,
+                      data);
                 }
               }
             });
@@ -343,122 +344,9 @@ public class WebhookDispatcher {
     final var webhooks = this.webhookRepository.findAllByRepoIdAndEnabledTrue(repoId);
     for (var webhook : webhooks) {
       if (webhook.getSubscribedEvents().contains(type.name())) {
-        this.deliverAsync(webhook, type, repoId, data);
+        this.deliveryService.deliver(
+            webhook.getId(), webhook.getUrl(), webhook.getSecret(), repoId, "Webhook", type, data);
       }
-    }
-  }
-
-  private void deliverAsync(
-      final Webhook webhook,
-      final WebhookEventType type,
-      final UUID repoId,
-      final Map<String, Object> data) {
-    try {
-      final var payload = new LinkedHashMap<String, Object>();
-      payload.put("event", type.getValue());
-      payload.put("timestamp", Instant.now().toString());
-      payload.put("repoId", repoId.toString());
-      payload.put("data", data);
-
-      final var body = this.objectMapper.writeValueAsString(payload);
-
-      var spec =
-          this.restClient
-              .post()
-              .uri(webhook.getUrl())
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(body);
-
-      if (webhook.getSecret() != null && !webhook.getSecret().isBlank()) {
-        spec =
-            spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, webhook.getSecret()));
-      }
-
-      spec.retrieve().toBodilessEntity();
-
-    } catch (final Exception ex) {
-      log.warn(
-          "Webhook delivery failed id={} url={}: {}",
-          webhook.getId(),
-          webhook.getUrl(),
-          ex.getMessage());
-    }
-  }
-
-  private void deliverProjectWebhookAsync(
-      final ProjectWebhook webhook, final WebhookEventType type, final Map<String, Object> data) {
-    try {
-      final var payload = new LinkedHashMap<String, Object>();
-      payload.put("event", type.getValue());
-      payload.put("timestamp", Instant.now().toString());
-      payload.put("data", data);
-
-      final var body = this.objectMapper.writeValueAsString(payload);
-
-      var spec =
-          this.restClient
-              .post()
-              .uri(webhook.getUrl())
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(body);
-
-      if (webhook.getSecret() != null && !webhook.getSecret().isBlank()) {
-        spec =
-            spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, webhook.getSecret()));
-      }
-
-      spec.retrieve().toBodilessEntity();
-
-    } catch (final Exception ex) {
-      log.warn(
-          "Project webhook delivery failed id={} url={}: {}",
-          webhook.getId(),
-          webhook.getUrl(),
-          ex.getMessage());
-    }
-  }
-
-  private void deliverUserWebhookAsync(
-      final UserWebhook webhook, final WebhookEventType type, final Map<String, Object> data) {
-    try {
-      final var payload = new LinkedHashMap<String, Object>();
-      payload.put("event", type.getValue());
-      payload.put("timestamp", Instant.now().toString());
-      payload.put("data", data);
-
-      final var body = this.objectMapper.writeValueAsString(payload);
-
-      var spec =
-          this.restClient
-              .post()
-              .uri(webhook.getUrl())
-              .contentType(MediaType.APPLICATION_JSON)
-              .body(body);
-
-      if (webhook.getSecret() != null && !webhook.getSecret().isBlank()) {
-        spec =
-            spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, webhook.getSecret()));
-      }
-
-      spec.retrieve().toBodilessEntity();
-
-    } catch (final Exception ex) {
-      log.warn(
-          "User webhook delivery failed id={} url={}: {}",
-          webhook.getId(),
-          webhook.getUrl(),
-          ex.getMessage());
-    }
-  }
-
-  private String computeHmacSha256(final String body, final String secret) {
-    try {
-      final var mac = Mac.getInstance("HmacSHA256");
-      mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-      final var bytes = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
-      return "sha256=" + HexFormat.of().formatHex(bytes);
-    } catch (final Exception ex) {
-      throw new RuntimeException("HMAC-SHA256 computation failed", ex);
     }
   }
 }

@@ -33,6 +33,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.diff.DiffFormatter;
@@ -48,25 +50,26 @@ import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class CommitNonTxService {
 
   private static final int MAX_FILES_PER_COMMIT = 50;
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
 
-  private final @NonNull GitProvider gitProvider;
-  private final @NonNull TenantRepository tenantRepository;
+  private final GitProvider gitProvider;
+  private final TenantRepository tenantRepository;
 
-  public @NonNull PagedResult<@NonNull CommitInfo> getCommits(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull String branch,
+  public PagedResult<CommitInfo> getCommits(
+      final String owner,
+      final String repoName,
+      final String branch,
       final int page,
       final int size)
       throws IOException {
@@ -83,8 +86,7 @@ public class CommitNonTxService {
     }
   }
 
-  public @NonNull CommitDetail getCommit(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String sha)
+  public CommitDetail getCommit(final String owner, final String repoName, final String sha)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -99,8 +101,7 @@ public class CommitNonTxService {
     }
   }
 
-  public @NonNull List<@NonNull FileDiff> getCommitDiff(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String sha)
+  public List<FileDiff> getCommitDiff(final String owner, final String repoName, final String sha)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -115,7 +116,7 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull PagedResult<@NonNull CommitInfo> getCommits(
+  private PagedResult<CommitInfo> getCommits(
       final Repository gitRepo, final Ref branchRef, final int page, final int size)
       throws IOException {
 
@@ -124,40 +125,60 @@ public class CommitNonTxService {
       walk.sort(RevSort.COMMIT_TIME_DESC);
 
       int toSkip = page * size;
-      int collected = 0;
-      int totalCount = 0;
-      final var pageCommits = new ArrayList<CommitInfo>();
+      final var pageRevCommits = new ArrayList<RevCommit>(size);
+      RevCommit cmt;
 
-      for (final RevCommit cmt : walk) {
-        totalCount++;
-
+      while ((cmt = walk.next()) != null) {
         if (toSkip > 0) {
           toSkip--;
           continue;
         }
-
-        if (collected < size) {
-          pageCommits.add(this.toCommitInfo(gitRepo, cmt));
-          collected++;
-        }
+        pageRevCommits.add(cmt);
+        if (pageRevCommits.size() == size) break;
       }
 
-      final var totalPages = (int) Math.ceil((double) totalCount / size);
-      return new PagedResult<>(
-          pageCommits, page, size, totalCount, totalPages, page < totalPages - 1, page > 0);
+      final boolean hasNext = walk.next() != null;
+
+      if (pageRevCommits.isEmpty()) {
+        return this.buildPageResult(List.of(), page, size, hasNext);
+      }
+
+      final var emails =
+          pageRevCommits.stream()
+              .map(c -> c.getAuthorIdent().getEmailAddress())
+              .collect(Collectors.toSet());
+      final var tenantsByEmail =
+          this.tenantRepository.findAllByEmailIn(emails).stream()
+              .collect(Collectors.toMap(Tenant::getEmail, t -> t));
+
+      final var pageCommits = new ArrayList<CommitInfo>(pageRevCommits.size());
+      for (final var rc : pageRevCommits) {
+        pageCommits.add(this.toCommitInfo(gitRepo, rc, tenantsByEmail));
+      }
+
+      return this.buildPageResult(pageCommits, page, size, hasNext);
     }
   }
 
-  private @NonNull List<@NonNull FileDiff> getFileDiffs(
-      final @NonNull Repository gitRepo, final @NonNull ObjectId objectId) throws IOException {
+  private PagedResult<CommitInfo> buildPageResult(
+      final List<CommitInfo> items, final int page, final int size, final boolean hasNext) {
+
+    final boolean hasPrevious = page > 0;
+    final int totalPages = hasNext ? page + 2 : (hasPrevious ? page + 1 : 1);
+    final long totalItems = (long) page * size + items.size() + (hasNext ? 1 : 0);
+    return new PagedResult<>(items, page, size, totalItems, totalPages, hasNext, hasPrevious);
+  }
+
+  private List<FileDiff> getFileDiffs(final Repository gitRepo, final ObjectId objectId)
+      throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
       return this.getFileDiffs(gitRepo, walk.parseCommit(objectId));
     }
   }
 
-  private @NonNull List<@NonNull FileDiff> getFileDiffs(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) throws IOException {
+  private List<FileDiff> getFileDiffs(final Repository gitRepo, final RevCommit commit)
+      throws IOException {
 
     try (final var formatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
       formatter.setRepository(gitRepo);
@@ -188,8 +209,8 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull AbstractTreeIterator getParent(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) throws IOException {
+  private AbstractTreeIterator getParent(final Repository gitRepo, final RevCommit commit)
+      throws IOException {
 
     if (commit.getParentCount() == 0) { // No Commit
       return new EmptyTreeIterator();
@@ -202,8 +223,8 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull CommitDetail getCommitDetail(
-      final @NonNull Repository gitRepo, final @NonNull ObjectId objectId) throws IOException {
+  private CommitDetail getCommitDetail(final Repository gitRepo, final ObjectId objectId)
+      throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
 
@@ -235,13 +256,13 @@ public class CommitNonTxService {
     }
   }
 
-  private @NonNull CommitInfo toCommitInfo(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) {
+  private CommitInfo toCommitInfo(
+      final Repository gitRepo, final RevCommit commit, final Map<String, Tenant> tenantsByEmail) {
 
     try {
       final var stats = this.computeCommitStatsLightweight(gitRepo, commit);
       final var description = this.extractDescription(commit.getFullMessage());
-      final var author = this.resolveAuthor(commit);
+      final var author = this.resolveAuthor(commit, tenantsByEmail);
       final var parentShas = Arrays.stream(commit.getParents()).map(RevCommit::getName).toList();
 
       return CommitInfo.builder()
@@ -277,7 +298,7 @@ public class CommitNonTxService {
     return desc.isEmpty() ? null : desc;
   }
 
-  private @NonNull AuthorInfo resolveAuthor(final @NonNull RevCommit commit) {
+  private AuthorInfo resolveAuthor(final RevCommit commit) {
 
     final var ident = commit.getAuthorIdent();
 
@@ -287,20 +308,32 @@ public class CommitNonTxService {
         .orElse(new AuthorInfo(ident.getName(), ident.getEmailAddress(), null, null));
   }
 
-  private @NonNull AuthorInfo toAuthorInfo(
-      final @NonNull Tenant tenant, final @NonNull PersonIdent ident) {
+  private AuthorInfo resolveAuthor(
+      final RevCommit commit, final Map<String, Tenant> tenantsByEmail) {
+
+    final var ident = commit.getAuthorIdent();
+    final var tenant = tenantsByEmail.get(ident.getEmailAddress());
+
+    if (tenant != null) {
+      return this.toAuthorInfo(tenant, ident);
+    }
+
+    return new AuthorInfo(ident.getName(), ident.getEmailAddress(), null, null);
+  }
+
+  private AuthorInfo toAuthorInfo(final Tenant tenant, final PersonIdent ident) {
 
     return new AuthorInfo(
         ident.getName(), ident.getEmailAddress(), tenant.getUsername(), tenant.getAvatarUrl());
   }
 
-  private @NonNull <T> PagedResult<T> getEmptyPage(final int page, final int size) {
+  private <T> PagedResult<T> getEmptyPage(final int page, final int size) {
 
     return new PagedResult<>(List.of(), page, size, 0, 0, false, false);
   }
 
-  private @NonNull CommitStats computeCommitStatsLightweight(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit commit) throws IOException {
+  private CommitStats computeCommitStatsLightweight(
+      final Repository gitRepo, final RevCommit commit) throws IOException {
 
     try (final var formatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
       formatter.setRepository(gitRepo);

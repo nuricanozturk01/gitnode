@@ -17,17 +17,19 @@ package com.nuricanozturk.originhub.shared.tenant.mappers;
 
 import com.nuricanozturk.originhub.shared.tenant.dtos.TenantInfo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@NullMarked
 public interface TenantMapper {
 
   @Mapping(
       target = "displayName",
       expression =
           "java(tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername())")
-  @NonNull TenantInfo toTenantInfo(@NonNull Tenant tenant);
+  @Mapping(target = "isAdmin", source = "admin")
+  TenantInfo toTenantInfo(Tenant tenant);
 }

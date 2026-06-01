@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -30,6 +30,7 @@ import type { TagInfo } from '../../../domain/repository/models/tag-info.model';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-create-release',
   standalone: true,
   imports: [RouterLink, ReactiveFormsModule, LucideAngularModule, MarkdownPipe],

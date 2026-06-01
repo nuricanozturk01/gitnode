@@ -136,7 +136,7 @@
             <span
               class="bg-base-200 text-base-content/60 inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-medium tabular-nums"
             >
-              {{ tasksByColumn(column.id).length }}
+              {{ columnTaskCount(column.id) }}
             </span>
           </div>
           @if (isOwner()) {
@@ -220,7 +220,7 @@
           (dragleave)="onColumnDragLeave($event, column.id)"
           (drop)="onDrop($event, column.id)"
         >
-          @for (task of tasksByColumn(column.id); track task.id; let i = $index) {
+          @for (task of columnTasks(column.id); track task.id; let i = $index) {
           <!-- Drop indicator: before this task -->
           @if (showIndicator(column.id, i)) {
           <div class="bg-primary pointer-events-none mx-1 my-0.5 h-0.5 w-full rounded-full"></div>
@@ -293,7 +293,7 @@
           }
 
           <!-- Drop indicator: after last task -->
-          @if (showIndicator(column.id, tasksByColumn(column.id).length)) {
+          @if (showIndicator(column.id, columnTasks(column.id).length)) {
           <div class="bg-primary pointer-events-none mx-1 my-0.5 h-0.5 w-full rounded-full"></div>
           }
 

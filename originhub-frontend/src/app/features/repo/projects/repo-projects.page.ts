@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
@@ -24,6 +24,7 @@ import { ProjectService } from '../../../core/project/services/project.service';
 import type { ProjectInfo } from '../../../domain/project/models/project-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-projects',
   standalone: true,
   imports: [RouterLink, LucideAngularModule],

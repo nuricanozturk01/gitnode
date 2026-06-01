@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -25,6 +25,7 @@ import { RepoContextService } from '../../../core/repo/services/repo-context.ser
 import type { PullRequestInfo } from '../../../domain/pull-request/models/pull-request-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pull-requests',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
@@ -40,28 +41,43 @@ export class PullRequestsPage implements OnInit {
   readonly loading = signal(true);
   readonly tab = signal<'open' | 'closed' | 'merged'>('open');
 
+  readonly page = signal(0);
+  readonly totalPages = signal(0);
+  readonly totalElements = signal(0);
+
   private readonly repoRouteParams = parentParamMapSignal(this.route);
   readonly owner = computed(() => this.repoRouteParams().get('owner') ?? '');
   readonly repoName = computed(() => this.repoRouteParams().get('repo') ?? '');
 
-  readonly openCount = computed(() => this.pulls().filter((p) => p.status === 'OPEN').length);
-  readonly closedCount = computed(() => this.pulls().filter((p) => p.status === 'CLOSED').length);
-  readonly mergedCount = computed(() => this.pulls().filter((p) => p.status === 'MERGED').length);
-
-  readonly filteredPulls = computed(() => {
-    const statusMap: Record<string, string> = { open: 'OPEN', closed: 'CLOSED', merged: 'MERGED' };
-    return this.pulls().filter((pr) => pr.status === statusMap[this.tab()]);
-  });
+  readonly hasPrev = computed(() => this.page() > 0);
+  readonly hasNext = computed(() => this.page() < this.totalPages() - 1);
 
   ngOnInit(): void {
-    this.route.parent!.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => void this.loadAll());
+    this.route.parent!.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.page.set(0);
+      void this.loadPage();
+    });
   }
 
   setTab(t: 'open' | 'closed' | 'merged'): void {
     this.tab.set(t);
+    this.page.set(0);
+    void this.loadPage();
   }
 
-  private loadAll(): void {
+  async prevPage(): Promise<void> {
+    if (!this.hasPrev()) return;
+    this.page.update((p) => p - 1);
+    await this.loadPage();
+  }
+
+  async nextPage(): Promise<void> {
+    if (!this.hasNext()) return;
+    this.page.update((p) => p + 1);
+    await this.loadPage();
+  }
+
+  private async loadPage(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) {
@@ -69,17 +85,21 @@ export class PullRequestsPage implements OnInit {
       return;
     }
     this.loading.set(true);
-
-    Promise.all([
-      this.prService.getPullRequests(owner, repo, 'OPEN'),
-      this.prService.getPullRequests(owner, repo, 'CLOSED'),
-      this.prService.getPullRequests(owner, repo, 'MERGED'),
-    ])
-      .then(([open, closed, merged]) => {
-        this.pulls.set([...open, ...closed, ...merged]);
-      })
-      .catch(() => this.pulls.set([]))
-      .finally(() => this.loading.set(false));
+    const statusMap: Record<string, 'OPEN' | 'MERGED' | 'CLOSED'> = {
+      open: 'OPEN',
+      closed: 'CLOSED',
+      merged: 'MERGED',
+    };
+    try {
+      const result = await this.prService.getPullRequests(owner, repo, statusMap[this.tab()], this.page());
+      this.pulls.set(result.content);
+      this.totalPages.set(result.totalPages);
+      this.totalElements.set(result.totalElements);
+    } catch {
+      this.pulls.set([]);
+    } finally {
+      this.loading.set(false);
+    }
   }
 
   statusBadgeClass(status: string): string {

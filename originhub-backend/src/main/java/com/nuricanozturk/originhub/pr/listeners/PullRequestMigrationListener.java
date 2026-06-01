@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.scheduling.annotation.Async;
@@ -21,6 +22,7 @@ import org.springframework.web.client.RestClient;
 @Component
 @RequiredArgsConstructor
 @SuppressWarnings("unchecked")
+@NullMarked
 public class PullRequestMigrationListener {
 
   private final PullRequestService prService;
@@ -88,14 +90,14 @@ public class PullRequestMigrationListener {
     try {
       final var branchForm = new BranchForm(sourceBranch, targetBranch);
       this.branchProtocolService.create(tenantUsername, repoName, branchForm);
-    } catch (final ItemAlreadyExistsException e) {
+    } catch (final ItemAlreadyExistsException _) {
       log.debug("Branch zaten mevcut, atlanıyor: {}", sourceBranch);
-    } catch (final ItemNotFoundException e) {
+    } catch (final ItemNotFoundException _) {
       log.debug("Kaynak branch bulunamadı ({}), default branch'ten oluşturuluyor", targetBranch);
       try {
         final var fallbackForm = new BranchForm(sourceBranch, "main");
         this.branchProtocolService.create(tenantUsername, repoName, fallbackForm);
-      } catch (final ItemAlreadyExistsException alreadyExists) {
+      } catch (final ItemAlreadyExistsException _) {
         log.debug("Branch zaten mevcut (fallback), atlanıyor: {}", sourceBranch);
       } catch (final Exception fallbackErr) {
         log.debug(

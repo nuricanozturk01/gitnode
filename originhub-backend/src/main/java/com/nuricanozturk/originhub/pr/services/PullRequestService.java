@@ -38,9 +38,7 @@ import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.shared.pr.events.PullRequestCreatedEvent;
 import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -54,6 +52,7 @@ import java.util.function.BiFunction;
 import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.diff.RawTextComparator;
 import org.eclipse.jgit.lib.CommitBuilder;
@@ -71,9 +70,11 @@ import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -81,24 +82,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class PullRequestService {
 
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
 
-  private final @NonNull PrRepository prRepository;
-  private final @NonNull PrCommentRepository commentRepository;
-  private final @NonNull RepoRepository repoRepository;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull GitProvider gitProvider;
-  private final @NonNull PrMapper prMapper;
-  private final @NonNull ApplicationEventPublisher eventPublisher;
+  private final PrRepository prRepository;
+  private final PrCommentRepository commentRepository;
+  private final PrFinder prFinder;
+  private final GitProvider gitProvider;
+  private final PrMapper prMapper;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
-  public @NonNull PrDetail create(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull UUID authorId,
-      final @NonNull PrForm form)
+  public PrDetail create(
+      final String owner, final String repoName, final UUID authorId, final PrForm form)
       throws IOException {
 
     final var repo = this.findRepo(owner, repoName);
@@ -123,11 +121,8 @@ public class PullRequestService {
   }
 
   @Transactional
-  public @NonNull PrDetail update(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final int number,
-      final @NonNull PrUpdateForm form) {
+  public PrDetail update(
+      final String owner, final String repoName, final int number, final PrUpdateForm form) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
@@ -152,7 +147,7 @@ public class PullRequestService {
   }
 
   @Transactional
-  public void close(final @NonNull String owner, final @NonNull String repoName, final int number) {
+  public void close(final String owner, final String repoName, final int number) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
@@ -175,12 +170,12 @@ public class PullRequestService {
   }
 
   @Transactional
-  public @NonNull PrDetail merge(
-      final @NonNull String owner,
-      final @NonNull String repoName,
+  public PrDetail merge(
+      final String owner,
+      final String repoName,
       final int number,
-      final @NonNull UUID mergedById,
-      final @NonNull PrMergeForm form)
+      final UUID mergedById,
+      final PrMergeForm form)
       throws IOException {
 
     final var repo = this.findRepo(owner, repoName);
@@ -214,19 +209,22 @@ public class PullRequestService {
     return this.toDetail(saved);
   }
 
-  public @NonNull List<PrInfo> getAll(
-      final @NonNull String owner, final @NonNull String repoName, final @NonNull String status) {
+  public Page<PrInfo> getAll(
+      final String owner,
+      final String repoName,
+      final String status,
+      final int page,
+      final int size) {
 
     final var repo = this.findRepo(owner, repoName);
+    final var pageable = PageRequest.of(page, size);
 
-    final var prs =
-        this.prRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(repo.getId(), status);
-
-    return prs.stream().map(this::toInfo).toList();
+    return this.prRepository
+        .findAllByRepoIdAndStatusOrderByCreatedAtDesc(repo.getId(), status, pageable)
+        .map(this::toInfo);
   }
 
-  public @NonNull PrDetail get(
-      final @NonNull String owner, final @NonNull String repoName, final int number) {
+  public PrDetail get(final String owner, final String repoName, final int number) {
 
     final var repo = this.findRepo(owner, repoName);
 
@@ -235,8 +233,7 @@ public class PullRequestService {
     return this.toDetail(pr);
   }
 
-  public @NonNull List<CommitInfo> getPrCommits(
-      final @NonNull String owner, final @NonNull String repoName, final int number)
+  public List<CommitInfo> getPrCommits(final String owner, final String repoName, final int number)
       throws IOException {
 
     final var repo = this.findRepo(owner, repoName);
@@ -262,8 +259,7 @@ public class PullRequestService {
     }
   }
 
-  public @NonNull List<FileDiff> getPrDiff(
-      final @NonNull String owner, final @NonNull String repoName, final int number)
+  public List<FileDiff> getPrDiff(final String owner, final String repoName, final int number)
       throws IOException {
 
     final var repo = this.findRepo(owner, repoName);
@@ -288,12 +284,12 @@ public class PullRequestService {
     }
   }
 
-  private @NonNull String mergeCommit(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull PullRequest pr,
-      final @NonNull PrMergeForm form,
-      final @NonNull Tenant mergedBy)
+  private String mergeCommit(
+      final String owner,
+      final String repoName,
+      final PullRequest pr,
+      final PrMergeForm form,
+      final Tenant mergedBy)
       throws IOException {
 
     final var msg =
@@ -312,12 +308,12 @@ public class PullRequestService {
     return this.doMergeCommit(owner, repoName, pr, mergedBy, commitBuilder);
   }
 
-  private @NonNull String squashCommit(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull PullRequest pr,
-      final @NonNull PrMergeForm form,
-      final @NonNull Tenant mergedBy)
+  private String squashCommit(
+      final String owner,
+      final String repoName,
+      final PullRequest pr,
+      final PrMergeForm form,
+      final Tenant mergedBy)
       throws IOException {
 
     final var msg =
@@ -336,11 +332,8 @@ public class PullRequestService {
     return this.doMergeCommit(owner, repoName, pr, mergedBy, commitBuilder);
   }
 
-  private @NonNull String rebaseCommit(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull PullRequest pr,
-      final @NonNull Tenant mergedBy)
+  private String rebaseCommit(
+      final String owner, final String repoName, final PullRequest pr, final Tenant mergedBy)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -355,7 +348,9 @@ public class PullRequestService {
       final var commitIds = this.collectRebaseCommits(gitRepo, sourceObjectId, targetObjectId);
 
       final var authorName =
-          mergedBy.getDisplayName() != null ? mergedBy.getDisplayName() : mergedBy.getUsername();
+          StringUtils.isNotBlank(mergedBy.getDisplayName())
+              ? mergedBy.getDisplayName()
+              : mergedBy.getUsername();
 
       try (final var walk = new RevWalk(gitRepo)) {
         final var lastCommitId =
@@ -370,10 +365,8 @@ public class PullRequestService {
     }
   }
 
-  private @NonNull List<ObjectId> collectRebaseCommits(
-      final @NonNull Repository gitRepo,
-      final @NonNull ObjectId sourceObjectId,
-      final @NonNull ObjectId targetObjectId)
+  private List<ObjectId> collectRebaseCommits(
+      final Repository gitRepo, final ObjectId sourceObjectId, final ObjectId targetObjectId)
       throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
@@ -399,13 +392,13 @@ public class PullRequestService {
     }
   }
 
-  private @NonNull ObjectId applyRebaseCommits(
-      final @NonNull Repository gitRepo,
-      final @NonNull RevWalk walk,
-      final @NonNull List<ObjectId> commitIds,
-      final @NonNull ObjectId targetObjectId,
-      final @NonNull String authorName,
-      final @NonNull Tenant mergedBy)
+  private ObjectId applyRebaseCommits(
+      final Repository gitRepo,
+      final RevWalk walk,
+      final List<ObjectId> commitIds,
+      final ObjectId targetObjectId,
+      final String authorName,
+      final Tenant mergedBy)
       throws IOException {
 
     var currentParent = walk.parseCommit(targetObjectId);
@@ -445,12 +438,12 @@ public class PullRequestService {
     return lastCommitId;
   }
 
-  private @NonNull String doMergeCommit(
-      final @NonNull String owner,
-      final @NonNull String repoName,
-      final @NonNull PullRequest pr,
-      final @NonNull Tenant mergedBy,
-      final @NonNull BiFunction<RevCommit, RevCommit, CommitBuilder> commitBuilderFactory)
+  private String doMergeCommit(
+      final String owner,
+      final String repoName,
+      final PullRequest pr,
+      final Tenant mergedBy,
+      final BiFunction<RevCommit, RevCommit, CommitBuilder> commitBuilderFactory)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName);
@@ -493,8 +486,7 @@ public class PullRequestService {
   }
 
   private @Nullable RevCommit findMergeBase(
-      final @NonNull Repository gitRepo, final @NonNull RevCommit a, final @NonNull RevCommit b)
-      throws IOException {
+      final Repository gitRepo, final RevCommit a, final RevCommit b) throws IOException {
 
     try (final var walk = new RevWalk(gitRepo)) {
       walk.setRevFilter(RevFilter.MERGE_BASE);
@@ -504,10 +496,8 @@ public class PullRequestService {
     }
   }
 
-  private @NonNull List<FileDiff> getDiffBetween(
-      final @NonNull Repository gitRepo,
-      final @Nullable RevCommit base,
-      final @NonNull RevCommit head)
+  private List<FileDiff> getDiffBetween(
+      final Repository gitRepo, final @Nullable RevCommit base, final RevCommit head)
       throws IOException {
 
     try (final var formatter = new DiffFormatter(DisabledOutputStream.INSTANCE)) {
@@ -530,7 +520,7 @@ public class PullRequestService {
     }
   }
 
-  private @NonNull CommitInfo toCommitInfo(final @NonNull RevCommit commit) {
+  private CommitInfo toCommitInfo(final RevCommit commit) {
 
     final var shortSha = commit.getName().substring(0, DEFAULT_SHORT_SHA_LENGTH);
     final var author =
@@ -554,7 +544,7 @@ public class PullRequestService {
         commitStats);
   }
 
-  private @NonNull PrInfo toInfo(final @NonNull PullRequest pr) {
+  private PrInfo toInfo(final PullRequest pr) {
 
     final var commentCount = (int) this.commentRepository.countByPrId(pr.getId());
     final var author = this.toAuthorInfo(pr.getAuthor());
@@ -563,7 +553,7 @@ public class PullRequestService {
     return this.prMapper.toInfo(pr, commentCount, author, mergedBy);
   }
 
-  private @NonNull PrDetail toDetail(final @NonNull PullRequest pr) {
+  private PrDetail toDetail(final PullRequest pr) {
     final var commentCount = (int) this.commentRepository.countByPrId(pr.getId());
 
     final var authorInfo = this.toAuthorInfo(pr.getAuthor());
@@ -572,35 +562,23 @@ public class PullRequestService {
     return this.prMapper.toDetail(pr, commentCount, authorInfo, mergedBy);
   }
 
-  private @NonNull AuthorInfo toAuthorInfo(final @NonNull Tenant tenant) {
-
-    return new AuthorInfo(
-        tenant.getDisplayName(), tenant.getEmail(), tenant.getUsername(), tenant.getAvatarUrl());
+  private AuthorInfo toAuthorInfo(final Tenant tenant) {
+    return this.prMapper.toAuthorInfo(tenant);
   }
 
-  private @NonNull Repo findRepo(final @NonNull String owner, final @NonNull String repoName) {
-
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
-        .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
+  private Repo findRepo(final String owner, final String repoName) {
+    return this.prFinder.findRepo(owner, repoName);
   }
 
-  private @NonNull PullRequest findPr(final @NonNull UUID repoId, final int number) {
-
-    return this.prRepository
-        .findByRepoIdAndNumber(repoId, number)
-        .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
+  private PullRequest findPr(final UUID repoId, final int number) {
+    return this.prFinder.findPr(repoId, number);
   }
 
-  private @NonNull Tenant findTenant(final @NonNull UUID id) {
-
-    return this.tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new ItemNotFoundException("User not found"));
+  private Tenant findTenant(final UUID id) {
+    return this.prFinder.findTenant(id);
   }
 
-  private void checkOpenPrRules(
-      final @NonNull Repository gitRepo, final @NonNull PrForm form, final @NonNull Repo repo)
+  private void checkOpenPrRules(final Repository gitRepo, final PrForm form, final Repo repo)
       throws IOException {
 
     if (gitRepo.findRef(Constants.R_HEADS + form.getSourceBranch()) == null) {

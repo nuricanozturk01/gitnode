@@ -19,15 +19,14 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @Builder
 public record SnippetRevisionDetail(
-    @NonNull UUID id,
-    @NonNull String title,
+    UUID id,
+    String title,
     @Nullable String description,
     @Nullable String summary,
-    @NonNull SnippetOwnerInfo author,
-    @NonNull List<SnippetFileInfo> files,
+    SnippetOwnerInfo author,
+    List<SnippetFileInfo> files,
     @Nullable Instant createdAt) {}

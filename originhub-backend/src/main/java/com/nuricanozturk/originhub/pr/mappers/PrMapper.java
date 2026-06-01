@@ -26,7 +26,7 @@ import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import java.time.Instant;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.mapstruct.BeanMapping;
 import org.mapstruct.Builder;
@@ -35,6 +35,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@NullMarked
 public interface PrMapper {
 
   @BeanMapping(builder = @Builder())
@@ -42,34 +43,30 @@ public interface PrMapper {
   @Mapping(target = "mergedBy", source = "mergedBy")
   @Mapping(target = "commentCount", source = "commentCount")
   @Mapping(target = "isDraft", source = "pr.draft")
-  @NonNull PrDetail toDetail(
-      @NonNull PullRequest pr,
-      int commentCount,
-      @NonNull AuthorInfo authorInfo,
-      @Nullable AuthorInfo mergedBy);
+  PrDetail toDetail(
+      PullRequest pr, int commentCount, AuthorInfo authorInfo, @Nullable AuthorInfo mergedBy);
 
   @BeanMapping(builder = @Builder())
   @Mapping(target = "author", source = "authorInfo")
   @Mapping(target = "mergedBy", source = "mergedBy")
   @Mapping(target = "commentCount", source = "commentCount")
   @Mapping(target = "isDraft", source = "pr.draft")
-  @NonNull PrInfo toInfo(
-      @NonNull PullRequest pr,
-      int commentCount,
-      @NonNull AuthorInfo authorInfo,
-      @Nullable AuthorInfo mergedBy);
+  PrInfo toInfo(
+      PullRequest pr, int commentCount, AuthorInfo authorInfo, @Nullable AuthorInfo mergedBy);
 
   @BeanMapping(builder = @Builder())
   @Mapping(target = "author", source = "author")
   @Mapping(target = "isResolved", source = "comment.resolved")
-  @NonNull PrCommentInfo toCommentInfo(
-      @NonNull PullRequestComment comment, @NonNull AuthorInfo author);
+  PrCommentInfo toCommentInfo(PullRequestComment comment, AuthorInfo author);
 
-  default @NonNull PullRequest buildPr(
-      final @NonNull PrForm form,
-      final @NonNull Repo repo,
-      final @NonNull Tenant author,
-      final @NonNull String sourceSha,
+  @Mapping(target = "name", source = "displayName")
+  AuthorInfo toAuthorInfo(Tenant tenant);
+
+  default PullRequest buildPr(
+      final PrForm form,
+      final Repo repo,
+      final Tenant author,
+      final String sourceSha,
       final int nextNumber) {
 
     final var pr = new PullRequest();

@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.shared.repo.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record RepoPushedEvent(
-    @NonNull UUID repoId, @NonNull String branchName, @NonNull String pusherUsername) {}
+@NullMarked
+public record RepoPushedEvent(UUID repoId, String branchName, String pusherUsername) {}

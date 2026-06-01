@@ -19,12 +19,13 @@ import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
 import com.nuricanozturk.originhub.shared.repo.dtos.TenantRepoInfo;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+@NullMarked
 public interface RepoMapper {
 
   @Mapping(
@@ -37,14 +38,7 @@ public interface RepoMapper {
    */
   @Mapping(target = "isPrivate", source = "private")
   @Mapping(target = "isArchived", source = "archived")
-  @NonNull RepoInfo toDto(@NonNull Repo repo);
+  RepoInfo toDto(Repo repo);
 
-  default TenantRepoInfo mapOwner(final Tenant owner) {
-
-    if (owner == null) {
-      return null;
-    }
-
-    return new TenantRepoInfo(owner.getId(), owner.getUsername(), owner.getAvatarUrl());
-  }
+  TenantRepoInfo mapOwner(Tenant owner);
 }

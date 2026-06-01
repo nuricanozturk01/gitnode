@@ -9,59 +9,27 @@ import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Builder;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
 public interface IssueMapper {
 
-  default IssueInfo toInfo(final Issue issue, final int commentCount) {
-    return IssueInfo.builder()
-        .id(issue.getId())
-        .number(issue.getNumber())
-        .title(issue.getTitle())
-        .status(issue.getStatus())
-        .author(this.toAuthorInfo(issue.getAuthor()))
-        .assignee(this.toAuthorInfo(issue.getAssignee()))
-        .commentCount(commentCount)
-        .createdAt(issue.getCreatedAt())
-        .updatedAt(issue.getUpdatedAt())
-        .closedAt(issue.getClosedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "commentCount", source = "commentCount")
+  IssueInfo toInfo(Issue issue, int commentCount);
 
-  default IssueDetail toDetail(final Issue issue, final int commentCount) {
-    return IssueDetail.builder()
-        .id(issue.getId())
-        .number(issue.getNumber())
-        .title(issue.getTitle())
-        .description(issue.getDescription())
-        .status(issue.getStatus())
-        .author(this.toAuthorInfo(issue.getAuthor()))
-        .assignee(this.toAuthorInfo(issue.getAssignee()))
-        .commentCount(commentCount)
-        .createdAt(issue.getCreatedAt())
-        .updatedAt(issue.getUpdatedAt())
-        .closedAt(issue.getClosedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  @Mapping(target = "commentCount", source = "commentCount")
+  IssueDetail toDetail(Issue issue, int commentCount);
 
-  default IssueCommentInfo toCommentInfo(final IssueComment comment) {
-    return IssueCommentInfo.builder()
-        .id(comment.getId())
-        .author(this.toAuthorInfo(comment.getAuthor()))
-        .body(comment.getBody())
-        .createdAt(comment.getCreatedAt())
-        .updatedAt(comment.getUpdatedAt())
-        .build();
-  }
+  @BeanMapping(builder = @Builder())
+  IssueCommentInfo toCommentInfo(IssueComment comment);
 
-  default @Nullable AuthorInfo toAuthorInfo(final @Nullable Tenant tenant) {
-    if (tenant == null) {
-      return null;
-    }
-    return new AuthorInfo(
-        tenant.getDisplayName(), tenant.getEmail(), tenant.getUsername(), tenant.getAvatarUrl());
-  }
+  @Mapping(target = "name", source = "displayName")
+  @Nullable AuthorInfo toAuthorInfo(@Nullable Tenant tenant);
 }

@@ -14,20 +14,31 @@
 /// limitations under the License.
 ///
 
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, inject } from '@angular/core';
 import { marked } from 'marked';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
-import { inject } from '@angular/core';
 
 marked.use({ gfm: true, breaks: false });
+
+const CACHE_MAX = 48;
 
 @Pipe({ name: 'markdown', standalone: true })
 export class MarkdownPipe implements PipeTransform {
   private readonly sanitizer = inject(DomSanitizer);
+  private readonly cache = new Map<string, SafeHtml>();
 
   transform(value: string | null | undefined): SafeHtml {
     if (!value) return '';
+    const cached = this.cache.get(value);
+    if (cached) return cached;
+
     const html = marked.parse(value, { async: false }) as string;
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    const safe = this.sanitizer.bypassSecurityTrustHtml(html);
+    if (this.cache.size >= CACHE_MAX) {
+      const oldest = this.cache.keys().next().value;
+      if (oldest !== undefined) this.cache.delete(oldest);
+    }
+    this.cache.set(value, safe);
+    return safe;
   }
 }

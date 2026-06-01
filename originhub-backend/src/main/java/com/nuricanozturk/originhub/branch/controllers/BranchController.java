@@ -25,7 +25,8 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,18 +43,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/repos/{owner}/{repo}/branches")
 @RequiredArgsConstructor
+@NullMarked
 public class BranchController {
 
-  private final @NonNull BranchNonTxService branchNonTxService;
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull RepoService repoService;
+  private final BranchNonTxService branchNonTxService;
+  private final JwtUtils jwtUtils;
+  private final RepoService repoService;
 
   @PostMapping
-  public @NonNull ResponseEntity<BranchInfo> create(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull BranchForm form)
+  public ResponseEntity<BranchInfo> create(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final BranchForm form)
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
@@ -63,11 +65,11 @@ public class BranchController {
   }
 
   @DeleteMapping("/{branch}")
-  public @NonNull ResponseEntity<Void> delete(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader)
+  public ResponseEntity<Void> delete(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader)
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
@@ -77,11 +79,11 @@ public class BranchController {
   }
 
   @PatchMapping("/default")
-  public @NonNull ResponseEntity<Void> setDefaultBranch(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull DefaultBranchForm form)
+  public ResponseEntity<Void> setDefaultBranch(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final DefaultBranchForm form)
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
@@ -91,10 +93,11 @@ public class BranchController {
   }
 
   @GetMapping
-  public @NonNull ResponseEntity<List<BranchInfo>> getAll(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+  public ResponseEntity<List<BranchInfo>> getAll(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
@@ -104,11 +107,12 @@ public class BranchController {
   }
 
   @GetMapping("/{branch}")
-  public @NonNull ResponseEntity<BranchInfo> get(
-      @PathVariable final @NonNull String owner,
-      @PathVariable final @NonNull String repo,
-      @PathVariable final @NonNull String branch,
-      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) final String authHeader)
+  public ResponseEntity<BranchInfo> get(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final String branch,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;

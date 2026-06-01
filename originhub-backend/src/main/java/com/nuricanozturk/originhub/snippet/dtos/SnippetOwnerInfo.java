@@ -17,9 +17,7 @@ package com.nuricanozturk.originhub.snippet.dtos;
 
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @Builder
-public record SnippetOwnerInfo(
-    @NonNull UUID id, @NonNull String username, @Nullable String avatarUrl) {}
+public record SnippetOwnerInfo(UUID id, String username, @Nullable String avatarUrl) {}

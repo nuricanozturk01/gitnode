@@ -59,7 +59,7 @@ public class ProjectWebhook {
   @Column(name = "enabled", nullable = false)
   private boolean enabled = false;
 
-  @ElementCollection(fetch = FetchType.EAGER)
+  @ElementCollection(fetch = FetchType.LAZY)
   @CollectionTable(name = "project_webhook_events", joinColumns = @JoinColumn(name = "webhook_id"))
   @Column(name = "event_type", length = 50)
   private Set<String> subscribedEvents = new HashSet<>();

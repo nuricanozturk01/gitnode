@@ -16,7 +16,7 @@
 package com.nuricanozturk.originhub.shared.issue.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 
-public record IssueCreatedEvent(
-    @NonNull UUID issueId, @NonNull UUID repoId, int number, @NonNull String title) {}
+@NullMarked
+public record IssueCreatedEvent(UUID issueId, UUID repoId, int number, String title) {}

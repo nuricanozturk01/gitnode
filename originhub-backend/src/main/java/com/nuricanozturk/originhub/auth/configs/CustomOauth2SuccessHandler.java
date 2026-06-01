@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
@@ -39,35 +39,36 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Slf4j
 @Component
 @RequiredArgsConstructor
+@NullMarked
 public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler {
 
-  private static final @NonNull String LOGIN = "login";
-  private static final @NonNull String AVATAR_URL = "avatar_url";
-  private static final @NonNull String PICTURE = "picture";
-  private static final @NonNull String SUB = "sub";
-  private static final @NonNull String EMAIL = "email";
-  private static final @NonNull String USERNAME = "username";
-  private static final @NonNull String ID = "id";
-  private static final @NonNull String GOOGLE = "google";
-  private static final @NonNull String GITHUB = "github";
-  private static final @NonNull String GITLAB = "gitlab";
-  private static final @NonNull String TOKEN = "token";
-  private static final @NonNull String REFRESH_TOKEN = "refresh_token";
-  private static final @NonNull String EXPIRES_IN = "expires_in";
-  private static final @NonNull String REFRESH_EXPIRES_IN = "refresh_expires_in";
+  private static final String LOGIN = "login";
+  private static final String AVATAR_URL = "avatar_url";
+  private static final String PICTURE = "picture";
+  private static final String SUB = "sub";
+  private static final String EMAIL = "email";
+  private static final String USERNAME = "username";
+  private static final String ID = "id";
+  private static final String GOOGLE = "google";
+  private static final String GITHUB = "github";
+  private static final String GITLAB = "gitlab";
+  private static final String TOKEN = "token";
+  private static final String REFRESH_TOKEN = "refresh_token";
+  private static final String EXPIRES_IN = "expires_in";
+  private static final String REFRESH_EXPIRES_IN = "refresh_expires_in";
 
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull TenantRepository tenantRepository;
-  private final @NonNull AccountRepository accountRepository;
+  private final JwtUtils jwtUtils;
+  private final TenantRepository tenantRepository;
+  private final AccountRepository accountRepository;
 
   @Value("${originhub.frontend.base-url}")
   private String frontendBaseUrl;
 
   @Override
   public void onAuthenticationSuccess(
-      final @NonNull HttpServletRequest request,
-      final @NonNull HttpServletResponse response,
-      final @NonNull Authentication authentication)
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final Authentication authentication)
       throws IOException {
 
     final var oauth2Token = (OAuth2AuthenticationToken) authentication;
@@ -100,7 +101,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     response.sendRedirect(redirectUrl);
   }
 
-  private @NonNull Tenant createUserFromOAuth(final @NonNull OAuthProviderInfo providerInfo) {
+  private Tenant createUserFromOAuth(final OAuthProviderInfo providerInfo) {
 
     final var tenant =
         this.saveTenant(providerInfo.email(), providerInfo.username(), providerInfo.avatarUrl());
@@ -115,10 +116,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     return tenant;
   }
 
-  private @NonNull Tenant saveTenant(
-      final @NonNull String email,
-      final @NonNull String username,
-      final @NonNull String avatarUrl) {
+  private Tenant saveTenant(final String email, final String username, final String avatarUrl) {
 
     final var tenant = new Tenant();
     tenant.setUsername(username);
@@ -129,8 +127,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     return this.tenantRepository.save(tenant);
   }
 
-  private void saveAccount(
-      final @NonNull OAuthProviderInfo providerInfo, final @NonNull Tenant tenant) {
+  private void saveAccount(final OAuthProviderInfo providerInfo, final Tenant tenant) {
 
     final var account = new Account();
     account.setAccountType(providerInfo.accountType().toString());
@@ -176,8 +173,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
       };
     }
 
-    private static String resolveEmail(
-        final @NonNull OAuth2User user, final @NonNull String fallbackKey) {
+    private static String resolveEmail(final OAuth2User user, final String fallbackKey) {
 
       final var email = (String) user.getAttributes().get(EMAIL);
 
@@ -191,7 +187,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
       return "%s-%s@originhub-os.com".formatted(username, shortTs);
     }
 
-    private static String attr(final @NonNull OAuth2User user, final @NonNull String key) {
+    private static String attr(final OAuth2User user, final String key) {
 
       return (String) user.getAttributes().get(key);
     }

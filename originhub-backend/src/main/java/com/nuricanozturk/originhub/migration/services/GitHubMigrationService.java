@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.service;
+package com.nuricanozturk.originhub.migration.services;
 
-import com.nuricanozturk.originhub.migration.dtos.MigrationService;
+import com.nuricanozturk.originhub.migration.dtos.MigrationServiceProvider;
 import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;
 import com.nuricanozturk.originhub.migration.entities.MigrationJob;
 import com.nuricanozturk.originhub.migration.repositories.MigrationJobRepository;
@@ -66,7 +66,7 @@ public class GitHubMigrationService implements CloudMigrationService {
   private void migrateRepository(
       final MigrationJob job, final String accessToken, final Tenant tenant) throws IOException {
 
-    if (job.getService() == MigrationService.GITHUB) {
+    if (job.getService() == MigrationServiceProvider.GITHUB) {
       this.repoMigrationService.migrateFromGithub(
           job.getRepoName(), job.getOwner(), tenant, accessToken);
     }

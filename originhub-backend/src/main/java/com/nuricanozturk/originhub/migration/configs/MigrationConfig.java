@@ -13,9 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.project;
+package com.nuricanozturk.originhub.migration.configs;
 
-import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.web.client.RestClient;
 
-public record ProjectSummary(@NonNull UUID id, @NonNull String ownerUsername) {}
+@Configuration
+@EnableAsync
+@NullMarked
+public class MigrationConfig {
+
+  @Bean
+  public RestClient restClient() {
+    return RestClient.builder().defaultHeader("Accept", "application/vnd.github+json").build();
+  }
+}

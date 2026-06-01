@@ -20,18 +20,19 @@ import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional(readOnly = true)
 @Service
 @RequiredArgsConstructor
+@NullMarked
 public class TenantSearchService {
 
-  private final @NonNull TenantRepository tenantRepository;
+  private final TenantRepository tenantRepository;
 
-  public @NonNull List<TenantSearchResult> search(final @NonNull String prefix) {
+  public List<TenantSearchResult> search(final String prefix) {
 
     final var tenants =
         this.tenantRepository.findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc(prefix);
@@ -39,7 +40,7 @@ public class TenantSearchService {
     return tenants.stream().map(this::toResult).toList();
   }
 
-  private @NonNull TenantSearchResult toResult(final @NonNull Tenant t) {
+  private TenantSearchResult toResult(final Tenant t) {
 
     final var displayName = t.getDisplayName() != null ? t.getDisplayName() : t.getUsername();
 

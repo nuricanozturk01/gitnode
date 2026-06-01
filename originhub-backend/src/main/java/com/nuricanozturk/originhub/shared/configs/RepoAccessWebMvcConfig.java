@@ -16,19 +16,20 @@
 package com.nuricanozturk.originhub.shared.configs;
 
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @RequiredArgsConstructor
+@NullMarked
 public class RepoAccessWebMvcConfig implements WebMvcConfigurer {
 
-  private final @NonNull RepoAccessInterceptor repoAccessInterceptor;
+  private final RepoAccessInterceptor repoAccessInterceptor;
 
   @Override
-  public void addInterceptors(final @NonNull InterceptorRegistry registry) {
+  public void addInterceptors(final InterceptorRegistry registry) {
     registry.addInterceptor(this.repoAccessInterceptor).addPathPatterns("/api/repos/**");
   }
 }

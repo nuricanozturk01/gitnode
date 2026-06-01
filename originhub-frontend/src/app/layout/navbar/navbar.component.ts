@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
@@ -25,6 +25,7 @@ import { UserService } from '../../core/user/services/user.service';
 import type { User } from '../../domain/auth/models/user.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-navbar',
   standalone: true,
   imports: [LucideAngularModule, RouterLink, RouterLinkActive, AvatarComponent],

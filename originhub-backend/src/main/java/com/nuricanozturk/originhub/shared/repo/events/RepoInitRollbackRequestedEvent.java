@@ -15,6 +15,4 @@
  */
 package com.nuricanozturk.originhub.shared.repo.events;
 
-import org.jspecify.annotations.NonNull;
-
-public record RepoInitRollbackRequestedEvent(@NonNull String repoOwner, @NonNull String repoName) {}
+public record RepoInitRollbackRequestedEvent(String repoOwner, String repoName) {}

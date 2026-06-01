@@ -16,11 +16,9 @@
 package com.nuricanozturk.originhub.shared.snippet.events;
 
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+@NullMarked
 public record SnippetUpdatedEvent(
-    @NonNull UUID snippetId,
-    @NonNull String ownerUsername,
-    @NonNull String title,
-    @Nullable UUID repoId) {}
+    UUID snippetId, String ownerUsername, String title, @Nullable UUID repoId) {}

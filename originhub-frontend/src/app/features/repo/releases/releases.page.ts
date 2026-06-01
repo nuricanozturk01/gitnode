@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -31,6 +31,7 @@ import type { TagInfo } from '../../../domain/repository/models/tag-info.model';
 const PAGE_SIZE = 10;
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-releases',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
@@ -76,12 +77,24 @@ export class ReleasesPage {
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) return;
+    const routeKey = `${owner}/${repo}`;
+    const cachedReleases = this.repoContext.repoRouteKey() === routeKey ? this.repoContext.releases() : null;
+
     this.loading.set(true);
     try {
-      const [releases, tags] = await Promise.all([
-        this.releaseService.getAll(owner, repo),
-        this.tagService.getAll(owner, repo).catch(() => []),
-      ]);
+      const tags = await this.tagService.getAll(owner, repo).catch(() => []);
+      let releases = cachedReleases;
+      if (!releases) {
+        releases = await this.releaseService.getAll(owner, repo);
+        const currentRepo = this.repoContext.repo();
+        if (currentRepo && this.repoContext.repoRouteKey() === routeKey) {
+          this.repoContext.setRepoBundle(routeKey, currentRepo, {
+            openPrs: this.repoContext.openPrCount(),
+            openIssues: this.repoContext.openIssueCount(),
+            releases,
+          });
+        }
+      }
       this.releases.set(releases);
       this.tags.set(tags);
       this.releasePage.set(0);
@@ -118,11 +131,28 @@ export class ReleasesPage {
     if (!confirmed) return;
     try {
       await this.releaseService.delete(this.owner(), this.repoName(), release.id);
-      this.releases.update((list) => list.filter((r) => r.id !== release.id));
+      this.releases.update((list) => {
+        const next = list.filter((r) => r.id !== release.id);
+        this.syncReleasesCache(next);
+        return next;
+      });
       this.toast.success('Release deleted');
     } catch {
       this.toast.error('Could not delete release');
     }
+  }
+
+  private syncReleasesCache(releases: ReleaseInfo[]): void {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const routeKey = `${owner}/${repo}`;
+    const currentRepo = this.repoContext.repo();
+    if (!currentRepo || this.repoContext.repoRouteKey() !== routeKey) return;
+    this.repoContext.setRepoBundle(routeKey, currentRepo, {
+      openPrs: this.repoContext.openPrCount(),
+      openIssues: this.repoContext.openIssueCount(),
+      releases,
+    });
   }
 
   async deleteTag(tagName: string): Promise<void> {

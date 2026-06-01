@@ -27,7 +27,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -36,16 +36,17 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 @RequiredArgsConstructor
+@NullMarked
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  private final @NonNull JwtUtils jwtUtils;
-  private final @NonNull TenantRepository tenantRepository;
+  private final JwtUtils jwtUtils;
+  private final TenantRepository tenantRepository;
 
   @Override
   protected void doFilterInternal(
-      final @NonNull HttpServletRequest request,
-      final @NonNull HttpServletResponse response,
-      final @NonNull FilterChain filterChain)
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final FilterChain filterChain)
       throws ServletException, IOException {
 
     final var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);

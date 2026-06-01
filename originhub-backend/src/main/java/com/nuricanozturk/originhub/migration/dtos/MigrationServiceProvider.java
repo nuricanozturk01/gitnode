@@ -13,13 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.project;
+package com.nuricanozturk.originhub.migration.dtos;
 
-import java.util.Optional;
-import org.jspecify.annotations.NonNull;
-
-public interface ProjectAccessService {
-
-  @NonNull Optional<ProjectSummary> findByOwnerAndCode(
-      @NonNull String ownerUsername, @NonNull String codePrefix);
+public enum MigrationServiceProvider {
+  GITHUB
 }

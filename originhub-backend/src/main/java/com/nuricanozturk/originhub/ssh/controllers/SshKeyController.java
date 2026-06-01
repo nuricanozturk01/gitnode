@@ -23,7 +23,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,14 +39,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/user/ssh-keys")
 @RequiredArgsConstructor
+@NullMarked
 public class SshKeyController {
 
-  private final @NonNull SshKeyService sshKeyService;
-  private final @NonNull JwtUtils tokenService;
+  private final SshKeyService sshKeyService;
+  private final JwtUtils tokenService;
 
   @GetMapping
-  public @NonNull ResponseEntity<List<SshKeyInfo>> listKeys(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
+  public ResponseEntity<List<SshKeyInfo>> listKeys(
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
 
     final var tenantId = this.tokenService.extractUserId(authHeader);
 
@@ -56,9 +57,9 @@ public class SshKeyController {
   }
 
   @PostMapping
-  public @NonNull ResponseEntity<SshKeyInfo> addKey(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader,
-      @Valid @RequestBody final @NonNull AddSshKeyForm form) {
+  public ResponseEntity<SshKeyInfo> addKey(
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final AddSshKeyForm form) {
 
     final var tenantId = this.tokenService.extractUserId(authHeader);
 
@@ -68,9 +69,9 @@ public class SshKeyController {
   }
 
   @DeleteMapping("/{keyId}")
-  public @NonNull ResponseEntity<Void> deleteKey(
-      @PathVariable final @NonNull UUID keyId,
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final @NonNull String authHeader) {
+  public ResponseEntity<Void> deleteKey(
+      @PathVariable final UUID keyId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
 
     final var tenantId = this.tokenService.extractUserId(authHeader);
 

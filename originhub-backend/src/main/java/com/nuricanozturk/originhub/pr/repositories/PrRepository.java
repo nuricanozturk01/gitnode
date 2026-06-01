@@ -16,27 +16,32 @@
 package com.nuricanozturk.originhub.pr.repositories;
 
 import com.nuricanozturk.originhub.pr.entities.PullRequest;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@NullMarked
 public interface PrRepository extends JpaRepository<PullRequest, UUID> {
 
   @Query(
-      """
+      value =
+          """
     SELECT pr FROM PullRequest pr
     JOIN FETCH pr.author
     LEFT JOIN FETCH pr.mergedBy
     WHERE pr.repo.id = :repoId AND pr.status = :status
     ORDER BY pr.createdAt DESC
-    """)
-  @NonNull List<PullRequest> findAllByRepoIdAndStatusOrderByCreatedAtDesc(
-      @NonNull UUID repoId, @NonNull String status);
+    """,
+      countQuery =
+          "SELECT count(pr) FROM PullRequest pr WHERE pr.repo.id = :repoId AND pr.status = :status")
+  Page<PullRequest> findAllByRepoIdAndStatusOrderByCreatedAtDesc(
+      UUID repoId, String status, Pageable pageable);
 
   @Query(
       """
@@ -45,14 +50,11 @@ public interface PrRepository extends JpaRepository<PullRequest, UUID> {
     LEFT JOIN FETCH pr.mergedBy
     WHERE pr.repo.id = :repoId AND pr.number = :number
     """)
-  Optional<PullRequest> findByRepoIdAndNumber(@NonNull UUID repoId, int number);
+  Optional<PullRequest> findByRepoIdAndNumber(UUID repoId, int number);
 
   boolean existsByRepoIdAndSourceBranchAndTargetBranchAndStatus(
-      @NonNull UUID repoId,
-      @NonNull String sourceBranch,
-      @NonNull String targetBranch,
-      @NonNull String status);
+      UUID repoId, String sourceBranch, String targetBranch, String status);
 
   @Query("SELECT COALESCE(MAX(p.number), 0) FROM PullRequest p WHERE p.repo.id = :repoId")
-  int findMaxNumberByRepoId(@NonNull UUID repoId);
+  int findMaxNumberByRepoId(UUID repoId);
 }

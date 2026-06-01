@@ -18,14 +18,13 @@ package com.nuricanozturk.originhub.task.dtos;
 import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 @Builder
 public record ProjectRepoInfo(
-    @NonNull UUID id,
-    @NonNull String name,
-    @NonNull String ownerUsername,
+    UUID id,
+    String name,
+    String ownerUsername,
     @Nullable String description,
-    @NonNull String defaultBranch,
-    @NonNull List<OpenPrInfo> openPullRequests) {}
+    String defaultBranch,
+    List<OpenPrInfo> openPullRequests) {}

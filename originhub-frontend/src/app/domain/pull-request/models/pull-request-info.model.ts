@@ -33,3 +33,11 @@ export interface PullRequestInfo {
   mergedAt: string | null;
   closedAt: string | null;
 }
+
+export interface PrPage {
+  content: PullRequestInfo[];
+  number: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}

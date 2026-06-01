@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.migration.service;
+package com.nuricanozturk.originhub.migration.services;
 
 import com.nuricanozturk.originhub.migration.dtos.MigrationForm;
 import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;

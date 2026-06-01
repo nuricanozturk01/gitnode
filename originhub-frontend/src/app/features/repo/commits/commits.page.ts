@@ -14,10 +14,8 @@
 /// limitations under the License.
 ///
 
-import { Component, inject, signal, computed } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, ChangeDetectionStrategy, effect, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
-import { merge } from 'rxjs';
 import {
   parentParamMapSignal,
   paramMapSignal,
@@ -33,6 +31,7 @@ import type { CommitInfo } from '../../../domain/commit/models/commit-info.model
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-commits',
   standalone: true,
   imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent],
@@ -67,10 +66,19 @@ export class CommitsPage {
     return p ? parseInt(p, 10) : 0;
   });
 
+  private readonly routeKey = computed(
+    () => `${this.owner()}/${this.repoName()}/${this.branch()}:${this.currentPage()}`,
+  );
+
   constructor() {
-    merge(this.route.parent!.paramMap, this.route.paramMap, this.route.queryParamMap)
-      .pipe(takeUntilDestroyed())
-      .subscribe(() => void this.loadData());
+    effect(() => {
+      this.routeKey();
+      if (!this.owner() || !this.repoName()) {
+        this.loading.set(false);
+        return;
+      }
+      void this.loadData();
+    });
   }
 
   async loadData(): Promise<void> {

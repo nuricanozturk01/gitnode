@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.ssh.services;
 
+import com.nuricanozturk.originhub.shared.git.GitPushEventPublisher;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.annotation.PostConstruct;
@@ -32,6 +33,7 @@ import net.i2p.crypto.eddsa.EdDSAPublicKey;
 import org.apache.sshd.common.AttributeRepository;
 import org.apache.sshd.git.GitLocationResolver;
 import org.apache.sshd.git.pack.GitPackCommandFactory;
+import org.apache.sshd.git.pack.GitPackConfiguration;
 import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
@@ -55,6 +57,7 @@ public class OriginHubSshServer {
 
   private final SshKeyService sshKeyService;
   private final RepoRepository repoRepository;
+  private final GitPushEventPublisher pushEventPublisher;
 
   @Nullable private SshServer sshServer;
 
@@ -71,9 +74,12 @@ public class OriginHubSshServer {
   private String hostPath;
 
   public OriginHubSshServer(
-      final SshKeyService sshKeyService, final RepoRepository repoRepository) {
+      final SshKeyService sshKeyService,
+      final RepoRepository repoRepository,
+      final GitPushEventPublisher pushEventPublisher) {
     this.sshKeyService = sshKeyService;
     this.repoRepository = repoRepository;
+    this.pushEventPublisher = pushEventPublisher;
   }
 
   @PostConstruct
@@ -214,7 +220,21 @@ public class OriginHubSshServer {
           return Path.of(this.repoRoot);
         };
 
-    return new GitPackCommandFactory(resolver);
+    final GitPackConfiguration packConfig =
+        new GitPackConfiguration() {
+          @Override
+          public void configureReceivePack(
+              final org.apache.sshd.server.session.ServerSession session,
+              final org.eclipse.jgit.transport.ReceivePack pack) {
+            final var tenant = session.getAttribute(TENANT_KEY);
+            final var pusher = tenant != null ? tenant.getUsername() : null;
+            pack.setPostReceiveHook(
+                (rp, commands) ->
+                    OriginHubSshServer.this.pushEventPublisher.onPostReceive(rp, commands, pusher));
+          }
+        };
+
+    return new GitPackCommandFactory(resolver).withGitPackConfiguration(packConfig);
   }
 
   private Tenant resolveTenant(final ServerSession session) throws IOException {

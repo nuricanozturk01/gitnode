@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.commit.services;
 import static com.nuricanozturk.originhub.shared.util.FileDiffParser.parseFileDiff;
 import static com.nuricanozturk.originhub.shared.util.FileDiffParser.prepareTreeParser;
 
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitDetail;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
@@ -52,6 +53,7 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -66,6 +68,9 @@ public class CommitNonTxService {
   private final GitProvider gitProvider;
   private final TenantRepository tenantRepository;
 
+  @Cacheable(
+      cacheNames = CacheNames.COMMITS,
+      key = "#owner + ':' + #repoName + ':' + #branch + ':' + #page + ':' + #size")
   public PagedResult<CommitInfo> getCommits(
       final String owner,
       final String repoName,

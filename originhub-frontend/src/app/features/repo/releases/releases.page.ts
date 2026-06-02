@@ -78,27 +78,25 @@ export class ReleasesPage {
     const repo = this.repoName();
     if (!owner || !repo) return;
     const routeKey = `${owner}/${repo}`;
-    const cachedReleases = this.repoContext.repoRouteKey() === routeKey ? this.repoContext.releases() : null;
 
     this.loading.set(true);
     try {
-      const tags = await this.tagService.getAll(owner, repo).catch(() => []);
-      let releases = cachedReleases;
-      if (!releases) {
-        releases = await this.releaseService.getAll(owner, repo);
-        const currentRepo = this.repoContext.repo();
-        if (currentRepo && this.repoContext.repoRouteKey() === routeKey) {
-          this.repoContext.setRepoBundle(routeKey, currentRepo, {
-            openPrs: this.repoContext.openPrCount(),
-            openIssues: this.repoContext.openIssueCount(),
-            releases,
-          });
-        }
-      }
+      const [tags, releases] = await Promise.all([
+        this.tagService.getAll(owner, repo).catch(() => []),
+        this.releaseService.getAll(owner, repo),
+      ]);
       this.releases.set(releases);
       this.tags.set(tags);
       this.releasePage.set(0);
       this.tagPage.set(0);
+      const currentRepo = this.repoContext.repo();
+      if (currentRepo && this.repoContext.repoRouteKey() === routeKey) {
+        this.repoContext.setRepoBundle(routeKey, currentRepo, {
+          openPrs: this.repoContext.openPrCount(),
+          openIssues: this.repoContext.openIssueCount(),
+          releases,
+        });
+      }
     } catch {
       this.releases.set([]);
     } finally {

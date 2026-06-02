@@ -22,6 +22,7 @@ import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
 import com.nuricanozturk.originhub.shared.branch.events.BranchCreatedEvent;
 import com.nuricanozturk.originhub.shared.branch.events.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -38,6 +39,8 @@ import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -54,6 +57,7 @@ public class BranchNonTxService implements BranchProtocolService {
   private final ApplicationEventPublisher eventPublisher;
 
   @Override
+  @CacheEvict(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
   public BranchInfo create(final String owner, final String repoName, final BranchForm form)
       throws IOException {
 
@@ -73,6 +77,7 @@ public class BranchNonTxService implements BranchProtocolService {
   }
 
   @Override
+  @CacheEvict(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
   public void delete(final String owner, final String repoName, final String branchName)
       throws IOException {
 
@@ -93,6 +98,7 @@ public class BranchNonTxService implements BranchProtocolService {
   }
 
   @Override
+  @CacheEvict(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
   public void setDefaultBranch(final String owner, final String repoName, final String branchName)
       throws IOException {
 
@@ -111,6 +117,7 @@ public class BranchNonTxService implements BranchProtocolService {
   }
 
   @Override
+  @Cacheable(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
   public List<BranchInfo> getAll(final String owner, final String repoName) throws IOException {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);

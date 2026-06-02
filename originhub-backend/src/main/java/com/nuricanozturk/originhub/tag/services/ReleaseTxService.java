@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.tag.services;
 
+import com.nuricanozturk.originhub.shared.cache.RepoCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -50,6 +51,7 @@ public class ReleaseTxService {
   private final RepoRepository repoRepository;
   private final TenantRepository tenantRepository;
   private final ReleaseMapper releaseMapper;
+  private final RepoCacheInvalidator cacheInvalidator;
 
   @Transactional
   public ReleaseInfo create(
@@ -69,7 +71,9 @@ public class ReleaseTxService {
     }
 
     final var release = this.buildRelease(repo, author, form);
-    return this.releaseMapper.toInfo(this.releaseRepository.save(release));
+    final var saved = this.releaseMapper.toInfo(this.releaseRepository.save(release));
+    this.cacheInvalidator.evictTags(owner, repoName);
+    return saved;
   }
 
   public List<ReleaseInfo> getAll(final String owner, final String repoName) {
@@ -118,7 +122,9 @@ public class ReleaseTxService {
 
     this.assertCanModify(requesterId, release.getAuthor(), repoOwnerUsername);
     this.applyUpdates(form, release);
-    return this.releaseMapper.toInfo(this.releaseRepository.save(release));
+    final var updated = this.releaseMapper.toInfo(this.releaseRepository.save(release));
+    this.cacheInvalidator.evictTags(repoOwnerUsername, release.getRepo().getName());
+    return updated;
   }
 
   @Transactional
@@ -130,7 +136,9 @@ public class ReleaseTxService {
             .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
 
     this.assertCanModify(requesterId, release.getAuthor(), repoOwnerUsername);
+    final var repoName = release.getRepo().getName();
     this.releaseRepository.delete(release);
+    this.cacheInvalidator.evictTags(repoOwnerUsername, repoName);
   }
 
   @Transactional
@@ -138,6 +146,7 @@ public class ReleaseTxService {
 
     final var repo = this.findRepo(owner, repoName);
     this.releaseRepository.deleteByRepoIdAndTagName(repo.getId(), tagName);
+    this.cacheInvalidator.evictTags(owner, repoName);
   }
 
   public Optional<ReleaseInfo> findByRepoIdAndTagName(final UUID repoId, final String tagName) {

@@ -30,6 +30,12 @@ app:
   schema: public
 
 spring:
+  cache:
+    type: redis
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
   threads:
     virtual:
       enabled: true

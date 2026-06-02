@@ -90,7 +90,7 @@ public class GitPushEventPublisher implements PostReceiveHook {
                         log.debug(
                             "Publishing push event: {}/{} branch={}", owner, repoName, branch);
                         this.cacheInvalidator.evictBranchScoped(owner, repoName, branch);
-                        this.cacheInvalidator.evictRepoScoped(owner, repoName);
+                        this.cacheInvalidator.evictBranches(owner, repoName);
                         this.eventPublisher.publishEvent(
                             new RepoPushedEvent(repo.getId(), branch, pusherName));
                       });
@@ -100,7 +100,7 @@ public class GitPushEventPublisher implements PostReceiveHook {
                       .anyMatch(cmd -> cmd.getRefName().startsWith(Constants.R_TAGS));
               if (hasTagPush) {
                 log.debug("Tag push detected: {}/{} — evicting TAGS cache", owner, repoName);
-                this.cacheInvalidator.evictRepoScoped(owner, repoName);
+                this.cacheInvalidator.evictTags(owner, repoName);
               }
             });
   }

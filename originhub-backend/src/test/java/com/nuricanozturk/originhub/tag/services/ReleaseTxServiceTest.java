@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.shared.cache.RepoCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -54,6 +55,7 @@ class ReleaseTxServiceTest {
   @Mock private RepoRepository repoRepository;
   @Mock private TenantRepository tenantRepository;
   @Mock private ReleaseMapper releaseMapper;
+  @Mock private RepoCacheInvalidator cacheInvalidator;
 
   @InjectMocks private ReleaseTxService releaseTxService;
 

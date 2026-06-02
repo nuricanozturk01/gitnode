@@ -51,7 +51,7 @@ public class CacheInvalidationListener {
                   repoName,
                   event.targetBranch());
               this.invalidator.evictBranchScoped(owner, repoName, event.targetBranch());
-              this.invalidator.evictRepoScoped(owner, repoName);
+              this.invalidator.evictBranches(owner, repoName);
             });
   }
 

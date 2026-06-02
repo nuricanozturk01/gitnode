@@ -41,8 +41,11 @@ import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 @EnableCaching
 public class CacheConfig implements CachingConfigurer {
 
-  private static final Duration DEFAULT_TTL = Duration.ofMinutes(10);
   private static final Duration BRANCH_TTL = Duration.ofMinutes(5);
+  private static final Duration TAG_TTL = Duration.ofMinutes(10);
+  private static final Duration TREE_TTL = Duration.ofMinutes(10);
+  private static final Duration BLOB_TTL = Duration.ofMinutes(10);
+  private static final Duration LANGUAGE_TTL = Duration.ofMinutes(10);
   private static final Duration COMMIT_TTL = Duration.ofMinutes(10);
 
   @Bean
@@ -62,7 +65,6 @@ public class CacheConfig implements CachingConfigurer {
 
     final var defaultConfig =
         RedisCacheConfiguration.defaultCacheConfig()
-            .entryTtl(DEFAULT_TTL)
             .serializeKeysWith(
                 RedisSerializationContext.SerializationPair.fromSerializer(
                     new StringRedisSerializer()))
@@ -72,6 +74,10 @@ public class CacheConfig implements CachingConfigurer {
     final Map<String, RedisCacheConfiguration> perRegion =
         Map.of(
             CacheNames.BRANCHES, defaultConfig.entryTtl(BRANCH_TTL),
+            CacheNames.TAGS, defaultConfig.entryTtl(TAG_TTL),
+            CacheNames.TREE, defaultConfig.entryTtl(TREE_TTL),
+            CacheNames.BLOB, defaultConfig.entryTtl(BLOB_TTL),
+            CacheNames.LANGUAGES, defaultConfig.entryTtl(LANGUAGE_TTL),
             CacheNames.COMMITS, defaultConfig.entryTtl(COMMIT_TTL));
 
     return RedisCacheManager.builder(connectionFactory)

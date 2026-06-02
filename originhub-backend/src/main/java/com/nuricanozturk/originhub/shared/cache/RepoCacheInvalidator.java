@@ -39,11 +39,14 @@ public class RepoCacheInvalidator {
     this.evictByPattern(CacheNames.COMMITS, prefix + "*");
   }
 
-  /** Evicts repo-scoped caches (branches, tags). */
-  public void evictRepoScoped(final String owner, final String repo) {
-    final var key = owner + ":" + repo;
-    this.evictByPattern(CacheNames.BRANCHES, key);
-    this.evictByPattern(CacheNames.TAGS, key);
+  /** Evicts the branch list cache for a repo. */
+  public void evictBranches(final String owner, final String repo) {
+    this.evictByPattern(CacheNames.BRANCHES, owner + ":" + repo);
+  }
+
+  /** Evicts the tag list cache for a repo. */
+  public void evictTags(final String owner, final String repo) {
+    this.evictByPattern(CacheNames.TAGS, owner + ":" + repo);
   }
 
   private void evictByPattern(final String region, final String keyPattern) {

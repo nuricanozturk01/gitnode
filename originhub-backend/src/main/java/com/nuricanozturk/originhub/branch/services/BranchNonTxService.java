@@ -98,6 +98,7 @@ public class BranchNonTxService implements BranchProtocolService {
   }
 
   @Override
+  @CacheEvict(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
   public void setDefaultBranch(final String owner, final String repoName, final String branchName)
       throws IOException {
 

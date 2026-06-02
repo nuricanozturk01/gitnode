@@ -18,7 +18,13 @@ package com.nuricanozturk.originhub.shared.configs;
 import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import java.time.Duration;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.cache.Cache;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -27,22 +33,32 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJacksonJsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
-import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 
+@Slf4j
+@NullMarked
 @Configuration
 @EnableCaching
-public class CacheConfig {
+public class CacheConfig implements CachingConfigurer {
 
   private static final Duration DEFAULT_TTL = Duration.ofMinutes(10);
   private static final Duration BRANCH_TTL = Duration.ofMinutes(5);
   private static final Duration COMMIT_TTL = Duration.ofMinutes(10);
 
   @Bean
-  public RedisCacheManager cacheManager(
-      final RedisConnectionFactory connectionFactory, final ObjectMapper objectMapper) {
+  public RedisCacheManager cacheManager(final RedisConnectionFactory connectionFactory) {
+    final var ptv =
+        BasicPolymorphicTypeValidator.builder()
+            .allowIfSubType("com.nuricanozturk.originhub")
+            .allowIfSubType("java.util.")
+            .allowIfSubType("java.time.")
+            .allowIfSubType("java.lang.")
+            .build();
+
     final var jsonSerializer =
         RedisSerializationContext.SerializationPair.fromSerializer(
-            new GenericJacksonJsonRedisSerializer(objectMapper));
+            GenericJacksonJsonRedisSerializer.create(
+                b -> b.enableDefaultTyping(ptv).typePropertyName("@class")));
 
     final var defaultConfig =
         RedisCacheConfiguration.defaultCacheConfig()
@@ -62,5 +78,37 @@ public class CacheConfig {
         .cacheDefaults(defaultConfig)
         .withInitialCacheConfigurations(perRegion)
         .build();
+  }
+
+  @Override
+  public CacheErrorHandler errorHandler() {
+    return new CacheErrorHandler() {
+      @Override
+      public void handleCacheGetError(
+          final RuntimeException ex, final Cache cache, final Object key) {
+        log.debug("Cache GET failed — cache={} key={}: {}", cache.getName(), key, ex.getMessage());
+      }
+
+      @Override
+      public void handleCachePutError(
+          final RuntimeException ex,
+          final Cache cache,
+          final Object key,
+          final @Nullable Object value) {
+        log.debug("Cache PUT failed — cache={} key={}: {}", cache.getName(), key, ex.getMessage());
+      }
+
+      @Override
+      public void handleCacheEvictError(
+          final RuntimeException ex, final Cache cache, final Object key) {
+        log.debug(
+            "Cache EVICT failed — cache={} key={}: {}", cache.getName(), key, ex.getMessage());
+      }
+
+      @Override
+      public void handleCacheClearError(final RuntimeException ex, final Cache cache) {
+        log.debug("Cache CLEAR failed — cache={}: {}", cache.getName(), ex.getMessage());
+      }
+    };
   }
 }

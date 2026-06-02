@@ -15,7 +15,6 @@
  */
 package com.nuricanozturk.originhub.shared.cache;
 
-import com.nuricanozturk.originhub.shared.branch.events.BranchCreatedEvent;
 import com.nuricanozturk.originhub.shared.branch.events.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
@@ -58,21 +57,19 @@ public class CacheInvalidationListener {
 
   @EventListener
   @Async
-  void onBranchCreated(final BranchCreatedEvent event) {
-    this.repoRepository
-        .findByIdWithOwner(event.repoId())
-        .ifPresent(
-            repo ->
-                this.invalidator.evictRepoScoped(repo.getOwner().getUsername(), repo.getName()));
-  }
-
-  @EventListener
-  @Async
   void onBranchDeleted(final BranchDeletedEvent event) {
     this.repoRepository
         .findByIdWithOwner(event.repoId())
         .ifPresent(
-            repo ->
-                this.invalidator.evictRepoScoped(repo.getOwner().getUsername(), repo.getName()));
+            repo -> {
+              final var owner = repo.getOwner().getUsername();
+              final var repoName = repo.getName();
+              log.debug(
+                  "Cache eviction on branch delete: {}/{} branch={}",
+                  owner,
+                  repoName,
+                  event.branchName());
+              this.invalidator.evictBranchScoped(owner, repoName, event.branchName());
+            });
   }
 }

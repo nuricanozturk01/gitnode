@@ -76,8 +76,12 @@ public class GitPushEventPublisher implements PostReceiveHook {
         .ifPresent(
             repo -> {
               final var pusherName = pusher != null ? pusher : "unknown";
-              commands.stream()
-                  .filter(cmd -> cmd.getResult() == ReceiveCommand.Result.OK)
+              final var okCommands =
+                  commands.stream()
+                      .filter(cmd -> cmd.getResult() == ReceiveCommand.Result.OK)
+                      .toList();
+
+              okCommands.stream()
                   .filter(cmd -> cmd.getRefName().startsWith(Constants.R_HEADS))
                   .map(cmd -> cmd.getRefName().substring(Constants.R_HEADS.length()))
                   .distinct()
@@ -90,6 +94,14 @@ public class GitPushEventPublisher implements PostReceiveHook {
                         this.eventPublisher.publishEvent(
                             new RepoPushedEvent(repo.getId(), branch, pusherName));
                       });
+
+              final var hasTagPush =
+                  okCommands.stream()
+                      .anyMatch(cmd -> cmd.getRefName().startsWith(Constants.R_TAGS));
+              if (hasTagPush) {
+                log.debug("Tag push detected: {}/{} — evicting TAGS cache", owner, repoName);
+                this.cacheInvalidator.evictRepoScoped(owner, repoName);
+              }
             });
   }
 

@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.git.http;
 
+import com.nuricanozturk.originhub.shared.git.GitPushEventPublisher;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
@@ -46,10 +47,11 @@ public class HttpGitConfiguration {
 
   @Bean
   public ServletRegistrationBean<GitServlet> gitServletRegistration(
-      final RepoRepository repoRepository) {
+      final RepoRepository repoRepository, final GitPushEventPublisher pushEventPublisher) {
 
     final var gitServlet = new GitServlet();
-    gitServlet.setReceivePackFactory((_, repo) -> this.setReceivePackFactory(repo));
+    gitServlet.setReceivePackFactory(
+        (_, repo) -> this.setReceivePackFactory(repo, pushEventPublisher));
     gitServlet.setRepositoryResolver((_, name) -> this.setRepositoryResolver(repoRepository, name));
 
     final var registration = new ServletRegistrationBean<>(gitServlet, "/git/*");
@@ -100,12 +102,14 @@ public class HttpGitConfiguration {
     }
   }
 
-  private ReceivePack setReceivePackFactory(final Repository repository) {
+  private ReceivePack setReceivePackFactory(
+      final Repository repository, final GitPushEventPublisher pushEventPublisher) {
 
     final var rp = new ReceivePack(repository);
     rp.setAllowCreates(true);
     rp.setAllowDeletes(true);
     rp.setAllowNonFastForwards(true);
+    rp.setPostReceiveHook(pushEventPublisher);
 
     return rp;
   }

@@ -12,6 +12,15 @@ services:
     networks:
       - originhub
 
+  redis:
+    container_name: originhub-redis
+    image: redis:7-alpine
+    command: redis-server --save ""
+    ports:
+      - "6379:6379"
+    networks:
+      - originhub
+
 networks:
   originhub:
     name: originhub

@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.tag.services;
 
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -39,6 +40,8 @@ import org.eclipse.jgit.revwalk.RevTag;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -54,6 +57,7 @@ public class TagNonTxService {
   private final GitProvider gitProvider;
   private final ReleaseTxService releaseTxService;
 
+  @Cacheable(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public List<TagInfo> getAll(final String owner, final String repoName) throws IOException {
 
     final var repo = this.releaseTxService.findRepo(owner, repoName);
@@ -87,6 +91,7 @@ public class TagNonTxService {
     }
   }
 
+  @CacheEvict(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public TagInfo create(final String owner, final String repoName, final CreateTagForm form)
       throws IOException {
 
@@ -105,6 +110,7 @@ public class TagNonTxService {
     return this.get(owner, repoName, form.getName());
   }
 
+  @CacheEvict(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public void delete(final String owner, final String repoName, final String tagName)
       throws IOException {
 

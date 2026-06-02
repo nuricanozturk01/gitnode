@@ -190,30 +190,33 @@ export class RepoHomePage implements OnDestroy {
     this.allTags.set([]);
     this.latestRelease.set(null);
     try {
-      const branchesData = await this.branchService.getAll(owner, repo);
+      const defaultBranchFromContext = this.repoContext.defaultBranch();
+      const branchForTree = this.selectedBranch() || defaultBranchFromContext;
+
+      const [branchesData] = await Promise.all([
+        this.branchService.getAll(owner, repo),
+        this.loadTreeOnce(owner, repo, branchForTree),
+      ]);
       this.branches.set(branchesData);
 
-      if (branchesData.length === 0) {
+      if (branchesData.length === 0 || !branchesData.some((b) => b.lastCommitSha !== '')) {
         this.isEmpty.set(true);
         return;
       }
 
       const defaultBranch = branchesData.find((b) => b.isDefault);
-      const branchForTree = this.selectedBranch() || (defaultBranch?.name ?? this.repoContext.defaultBranch());
+      const resolvedBranch = this.selectedBranch() || (defaultBranch?.name ?? defaultBranchFromContext);
       if (!this.selectedBranch()) {
-        this.selectedBranch.set(branchForTree);
+        this.selectedBranch.set(resolvedBranch);
       }
 
-      const hasCommits = branchesData.some((b) => b.lastCommitSha !== '');
-      if (!hasCommits) {
-        this.isEmpty.set(true);
-        return;
+      if (resolvedBranch !== branchForTree) {
+        await this.loadTreeOnce(owner, repo, resolvedBranch);
       }
 
-      await this.loadTreeOnce(owner, repo, branchForTree);
       await Promise.all([
-        this.loadReadme(owner, repo, branchForTree),
-        this.loadLanguages(owner, repo, branchForTree),
+        this.loadReadme(owner, repo, resolvedBranch),
+        this.loadLanguages(owner, repo, resolvedBranch),
         this.tagService
           .getAll(owner, repo)
           .then((t) => this.allTags.set(t))

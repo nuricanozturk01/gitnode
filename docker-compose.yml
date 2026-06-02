@@ -18,6 +18,14 @@ services:
       - originhub
     restart: unless-stopped
 
+  redis:
+    container_name: originhub-redis
+    image: redis:7-alpine
+    command: redis-server --save ""
+    networks:
+      - originhub
+    restart: unless-stopped
+
   app:
     image: repo.repsy.io/nuricanozturk/originhub:latest
     container_name: originhub-app
@@ -37,12 +45,16 @@ services:
       OAUTH2_GITHUB_CLIENT_SECRET: ${OAUTH2_GITHUB_CLIENT_SECRET:-}
       OAUTH2_GITLAB_CLIENT_ID: ${OAUTH2_GITLAB_CLIENT_ID:-}
       OAUTH2_GITLAB_CLIENT_SECRET: ${OAUTH2_GITLAB_CLIENT_SECRET:-}
+      SPRING_DATA_REDIS_HOST: originhub-redis
+      SPRING_DATA_REDIS_PORT: 6379
       SPRING_PROFILES_ACTIVE: os
     volumes:
       - git-repos:/data/repos
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     networks:
       - originhub
     restart: unless-stopped

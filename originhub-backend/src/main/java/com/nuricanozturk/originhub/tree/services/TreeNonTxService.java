@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.tree.services;
 
 import static com.nuricanozturk.originhub.tree.utils.LanguageExtensionUtils.detectLanguage;
 
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.tree.dtos.BlobResponse;
@@ -56,6 +57,7 @@ import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -68,6 +70,9 @@ public class TreeNonTxService {
 
   private final GitProvider gitProvider;
 
+  @Cacheable(
+      cacheNames = CacheNames.TREE,
+      key = "#owner + ':' + #repoName + ':' + #branch + ':' + #path")
   public TreeResponse getTree(
       final String owner, final String repoName, final String branch, final String path)
       throws IOException {
@@ -88,6 +93,9 @@ public class TreeNonTxService {
     }
   }
 
+  @Cacheable(
+      cacheNames = CacheNames.BLOB,
+      key = "#owner + ':' + #repoName + ':' + #branch + ':' + #filePath")
   public BlobResponse getBlob(
       final String owner, final String repoName, final String branch, final String filePath)
       throws IOException {

@@ -3,6 +3,7 @@
 
 NETWORK       := originhub
 POSTGRES_NAME := originhub-postgres
+REDIS_NAME    := originhub-redis
 APP_NAME      := originhub
 IMAGE         := repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 
@@ -33,26 +34,27 @@ GITLAB_CLIENT_SECRET := YOUR_SECRET
 # ──────────────────────────────────────────────
 .PHONY: all up down start stop restart logs logs-db ps \
   network network-rm \
-  db app \
+  db redis app \
   clean purge help
 
 all: up
 
-up: network db app
+up: network db redis app
 	@echo "OriginHub is up → http://localhost:$(HTTP_PORT)  |  SSH :$(SSH_PORT)"
 
 down:
 	@echo "Stopping containers..."
-	-docker stop $(APP_NAME) $(POSTGRES_NAME)
-	-docker rm   $(APP_NAME) $(POSTGRES_NAME)
+	-docker stop $(APP_NAME) $(REDIS_NAME) $(POSTGRES_NAME)
+	-docker rm   $(APP_NAME) $(REDIS_NAME) $(POSTGRES_NAME)
 
 start:
 	docker start $(POSTGRES_NAME)
+	docker start $(REDIS_NAME)
 	@sleep 2
 	docker start $(APP_NAME)
 
 stop:
-	docker stop $(APP_NAME) $(POSTGRES_NAME)
+	docker stop $(APP_NAME) $(REDIS_NAME) $(POSTGRES_NAME)
 
 restart: stop start
 
@@ -86,6 +88,15 @@ db: network
 	@until docker exec $(POSTGRES_NAME) pg_isready -U $(POSTGRES_USER) > /dev/null 2>&1; do sleep 1; done
 	@echo "Postgres ready."
 
+redis: network
+	@docker ps -a --format "{{.Names}}" | grep -q "^$(REDIS_NAME)$$" \
+		&& echo "$(REDIS_NAME) already exists, skipping..." \
+		|| docker run -d \
+			--name $(REDIS_NAME) \
+			--network $(NETWORK) \
+			redis:7-alpine redis-server --save ""
+	@echo "Redis ready."
+
 app: network
 	@docker ps -a --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
 		&& echo "$(APP_NAME) already exists, skipping..." \
@@ -99,6 +110,8 @@ app: network
 			-e SPRING_DATASOURCE_PASSWORD=$(POSTGRES_PASS) \
 			-e ORIGINHUB_JWT_SECRET=$(JWT_SECRET) \
 			-e ORIGINHUB_GIT_REPO__ROOT=$(GIT_REPO_ROOT) \
+			-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
+			-e SPRING_DATA_REDIS_PORT=6379 \
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
@@ -115,6 +128,9 @@ clean: down network-rm
 purge: down network-rm
 	-docker volume rm $(REPOS_VOLUME)
 	@echo "All OriginHub resources removed."
+
+logs-redis:
+	docker logs -f $(REDIS_NAME)
 
 help:
 	@echo ""

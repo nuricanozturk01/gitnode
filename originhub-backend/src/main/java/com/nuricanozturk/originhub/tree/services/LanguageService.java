@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.tree.services;
 
 import static com.nuricanozturk.originhub.tree.utils.LanguageExtensionUtils.detectLanguage;
 
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.tree.dtos.LanguageStats;
@@ -32,6 +33,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -43,6 +45,7 @@ public class LanguageService {
 
   private final GitProvider gitProvider;
 
+  @Cacheable(cacheNames = CacheNames.LANGUAGES, key = "#owner + ':' + #repoName + ':' + #branch")
   public List<LanguageStats> detectLanguages(
       final String owner, final String repoName, final String branch) throws IOException {
 

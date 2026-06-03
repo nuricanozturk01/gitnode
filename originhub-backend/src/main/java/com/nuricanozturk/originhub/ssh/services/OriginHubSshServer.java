@@ -38,6 +38,7 @@ import org.apache.sshd.server.SshServer;
 import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider;
 import org.apache.sshd.server.session.ServerSession;
+import org.eclipse.jgit.transport.ReceivePack;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
@@ -223,11 +224,10 @@ public class OriginHubSshServer {
     final GitPackConfiguration packConfig =
         new GitPackConfiguration() {
           @Override
-          public void configureReceivePack(
-              final org.apache.sshd.server.session.ServerSession session,
-              final org.eclipse.jgit.transport.ReceivePack pack) {
+          public void configureReceivePack(final ServerSession session, final ReceivePack pack) {
             final var tenant = session.getAttribute(TENANT_KEY);
-            final var pusher = tenant != null ? tenant.getUsername() : null;
+            final var pusher = tenant.getUsername();
+
             pack.setPostReceiveHook(
                 (rp, commands) ->
                     OriginHubSshServer.this.pushEventPublisher.onPostReceive(rp, commands, pusher));
@@ -237,6 +237,7 @@ public class OriginHubSshServer {
     return new GitPackCommandFactory(resolver).withGitPackConfiguration(packConfig);
   }
 
+  @SuppressWarnings("all")
   private Tenant resolveTenant(final ServerSession session) throws IOException {
 
     final var tenant = session.getAttribute(TENANT_KEY);

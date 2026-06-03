@@ -185,7 +185,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: e2e-session
-          path: .auth
+          path: e2e/.auth
 
       - name: Wait for API health
         run: |

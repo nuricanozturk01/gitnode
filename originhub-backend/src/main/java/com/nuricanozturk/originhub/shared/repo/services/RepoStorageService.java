@@ -152,6 +152,7 @@ public class RepoStorageService {
     }
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored")
   public void deleteDirectory(final Path path) throws IOException {
 
     try (var walk = Files.walk(path)) {

@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.shared.repo.services;
 
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
@@ -50,6 +51,7 @@ public class RepoService {
   private final TenantRepository tenantRepository;
   private final RepoMapper repoMapper;
   private final ApplicationEventPublisher eventPublisher;
+  private final RepoStorageService repoStorageService;
 
   @Transactional
   public RepoInfo create(final UUID tenantId, final RepoForm form) {
@@ -84,7 +86,7 @@ public class RepoService {
     final var tenant = this.getTenantById(tenantId);
     final var repoOwner = this.getTenantByUsername(owner);
 
-    this.checkIsRepoOwnerOrAdmin(tenant, repoOwner);
+    this.checkIsRepoOwner(tenant, repoOwner);
 
     final var repo =
         this.repoRepository
@@ -146,9 +148,54 @@ public class RepoService {
             .findByOwnerIdAndName(tenantId, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
+    final var forkedFrom = repo.getForkedFrom();
     this.repoRepository.deleteById(repo.getId());
+    if (forkedFrom != null) {
+      this.repoRepository.decrementForkCount(forkedFrom.getId());
+    }
 
     this.eventPublisher.publishEvent(new RepoDeletedEvent(owner, repoName));
+  }
+
+  @Transactional
+  public RepoInfo fork(final UUID tenantId, final String sourceOwner, final String sourceRepoName) {
+
+    final var forker = this.getTenantById(tenantId);
+
+    final var sourceRepo =
+        this.repoRepository
+            .findByOwnerUsernameAndName(sourceOwner, sourceRepoName)
+            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
+
+    if (sourceRepo.isPrivate() && !sourceRepo.getOwner().getId().equals(tenantId)) {
+      throw new AccessNotAllowedException("repoAccessDenied");
+    }
+
+    if (sourceRepo.getOwner().getId().equals(tenantId)) {
+      throw new AccessNotAllowedException("cannotForkOwnRepo");
+    }
+
+    if (this.repoRepository.existsByForkedFromIdAndOwnerId(sourceRepo.getId(), tenantId)) {
+      throw new ItemAlreadyExistsException("alreadyForked");
+    }
+
+    final var fork = new Repo();
+    fork.setOwner(forker);
+    fork.setName(sourceRepoName);
+    fork.setDescription(sourceRepo.getDescription());
+    fork.setDefaultBranch(sourceRepo.getDefaultBranch());
+    fork.setTopics(sourceRepo.getTopics());
+    fork.setPrivate(sourceRepo.isPrivate());
+    fork.setForkedFrom(sourceRepo);
+
+    final var savedFork = this.repoRepository.save(fork);
+    this.repoRepository.incrementForkCount(sourceRepo.getId());
+    this.repoStorageService.forkRepo(
+        sourceOwner, sourceRepoName, forker.getUsername(), sourceRepoName);
+
+    this.eventPublisher.publishEvent(new RepoCreatedEvent(forker.getUsername(), sourceRepoName));
+
+    return this.repoMapper.toDto(savedFork);
   }
 
   public Page<RepoInfo> findAllByOwner(
@@ -162,7 +209,7 @@ public class RepoService {
             && ownerTenant.isPresent()
             && ownerTenant.get().getId().equals(requesterId);
 
-    if (isOwner || (requesterId != null && this.isAdmin(requesterId))) {
+    if (isOwner) {
       return this.repoRepository
           .findAllByOwnerUsername(owner, pageable)
           .map(this.repoMapper::toDto);
@@ -186,8 +233,7 @@ public class RepoService {
           requesterId != null
               && ownerTenant.isPresent()
               && ownerTenant.get().getId().equals(requesterId);
-      final boolean isAdmin = requesterId != null && this.isAdmin(requesterId);
-      if (!isOwner && !isAdmin) {
+      if (!isOwner) {
         throw new AccessNotAllowedException("repoAccessDenied");
       }
     }
@@ -208,17 +254,13 @@ public class RepoService {
       }
       final var tenant = this.getTenantById(tenantId);
       final var repoOwner = this.getTenantByUsername(owner);
-      this.checkIsRepoOwnerOrAdmin(tenant, repoOwner);
+      this.checkIsRepoOwner(tenant, repoOwner);
     }
   }
 
-  private boolean isAdmin(final UUID tenantId) {
-    return this.tenantRepository.findById(tenantId).map(Tenant::isAdmin).orElse(false);
-  }
+  private void checkIsRepoOwner(final Tenant tenant, final Tenant repoOwner) {
 
-  private void checkIsRepoOwnerOrAdmin(final Tenant tenant, final Tenant repoOwner) {
-
-    if (tenant.getId().equals(repoOwner.getId()) || tenant.isAdmin()) {
+    if (tenant.getId().equals(repoOwner.getId())) {
       return;
     }
 

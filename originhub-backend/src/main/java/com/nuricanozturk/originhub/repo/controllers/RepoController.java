@@ -117,4 +117,16 @@ public class RepoController {
 
     return ResponseEntity.ok(updatedRepo);
   }
+
+  @PostMapping("/{owner}/{repo}/fork")
+  public ResponseEntity<RepoInfo> fork(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      @PathVariable final String owner,
+      @PathVariable final String repo) {
+
+    final var tenantId = this.tokenService.extractUserId(authHeader);
+    final var forkedRepo = this.repoService.fork(tenantId, owner, repo);
+
+    return ResponseEntity.ok(forkedRepo);
+  }
 }

@@ -47,4 +47,14 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")
   void updateDefaultBranch(UUID repoId, String branchName);
+
+  boolean existsByForkedFromIdAndOwnerId(UUID forkedFromId, UUID ownerId);
+
+  @Modifying
+  @Query("UPDATE Repo r SET r.forkCount = r.forkCount + 1 WHERE r.id = :id")
+  void incrementForkCount(@Param("id") UUID id);
+
+  @Modifying
+  @Query("UPDATE Repo r SET r.forkCount = r.forkCount - 1 WHERE r.id = :id AND r.forkCount > 0")
+  void decrementForkCount(@Param("id") UUID id);
 }

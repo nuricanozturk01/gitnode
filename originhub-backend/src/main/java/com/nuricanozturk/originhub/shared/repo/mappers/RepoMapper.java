@@ -15,11 +15,13 @@
  */
 package com.nuricanozturk.originhub.shared.repo.mappers;
 
+import com.nuricanozturk.originhub.shared.repo.dtos.RepoForkedFromInfo;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
 import com.nuricanozturk.originhub.shared.repo.dtos.TenantRepoInfo;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingConstants;
@@ -32,13 +34,13 @@ public interface RepoMapper {
       target = "topics",
       expression =
           "java(repo.getTopics() != null ? repo.getTopics() : java.util.Collections.emptySet())")
-  /**
-   * Lombok exposes {@code isPrivate()} as bean property {@code private}; MapStruct would otherwise
-   * default to false.
-   */
   @Mapping(target = "isPrivate", source = "private")
   @Mapping(target = "isArchived", source = "archived")
+  @Mapping(target = "forkedFrom", source = "forkedFrom")
   RepoInfo toDto(Repo repo);
 
   TenantRepoInfo mapOwner(Tenant owner);
+
+  @Mapping(target = "ownerUsername", source = "owner.username")
+  @Nullable RepoForkedFromInfo mapForkedFrom(@Nullable Repo forkedFrom);
 }

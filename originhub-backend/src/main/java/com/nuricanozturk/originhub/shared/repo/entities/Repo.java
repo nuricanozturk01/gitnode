@@ -80,6 +80,14 @@ public class Repo {
   @Column(name = "topics")
   private Set<String> topics;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "forked_from_id")
+  private Repo forkedFrom;
+
+  @ColumnDefault("0")
+  @Column(name = "fork_count", nullable = false)
+  private int forkCount;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;

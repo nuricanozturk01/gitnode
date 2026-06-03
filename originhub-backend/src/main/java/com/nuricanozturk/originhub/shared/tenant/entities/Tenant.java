@@ -73,9 +73,6 @@ public class Tenant {
   @Column(name = "profile_readme", columnDefinition = "TEXT")
   private String profileReadme;
 
-  @Column(name = "is_admin")
-  private boolean isAdmin;
-
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;

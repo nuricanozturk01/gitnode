@@ -15,50 +15,33 @@
  */
 package com.nuricanozturk.originhub.shared.cache;
 
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-@Slf4j
 @Component
 @RequiredArgsConstructor
 @NullMarked
 public class RepoCacheInvalidator {
 
-  private final StringRedisTemplate redisTemplate;
+  private final CachePatternEvictor evictor;
 
   /** Evicts branch-scoped caches (tree, blob, languages, commits) for the given branch. */
   public void evictBranchScoped(final String owner, final String repo, final String branch) {
     final var prefix = owner + ":" + repo + ":" + branch;
-    this.evictByPattern(CacheNames.TREE, prefix + "*");
-    this.evictByPattern(CacheNames.BLOB, prefix + "*");
-    this.evictByPattern(CacheNames.LANGUAGES, owner + ":" + repo + ":" + branch);
-    this.evictByPattern(CacheNames.COMMITS, prefix + "*");
+    this.evictor.evict(CacheNames.TREE, prefix + "*");
+    this.evictor.evict(CacheNames.BLOB, prefix + "*");
+    this.evictor.evict(CacheNames.LANGUAGES, owner + ":" + repo + ":" + branch);
+    this.evictor.evict(CacheNames.COMMITS, prefix + "*");
   }
 
   /** Evicts the branch list cache for a repo. */
   public void evictBranches(final String owner, final String repo) {
-    this.evictByPattern(CacheNames.BRANCHES, owner + ":" + repo);
+    this.evictor.evict(CacheNames.BRANCHES, owner + ":" + repo);
   }
 
   /** Evicts the tag list cache for a repo. */
   public void evictTags(final String owner, final String repo) {
-    this.evictByPattern(CacheNames.TAGS, owner + ":" + repo);
-  }
-
-  private void evictByPattern(final String region, final String keyPattern) {
-    try {
-      final var redisPattern = region + "::" + keyPattern;
-      final Set<String> keys = this.redisTemplate.keys(redisPattern);
-      if (keys != null && !keys.isEmpty()) {
-        this.redisTemplate.delete(keys);
-        log.debug("Evicted {} key(s) matching pattern: {}", keys.size(), redisPattern);
-      }
-    } catch (final Exception ex) {
-      log.warn("Cache eviction failed for region={} pattern={}", region, keyPattern, ex);
-    }
+    this.evictor.evict(CacheNames.TAGS, owner + ":" + repo);
   }
 }

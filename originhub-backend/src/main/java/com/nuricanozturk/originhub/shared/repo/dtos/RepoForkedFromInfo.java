@@ -13,19 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.nuricanozturk.originhub.shared.cache;
+package com.nuricanozturk.originhub.shared.repo.dtos;
 
-public final class CacheNames {
+import java.io.Serializable;
+import java.util.UUID;
 
-  public static final String TREE = "repo:tree";
-  public static final String BLOB = "repo:blob";
-  public static final String LANGUAGES = "repo:languages";
-  public static final String COMMITS = "repo:commits";
-  public static final String BRANCHES = "repo:branches";
-  public static final String TAGS = "repo:tags";
-
-  public static final String SNIPPET_DETAIL = "snippet:detail";
-  public static final String SNIPPET_LIST_PUBLIC = "snippet:list:public";
-
-  private CacheNames() {}
-}
+public record RepoForkedFromInfo(UUID id, String ownerUsername, String name)
+    implements Serializable {}

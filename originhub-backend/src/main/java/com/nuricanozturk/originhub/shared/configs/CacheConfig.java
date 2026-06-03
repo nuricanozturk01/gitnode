@@ -47,6 +47,8 @@ public class CacheConfig implements CachingConfigurer {
   private static final Duration BLOB_TTL = Duration.ofMinutes(10);
   private static final Duration LANGUAGE_TTL = Duration.ofMinutes(10);
   private static final Duration COMMIT_TTL = Duration.ofMinutes(10);
+  private static final Duration SNIPPET_DETAIL_TTL = Duration.ofMinutes(10);
+  private static final Duration SNIPPET_LIST_PUBLIC_TTL = Duration.ofMinutes(2);
 
   @Bean
   public RedisCacheManager cacheManager(final RedisConnectionFactory connectionFactory) {
@@ -77,6 +79,8 @@ public class CacheConfig implements CachingConfigurer {
             CacheNames.TAGS, defaultConfig.entryTtl(TAG_TTL),
             CacheNames.TREE, defaultConfig.entryTtl(TREE_TTL),
             CacheNames.BLOB, defaultConfig.entryTtl(BLOB_TTL),
+            CacheNames.SNIPPET_DETAIL, defaultConfig.entryTtl(SNIPPET_DETAIL_TTL),
+            CacheNames.SNIPPET_LIST_PUBLIC, defaultConfig.entryTtl(SNIPPET_LIST_PUBLIC_TTL),
             CacheNames.LANGUAGES, defaultConfig.entryTtl(LANGUAGE_TTL),
             CacheNames.COMMITS, defaultConfig.entryTtl(COMMIT_TTL));
 

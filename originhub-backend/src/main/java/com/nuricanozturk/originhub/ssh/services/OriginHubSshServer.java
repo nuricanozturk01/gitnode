@@ -284,7 +284,7 @@ public class OriginHubSshServer {
         repoName,
         isWrite);
 
-    final var isOwner = tenant.getUsername().equalsIgnoreCase(owner) || tenant.isAdmin();
+    final var isOwner = tenant.getUsername().equalsIgnoreCase(owner);
 
     if (isWrite && !isOwner) {
       throw new IOException(

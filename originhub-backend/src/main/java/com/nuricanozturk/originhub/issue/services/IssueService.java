@@ -360,13 +360,9 @@ public class IssueService implements IssueQueryService {
     final boolean isRepoOwner =
         repoOwner.isPresent() && requesterId.equals(repoOwner.get().getId());
 
-    if (!isRepoOwner && !this.isAdmin(requesterId)) {
+    if (!isRepoOwner) {
       throw new AccessNotAllowedException("notAuthorized");
     }
-  }
-
-  private boolean isAdmin(final UUID tenantId) {
-    return this.tenantRepository.findById(tenantId).map(Tenant::isAdmin).orElse(false);
   }
 
   private String validateStatus(final String status) {

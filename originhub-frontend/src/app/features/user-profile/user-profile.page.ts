@@ -242,7 +242,6 @@ export class UserProfilePage {
         website: profile.website ?? null,
         location: profile.location ?? null,
         profileReadme: profile.profileReadme ?? null,
-        isAdmin: false,
         createdAt: '',
         updatedAt: '',
       });

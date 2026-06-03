@@ -22,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import org.jspecify.annotations.Nullable;
 
 @AllArgsConstructor
 @Getter
@@ -43,4 +44,6 @@ public class RepoInfo implements Serializable {
   private final boolean deleteHeadBranchOnPrClose;
   private final Instant createdAt;
   private final Instant updatedAt;
+  private final @Nullable RepoForkedFromInfo forkedFrom;
+  private final int forkCount;
 }

@@ -18,8 +18,6 @@ package com.nuricanozturk.originhub.shared.configs;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
-import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -28,7 +26,6 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -38,17 +35,12 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class RepoAccessInterceptor implements HandlerInterceptor {
 
   private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
 
   @Override
   public boolean preHandle(
       final HttpServletRequest request, final HttpServletResponse response, final Object handler)
       throws IOException {
-
-    if (!HttpMethod.GET.matches(request.getMethod())) {
-      return true;
-    }
 
     final var repo = this.resolvePrivateRepo(request);
     if (repo == null) {
@@ -83,10 +75,8 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
     try {
       final var requesterId = this.jwtUtils.extractUserId(authHeader);
       final boolean isOwner = repo.getOwner().getId().equals(requesterId);
-      final boolean isAdmin =
-          this.tenantRepository.findById(requesterId).map(Tenant::isAdmin).orElse(false);
 
-      return isOwner || isAdmin || this.writeForbidden(response);
+      return isOwner || this.writeForbidden(response);
     } catch (final Exception _) {
       return this.writeUnauthorized(response);
     }

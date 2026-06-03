@@ -180,7 +180,6 @@ public class AuthService {
     password.ifPresent(p -> tenant.setHash(DigestUtils.sha256Hex(p + salt)));
     tenant.setSalt(salt);
     tenant.setCreatedAt(Instant.now());
-    tenant.setAdmin(true);
 
     return this.tenantRepository.save(tenant);
   }

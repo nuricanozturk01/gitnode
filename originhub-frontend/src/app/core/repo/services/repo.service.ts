@@ -80,6 +80,12 @@ export class RepoService {
     return firstValueFrom(this.http.delete<void>(`${this.api}/${owner}/${repo}`));
   }
 
+  fork(owner: string, repo: string): Promise<RepoInfo> {
+    return firstValueFrom(this.http.post<RepoInfo>(`${this.api}/${owner}/${repo}/fork`, {})).then((r) =>
+      this.normalizeRepo(r),
+    );
+  }
+
   /** Normalize visibility; prefer explicit `isPrivate`, then Jackson's `private` bean name. */
   private normalizeRepo(raw: RepoInfo & { private?: boolean }): RepoInfo {
     let isPrivate: boolean | undefined;

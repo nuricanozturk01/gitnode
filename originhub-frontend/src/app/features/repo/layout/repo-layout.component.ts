@@ -27,6 +27,7 @@ import { PullRequestService } from '../../../core/pull-request/services/pull-req
 import { IssueService } from '../../../core/issue/services/issue.service';
 import { ReleaseService } from '../../../core/release/services/release.service';
 import { TokenService } from '../../../core/auth/services/token.service';
+import { ToastService } from '../../../core/toast/toast.service';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -45,8 +46,12 @@ export class RepoLayoutComponent {
   private readonly issueService = inject(IssueService);
   private readonly releaseService = inject(ReleaseService);
   private readonly tokenService = inject(TokenService);
+  private readonly toastService = inject(ToastService);
 
   readonly loading = signal(true);
+  readonly isForking = signal(false);
+  readonly accessDenied = signal(false);
+  readonly notFound = signal(false);
   /** Shared with settings and child routes — updates when visibility or metadata changes. */
   readonly repo = this.repoContext.repo;
 
@@ -56,6 +61,11 @@ export class RepoLayoutComponent {
   readonly prCount = signal(0);
   readonly issueCount = signal(0);
   readonly releaseCount = signal(0);
+
+  readonly isLoggedIn = computed(() => this.repoContext.isLoggedIn());
+  readonly canFork = computed(
+    () => this.isLoggedIn() && !this.repoContext.canEdit() && !(this.repo()?.isPrivate ?? true),
+  );
 
   constructor() {
     this.route.paramMap
@@ -71,6 +81,8 @@ export class RepoLayoutComponent {
   private async loadRepo(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
+    this.accessDenied.set(false);
+    this.notFound.set(false);
     if (!owner || !repo) {
       this.loading.set(false);
       this.repoContext.clearRepo();
@@ -89,17 +101,46 @@ export class RepoLayoutComponent {
       this.issueCount.set(0);
       this.releaseCount.set(0);
     } catch (err) {
-      if (err instanceof HttpErrorResponse && (err.status === 401 || err.status === 403)) {
-        if (!this.tokenService.getAccessToken()) {
+      this.repoContext.clearRepo();
+      if (err instanceof HttpErrorResponse) {
+        if (err.status === 401 && !this.tokenService.getAccessToken()) {
           this.router.navigate(['/login']);
           return;
         }
+        if (err.status === 401 || err.status === 403) {
+          this.accessDenied.set(true);
+        } else if (err.status === 404) {
+          this.notFound.set(true);
+        } else {
+          this.notFound.set(true);
+        }
+      } else {
+        this.notFound.set(true);
       }
-      this.repoContext.clearRepo();
     } finally {
       this.loading.set(false);
     }
     void this.loadTabCounts(owner, repo, routeKey);
+  }
+
+  async forkRepo(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo || this.isForking()) return;
+    this.isForking.set(true);
+    try {
+      const forked = await this.repoService.fork(owner, repo);
+      this.toastService.success('Repository forked');
+      void this.router.navigate(['/', forked.owner?.username ?? this.tokenService.getUsername(), forked.name]);
+    } catch (err) {
+      if (err instanceof HttpErrorResponse && err.status === 409) {
+        this.toastService.error('You have already forked this repository');
+      } else {
+        this.toastService.error('Failed to fork repository');
+      }
+    } finally {
+      this.isForking.set(false);
+    }
   }
 
   private async loadTabCounts(owner: string, repo: string, routeKey: string): Promise<void> {

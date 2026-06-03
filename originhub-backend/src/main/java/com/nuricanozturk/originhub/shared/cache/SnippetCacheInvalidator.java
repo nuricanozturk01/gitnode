@@ -15,17 +15,18 @@
  */
 package com.nuricanozturk.originhub.shared.cache;
 
-public final class CacheNames {
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
+import org.springframework.stereotype.Component;
 
-  public static final String TREE = "repo:tree";
-  public static final String BLOB = "repo:blob";
-  public static final String LANGUAGES = "repo:languages";
-  public static final String COMMITS = "repo:commits";
-  public static final String BRANCHES = "repo:branches";
-  public static final String TAGS = "repo:tags";
+@Component
+@RequiredArgsConstructor
+@NullMarked
+public class SnippetCacheInvalidator {
 
-  public static final String SNIPPET_DETAIL = "snippet:detail";
-  public static final String SNIPPET_LIST_PUBLIC = "snippet:list:public";
+  private final CachePatternEvictor evictor;
 
-  private CacheNames() {}
+  public void evictPublicList() {
+    this.evictor.evict(CacheNames.SNIPPET_LIST_PUBLIC, "*");
+  }
 }

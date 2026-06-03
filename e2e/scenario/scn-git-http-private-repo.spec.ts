@@ -25,11 +25,10 @@ test.describe('SCN-PRIV-GIT — private repo HTTP Git', () => {
       password: E2E_PASSWORD,
     });
 
-    gitClone(remote, workDir);
-    writeFileAndPush(workDir, 'private-push.txt', 'private push\n', 'scenario: private push');
-
     try {
-      expect(workDir).toBeTruthy();
+      gitClone(remote, workDir);
+      writeFileAndPush(workDir, 'private-push.txt', 'private push\n', 'scenario: private push');
+      // If writeFileAndPush does not throw, clone + commit + push all succeeded.
     } finally {
       removeWorkDir(workDir);
     }

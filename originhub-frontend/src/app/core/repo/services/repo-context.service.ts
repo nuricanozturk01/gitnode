@@ -18,6 +18,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { TokenService } from '../../../core/auth/services/token.service';
 import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
 import type { ReleaseInfo } from '../../../domain/release/models/release-info.model';
+import type { CollaboratorPermission } from '../../../domain/collaborator/collaborator.model';
 
 @Injectable({ providedIn: 'root' })
 export class RepoContextService {
@@ -31,6 +32,9 @@ export class RepoContextService {
   readonly openIssueCount = signal(0);
   readonly defaultBranch = computed(() => this.repo()?.defaultBranch ?? 'main');
 
+  /** Active collaborator permissions for the current user (empty if owner or not a collaborator). */
+  readonly collaboratorPermissions = signal<CollaboratorPermission[]>([]);
+
   readonly isLoggedIn = computed(() => this.tokenService.isLoggedIn());
 
   readonly canEdit = computed(() => {
@@ -38,6 +42,24 @@ export class RepoContextService {
     const u = this.tokenService.getUsername();
     return !!(r && u && r.owner.username.toLowerCase() === u.toLowerCase());
   });
+
+  /** Returns true if current user is owner OR has the given collaborator permission. */
+  hasPermission(perm: CollaboratorPermission): boolean {
+    if (this.canEdit()) return true;
+    const perms = this.collaboratorPermissions();
+    return perms.includes('ADMIN') || perms.includes(perm);
+  }
+
+  /** Returns true if user can view Settings tab (owner, SETTINGS_READ, SETTINGS_WRITE, or ADMIN). */
+  readonly canViewSettings = computed(
+    () => this.canEdit() || this.hasPermission('SETTINGS_READ') || this.hasPermission('SETTINGS_WRITE'),
+  );
+
+  /** Can change settings that require SETTINGS_WRITE (description, topics, PR options, webhooks). */
+  readonly canWriteSettings = computed(() => this.canEdit() || this.hasPermission('SETTINGS_WRITE'));
+
+  /** Accepted collaborator on this repo (not the owner). */
+  readonly isCollaborator = computed(() => !this.canEdit() && this.collaboratorPermissions().length > 0);
 
   setRepoBundle(
     routeKey: string,
@@ -57,5 +79,6 @@ export class RepoContextService {
     this.releases.set(null);
     this.openPrCount.set(0);
     this.openIssueCount.set(0);
+    this.collaboratorPermissions.set([]);
   }
 }

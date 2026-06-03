@@ -24,5 +24,8 @@ public final class CacheNames {
   public static final String BRANCHES = "repo:branches";
   public static final String TAGS = "repo:tags";
 
+  public static final String SNIPPET_DETAIL = "snippet:detail";
+  public static final String SNIPPET_LIST_PUBLIC = "snippet:list:public";
+
   private CacheNames() {}
 }

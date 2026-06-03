@@ -16,10 +16,9 @@
 package com.nuricanozturk.originhub.shared.configs;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
-import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
-import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -28,7 +27,6 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -38,17 +36,13 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class RepoAccessInterceptor implements HandlerInterceptor {
 
   private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
+  private final CollaboratorAccessPort collaboratorAccessPort;
 
   @Override
   public boolean preHandle(
       final HttpServletRequest request, final HttpServletResponse response, final Object handler)
       throws IOException {
-
-    if (!HttpMethod.GET.matches(request.getMethod())) {
-      return true;
-    }
 
     final var repo = this.resolvePrivateRepo(request);
     if (repo == null) {
@@ -76,17 +70,46 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
       throws IOException {
 
     final var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       return this.writeForbidden(response);
     }
 
+    return this.checkAuthorization(authHeader, request, response, repo);
+  }
+
+  private boolean checkAuthorization(
+      final String authHeader,
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final Repo repo)
+      throws IOException {
+
     try {
       final var requesterId = this.jwtUtils.extractUserId(authHeader);
       final boolean isOwner = repo.getOwner().getId().equals(requesterId);
-      final boolean isAdmin =
-          this.tenantRepository.findById(requesterId).map(Tenant::isAdmin).orElse(false);
 
-      return isOwner || isAdmin || this.writeForbidden(response);
+      if (isOwner) {
+        return true;
+      }
+
+      final boolean isCollaborator =
+          this.collaboratorAccessPort.isActiveCollaborator(repo.getId(), requesterId);
+
+      if (isCollaborator) {
+        return true;
+      }
+
+      final boolean isInvitationEndpoint =
+          request.getRequestURI().endsWith("/collaborators/invitation")
+              || request.getRequestURI().contains("/collaborators/invitation/");
+
+      if (isInvitationEndpoint
+          && this.collaboratorAccessPort.hasPendingInvitation(repo.getId(), requesterId)) {
+        return true;
+      }
+
+      return this.writeForbidden(response);
     } catch (final Exception _) {
       return this.writeUnauthorized(response);
     }

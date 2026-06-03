@@ -15,11 +15,13 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookUpdateForm;
@@ -43,9 +45,16 @@ public class WebhookService {
 
   private final WebhookRepository webhookRepository;
   private final RepoRepository repoRepository;
+  private final RepoService repoService;
   private final WebhookMapper webhookMapper;
 
-  public List<WebhookInfo> list(final String owner, final String repoName) {
+  public List<WebhookInfo> list(final UUID requesterId, final String owner, final String repoName) {
+    this.repoService.assertUserHasAnyPermission(
+        requesterId,
+        owner,
+        repoName,
+        CollaboratorPermission.SETTINGS_READ,
+        CollaboratorPermission.SETTINGS_WRITE);
     final var repoId = this.resolveRepoId(owner, repoName);
     return this.webhookRepository.findAllByRepoId(repoId).stream()
         .map(this.webhookMapper::toInfo)
@@ -53,7 +62,10 @@ public class WebhookService {
   }
 
   @Transactional
-  public WebhookInfo create(final String owner, final String repoName, final WebhookForm form) {
+  public WebhookInfo create(
+      final UUID requesterId, final String owner, final String repoName, final WebhookForm form) {
+    this.repoService.assertUserHasPermission(
+        requesterId, owner, repoName, CollaboratorPermission.SETTINGS_WRITE);
     final var repoId = this.resolveRepoId(owner, repoName);
     if (this.webhookRepository.countByRepoId(repoId) >= WebhookValidator.MAX_WEBHOOKS) {
       throw new ErrorOccurredException(
@@ -76,10 +88,13 @@ public class WebhookService {
 
   @Transactional
   public WebhookInfo update(
+      final UUID requesterId,
       final String owner,
       final String repoName,
       final UUID webhookId,
       final WebhookUpdateForm form) {
+    this.repoService.assertUserHasPermission(
+        requesterId, owner, repoName, CollaboratorPermission.SETTINGS_WRITE);
     final var repoId = this.resolveRepoId(owner, repoName);
     final var webhook = this.findWebhook(webhookId, repoId);
 
@@ -101,7 +116,10 @@ public class WebhookService {
   }
 
   @Transactional
-  public void delete(final String owner, final String repoName, final UUID webhookId) {
+  public void delete(
+      final UUID requesterId, final String owner, final String repoName, final UUID webhookId) {
+    this.repoService.assertUserHasPermission(
+        requesterId, owner, repoName, CollaboratorPermission.SETTINGS_WRITE);
     final var repoId = this.resolveRepoId(owner, repoName);
     final var webhook = this.findWebhook(webhookId, repoId);
     this.webhookRepository.delete(webhook);

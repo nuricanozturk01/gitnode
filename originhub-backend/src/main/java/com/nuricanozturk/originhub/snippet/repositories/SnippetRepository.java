@@ -72,6 +72,10 @@ public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
   void incrementForkCount(@Param("id") UUID id);
 
   @Modifying
+  @Query("UPDATE Snippet s SET s.forkCount = s.forkCount - 1 WHERE s.id = :id AND s.forkCount > 0")
+  void decrementForkCount(@Param("id") UUID id);
+
+  @Modifying
   @Query("UPDATE Snippet s SET s.commentCount = s.commentCount + 1 WHERE s.id = :id")
   void incrementCommentCount(@Param("id") UUID id);
 

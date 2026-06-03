@@ -27,6 +27,7 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurred
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
@@ -52,10 +53,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("WebhookService unit tests")
 class WebhookServiceTest {
 
+  private static final String OWNER = "alice";
+  private static final String REPO_NAME = "demo";
+  private static final UUID REQUESTER_ID = UUID.randomUUID();
   private static final Set<String> VALID_EVENTS = Set.of(WebhookEventType.REPO_CREATED.name());
 
   @Mock private WebhookRepository webhookRepository;
   @Mock private RepoRepository repoRepository;
+  @Mock private RepoService repoService;
   @Mock private WebhookMapper webhookMapper;
 
   @InjectMocks private WebhookService webhookService;
@@ -64,10 +69,9 @@ class WebhookServiceTest {
   @DisplayName("create throws ItemNotFoundException when repository does not exist")
   void create_throws_whenRepoMissing() {
     WebhookForm form = new WebhookForm("https://hook.test", null, true, VALID_EVENTS);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "missing"))
-        .thenReturn(Optional.empty());
+    when(repoRepository.findByOwnerUsernameAndName(OWNER, "missing")).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> webhookService.create("alice", "missing", form))
+    assertThatThrownBy(() -> webhookService.create(REQUESTER_ID, OWNER, "missing", form))
         .isInstanceOf(ItemNotFoundException.class)
         .hasMessageContaining("Repository not found");
   }
@@ -80,7 +84,7 @@ class WebhookServiceTest {
     when(webhookRepository.countByRepoId(repoId)).thenReturn(WebhookValidator.MAX_WEBHOOKS);
     WebhookForm form = new WebhookForm("https://hook.test", null, true, VALID_EVENTS);
 
-    assertThatThrownBy(() -> webhookService.create("alice", "demo", form))
+    assertThatThrownBy(() -> webhookService.create(REQUESTER_ID, OWNER, REPO_NAME, form))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("Maximum of");
   }
@@ -94,7 +98,7 @@ class WebhookServiceTest {
     when(webhookRepository.existsByRepoIdAndUrl(repoId, "https://hook.test")).thenReturn(true);
     WebhookForm form = new WebhookForm("https://hook.test", null, true, VALID_EVENTS);
 
-    assertThatThrownBy(() -> webhookService.create("alice", "demo", form))
+    assertThatThrownBy(() -> webhookService.create(REQUESTER_ID, OWNER, REPO_NAME, form))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining(WebhookValidator.ERR_URL_EXISTS);
   }
@@ -107,7 +111,7 @@ class WebhookServiceTest {
     when(webhookRepository.countByRepoId(repoId)).thenReturn(0);
     WebhookForm form = new WebhookForm("https://hook.test", null, true, Set.of("NOT_A_REAL_EVENT"));
 
-    assertThatThrownBy(() -> webhookService.create("alice", "demo", form))
+    assertThatThrownBy(() -> webhookService.create(REQUESTER_ID, OWNER, REPO_NAME, form))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("Invalid event types");
   }
@@ -134,7 +138,7 @@ class WebhookServiceTest {
     when(webhookMapper.toInfo(saved)).thenReturn(info);
     WebhookForm form = new WebhookForm("https://hook.test", "secret", true, VALID_EVENTS);
 
-    WebhookInfo result = webhookService.create("alice", "demo", form);
+    WebhookInfo result = webhookService.create(REQUESTER_ID, OWNER, REPO_NAME, form);
 
     assertThat(result.url()).isEqualTo("https://hook.test");
   }
@@ -151,7 +155,8 @@ class WebhookServiceTest {
     when(webhookRepository.findById(webhook.getId())).thenReturn(Optional.of(webhook));
     WebhookUpdateForm form = new WebhookUpdateForm(null, null, null, null);
 
-    assertThatThrownBy(() -> webhookService.update("alice", "demo", webhook.getId(), form))
+    assertThatThrownBy(
+            () -> webhookService.update(REQUESTER_ID, OWNER, REPO_NAME, webhook.getId(), form))
         .isInstanceOf(AccessNotAllowedException.class)
         .hasMessageContaining(WebhookValidator.ERR_NOT_AUTHORIZED);
   }
@@ -166,7 +171,7 @@ class WebhookServiceTest {
     webhook.setRepoId(repoId);
     when(webhookRepository.findById(webhook.getId())).thenReturn(Optional.of(webhook));
 
-    webhookService.delete("alice", "demo", webhook.getId());
+    webhookService.delete(REQUESTER_ID, OWNER, REPO_NAME, webhook.getId());
 
     verify(webhookRepository).delete(webhook);
   }
@@ -190,7 +195,7 @@ class WebhookServiceTest {
             .build();
     when(webhookMapper.toInfo(webhook)).thenReturn(info);
 
-    var result = webhookService.list("alice", "demo");
+    var result = webhookService.list(REQUESTER_ID, OWNER, REPO_NAME);
 
     assertThat(result).hasSize(1);
     verify(webhookRepository, never()).save(any());
@@ -200,8 +205,8 @@ class WebhookServiceTest {
     Repo repo = new Repo();
     repo.setId(repoId);
     Tenant owner = new Tenant();
-    owner.setUsername("alice");
+    owner.setUsername(OWNER);
     repo.setOwner(owner);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
+    when(repoRepository.findByOwnerUsernameAndName(OWNER, REPO_NAME)).thenReturn(Optional.of(repo));
   }
 }

@@ -105,7 +105,6 @@ class ProfileServiceTest {
             null,
             null,
             null,
-            false,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
@@ -154,7 +153,6 @@ class ProfileServiceTest {
             null,
             null,
             null,
-            false,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
@@ -186,7 +184,6 @@ class ProfileServiceTest {
                 null,
                 null,
                 null,
-                false,
                 Instant.EPOCH,
                 Instant.EPOCH));
 
@@ -298,7 +295,6 @@ class ProfileServiceTest {
             null,
             null,
             null,
-            false,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
@@ -403,7 +399,6 @@ class ProfileServiceTest {
             "https://site.com",
             "Istanbul",
             "# Me",
-            false,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
@@ -443,7 +438,6 @@ class ProfileServiceTest {
             null,
             null,
             null,
-            false,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));

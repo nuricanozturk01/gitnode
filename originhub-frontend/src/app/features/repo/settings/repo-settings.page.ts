@@ -24,8 +24,15 @@ import { RepoContextService } from '../../../core/repo/services/repo-context.ser
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { WebhookService } from '../../../core/webhook/webhook.service';
+import { CollaboratorService } from '../../../core/collaborator/collaborator.service';
 import type { WebhookInfo } from '../../../domain/webhook/webhook.model';
 import { WEBHOOK_EVENT_GROUPS } from '../../../domain/webhook/webhook.model';
+import type {
+  CollaboratorInfo,
+  CollaboratorPage,
+  CollaboratorPermission,
+} from '../../../domain/collaborator/collaborator.model';
+import { ALL_PERMISSIONS } from '../../../domain/collaborator/collaborator.model';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,8 +50,9 @@ export class RepoSettingsPage {
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
   private readonly webhookService = inject(WebhookService);
+  private readonly collaboratorService = inject(CollaboratorService);
 
-  readonly activeTab = signal<'general' | 'pullRequests' | 'webhooks' | 'danger'>('general');
+  readonly activeTab = signal<'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'danger'>('general');
 
   readonly generalName = signal('');
   readonly generalDescription = signal('');
@@ -58,6 +66,31 @@ export class RepoSettingsPage {
   readonly deleteHeadBranchOnPrClose = signal(false);
   readonly savingPullSettings = signal(false);
   readonly pullSettingsError = signal<string | null>(null);
+
+  // Collaborators
+  readonly collaboratorPage = signal<CollaboratorPage | null>(null);
+  readonly collaborators = computed(() => this.collaboratorPage()?.content ?? []);
+  readonly collaboratorCurrentPage = signal(0);
+  readonly collaboratorTotalPages = computed(() => this.collaboratorPage()?.totalPages ?? 0);
+  readonly collaboratorError = signal<string | null>(null);
+  readonly inviteUsername = signal('');
+  readonly invitePermissions = signal<CollaboratorPermission[]>(['READ']);
+  readonly inviting = signal(false);
+  readonly allPermissions = ALL_PERMISSIONS;
+  readonly editingPermissionsFor = signal<string | null>(null);
+  readonly editPermissions = signal<CollaboratorPermission[]>([]);
+
+  // User search autocomplete
+  readonly userSuggestions = signal<{ username: string; displayName: string | null; avatarUrl: string }[]>([]);
+  readonly showSuggestions = signal(false);
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Invite link state (per-collaborator)
+  readonly generatingLinkFor = signal<string | null>(null);
+  readonly generatedLinks = signal<Record<string, string>>({});
+
+  // Send invitation email state (per-collaborator)
+  readonly sendingEmailFor = signal<string | null>(null);
 
   // Webhook state
   readonly webhooks = signal<WebhookInfo[]>([]);
@@ -82,6 +115,8 @@ export class RepoSettingsPage {
   readonly repoName = computed(() => this.repoRouteParams().get('repo') ?? '');
 
   readonly repo = this.repoContext.repo;
+  readonly canWriteSettings = this.repoContext.canWriteSettings;
+  readonly isRepoOwner = this.repoContext.canEdit;
 
   constructor() {
     effect(() => {
@@ -92,6 +127,7 @@ export class RepoSettingsPage {
       if (tab === 'pullRequests') this.syncPullSettingsFromRepo();
       if (tab === 'danger') this.syncVisibilityFromRepo();
       if (tab === 'webhooks') void this.loadWebhooks();
+      if (tab === 'collaborators') void this.loadCollaborators();
     });
   }
 
@@ -121,6 +157,7 @@ export class RepoSettingsPage {
   }
 
   addTopic(): void {
+    if (!this.canWriteSettings()) return;
     const value = this.topicInput().trim().toLowerCase();
     if (!value) return;
     const topics = this.generalTopics();
@@ -132,6 +169,7 @@ export class RepoSettingsPage {
   }
 
   removeTopic(topic: string): void {
+    if (!this.canWriteSettings()) return;
     this.generalTopics.set(this.generalTopics().filter((t) => t !== topic));
   }
 
@@ -142,7 +180,7 @@ export class RepoSettingsPage {
     }
   }
 
-  setTab(t: 'general' | 'pullRequests' | 'webhooks' | 'danger'): void {
+  setTab(t: 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'danger'): void {
     this.activeTab.set(t);
     const r = this.repo();
     if (!r) return;
@@ -150,6 +188,7 @@ export class RepoSettingsPage {
     if (t === 'pullRequests') this.syncPullSettingsFromRepo();
     if (t === 'danger') this.syncVisibilityFromRepo();
     if (t === 'webhooks') void this.loadWebhooks();
+    if (t === 'collaborators') void this.loadCollaborators();
   }
 
   onPullMergeToggle(checked: boolean): void {
@@ -190,6 +229,7 @@ export class RepoSettingsPage {
   }
 
   startEditWebhook(w: WebhookInfo): void {
+    if (!this.canWriteSettings()) return;
     this.editingWebhookId.set(w.id);
     this.showAddWebhook.set(false);
     this.newWebhookUrl.set(w.url);
@@ -208,6 +248,7 @@ export class RepoSettingsPage {
   }
 
   async saveWebhook(): Promise<void> {
+    if (!this.canWriteSettings()) return;
     const owner = this.owner();
     const repo = this.repoName();
     const url = this.newWebhookUrl().trim();
@@ -244,6 +285,7 @@ export class RepoSettingsPage {
   }
 
   async toggleWebhookEnabled(w: WebhookInfo): Promise<void> {
+    if (!this.canWriteSettings()) return;
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) return;
@@ -256,6 +298,7 @@ export class RepoSettingsPage {
   }
 
   async deleteWebhook(id: string): Promise<void> {
+    if (!this.canWriteSettings()) return;
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) return;
@@ -274,10 +317,11 @@ export class RepoSettingsPage {
   }
 
   get canAddWebhook(): boolean {
-    return this.webhooks().length < RepoSettingsPage.MAX_WEBHOOKS;
+    return this.canWriteSettings() && this.webhooks().length < RepoSettingsPage.MAX_WEBHOOKS;
   }
 
   async savePullSettings(): Promise<void> {
+    if (!this.canWriteSettings()) return;
     const owner = this.owner();
     const repoName = this.repoName();
     const r = this.repo();
@@ -305,6 +349,7 @@ export class RepoSettingsPage {
   }
 
   async saveGeneral(): Promise<void> {
+    if (!this.canWriteSettings()) return;
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) return;
@@ -348,6 +393,7 @@ export class RepoSettingsPage {
   }
 
   async saveVisibility(): Promise<void> {
+    if (!this.isRepoOwner()) return;
     const owner = this.owner();
     const repo = this.repoName();
     const r = this.repo();
@@ -381,7 +427,217 @@ export class RepoSettingsPage {
     }
   }
 
+  async loadCollaborators(page = 0): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    this.collaboratorCurrentPage.set(page);
+    try {
+      const data = await this.collaboratorService.list(owner, repo, page);
+      this.collaboratorPage.set(data);
+    } catch {
+      this.collaboratorError.set('Failed to load collaborators');
+    }
+  }
+
+  collaboratorNextPage(): void {
+    if (this.collaboratorCurrentPage() < this.collaboratorTotalPages() - 1) {
+      void this.loadCollaborators(this.collaboratorCurrentPage() + 1);
+    }
+  }
+
+  collaboratorPrevPage(): void {
+    if (this.collaboratorCurrentPage() > 0) {
+      void this.loadCollaborators(this.collaboratorCurrentPage() - 1);
+    }
+  }
+
+  toggleInvitePermission(perm: CollaboratorPermission): void {
+    if (perm === 'READ') return;
+    const current = this.invitePermissions();
+    if (perm === 'ADMIN') {
+      if (current.includes('ADMIN')) {
+        this.invitePermissions.set(['READ']);
+      } else {
+        this.invitePermissions.set(this.allPermissions.map((p) => p.value));
+      }
+      return;
+    }
+    if (current.includes(perm)) {
+      this.invitePermissions.set(current.filter((p) => p !== perm && p !== 'ADMIN'));
+    } else {
+      this.invitePermissions.set([...current.filter((p) => p !== 'ADMIN'), perm]);
+    }
+  }
+
+  async inviteCollaborator(): Promise<void> {
+    if (!this.isRepoOwner()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    const username = this.inviteUsername().trim();
+    if (!owner || !repo || !username) return;
+    this.inviting.set(true);
+    this.collaboratorError.set(null);
+    try {
+      await this.collaboratorService.invite(owner, repo, {
+        username,
+        permissions: this.invitePermissions(),
+      });
+      void this.loadCollaborators(this.collaboratorCurrentPage());
+      this.inviteUsername.set('');
+      this.invitePermissions.set(['READ']);
+      this.userSuggestions.set([]);
+      this.showSuggestions.set(false);
+      this.toast.success(`Invitation sent to ${username}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to invite collaborator';
+      this.collaboratorError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.inviting.set(false);
+    }
+  }
+
+  startEditPermissions(collab: CollaboratorInfo): void {
+    if (!this.isRepoOwner()) return;
+    this.editingPermissionsFor.set(collab.username);
+    this.editPermissions.set([...collab.permissions]);
+  }
+
+  cancelEditPermissions(): void {
+    this.editingPermissionsFor.set(null);
+    this.editPermissions.set([]);
+  }
+
+  toggleEditPermission(perm: CollaboratorPermission): void {
+    if (perm === 'READ') return;
+    const current = this.editPermissions();
+    if (perm === 'ADMIN') {
+      if (current.includes('ADMIN')) {
+        this.editPermissions.set(['READ']);
+      } else {
+        this.editPermissions.set(this.allPermissions.map((p) => p.value));
+      }
+      return;
+    }
+    if (current.includes(perm)) {
+      this.editPermissions.set(current.filter((p) => p !== perm && p !== 'ADMIN'));
+    } else {
+      this.editPermissions.set([...current.filter((p) => p !== 'ADMIN'), perm]);
+    }
+  }
+
+  async savePermissions(username: string): Promise<void> {
+    if (!this.isRepoOwner()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    try {
+      const updated = await this.collaboratorService.updatePermissions(owner, repo, username, {
+        permissions: this.editPermissions(),
+      });
+      this.collaboratorPage.update((page) =>
+        page ? { ...page, content: page.content.map((c) => (c.username === username ? updated : c)) } : page,
+      );
+      this.cancelEditPermissions();
+      this.toast.success('Permissions updated');
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Failed to update permissions');
+    }
+  }
+
+  onInviteUsernameInput(value: string): void {
+    this.inviteUsername.set(value);
+    this.showSuggestions.set(false);
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+    if (value.trim().length < 3) {
+      this.userSuggestions.set([]);
+      return;
+    }
+    this.searchTimer = setTimeout(() => void this.fetchUserSuggestions(value.trim()), 300);
+  }
+
+  private async fetchUserSuggestions(q: string): Promise<void> {
+    try {
+      const results = await this.collaboratorService.searchUsers(q);
+      this.userSuggestions.set(results);
+      this.showSuggestions.set(results.length > 0);
+    } catch {
+      this.userSuggestions.set([]);
+    }
+  }
+
+  selectSuggestion(username: string): void {
+    this.inviteUsername.set(username);
+    this.userSuggestions.set([]);
+    this.showSuggestions.set(false);
+  }
+
+  hideSuggestions(): void {
+    setTimeout(() => this.showSuggestions.set(false), 150);
+  }
+
+  async generateInviteLink(username: string): Promise<void> {
+    if (!this.isRepoOwner()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo || this.generatingLinkFor()) return;
+    this.generatingLinkFor.set(username);
+    try {
+      const result = await this.collaboratorService.generateInviteLink(owner, repo, username);
+      const link = `${window.location.origin}/accept-invite/${result.token}`;
+      this.generatedLinks.update((m) => ({ ...m, [username]: link }));
+    } catch {
+      this.toast.error('Failed to generate invite link');
+    } finally {
+      this.generatingLinkFor.set(null);
+    }
+  }
+
+  async sendInvitationEmail(username: string): Promise<void> {
+    if (!this.isRepoOwner()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo || this.sendingEmailFor()) return;
+    this.sendingEmailFor.set(username);
+    try {
+      await this.collaboratorService.sendInvitationEmail(owner, repo, username);
+      this.toast.success(`Invitation email sent to ${username}`);
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Failed to send invitation email');
+    } finally {
+      this.sendingEmailFor.set(null);
+    }
+  }
+
+  copyLink(username: string): void {
+    const link = this.generatedLinks()[username];
+    if (link) void navigator.clipboard.writeText(link);
+    this.toast.success('Link copied to clipboard');
+  }
+
+  async removeCollaborator(username: string): Promise<void> {
+    if (!this.isRepoOwner()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    const ok = await this.confirmModal.confirm(
+      `Remove ${username} as collaborator?`,
+      'They will lose access to this repository.',
+      { confirmLabel: 'Remove', variant: 'danger' },
+    );
+    if (!ok) return;
+    try {
+      await this.collaboratorService.remove(owner, repo, username);
+      void this.loadCollaborators(this.collaboratorCurrentPage());
+      this.toast.success(`${username} removed`);
+    } catch (err) {
+      this.toast.error(err instanceof Error ? err.message : 'Failed to remove collaborator');
+    }
+  }
+
   async deleteRepo(): Promise<void> {
+    if (!this.isRepoOwner()) return;
     const repo = this.repoName();
     const ok = await this.confirmModal.confirm(`Are you sure you want to delete "${repo}"?`, 'This cannot be undone.', {
       confirmLabel: 'Delete',

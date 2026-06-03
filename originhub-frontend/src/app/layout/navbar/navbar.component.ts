@@ -72,7 +72,6 @@ export class NavbarComponent {
           website: null,
           location: null,
           profileReadme: null,
-          isAdmin: false,
           createdAt: '',
           updatedAt: '',
         });

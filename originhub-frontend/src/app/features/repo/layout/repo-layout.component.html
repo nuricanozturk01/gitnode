@@ -3,37 +3,86 @@
     <div class="flex justify-center py-24">
       <span class="loading loading-spinner loading-lg text-primary"></span>
     </div>
+  } @else if (accessDenied()) {
+    <div class="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+      <lucide-icon name="lock" class="text-base-content/30 size-12"></lucide-icon>
+      <h2 class="text-base-content text-lg font-semibold">This repository is private</h2>
+      <p class="text-base-content/55 max-w-sm text-sm">
+        You don't have permission to access <strong>{{ owner() }}/{{ repoName() }}</strong
+        >.
+        @if (!isLoggedIn()) {
+          <a routerLink="/login" class="text-primary hover:underline">Sign in</a> to request access.
+        }
+      </p>
+    </div>
+  } @else if (notFound()) {
+    <div class="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-4 py-16 text-center">
+      <lucide-icon name="alertTriangle" class="text-base-content/30 size-12"></lucide-icon>
+      <h2 class="text-base-content text-lg font-semibold">Repository not found</h2>
+      <p class="text-base-content/55 max-w-sm text-sm">
+        <strong>{{ owner() }}/{{ repoName() }}</strong> does not exist or has been deleted.
+      </p>
+      <a routerLink="/" class="btn btn-primary btn-sm mt-2">Go home</a>
+    </div>
   } @else if (repo()) {
     <div class="repo-layout-repo-meta">
       <div class="mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8">
-        <div class="flex flex-col gap-0.5">
-          <div class="flex min-h-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <span class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 leading-none">
-              <a
-                [routerLink]="['/', owner()]"
-                class="text-base-content/70 hover:text-base-content shrink-0 text-xs font-medium no-underline"
-                >{{ owner() }}</a
-              >
-              <span class="text-base-content/45 shrink-0 text-xs">/</span>
-              <a
-                [routerLink]="['/', owner(), repoName()]"
-                class="text-base-content hover:text-primary text-sm font-semibold no-underline"
-                >{{ repoName() }}</a
-              >
-            </span>
-            @if (repo()?.isPrivate) {
-              <span class="badge-pill badge-pill--neutral">Private</span>
-            }
-            @if (repo()?.topics?.length) {
-              @for (topic of repo()?.topics; track topic) {
-                <span class="badge-pill badge-pill--topic">{{ topic }}</span>
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <div class="flex min-h-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+              <span class="inline-flex min-w-0 flex-wrap items-center gap-x-1.5 leading-none">
+                <a
+                  [routerLink]="['/', owner()]"
+                  class="text-base-content/70 hover:text-base-content shrink-0 text-xs font-medium no-underline"
+                  >{{ owner() }}</a
+                >
+                <span class="text-base-content/45 shrink-0 text-xs">/</span>
+                <a
+                  [routerLink]="['/', owner(), repoName()]"
+                  class="text-base-content hover:text-primary text-sm font-semibold no-underline"
+                  >{{ repoName() }}</a
+                >
+              </span>
+              @if (repo()?.isPrivate) {
+                <span class="badge-pill badge-pill--neutral">Private</span>
               }
+              @if (repo()?.topics?.length) {
+                @for (topic of repo()?.topics; track topic) {
+                  <span class="badge-pill badge-pill--topic">{{ topic }}</span>
+                }
+              }
+            </div>
+            @if (repo()?.forkedFrom; as ff) {
+              <p class="text-base-content/40 m-0 text-xs">
+                Forked from
+                <a [routerLink]="['/', ff.ownerUsername, ff.name]" class="text-primary hover:underline">
+                  {{ ff.ownerUsername }}/{{ ff.name }}
+                </a>
+              </p>
+            }
+            @if (repo()?.description) {
+              <p class="text-base-content/65 m-0 line-clamp-2 max-w-4xl text-xs leading-tight">
+                {{ repo()?.description }}
+              </p>
             }
           </div>
-          @if (repo()?.description) {
-            <p class="text-base-content/65 m-0 line-clamp-2 max-w-4xl text-xs leading-tight">
-              {{ repo()?.description }}
-            </p>
+          @if (canFork()) {
+            <button
+              type="button"
+              class="btn btn-sm btn-outline h-8 shrink-0 gap-1.5"
+              [disabled]="isForking()"
+              (click)="forkRepo()"
+            >
+              @if (isForking()) {
+                <span class="loading loading-spinner loading-xs"></span>
+              } @else {
+                <lucide-icon name="gitFork" class="size-3.5"></lucide-icon>
+              }
+              Fork
+              @if ((repo()?.forkCount ?? 0) > 0) {
+                <span class="badge-pill badge-pill--neutral text-xs">{{ repo()?.forkCount }}</span>
+              }
+            </button>
           }
         </div>
       </div>
@@ -129,7 +178,18 @@
               <lucide-icon name="kanban" class="size-3.5 shrink-0"></lucide-icon>
               Projects
             </a>
-            @if (repoContext.canEdit()) {
+            @if (repoContext.isCollaborator()) {
+              <a
+                [routerLink]="['/', owner(), repoName(), 'my-permissions']"
+                routerLinkActive="tab-active"
+                ariaCurrentWhenActive="page"
+                class="tab gap-1.5 rounded-md"
+              >
+                <lucide-icon name="shieldCheck" class="size-3.5 shrink-0"></lucide-icon>
+                My Permissions
+              </a>
+            }
+            @if (repoContext.canViewSettings()) {
               <a
                 [routerLink]="['/', owner(), repoName(), 'settings']"
                 routerLinkActive="tab-active"
@@ -145,6 +205,41 @@
       </div>
     </div>
 
+    @if (pendingInvitation()) {
+      <div class="border-warning/30 bg-warning/10 border-b px-4 py-3 sm:px-6 lg:px-8">
+        <div class="mx-auto flex max-w-7xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div class="flex items-center gap-2">
+            <lucide-icon name="userPlus" class="text-warning size-4 shrink-0" aria-hidden="true"></lucide-icon>
+            <span class="text-sm font-medium">
+              You've been invited to collaborate on this repository by
+              <span class="font-semibold">{{ pendingInvitation()!.invitedBy }}</span
+              >.
+            </span>
+          </div>
+          <div class="flex gap-2 pl-6 sm:pl-0">
+            <button
+              type="button"
+              class="btn btn-success btn-sm"
+              [disabled]="respondingToInvitation()"
+              (click)="acceptInvitation()"
+            >
+              @if (respondingToInvitation()) {
+                <span class="loading loading-spinner loading-xs"></span>
+              }
+              Accept
+            </button>
+            <button
+              type="button"
+              class="btn btn-ghost btn-sm"
+              [disabled]="respondingToInvitation()"
+              (click)="declineInvitation()"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      </div>
+    }
     <div class="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
       <router-outlet></router-outlet>
     </div>

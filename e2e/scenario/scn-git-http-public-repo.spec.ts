@@ -21,9 +21,12 @@ test.describe('SCN-PUB-GIT — public repo HTTP Git', () => {
     const workDir = scenarioWorkDir(`${testInfo.testId}-anon-clone`);
     const remote = httpGitRemoteUrl(owner.username, publicRepo.name);
 
-    gitClone(remote, workDir);
-    expect(workDir).toBeTruthy();
-    removeWorkDir(workDir);
+    try {
+      gitClone(remote, workDir);
+      // If gitClone does not throw, clone succeeded.
+    } finally {
+      removeWorkDir(workDir);
+    }
   });
 
   // SCN-PUB-GIT-02 — Owner pushes to a public repo with valid credentials.
@@ -34,9 +37,13 @@ test.describe('SCN-PUB-GIT — public repo HTTP Git', () => {
       password: E2E_PASSWORD,
     });
 
-    gitClone(remote, workDir);
-    writeFileAndPush(workDir, 'public-owner.txt', 'owner push\n', 'scenario: public owner push');
-    removeWorkDir(workDir);
+    try {
+      gitClone(remote, workDir);
+      writeFileAndPush(workDir, 'public-owner.txt', 'owner push\n', 'scenario: public owner push');
+      // If writeFileAndPush does not throw, push succeeded.
+    } finally {
+      removeWorkDir(workDir);
+    }
   });
 
   // SCN-PUB-GIT-03 — Unauthenticated push is rejected after an anonymous clone.
@@ -44,20 +51,22 @@ test.describe('SCN-PUB-GIT — public repo HTTP Git', () => {
     const workDir = scenarioWorkDir(`${testInfo.testId}-anon-push`);
     const remote = httpGitRemoteUrl(owner.username, publicRepo.name);
 
-    gitClone(remote, workDir);
-    const fs = await import('node:fs');
-    const path = await import('node:path');
-    fs.writeFileSync(path.join(workDir, 'anon.txt'), 'anon\n', 'utf8');
-    gitCommitAll(workDir, 'scenario: anon push attempt');
-
     let pushFailed = false;
     try {
-      gitPush(workDir);
-    } catch {
-      pushFailed = true;
+      gitClone(remote, workDir);
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+      fs.writeFileSync(path.join(workDir, 'anon.txt'), 'anon\n', 'utf8');
+      gitCommitAll(workDir, 'scenario: anon push attempt');
+      try {
+        gitPush(workDir);
+      } catch {
+        pushFailed = true;
+      }
+    } finally {
+      removeWorkDir(workDir);
     }
     expect(pushFailed).toBe(true);
-    removeWorkDir(workDir);
   });
 
   // SCN-PUB-GIT-04 — Intruder cannot push to a public repo without write access (HTTP ACL; skipped).

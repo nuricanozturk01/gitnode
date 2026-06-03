@@ -102,7 +102,6 @@ export class MigrateGithubPage implements OnDestroy {
           website: null,
           location: null,
           profileReadme: null,
-          isAdmin: false,
           createdAt: '',
           updatedAt: '',
         });

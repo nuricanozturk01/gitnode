@@ -21,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
@@ -32,6 +33,7 @@ import com.nuricanozturk.originhub.shared.repo.events.RepoDeletedEvent;
 import com.nuricanozturk.originhub.shared.repo.mappers.RepoMapper;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
+import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
@@ -59,6 +61,8 @@ class RepoServiceTest {
   @Mock private TenantRepository tenantRepository;
   @Mock private RepoMapper repoMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private RepoStorageService repoStorageService;
+  @Mock private CollaboratorAccessPort collaboratorAccessPort;
 
   @InjectMocks private RepoService repoService;
 
@@ -146,20 +150,24 @@ class RepoServiceTest {
   }
 
   @Test
-  @DisplayName("update throws AccessNotAllowedException when caller is not owner nor admin")
-  void update_throwsAccessDenied_whenNotOwnerNorAdmin() {
+  @DisplayName("update throws AccessNotAllowedException when caller is not repo owner")
+  void update_throwsAccessDenied_whenNotOwner() {
     UUID tenantId = UUID.randomUUID();
     UUID ownerId = UUID.randomUUID();
     Tenant caller = new Tenant();
     caller.setId(tenantId);
     caller.setUsername("other");
-    caller.setAdmin(false);
     Tenant owner = new Tenant();
     owner.setId(ownerId);
     owner.setUsername("owner");
+    Repo repo = new Repo();
+    repo.setId(UUID.randomUUID());
+    repo.setName("repo");
+    repo.setOwner(owner);
 
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(caller));
     when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(repoRepository.findByOwnerIdAndName(ownerId, "repo")).thenReturn(Optional.of(repo));
 
     assertThatThrownBy(
             () ->
@@ -266,8 +274,8 @@ class RepoServiceTest {
     UUID differentTenantId = UUID.randomUUID();
 
     assertThatThrownBy(() -> repoService.delete(differentTenantId, "repo", "owner"))
-        .isInstanceOf(ItemNotFoundException.class)
-        .hasMessageContaining("invalidDeleteRequest");
+        .isInstanceOf(AccessNotAllowedException.class)
+        .hasMessageContaining("repoAccessDenied");
   }
 
   @Test
@@ -441,6 +449,8 @@ class RepoServiceTest {
         false,
         false,
         Instant.EPOCH,
-        Instant.EPOCH);
+        Instant.EPOCH,
+        null,
+        0);
   }
 }

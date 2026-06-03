@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.tree.services;
 import static com.nuricanozturk.originhub.tree.utils.LanguageExtensionUtils.detectLanguage;
 
 import com.nuricanozturk.originhub.shared.cache.CacheNames;
+import com.nuricanozturk.originhub.shared.cache.RepoCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.tree.dtos.BlobResponse;
@@ -69,6 +70,7 @@ public class TreeNonTxService {
   private record RawEntry(String name, String entryPath, boolean isTree, String sha, long size) {}
 
   private final GitProvider gitProvider;
+  private final RepoCacheInvalidator cacheInvalidator;
 
   @Cacheable(
       cacheNames = CacheNames.TREE,
@@ -426,6 +428,8 @@ public class TreeNonTxService {
         refUpdate.setNewObjectId(newCommitId);
         refUpdate.setExpectedOldObjectId(headCommit.getId());
         refUpdate.update();
+
+        this.cacheInvalidator.evictBranchScoped(owner, repoName, branch);
 
         final var fileName = Path.of(filePath).getFileName().toString();
         final var isBinary = this.isBinaryContent(newContent);

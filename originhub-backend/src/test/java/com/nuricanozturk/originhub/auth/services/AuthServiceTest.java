@@ -130,7 +130,6 @@ class AuthServiceTest {
     assertThat(saved.getEmail()).isEqualTo("alice@example.com");
     assertThat(saved.getSalt()).isNotBlank();
     assertThat(saved.getHash()).isEqualTo(DigestUtils.sha256Hex(VALID_PASSWORD + saved.getSalt()));
-    assertThat(saved.isAdmin()).isTrue();
   }
 
   @Test

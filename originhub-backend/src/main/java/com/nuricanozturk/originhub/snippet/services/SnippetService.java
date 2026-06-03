@@ -15,6 +15,8 @@
  */
 package com.nuricanozturk.originhub.snippet.services;
 
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
+import com.nuricanozturk.originhub.shared.cache.SnippetCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
@@ -43,6 +45,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -65,6 +69,7 @@ public class SnippetService {
   private final SnippetMapper snippetMapper;
   private final SnippetFileStorageService fileStorage;
   private final ApplicationEventPublisher eventPublisher;
+  private final SnippetCacheInvalidator snippetCacheInvalidator;
 
   @Transactional
   public SnippetDetail create(final UUID tenantId, final SnippetForm form) {
@@ -109,9 +114,11 @@ public class SnippetService {
     this.eventPublisher.publishEvent(
         new SnippetCreatedEvent(saved.getId(), owner.getUsername(), saved.getTitle(), null));
 
+    this.snippetCacheInvalidator.evictPublicList();
     return this.buildDetail(saved, owner.getUsername());
   }
 
+  @CacheEvict(cacheNames = CacheNames.SNIPPET_DETAIL, key = "#snippetId")
   @Transactional
   public SnippetDetail update(
       final UUID tenantId, final UUID snippetId, final SnippetUpdateForm form) {
@@ -131,6 +138,7 @@ public class SnippetService {
     this.eventPublisher.publishEvent(
         new SnippetUpdatedEvent(saved.getId(), username, saved.getTitle(), null));
 
+    this.snippetCacheInvalidator.evictPublicList();
     return this.buildDetail(saved, username);
   }
 
@@ -196,17 +204,29 @@ public class SnippetService {
     return resolved;
   }
 
+  @CacheEvict(cacheNames = CacheNames.SNIPPET_DETAIL, key = "#snippetId")
   @Transactional
   public void delete(final UUID tenantId, final UUID snippetId) {
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
     final var username = snippet.getOwner().getUsername();
     final var title = snippet.getTitle();
+    final var forkedFrom = snippet.getForkedFrom();
     this.snippetRepository.delete(snippet);
+    if (forkedFrom != null) {
+      this.snippetRepository.decrementForkCount(forkedFrom.getId());
+      // The original snippet's forkCount was decremented; evict its stale detail cache entry.
+      this.snippetCacheInvalidator.evictDetail(forkedFrom.getId());
+    }
     this.fileStorage.deleteSnippetDir(username, snippetId);
     this.eventPublisher.publishEvent(new SnippetDeletedEvent(snippetId, username, title));
+    this.snippetCacheInvalidator.evictPublicList();
   }
 
+  @Cacheable(
+      cacheNames = CacheNames.SNIPPET_DETAIL,
+      key = "#snippetId",
+      unless = "#result.visibility().name() == 'PRIVATE'")
   public SnippetDetail get(final UUID snippetId, final @Nullable UUID callerId) {
 
     final var snippet = this.loadSnippet(snippetId);
@@ -222,6 +242,9 @@ public class SnippetService {
             .map(this.snippetMapper::toInfo));
   }
 
+  @Cacheable(
+      cacheNames = CacheNames.SNIPPET_LIST_PUBLIC,
+      key = "#page + ':' + #size + ':' + (#q == null ? '' : #q)")
   public Page<SnippetInfo> listPublic(final int page, final int size, final @Nullable String q) {
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -303,6 +326,11 @@ public class SnippetService {
 
     this.snapshotRevision(saved, tenantId, "Forked from " + original.getTitle(), contentByFilename);
 
+    // The fork is always PUBLIC, so the public list cache is now stale.
+    // The original snippet's forkCount was incremented, so its detail cache entry is stale too.
+    this.snippetCacheInvalidator.evictPublicList();
+    this.snippetCacheInvalidator.evictDetail(original.getId());
+
     return this.buildDetail(saved, forker.getUsername());
   }
 
@@ -341,6 +369,7 @@ public class SnippetService {
     return this.snippetMapper.toRevisionDetail(revision, revision.getFiles(), contentByFileId);
   }
 
+  @CacheEvict(cacheNames = CacheNames.SNIPPET_DETAIL, key = "#snippetId")
   @Transactional
   public SnippetDetail linkRepo(final UUID tenantId, final UUID snippetId, final UUID repoId) {
 
@@ -355,6 +384,7 @@ public class SnippetService {
     return this.buildDetail(saved, saved.getOwner().getUsername());
   }
 
+  @CacheEvict(cacheNames = CacheNames.SNIPPET_DETAIL, key = "#snippetId")
   @Transactional
   public SnippetDetail unlinkRepo(final UUID tenantId, final UUID snippetId, final UUID repoId) {
 

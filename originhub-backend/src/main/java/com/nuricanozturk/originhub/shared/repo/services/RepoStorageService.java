@@ -27,6 +27,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Comparator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jgit.api.Git;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
@@ -114,6 +115,40 @@ public class RepoStorageService {
     } catch (final IOException ex) {
       log.error("IOException Occurred while deleting a {} repos.", username);
       throw new ErrorOccurredException("IO Exception Occurred: " + ex.getMessage());
+    }
+  }
+
+  public void forkRepo(
+      final String sourceOwner,
+      final String sourceName,
+      final String destOwner,
+      final String destName) {
+
+    final var sourcePath = Path.of(this.repoRoot, sourceOwner, sourceName + ".git");
+    final var destPath = Path.of(this.repoRoot, destOwner, destName + ".git");
+
+    try {
+      Files.createDirectories(destPath.getParent());
+      try (final var git =
+          Git.cloneRepository()
+              .setURI(sourcePath.toUri().toString())
+              .setDirectory(destPath.toFile())
+              .setBare(true)
+              .setMirror(true)
+              .call()) {
+        git.remoteRemove().setRemoteName("origin").call();
+      }
+    } catch (final Exception e) {
+      FileSystemUtils.deleteRecursively(destPath.toFile());
+      log.error(
+          "Fork failed for {}/{} -> {}/{}: {}",
+          sourceOwner,
+          sourceName,
+          destOwner,
+          destName,
+          e.getMessage(),
+          e);
+      throw new ErrorOccurredException("Failed to fork repository");
     }
   }
 

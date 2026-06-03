@@ -10,6 +10,7 @@ IMAGE         := repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 POSTGRES_DB    := originhub
 POSTGRES_USER  := admin
 POSTGRES_PASS  := admin123
+REDIS_PORT     := 6379
 
 JWT_SECRET     := 995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0
 GIT_REPO_ROOT  := /data/repos
@@ -32,7 +33,7 @@ GITLAB_CLIENT_ID     := YOUR_CLIENT
 GITLAB_CLIENT_SECRET := YOUR_SECRET
 
 # ──────────────────────────────────────────────
-.PHONY: all up down start stop restart logs logs-db ps \
+.PHONY: all up down start stop restart logs logs-db logs-redis ps \
   network network-rm \
   db redis app \
   clean purge help
@@ -94,6 +95,7 @@ redis: network
 		|| docker run -d \
 			--name $(REDIS_NAME) \
 			--network $(NETWORK) \
+			-p $(REDIS_PORT):6379 \
 			redis:7-alpine redis-server --save ""
 	@echo "Redis ready."
 
@@ -111,7 +113,7 @@ app: network
 			-e ORIGINHUB_JWT_SECRET=$(JWT_SECRET) \
 			-e ORIGINHUB_GIT_REPO__ROOT=$(GIT_REPO_ROOT) \
 			-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
-			-e SPRING_DATA_REDIS_PORT=6379 \
+			-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
@@ -143,6 +145,7 @@ help:
 	@echo "  make restart     → stop + start"
 	@echo "  make logs        → Follow app logs"
 	@echo "  make logs-db     → Follow db logs"
+	@echo "  make logs-redis  → Follow Redis logs"
 	@echo "  make ps          → Show running containers"
 	@echo "  make clean       → Remove containers + network"
 	@echo "  make purge       → clean + delete volumes"

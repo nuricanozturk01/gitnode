@@ -53,7 +53,7 @@ public class GitProvider {
       throw new ItemNotFoundException("repoNotFound in storage.");
     }
 
-    return new FileRepositoryBuilder().setGitDir(path.toFile()).readEnvironment().build();
+    return new FileRepositoryBuilder().setGitDir(path.toFile()).build();
   }
 
   public void createJGitRepo(final Path repoPath) throws IOException {

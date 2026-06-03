@@ -24,6 +24,12 @@ export interface RepoInfoOwner {
   avatarUrl?: string | null;
 }
 
+export interface RepoForkedFromInfo {
+  id: string;
+  ownerUsername: string;
+  name: string;
+}
+
 export interface RepoInfo {
   id: string;
   owner?: RepoInfoOwner | null;
@@ -40,4 +46,6 @@ export interface RepoInfo {
   deleteHeadBranchOnPrClose?: boolean;
   createdAt: string;
   updatedAt: string;
+  forkedFrom?: RepoForkedFromInfo | null;
+  forkCount?: number;
 }

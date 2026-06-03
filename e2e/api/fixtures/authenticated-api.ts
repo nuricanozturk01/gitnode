@@ -5,13 +5,12 @@ import { type APIRequestContext, test as base } from '@playwright/test';
 import { loadValidSession } from '../../helpers/session-auth';
 import { getApiBaseUrl } from '../helpers/env';
 
-interface AuthenticatedFixtures {
-  session: E2eSession;
+interface AuthenticatedTestFixtures {
   authedRequest: APIRequestContext;
   api: ApiClient;
 }
 
-export const test = base.extend<AuthenticatedFixtures>({
+export const test = base.extend<AuthenticatedTestFixtures, { session: E2eSession }>({
   session: [
     async ({ playwright }, use) => {
       const request = await playwright.request.newContext({ baseURL: getApiBaseUrl() });

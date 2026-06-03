@@ -247,10 +247,9 @@ public class ProjectService {
             .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    final boolean isRepoOwnerOrAdmin =
-        viewer != null && (viewer.getId().equals(repo.getOwner().getId()) || viewer.isAdmin());
+    final boolean isRepoOwner = viewer != null && viewer.getId().equals(repo.getOwner().getId());
 
-    if (repo.isPrivate() && !isRepoOwnerOrAdmin) {
+    if (repo.isPrivate() && !isRepoOwner) {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 

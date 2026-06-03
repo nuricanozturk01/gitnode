@@ -14,6 +14,7 @@ import com.nuricanozturk.originhub.issue.entities.IssueComment;
 import com.nuricanozturk.originhub.issue.mappers.IssueMapper;
 import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
+import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.issue.events.IssueDeletedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
@@ -42,6 +43,7 @@ class IssueServiceModifyAccessTest {
   @Mock private IssueMapper issueMapper;
   @Mock private TaskQueryPort taskQueryPort;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private CollaboratorAccessPort collaboratorAccessPort;
 
   @InjectMocks private IssueService issueService;
 
@@ -49,11 +51,10 @@ class IssueServiceModifyAccessTest {
   // helpers
   // -----------------------------------------------------------------------
 
-  private static Tenant tenant(UUID id, String username, boolean admin) {
+  private static Tenant tenant(UUID id, String username) {
     Tenant t = new Tenant();
     t.setId(id);
     t.setUsername(username);
-    t.setAdmin(admin);
     return t;
   }
 
@@ -85,7 +86,7 @@ class IssueServiceModifyAccessTest {
   }
 
   // -----------------------------------------------------------------------
-  // update() — assertCanModify via issue author / repo owner / admin / stranger
+  // update() — assertCanModify via issue author / repo owner / stranger
   // -----------------------------------------------------------------------
 
   @Test
@@ -93,7 +94,7 @@ class IssueServiceModifyAccessTest {
   void update_allowed_whenRequesterIsAuthor() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice", false);
+    Tenant author = tenant(authorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
@@ -115,8 +116,8 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID repoOwnerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice", false);
-    Tenant repoOwner = tenant(repoOwnerId, "owner", false);
+    Tenant author = tenant(authorId, "alice");
+    Tenant repoOwner = tenant(repoOwnerId, "owner");
     Repo r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
@@ -134,45 +135,18 @@ class IssueServiceModifyAccessTest {
   }
 
   @Test
-  @DisplayName("update — allowed when requester is admin")
-  void update_allowed_whenRequesterIsAdmin() {
-    UUID authorId = UUID.randomUUID();
-    UUID adminId = UUID.randomUUID();
-    UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice", false);
-    Tenant adminTenant = tenant(adminId, "admin", true);
-    Repo r = repo(repoId);
-    Issue iss = issue(UUID.randomUUID(), author, r);
-
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
-    when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
-    when(tenantRepository.findById(adminId)).thenReturn(Optional.of(adminTenant));
-    when(issueRepository.save(iss)).thenReturn(iss);
-    when(commentRepository.countByIssueId(iss.getId())).thenReturn(0);
-    when(issueMapper.toDetail(any(), anyInt())).thenReturn(null);
-
-    IssueUpdateForm form = new IssueUpdateForm();
-    form.setTitle("Updated");
-
-    issueService.update("alice", "myrepo", 1, form, adminId);
-  }
-
-  @Test
   @DisplayName("update — throws AccessNotAllowedException when requester is stranger")
   void update_throws_whenRequesterIsStranger() {
     UUID authorId = UUID.randomUUID();
     UUID strangerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice", false);
-    Tenant stranger = tenant(strangerId, "stranger", false);
+    Tenant author = tenant(authorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
-    when(tenantRepository.findById(strangerId)).thenReturn(Optional.of(stranger));
 
     IssueUpdateForm form = new IssueUpdateForm();
     form.setTitle("Hack");
@@ -191,7 +165,7 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice", false);
+    Tenant author = tenant(authorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(issueId, author, r);
 
@@ -212,15 +186,13 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID strangerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice", false);
-    Tenant stranger = tenant(strangerId, "stranger", false);
+    Tenant author = tenant(authorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
-    when(tenantRepository.findById(strangerId)).thenReturn(Optional.of(stranger));
 
     assertThatThrownBy(() -> issueService.delete("alice", "myrepo", 1, strangerId))
         .isInstanceOf(AccessNotAllowedException.class);
@@ -237,7 +209,7 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice", false);
+    Tenant commentAuthor = tenant(commentAuthorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
@@ -261,8 +233,7 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice", false);
-    Tenant stranger = tenant(strangerId, "stranger", false);
+    Tenant commentAuthor = tenant(commentAuthorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
@@ -271,7 +242,6 @@ class IssueServiceModifyAccessTest {
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(commentRepository.findByIdAndIssueId(commentId, issueId)).thenReturn(Optional.of(c));
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(commentAuthor));
-    when(tenantRepository.findById(strangerId)).thenReturn(Optional.of(stranger));
 
     assertThatThrownBy(
             () ->
@@ -296,7 +266,7 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice", false);
+    Tenant commentAuthor = tenant(commentAuthorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
@@ -318,8 +288,7 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice", false);
-    Tenant stranger = tenant(strangerId, "stranger", false);
+    Tenant commentAuthor = tenant(commentAuthorId, "alice");
     Repo r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
@@ -328,7 +297,6 @@ class IssueServiceModifyAccessTest {
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(commentRepository.findByIdAndIssueId(commentId, issueId)).thenReturn(Optional.of(c));
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(commentAuthor));
-    when(tenantRepository.findById(strangerId)).thenReturn(Optional.of(stranger));
 
     assertThatThrownBy(
             () -> issueService.deleteComment("alice", "myrepo", 1, commentId, strangerId))

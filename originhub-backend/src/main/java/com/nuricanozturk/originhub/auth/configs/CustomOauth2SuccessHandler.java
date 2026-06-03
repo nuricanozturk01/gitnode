@@ -122,7 +122,6 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     tenant.setUsername(username);
     tenant.setEmail(email);
     tenant.setAvatarUrl(avatarUrl);
-    tenant.setAdmin(true);
 
     return this.tenantRepository.save(tenant);
   }

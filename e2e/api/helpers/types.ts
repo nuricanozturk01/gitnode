@@ -17,7 +17,6 @@ export interface TenantInfo {
   website: string | null;
   location: string | null;
   profileReadme: string | null;
-  isAdmin: boolean;
   createdAt: string;
   updatedAt: string;
 }

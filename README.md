@@ -12,7 +12,8 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.x-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Angular](https://img.shields.io/badge/Angular-21-DD0031?style=for-the-badge&logo=angular)](https://angular.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
@@ -162,6 +163,7 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 | SSH Server  | Apache MINA SSHD                                 |
 | Auth        | JWT, OAuth2 (Google · GitHub · GitLab)           |
 | Database    | PostgreSQL, Flyway                               |
+| Cache       | Redis                                            |
 | Frontend    | Angular 21, TypeScript 5                         |
 | Styling     | Tailwind CSS 4, DaisyUI 5                        |
 | Container   | Docker (multi-stage build, single image)         |
@@ -185,6 +187,10 @@ docker run -d \
   -e POSTGRES_PASSWORD=admin123 \
   postgres:17
 docker run -d \
+  --name originhub-redis \
+  --network originhub \
+  redis:7-alpine redis-server --save ""
+docker run -d \
   --name originhub \
   --network originhub \
   -p 8080:8080 \
@@ -194,6 +200,8 @@ docker run -d \
   -e SPRING_DATASOURCE_PASSWORD=admin123 \
   -e "ORIGINHUB_JWT_SECRET=$SECRET" \
   -e ORIGINHUB_GIT_REPO__ROOT=/data/repos \
+  -e SPRING_DATA_REDIS_HOST=originhub-redis \
+  -e SPRING_DATA_REDIS_PORT=6379 \
   -e SPRING_PROFILES_ACTIVE=os \
   -v originhub-repos:/data/repos \
   repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
@@ -211,12 +219,13 @@ Edit the variables at the top of the `Makefile` before running — at minimum se
 
 | Target               | Description                                     |
 |----------------------|-------------------------------------------------|
-| `make up`            | Create network, start DB and app                |
+| `make up`            | Create network, start DB, Redis, and app        |
 | `make down`          | Stop and remove containers                      |
 | `make start` / `make stop` | Start or stop existing containers         |
 | `make restart`       | Stop then start                                 |
 | `make logs`          | Follow app logs                                 |
 | `make logs-db`       | Follow database logs                            |
+| `make logs-redis`    | Follow Redis logs                               |
 | `make ps`            | List running containers                         |
 | `make clean`         | Remove containers and network (volumes kept)    |
 | `make purge`         | Remove everything including repo data ⚠️        |
@@ -230,6 +239,8 @@ Edit the variables at the top of the `Makefile` before running — at minimum se
 | `DB_PASSWORD`                  |          | `admin123`            | PostgreSQL password                  |
 | `ORIGINHUB_GIT_REPO__ROOT`     |          | `/data/repos`         | Git repository storage path          |
 | `ORIGINHUB_FRONTEND_BASE_URL`  |          | `http://localhost:8080` | Public base URL                    |
+| `SPRING_DATA_REDIS_HOST`       |          | `originhub-redis`     | Redis hostname                       |
+| `SPRING_DATA_REDIS_PORT`       |          | `6379`                | Redis port                           |
 | `OAUTH2_GOOGLE_CLIENT_ID`      |          | —                     | Google OAuth2 client ID              |
 | `OAUTH2_GOOGLE_CLIENT_SECRET`  |          | —                     | Google OAuth2 client secret          |
 | `OAUTH2_GITHUB_CLIENT_ID`      |          | —                     | GitHub OAuth2 client ID              |

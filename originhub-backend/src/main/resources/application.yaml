@@ -130,5 +130,5 @@ spring:
             user-name-attribute: id
 
 logging:
-  level:
-    root: warn
+  config: classpath:logback.xml
+

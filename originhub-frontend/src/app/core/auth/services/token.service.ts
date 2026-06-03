@@ -23,19 +23,28 @@ const EXPIRES_KEY = 'expires_at';
 const REFRESH_EXPIRES_KEY = 'refresh_expires_at';
 const USERNAME_KEY = 'username';
 
-const ACCESS_TOKEN_TTL_SECONDS = 1800; // 30 minutes
-const REFRESH_TOKEN_TTL_SECONDS = 3600; // 1 hour
+/** Fallback when API omits TTL; aligned with backend JwtUtils. */
+const ACCESS_TOKEN_TTL_SECONDS = 24 * 3600;
+const REFRESH_TOKEN_TTL_SECONDS = 48 * 3600;
 
 @Injectable({ providedIn: 'root' })
 export class TokenService {
-  private readonly _loggedIn = signal(this._hasValidSession());
+  /** Bumped when tokens are saved or cleared so isLoggedIn recomputes without polling. */
+  private readonly sessionVersion = signal(0);
 
-  readonly isLoggedIn = computed(() => this._loggedIn());
+  readonly isLoggedIn = computed(() => {
+    this.sessionVersion();
+    return this.hasValidSession();
+  });
 
-  private _hasValidSession(): boolean {
-    if (!localStorage.getItem(ACCESS_KEY)) return false;
-    const refreshExpires = localStorage.getItem(REFRESH_EXPIRES_KEY);
-    return !!refreshExpires && Date.now() < parseInt(refreshExpires, 10);
+  /** Session is valid while refresh token exists and has not expired. */
+  hasValidSession(): boolean {
+    if (!localStorage.getItem(REFRESH_KEY)) return false;
+    return !this.isRefreshExpired();
+  }
+
+  hasStoredCredentials(): boolean {
+    return !!localStorage.getItem(ACCESS_KEY) || !!localStorage.getItem(REFRESH_KEY);
   }
 
   getAccessToken(): string | null {
@@ -73,7 +82,7 @@ export class TokenService {
     if (tokens.username) {
       localStorage.setItem(USERNAME_KEY, tokens.username);
     }
-    this._loggedIn.set(true);
+    this.bumpSessionVersion();
   }
 
   clearTokens(): void {
@@ -82,7 +91,11 @@ export class TokenService {
     localStorage.removeItem(EXPIRES_KEY);
     localStorage.removeItem(REFRESH_EXPIRES_KEY);
     localStorage.removeItem(USERNAME_KEY);
-    this._loggedIn.set(false);
+    this.bumpSessionVersion();
+  }
+
+  private bumpSessionVersion(): void {
+    this.sessionVersion.update((n) => n + 1);
   }
 
   isExpired(): boolean {

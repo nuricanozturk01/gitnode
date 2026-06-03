@@ -16,18 +16,18 @@
 
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 
 export const guestGuard = () => {
   const tokenService = inject(TokenService);
+  const authService = inject(AuthService);
   const router = inject(Router);
 
-  const token = tokenService.getAccessToken();
-  if (!token) return true;
-
-  // Treat fully-expired sessions as logged out
-  if (tokenService.isExpired() && tokenService.isRefreshExpired()) {
-    tokenService.clearTokens();
+  if (!tokenService.hasValidSession()) {
+    if (tokenService.hasStoredCredentials()) {
+      void authService.logout();
+    }
     return true;
   }
 

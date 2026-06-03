@@ -133,7 +133,7 @@ public class ProfileService {
 
     this.eventPublisher.publishEvent(new TenantDeletedEvent(tenant.getUsername()));
 
-    log.warn("User {} deleted account.", tenant.getUsername());
+    log.debug("User {} deleted account.", tenant.getUsername());
   }
 
   public TenantInfo getTenantInfo(final UUID tenantId) {

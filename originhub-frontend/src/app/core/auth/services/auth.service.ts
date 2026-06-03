@@ -37,21 +37,38 @@ export class AuthService {
 
   constructor() {
     this.initSession();
+    this.bindVisibilityRecheck();
   }
 
   private initSession(): void {
-    if (!this.tokenService.getAccessToken()) return;
-    if (this.tokenService.isRefreshExpired()) {
-      this.tokenService.clearTokens();
+    if (!this.tokenService.hasStoredCredentials()) return;
+    if (!this.tokenService.hasValidSession()) {
+      void this.logout();
       return;
     }
     this.scheduleAutoLogout();
   }
 
+  /** Re-check when the tab becomes visible (timers can be throttled in background). */
+  private bindVisibilityRecheck(): void {
+    if (typeof document === 'undefined') return;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      if (this.tokenService.hasStoredCredentials() && !this.tokenService.hasValidSession()) {
+        void this.logout();
+      }
+    });
+  }
+
   private scheduleAutoLogout(): void {
     this.cancelAutoLogout();
     const refreshExpiresAt = this.tokenService.getRefreshExpiresAt();
-    if (!refreshExpiresAt) return;
+    if (!refreshExpiresAt) {
+      if (this.tokenService.hasStoredCredentials()) {
+        void this.logout();
+      }
+      return;
+    }
     const delay = refreshExpiresAt - Date.now();
     if (delay <= 0) {
       void this.logout();
@@ -113,7 +130,7 @@ export class AuthService {
     const refresh = this.tokenService.getRefreshToken();
     if (!refresh) throw new Error('No refresh token');
     if (this.tokenService.isRefreshExpired()) {
-      this.tokenService.clearTokens();
+      void this.logout();
       throw new Error('Refresh token expired');
     }
     const res = await firstValueFrom(

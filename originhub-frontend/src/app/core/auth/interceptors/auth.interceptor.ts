@@ -16,13 +16,25 @@
 
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { AuthService } from '../services/auth.service';
 import { TokenService } from '../services/token.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const tokenService = inject(TokenService);
+  const authService = inject(AuthService);
+
+  const isAuthUrl =
+    req.url.includes('/auth/login') || req.url.includes('/auth/register') || req.url.includes('/auth/refresh-token');
+
+  if (!isAuthUrl && tokenService.hasStoredCredentials() && !tokenService.hasValidSession()) {
+    void authService.logout();
+    return next(req);
+  }
+
   const token = tokenService.getAccessToken();
 
-  if (token) {
+  // Do not attach access JWT to auth endpoints (expired Bearer breaks refresh-token via JwtAuthenticationFilter).
+  if (token && !isAuthUrl) {
     const cloned = req.clone({
       setHeaders: { Authorization: `Bearer ${token}` },
     });

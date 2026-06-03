@@ -120,7 +120,7 @@ public class OriginHubSshServer {
         log.info("SSH auth success: username={}, tenant={}", username, tenant.getUsername());
         return true;
       } catch (final Exception ex) {
-        log.warn("SSH auth failed: username={}, reason={}", username, ex.getMessage());
+        log.debug("SSH auth failed: username={}, reason={}", username, ex.getMessage());
         return false;
       }
     };
@@ -212,6 +212,7 @@ public class OriginHubSshServer {
           final var repoOpt = this.repoRepository.findByOwnerUsernameAndName(owner, repoName);
 
           if (repoOpt.isEmpty()) {
+            log.debug("SSH git access denied: repository not found {}/{}", owner, repoName);
             throw new IOException("Repository not found: " + owner + "/" + repoName);
           }
 
@@ -288,12 +289,22 @@ public class OriginHubSshServer {
     final var isOwner = tenant.getUsername().equalsIgnoreCase(owner);
 
     if (isWrite && !isOwner) {
+      log.debug(
+          "SSH git access denied: write not allowed for tenant={} on {}/{}",
+          tenant.getUsername(),
+          owner,
+          repoName);
       throw new IOException(
           "Write access denied: only the repository owner can push to " + owner + "/" + repoName);
     }
 
     final var repoOpt = this.repoRepository.findByOwnerUsernameAndName(owner, repoName);
     if (repoOpt.isPresent() && repoOpt.get().isPrivate() && !isOwner) {
+      log.debug(
+          "SSH git access denied: private repo read for tenant={} on {}/{}",
+          tenant.getUsername(),
+          owner,
+          repoName);
       throw new IOException(
           "Read access denied: repository " + owner + "/" + repoName + " is private");
     }

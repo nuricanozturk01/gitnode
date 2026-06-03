@@ -53,7 +53,7 @@ OriginHub is built for developers and teams who care about ownership — whether
 
 ## ✨ Features
 
-OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, and code snippets — all on your own infrastructure.
+OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — all on your own infrastructure.
 
 <div align="center">
 
@@ -62,7 +62,8 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 | 📁 [Repository Management](#-repository-management) | 👤 [Public Profiles](#-public-profile) | 📥 [GitHub Migration](#-github-repository-migration) |
 | 🗂 [Code Browsing](#-code-browsing) | 🔀 [Pull Requests](#-pull-requests) | 🐛 [Issues](#-issues) |
 | 📋 [Project Boards](#-project-management-kanban) | 📝 [Code Snippets](#-code-snippets-gist-like) | 🏷 [Tags & Releases](#-tags--releases) |
-| 🔔 [Webhooks](#-webhooks) | 🔐 [Authentication](#-authentication) | ⚡ [Actions *(soon)*](#-actions--cicd-coming-soon) |
+| 🔔 [Webhooks](#-webhooks) | 🔐 [Authentication](#-authentication) | 👥 [Collaborators](#-collaborators) |
+| 🍴 [Repository Forks](#-repository-forks) | 🛡 [Access Policies](#-repo-access-policies) | ⚡ [Actions *(soon)*](#-actions--cicd-coming-soon) |
 
 </div>
 
@@ -139,6 +140,30 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 - Browse all releases in the repo's **Releases** tab; latest release shown on the repo home
 - **Delete** releases or tags from the UI (tag is removed from the underlying Git repo)
 - **Release badge** on the repo home shows the latest published version at a glance
+
+### 👥 Collaborators
+
+- Invite other OriginHub users to your repository with **fine-grained per-permission roles**
+- Available permissions (each toggled independently): **Push**, **Pull Request management**, **Issue management**, **Settings access**, **Admin** (all permissions)
+- Share an **invite link** with a configurable expiry — recipient accepts via the link, no admin approval needed
+- Manage active collaborators and revoke access at any time from **Settings → Collaborators**
+- Collaborators inherit the base repo visibility — private repos remain private to non-collaborators
+- **How to invite:** go to your repository → Settings → Collaborators → *Invite* → pick permissions → copy the generated link and send it to the person you want to add
+
+### 🍴 Repository Forks
+
+- Fork any public repository to your own account with a single click
+- Fork preserves the full commit history of the upstream repo at the time of forking
+- Work on your fork independently — push branches, open issues, create snippets
+- Open a **pull request from your fork** back to the upstream repository to propose changes
+- **How to fork:** navigate to any public repository → click **Fork** in the top-right area of the repo header
+
+### 🛡 Repo Access Policies
+
+- Define **access rules** per repository that apply on top of base visibility
+- Policies control what authenticated (non-owner, non-collaborator) users can do — e.g. **allow public read but restrict push**, or **allow fork but restrict issue creation**
+- Useful for organizations that want open-source-style read access without enabling arbitrary contributions
+- Configured in **Settings → Access Policies**; changes take effect immediately for all subsequent requests
 
 ### ⚡ Actions — CI/CD *(coming soon)*
 
@@ -263,6 +288,9 @@ OriginHub is under active development. Here's what's planned:
 - [x] Public profile and README
 - [x] Webhooks
 - [x] Tags and releases
+- [x] Collaborators with fine-grained permissions and invite links
+- [x] Repository forks with cross-fork pull requests
+- [x] Repo access policies
 - [ ] Actions — CI/CD
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Two-factor authentication (TOTP)

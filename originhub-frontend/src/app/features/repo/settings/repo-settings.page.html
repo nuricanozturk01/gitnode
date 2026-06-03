@@ -1,7 +1,14 @@
 <div class="repo-settings">
+  @if (!canWriteSettings()) {
+  <div class="alert alert-info mb-5 text-sm sm:mb-6" role="status">
+    You have read-only access to repository settings. Contact the repository owner to request
+    <span class="font-medium">Write Settings</span> permission to make changes.
+  </div>
+  } @else {
   <p class="text-base-content/65 mb-5 text-sm sm:mb-6">
     Manage repository details, pull request automation, and destructive actions.
   </p>
+  }
 
   <div
     role="tablist"
@@ -50,6 +57,20 @@
     <button
       type="button"
       role="tab"
+      id="repo-settings-tab-collaborators"
+      class="tab flex-1 gap-2 rounded-md sm:flex-none"
+      [class.tab-active]="activeTab() === 'collaborators'"
+      [attr.aria-selected]="activeTab() === 'collaborators'"
+      aria-controls="repo-settings-panel-collaborators"
+      (click)="setTab('collaborators')"
+    >
+      <lucide-icon name="users" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+      Collaborators
+    </button>
+    @if (isRepoOwner()) {
+    <button
+      type="button"
+      role="tab"
       id="repo-settings-tab-danger"
       class="tab flex-1 gap-2 rounded-md sm:flex-none"
       [class.tab-active]="activeTab() === 'danger'"
@@ -60,6 +81,7 @@
       <lucide-icon name="alertTriangle" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
       Danger
     </button>
+    }
   </div>
 
   @if (activeTab() === 'general') {
@@ -103,9 +125,14 @@
               placeholder="repo-name"
               [ngModel]="generalName()"
               (ngModelChange)="generalName.set($event)"
+              [readonly]="!isRepoOwner()"
+              [class.settings-input--readonly]="!isRepoOwner()"
               spellcheck="false"
               autocomplete="off"
             />
+            @if (!isRepoOwner()) {
+            <p class="settings-field-hint text-base-content/55">Only the repository owner can rename the repository.</p>
+            }
           </div>
           <div class="settings-field">
             <label for="settings-description" class="settings-label">Description</label>
@@ -116,6 +143,7 @@
               rows="4"
               [ngModel]="generalDescription()"
               (ngModelChange)="generalDescription.set($event)"
+              [disabled]="!canWriteSettings()"
             ></textarea>
           </div>
           <div class="settings-field">
@@ -125,6 +153,7 @@
                 @for (topic of generalTopics(); track topic) {
                 <span class="badge-pill badge-pill--topic topic-chip">
                   <span class="topic-chip__text">{{ topic }}</span>
+                  @if (canWriteSettings()) {
                   <button
                     type="button"
                     class="topic-chip__remove"
@@ -133,8 +162,9 @@
                   >
                     <lucide-icon name="x" class="size-3.5"></lucide-icon>
                   </button>
+                  }
                 </span>
-                } @if (generalTopics().length < 6) {
+                } @if (canWriteSettings() && generalTopics().length < 6) {
                 <input
                   id="settings-topic-input"
                   type="text"
@@ -156,8 +186,7 @@
 
         @if (generalError()) {
         <p class="text-error settings-field-hint mt-4" role="alert">{{ generalError() }}</p>
-        }
-
+        } @if (canWriteSettings()) {
         <div class="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <button
             type="button"
@@ -170,6 +199,7 @@
             Saving… } @else { Save changes }
           </button>
         </div>
+        }
       </div>
     </section>
   </div>
@@ -201,6 +231,7 @@
               type="checkbox"
               class="checkbox checkbox-primary mt-0.5"
               [checked]="deleteHeadBranchOnPrMerge()"
+              [disabled]="!canWriteSettings()"
               (change)="onPullMergeToggle($any($event.target).checked)"
             />
             <div class="min-w-0 flex-1">
@@ -220,6 +251,7 @@
               type="checkbox"
               class="checkbox checkbox-primary mt-0.5"
               [checked]="deleteHeadBranchOnPrClose()"
+              [disabled]="!canWriteSettings()"
               (change)="onPullCloseToggle($any($event.target).checked)"
             />
             <div class="min-w-0 flex-1">
@@ -236,8 +268,7 @@
 
         @if (pullSettingsError()) {
         <p class="text-error settings-field-hint mt-4" role="alert">{{ pullSettingsError() }}</p>
-        }
-
+        } @if (canWriteSettings()) {
         <div class="mt-6 flex flex-wrap gap-2">
           <button
             type="button"
@@ -250,6 +281,7 @@
             Saving… } @else { Save changes }
           </button>
         </div>
+        }
       </div>
     </section>
   </div>
@@ -293,7 +325,7 @@
         <div class="mt-6 space-y-3">
           @for (w of webhooks(); track w.id) {
           <div class="border-base-200 rounded-xl border p-4">
-            @if (editingWebhookId() === w.id) {
+            @if (editingWebhookId() === w.id && canWriteSettings()) {
             <!-- Edit form inline -->
             <div class="space-y-4">
               <div class="settings-field">
@@ -382,6 +414,7 @@
                   <span class="font-mono text-sm font-medium break-all">{{ w.url }}</span>
                 </div>
                 <div class="mt-2 flex flex-wrap items-center gap-2">
+                  @if (canWriteSettings()) {
                   <button
                     type="button"
                     class="cursor-pointer border-none bg-transparent p-0"
@@ -394,11 +427,17 @@
                     <span class="badge-pill badge-pill--neutral">Inactive</span>
                     }
                   </button>
-                  <span class="text-base-content/55 text-xs"
-                    >{{ w.events.length }} event{{ w.events.length === 1 ? '' : 's' }}</span
-                  >
+                  } @else { @if (w.enabled) {
+                  <span class="badge-pill badge-pill--success">Active</span>
+                  } @else {
+                  <span class="badge-pill badge-pill--neutral">Inactive</span>
+                  } }
+                  <span class="text-base-content/55 text-xs">
+                    {{ w.events.length }} event{{ w.events.length === 1 ? '' : 's' }}
+                  </span>
                 </div>
               </div>
+              @if (canWriteSettings()) {
               <div class="flex shrink-0 gap-1">
                 <button
                   type="button"
@@ -417,6 +456,7 @@
                   <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
                 </button>
               </div>
+              }
             </div>
             }
           </div>
@@ -425,7 +465,7 @@
           } }
         </div>
 
-        @if (showAddWebhook()) {
+        @if (showAddWebhook() && canWriteSettings()) {
         <div class="border-base-200 mt-4 rounded-xl border p-4">
           <h3 class="mb-4 font-semibold">New webhook</h3>
           <div class="space-y-4">
@@ -511,7 +551,252 @@
       </div>
     </section>
   </div>
-  } @if (activeTab() === 'danger') {
+  } @if (activeTab() === 'collaborators') {
+  <div
+    id="repo-settings-panel-collaborators"
+    role="tabpanel"
+    aria-labelledby="repo-settings-tab-collaborators"
+    class="space-y-6"
+  >
+    @if (isRepoOwner()) {
+    <section class="card bg-base-100 border-base-300 border shadow-sm">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">Invite Collaborator</h2>
+        @if (collaboratorError()) {
+        <div class="alert alert-error text-sm">{{ collaboratorError() }}</div>
+        }
+        <!-- Username input with autocomplete -->
+        <div class="relative flex gap-2">
+          <div class="relative w-full max-w-xs">
+            <input
+              type="text"
+              class="input input-bordered w-full"
+              placeholder="Search username (3+ chars)"
+              [ngModel]="inviteUsername()"
+              (ngModelChange)="onInviteUsernameInput($event)"
+              (blur)="hideSuggestions()"
+              autocomplete="off"
+            />
+            @if (showSuggestions() && userSuggestions().length > 0) {
+            <ul
+              class="border-base-300 bg-base-100 absolute top-full z-50 mt-1 w-full overflow-hidden rounded-lg border shadow-lg"
+            >
+              @for (u of userSuggestions(); track u.username) {
+              <li>
+                <button
+                  type="button"
+                  class="hover:bg-base-200 flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+                  (mousedown)="selectSuggestion(u.username)"
+                >
+                  <img [src]="u.avatarUrl" [alt]="u.username" class="size-6 rounded-full" />
+                  <span class="font-medium">{{ u.username }}</span>
+                  @if (u.displayName) {
+                  <span class="text-base-content/50 text-xs">{{ u.displayName }}</span>
+                  }
+                </button>
+              </li>
+              }
+            </ul>
+            }
+          </div>
+          <button
+            type="button"
+            class="btn btn-primary shrink-0"
+            [disabled]="inviting() || !inviteUsername().trim()"
+            (click)="inviteCollaborator()"
+          >
+            @if (inviting()) { <span class="loading loading-spinner loading-xs"></span> }
+            <lucide-icon name="userPlus" class="size-4" aria-hidden="true"></lucide-icon>
+            Invite
+          </button>
+        </div>
+        <!-- Permission checkboxes -->
+        <div class="flex flex-wrap gap-2">
+          @for (perm of allPermissions; track perm.value) {
+          <label class="flex cursor-pointer items-center gap-1.5" [title]="perm.description">
+            <input
+              type="checkbox"
+              class="checkbox checkbox-sm"
+              [checked]="invitePermissions().includes(perm.value)"
+              [disabled]="perm.value === 'READ'"
+              (change)="toggleInvitePermission(perm.value)"
+            />
+            <span class="text-sm">{{ perm.label }}</span>
+          </label>
+          }
+        </div>
+        <p class="text-base-content/50 text-xs">Checking Admin auto-selects all permissions.</p>
+      </div>
+    </section>
+    }
+
+    <section class="card bg-base-100 border-base-300 border shadow-sm">
+      <div class="card-body gap-4">
+        <h2 class="card-title text-base">Collaborators</h2>
+        @if (!isRepoOwner()) {
+        <p class="text-base-content/60 text-sm">
+          View only. Only the repository owner can invite or manage collaborators.
+        </p>
+        } @if (collaborators().length === 0) {
+        <p class="text-base-content/60 text-sm">No collaborators yet.</p>
+        } @else {
+        <ul class="divide-base-300 divide-y">
+          @for (collab of collaborators(); track collab.id) {
+          <li class="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+            <div class="flex items-center gap-3">
+              <img [src]="collab.avatarUrl" [alt]="collab.username" class="size-9 rounded-full" />
+              <div class="flex flex-col gap-1">
+                <div class="text-sm font-medium">{{ collab.username }}</div>
+                @if (collab.displayName) {
+                <div class="text-base-content/50 text-xs">{{ collab.displayName }}</div>
+                }
+                <div class="flex flex-wrap gap-1">
+                  <span
+                    class="badge-pill text-xs"
+                    [class.badge-pill--success]="collab.status === 'ACCEPTED'"
+                    [class.badge-pill--neutral]="collab.status === 'PENDING'"
+                    [class.badge-pill--error]="collab.status === 'DECLINED'"
+                  >
+                    {{ collab.status }}
+                  </span>
+                  @for (perm of collab.permissions; track perm) {
+                  <span class="badge-pill badge-pill--permission text-xs">{{ perm }}</span>
+                  }
+                </div>
+                <!-- Generated invite link -->
+                @if (generatedLinks()[collab.username]) {
+                <div class="mt-1 flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    class="input input-bordered input-xs w-64 font-mono text-xs"
+                    [value]="generatedLinks()[collab.username]"
+                    readonly
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs gap-1"
+                    (click)="copyLink(collab.username)"
+                    title="Copy link"
+                  >
+                    <lucide-icon name="copy" class="size-3.5" aria-hidden="true"></lucide-icon>
+                    Copy
+                  </button>
+                </div>
+                }
+              </div>
+            </div>
+            @if (isRepoOwner()) {
+            <div class="flex shrink-0 flex-wrap gap-2 pl-12 sm:pl-0">
+              @if (editingPermissionsFor() === collab.username) {
+              <div class="flex flex-col gap-2">
+                <div class="flex flex-wrap gap-2">
+                  @for (perm of allPermissions; track perm.value) {
+                  <label class="flex cursor-pointer items-center gap-1.5" [title]="perm.description">
+                    <input
+                      type="checkbox"
+                      class="checkbox checkbox-xs"
+                      [checked]="editPermissions().includes(perm.value)"
+                      [disabled]="perm.value === 'READ'"
+                      (change)="toggleEditPermission(perm.value)"
+                    />
+                    <span class="text-xs">{{ perm.label }}</span>
+                  </label>
+                  }
+                </div>
+                <div class="flex gap-2">
+                  <button type="button" class="btn btn-primary btn-xs gap-1" (click)="savePermissions(collab.username)">
+                    <lucide-icon name="check" class="size-3.5" aria-hidden="true"></lucide-icon>
+                    Save
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="cancelEditPermissions()">
+                    <lucide-icon name="x" class="size-3.5" aria-hidden="true"></lucide-icon>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+              } @else {
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                title="Edit permissions"
+                (click)="startEditPermissions(collab)"
+              >
+                <lucide-icon name="pencil" class="size-3.5" aria-hidden="true"></lucide-icon>
+                Permissions
+              </button>
+              @if (collab.status !== 'ACCEPTED') {
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs text-info gap-1"
+                title="Send invitation email"
+                [disabled]="sendingEmailFor() === collab.username"
+                (click)="sendInvitationEmail(collab.username)"
+              >
+                @if (sendingEmailFor() === collab.username) {
+                <span class="loading loading-spinner loading-xs"></span>
+                } @else {
+                <lucide-icon name="mail" class="size-3.5" aria-hidden="true"></lucide-icon>
+                } Send Email
+              </button>
+              } @if (collab.status === 'PENDING') {
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                title="Generate invite link"
+                [disabled]="generatingLinkFor() === collab.username"
+                (click)="generateInviteLink(collab.username)"
+              >
+                @if (generatingLinkFor() === collab.username) {
+                <span class="loading loading-spinner loading-xs"></span>
+                } @else {
+                <lucide-icon name="link" class="size-3.5" aria-hidden="true"></lucide-icon>
+                } Invite Link
+              </button>
+              }
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs text-error gap-1"
+                title="Remove collaborator"
+                (click)="removeCollaborator(collab.username)"
+              >
+                <lucide-icon name="trash2" class="size-3.5" aria-hidden="true"></lucide-icon>
+                Delete
+              </button>
+              }
+            </div>
+            }
+          </li>
+          }
+        </ul>
+        @if (collaboratorTotalPages() > 1) {
+        <div class="mt-4 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            [disabled]="collaboratorCurrentPage() === 0"
+            (click)="collaboratorPrevPage()"
+          >
+            <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+            Prev
+          </button>
+          <span class="text-base-content/55 text-sm">
+            Page {{ collaboratorCurrentPage() + 1 }} of {{ collaboratorTotalPages() }}
+          </span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            [disabled]="collaboratorCurrentPage() >= collaboratorTotalPages() - 1"
+            (click)="collaboratorNextPage()"
+          >
+            Next
+            <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+          </button>
+        </div>
+        } }
+      </div>
+    </section>
+  </div>
+  } @if (activeTab() === 'danger' && isRepoOwner()) {
   <div
     id="repo-settings-panel-danger"
     role="tabpanel"
@@ -529,8 +814,7 @@
         <div class="mt-4 flex flex-col gap-2">
           <label
             class="border-base-300 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
-            [class.border-error]="!generalIsPrivate()"
-            [class.bg-error/5]="!generalIsPrivate()"
+            [class.visibility-option--highlight]="!generalIsPrivate()"
           >
             <input
               type="radio"
@@ -549,8 +833,7 @@
           </label>
           <label
             class="border-base-300 flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors"
-            [class.border-error]="generalIsPrivate()"
-            [class.bg-error/5]="generalIsPrivate()"
+            [class.visibility-option--highlight]="generalIsPrivate()"
           >
             <input
               type="radio"

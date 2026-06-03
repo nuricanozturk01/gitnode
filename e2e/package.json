@@ -12,9 +12,10 @@
     "test:e2e:teardown": "E2E_TEARDOWN_ONLY=1 playwright test --project=teardown",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . && tsc --noEmit",
+    "lint:eslint": "eslint .",
     "lint-fix": "eslint . --fix",
-    "check": "pnpm run typecheck && pnpm run lint",
+    "check": "pnpm run lint",
     "format": "prettier --write \"**/*.{ts,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,json,md}\""
   },

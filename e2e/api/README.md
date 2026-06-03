@@ -12,23 +12,24 @@
 
 ## Module layout
 
-| Folder       | Controllers                      | Coverage                                                    |
-|--------------|----------------------------------|-------------------------------------------------------------|
-| `auth/`      | `AuthController`                 | register, login, refresh-token, password recovery           |
-| `profile/`   | `ProfileController`              | me, display-name, profile, password, public profile, search |
-| `ssh/`       | `SshKeyController`               | list, add, delete                                           |
-| `repo/`      | `RepoController`                 | create, get, list, patch, delete                            |
-| `branch/`    | `BranchController`               | list, get, create, default, delete                          |
-| `commit/`    | `CommitController`               | list, get, diff                                             |
-| `tree/`      | `TreeController`                 | tree, blob, raw, languages, archive, PUT blob               |
-| `snippet/`   | `SnippetController`, comments    | CRUD, fork, revisions, repo link, raw, comments             |
-| `issue/`     | `IssueController`                | CRUD, linked-tasks, comments                                |
-| `task/`      | Project, board, task             | projects, boards, columns, tasks, subtasks, branches        |
-| `pr/`        | `PullRequestController`, commits | CRUD, merge, commits, diff, comments (`z-pr.spec.ts`)       |
-| `tag/`       | tags + releases                  | full CRUD                                                   |
-| `webhook/`   | repo / user / project            | CRUD each                                                   |
-| `migration/` | `RepoMigrationController`        | GET job, POST validation                                    |
-| `shared/`    | actuator                         | `/actuator/health`                                          |
+| Folder / File             | Controllers                                      | Coverage                                                                                                                           |
+| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `auth/`                   | `AuthController`                                 | register, login, refresh-token, password recovery                                                                                  |
+| `profile/`                | `ProfileController`                              | me, display-name, profile, password, public profile, search                                                                        |
+| `ssh/`                    | `SshKeyController`                               | list, add, delete                                                                                                                  |
+| `repo/`                   | `RepoController`                                 | create, get, list, patch, delete                                                                                                   |
+| `branch/`                 | `BranchController`                               | list, get, create, default, delete                                                                                                 |
+| `commit/`                 | `CommitController`                               | list, get, diff                                                                                                                    |
+| `tree/`                   | `TreeController`                                 | tree, blob, raw, languages, archive, PUT blob                                                                                      |
+| `snippet/`                | `SnippetController`, comments                    | CRUD, fork, revisions, repo link, raw, comments                                                                                    |
+| `issue/`                  | `IssueController`                                | CRUD, linked-tasks, comments                                                                                                       |
+| `task/`                   | Project, board, task                             | projects, boards, columns, tasks, subtasks, branches                                                                               |
+| `pr/`                     | `PullRequestController`, commits                 | CRUD, merge, commits, diff, comments (`z-pr.spec.ts`)                                                                              |
+| `tag/`                    | tags + releases                                  | full CRUD                                                                                                                          |
+| `webhook/`                | repo / user / project                            | CRUD each                                                                                                                          |
+| `migration/`              | `RepoMigrationController`                        | GET job, POST validation                                                                                                           |
+| `shared/`                 | actuator                                         | `/actuator/health`                                                                                                                 |
+| `z-collaborators.spec.ts` | `CollaboratorController`, `InviteLinkController` | invite, list, accept, decline, update-permissions, delete; invite-link generate, view (public), accept via token, reuse prevention |
 
 ## Run
 

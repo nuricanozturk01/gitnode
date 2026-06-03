@@ -22,6 +22,7 @@ import com.nuricanozturk.originhub.pr.dtos.PrMergeForm;
 import com.nuricanozturk.originhub.pr.dtos.PrUpdateForm;
 import com.nuricanozturk.originhub.pr.services.PullRequestService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
@@ -65,7 +66,8 @@ public class PullRequestController {
       throws IOException {
 
     final var authorId = this.tokenService.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(authorId, owner, repo);
+    this.repoService.assertUserHasPermission(
+        authorId, owner, repo, CollaboratorPermission.PULL_REQUEST_CREATE);
     final var createdPr = this.prService.create(owner, repo, authorId, form);
     return ResponseEntity.status(HttpStatus.CREATED).body(createdPr);
   }
@@ -107,7 +109,8 @@ public class PullRequestController {
       throws IOException {
 
     final var mergedById = this.tokenService.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(mergedById, owner, repo);
+    this.repoService.assertUserHasPermission(
+        mergedById, owner, repo, CollaboratorPermission.PULL_REQUEST_MERGE);
     final var mergedPr = this.prService.merge(owner, repo, number, mergedById, form);
     return ResponseEntity.ok(mergedPr);
   }

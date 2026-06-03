@@ -1,0 +1,128 @@
+<div class="my-permissions">
+  <section class="my-permissions-hero repo-panel relative overflow-hidden">
+    <div
+      class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+    ></div>
+    <div class="p-5 sm:p-6">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex min-w-0 items-start gap-4">
+          <div
+            class="bg-primary/10 text-primary ring-primary/20 flex size-12 shrink-0 items-center justify-center rounded-2xl ring-1"
+          >
+            <lucide-icon name="shieldCheck" class="size-6" aria-hidden="true"></lucide-icon>
+          </div>
+          <div class="min-w-0">
+            <h1 class="text-base-content text-xl font-bold tracking-tight sm:text-2xl">My Permissions</h1>
+            <p class="text-base-content/65 mt-1 text-sm leading-relaxed">
+              Your collaborator role on
+              <span class="text-base-content font-mono font-medium">{{ owner() }}/{{ repoName() }}</span>. These are the
+              actions the repository owner has granted you.
+            </p>
+          </div>
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
+          <span class="badge-pill badge-pill--success">Collaborator</span>
+          @if (membership()?.status === 'ACCEPTED') {
+          <span class="badge-pill badge-pill--primary">Active</span>
+          }
+        </div>
+      </div>
+
+      <div class="mt-6 grid gap-3 sm:grid-cols-3">
+        <div class="border-base-200 bg-base-200/40 rounded-xl border px-4 py-3">
+          <p class="text-base-content/55 text-xs font-medium tracking-wide uppercase">Capabilities</p>
+          <p class="text-base-content mt-1 text-2xl font-semibold tabular-nums">
+            {{ grantedCount() }}<span class="text-base-content/45 text-lg font-normal"> / {{ totalCount() }}</span>
+          </p>
+        </div>
+        @if (loadingMembership()) {
+        <div
+          class="border-base-200 bg-base-200/40 col-span-2 flex items-center justify-center rounded-xl border px-4 py-6"
+        >
+          <span class="loading loading-spinner loading-md text-primary"></span>
+        </div>
+        } @else if (membership(); as m) {
+        <div class="border-base-200 bg-base-200/40 rounded-xl border px-4 py-3">
+          <p class="text-base-content/55 text-xs font-medium tracking-wide uppercase">Invited by</p>
+          <p class="text-base-content mt-1 truncate text-sm font-semibold">{{ m.invitedBy }}</p>
+        </div>
+        <div class="border-base-200 bg-base-200/40 rounded-xl border px-4 py-3">
+          <p class="text-base-content/55 text-xs font-medium tracking-wide uppercase">Member since</p>
+          <p class="text-base-content mt-1 text-sm font-semibold">{{ m.updatedAt | date: 'mediumDate' }}</p>
+        </div>
+        }
+      </div>
+
+      @if (repoContext.hasPermission('ADMIN')) {
+      <div class="alert alert-info mt-4 text-sm">
+        <lucide-icon name="shield" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        <span>You have <strong>Admin</strong> on this repository — all capabilities below are enabled.</span>
+      </div>
+      }
+    </div>
+  </section>
+
+  <div class="mt-6 space-y-5">
+    @for (group of permissionGroups; track group.id) {
+    <section class="repo-panel border-base-300 overflow-hidden">
+      <div
+        class="border-base-200 flex flex-col gap-2 border-b px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="flex items-center gap-3">
+          <div class="bg-base-200 text-base-content/70 flex size-9 items-center justify-center rounded-lg">
+            <lucide-icon [name]="group.icon" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+          </div>
+          <div>
+            <h2 class="text-base-content text-base font-semibold">{{ group.title }}</h2>
+            <p class="text-base-content/55 text-sm">{{ group.summary }}</p>
+          </div>
+        </div>
+        <span class="badge-pill badge-pill--neutral text-xs">
+          {{ groupGrantedCount(group.permissions) }} / {{ group.permissions.length }} enabled
+        </span>
+      </div>
+
+      <ul class="divide-base-200 divide-y">
+        @for (perm of group.permissions; track perm) {
+        <li
+          class="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+          [class.my-permissions-row--granted]="hasEffectivePermission(perm)"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="text-base-content font-medium">{{ permissionLabel(perm) }}</p>
+            <p class="text-base-content/55 mt-0.5 text-sm">{{ permissionDescription(perm) }}</p>
+          </div>
+          @if (hasEffectivePermission(perm)) {
+          <span class="badge-pill badge-pill--success inline-flex w-fit items-center gap-1.5">
+            <lucide-icon name="checkCircle" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+            Granted
+          </span>
+          } @else {
+          <span class="badge-pill badge-pill--neutral inline-flex w-fit items-center gap-1.5">
+            <lucide-icon name="xCircle" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+            Not granted
+          </span>
+          }
+        </li>
+        }
+      </ul>
+    </section>
+    }
+  </div>
+
+  <section class="repo-panel border-base-300 mt-6">
+    <div class="p-5 sm:p-6">
+      <h2 class="text-base-content text-sm font-semibold">Need different access?</h2>
+      <p class="text-base-content/60 mt-1 text-sm leading-relaxed">
+        Only the repository owner can change collaborator permissions. Ask
+        <span class="font-medium">{{ owner() }}</span> to update your role if you need additional capabilities.
+      </p>
+      @if (repoContext.canViewSettings()) {
+      <a [routerLink]="['/', owner(), repoName(), 'settings']" class="btn btn-outline btn-sm mt-4 gap-1.5">
+        <lucide-icon name="settings" class="size-4" aria-hidden="true"></lucide-icon>
+        Open repository settings
+      </a>
+      }
+    </div>
+  </section>
+</div>

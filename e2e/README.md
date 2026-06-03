@@ -21,7 +21,7 @@ cp .env.example .env   # optional — local credentials and API URL
 ## How to run
 
 | Command                       | What runs                                                             |
-|-------------------------------|-----------------------------------------------------------------------|
+| ----------------------------- | --------------------------------------------------------------------- |
 | `pnpm test:e2e`               | **API** → **scenario** → **teardown** (full suite)                    |
 | `pnpm test:e2e:api`           | API project only (teardown does **not** run)                          |
 | `pnpm test:e2e:scenario`      | Scenario + teardown (`E2E_SCENARIO_ONLY=1`, skips API project)        |
@@ -33,7 +33,7 @@ cp .env.example .env   # optional — local credentials and API URL
 Optional file: `e2e/.env` (see [.env.example](.env.example)).
 
 | Variable                                          | When unset                          | When set                              |
-|---------------------------------------------------|-------------------------------------|---------------------------------------|
+| ------------------------------------------------- | ----------------------------------- | ------------------------------------- |
 | `ORIGINHUB_API_BASE_URL`                          | `http://localhost:8080`             | Used for all requests                 |
 | `E2E_OWNER_USERNAME` + `E2E_OWNER_PASSWORD`       | Owner is **auto-registered**        | Owner logs in via `/api/auth/login`   |
 | `E2E_INTRUDER_USERNAME` + `E2E_INTRUDER_PASSWORD` | Intruder is **auto-registered**     | Intruder logs in                      |

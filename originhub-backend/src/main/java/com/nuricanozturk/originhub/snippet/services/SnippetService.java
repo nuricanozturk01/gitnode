@@ -215,6 +215,8 @@ public class SnippetService {
     this.snippetRepository.delete(snippet);
     if (forkedFrom != null) {
       this.snippetRepository.decrementForkCount(forkedFrom.getId());
+      // The original snippet's forkCount was decremented; evict its stale detail cache entry.
+      this.snippetCacheInvalidator.evictDetail(forkedFrom.getId());
     }
     this.fileStorage.deleteSnippetDir(username, snippetId);
     this.eventPublisher.publishEvent(new SnippetDeletedEvent(snippetId, username, title));
@@ -323,6 +325,11 @@ public class SnippetService {
     }
 
     this.snapshotRevision(saved, tenantId, "Forked from " + original.getTitle(), contentByFilename);
+
+    // The fork is always PUBLIC, so the public list cache is now stale.
+    // The original snippet's forkCount was incremented, so its detail cache entry is stale too.
+    this.snippetCacheInvalidator.evictPublicList();
+    this.snippetCacheInvalidator.evictDetail(original.getId());
 
     return this.buildDetail(saved, forker.getUsername());
   }

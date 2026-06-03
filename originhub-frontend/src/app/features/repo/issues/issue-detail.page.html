@@ -12,7 +12,7 @@
       <lucide-icon name="arrowLeft" class="size-4 shrink-0"></lucide-icon>
       <span>Issues</span>
     </a>
-    @if (isLoggedIn() && repoContext.canEdit()) {
+    @if (isLoggedIn() && (isOwnIssue() || canManageIssues())) {
     <div class="flex gap-2">
       <button type="button" class="btn btn-outline btn-sm border-base-300 shrink-0" (click)="toggleStatus()">
         @if (iss.status === 'OPEN') {
@@ -171,7 +171,7 @@
               <span class="text-base-content font-medium"> {{ comment.author.name || comment.author.username }} </span>
               <span class="text-base-content/45 text-xs">{{ comment.createdAt | relativeTime }}</span>
             </div>
-            @if (isLoggedIn()) {
+            @if (canModifyComment(comment)) {
             <div class="flex gap-1">
               <button
                 type="button"

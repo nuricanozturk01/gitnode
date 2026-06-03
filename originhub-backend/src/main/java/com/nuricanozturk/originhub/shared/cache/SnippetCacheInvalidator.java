@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.cache;
 
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Component;
@@ -28,5 +29,9 @@ public class SnippetCacheInvalidator {
 
   public void evictPublicList() {
     this.evictor.evict(CacheNames.SNIPPET_LIST_PUBLIC, "*");
+  }
+
+  public void evictDetail(final UUID snippetId) {
+    this.evictor.evict(CacheNames.SNIPPET_DETAIL, snippetId.toString());
   }
 }

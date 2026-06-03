@@ -6,17 +6,16 @@ import { getApiBaseUrl } from '../helpers/env';
 import { createScenarioRepo, sessionIntruder, sessionOwner } from '../helpers/scenario-api';
 import type { ScenarioRepo, ScenarioUser } from '../helpers/types';
 
-interface ScenarioFixtures {
+interface ScenarioTestFixtures {
   apiBaseUrl: string;
   bareApi: APIRequestContext;
-  session: E2eSession;
   owner: ScenarioUser;
   intruder: ScenarioUser;
   privateRepo: ScenarioRepo;
   publicRepo: ScenarioRepo;
 }
 
-export const test = base.extend<ScenarioFixtures>({
+export const test = base.extend<ScenarioTestFixtures, { session: E2eSession }>({
   apiBaseUrl: async ({}, use) => {
     await use(getApiBaseUrl());
   },

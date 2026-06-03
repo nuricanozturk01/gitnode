@@ -53,8 +53,24 @@ export class IssueDetailPage {
   readonly issueNumber = computed(() => Number(this.routeParams().get('number') ?? '0'));
 
   readonly isLoggedIn = computed(() => this.tokenService.isLoggedIn());
+  readonly canManageIssues = computed(() => this.repoContext.hasPermission('ISSUE_MANAGE'));
   readonly hasPrevComments = computed(() => this.commentPage() > 0);
   readonly hasNextComments = computed(() => this.commentPage() < this.commentTotalPages() - 1);
+
+  isOwnIssue(): boolean {
+    const cu = this.currentUser();
+    const iss = this.issue();
+    return !!cu && !!iss && cu.username === iss.author.username;
+  }
+
+  isOwnComment(comment: IssueCommentInfo): boolean {
+    const cu = this.currentUser();
+    return !!cu && cu.username === comment.author.username;
+  }
+
+  canModifyComment(comment: IssueCommentInfo): boolean {
+    return this.isLoggedIn() && (this.isOwnComment(comment) || this.canManageIssues());
+  }
 
   private readonly routeKey = computed(() => `${this.owner()}/${this.repoName()}/${this.issueNumber()}`);
 

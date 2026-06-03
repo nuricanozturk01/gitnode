@@ -20,6 +20,7 @@ import com.nuricanozturk.originhub.pr.dtos.PrCommentInfo;
 import com.nuricanozturk.originhub.pr.dtos.PrCommentUpdateForm;
 import com.nuricanozturk.originhub.pr.services.PullRequestCommentService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
@@ -60,7 +61,12 @@ public class PullRequestCommitController {
       @Valid @RequestBody final PrCommentForm form) {
 
     final var authorId = this.tokenService.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(authorId, owner, repo);
+    this.repoService.assertUserHasAnyPermission(
+        authorId,
+        owner,
+        repo,
+        CollaboratorPermission.PULL_REQUEST_REVIEW,
+        CollaboratorPermission.PULL_REQUEST_MERGE);
     final var comment = this.prService.addComment(owner, repo, number, authorId, form);
     return ResponseEntity.status(HttpStatus.CREATED).body(comment);
   }

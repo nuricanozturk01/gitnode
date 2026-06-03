@@ -28,6 +28,8 @@ import { IssueService } from '../../../core/issue/services/issue.service';
 import { ReleaseService } from '../../../core/release/services/release.service';
 import { TokenService } from '../../../core/auth/services/token.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { CollaboratorService } from '../../../core/collaborator/collaborator.service';
+import type { CollaboratorInfo } from '../../../domain/collaborator/collaborator.model';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -47,6 +49,7 @@ export class RepoLayoutComponent {
   private readonly releaseService = inject(ReleaseService);
   private readonly tokenService = inject(TokenService);
   private readonly toastService = inject(ToastService);
+  private readonly collaboratorService = inject(CollaboratorService);
 
   readonly loading = signal(true);
   readonly isForking = signal(false);
@@ -66,6 +69,8 @@ export class RepoLayoutComponent {
   readonly canFork = computed(
     () => this.isLoggedIn() && !this.repoContext.canEdit() && !(this.repo()?.isPrivate ?? true),
   );
+  readonly pendingInvitation = signal<CollaboratorInfo | null>(null);
+  readonly respondingToInvitation = signal(false);
 
   constructor() {
     this.route.paramMap
@@ -121,6 +126,7 @@ export class RepoLayoutComponent {
       this.loading.set(false);
     }
     void this.loadTabCounts(owner, repo, routeKey);
+    void this.checkPendingInvitation(owner, repo);
   }
 
   async forkRepo(): Promise<void> {
@@ -140,6 +146,55 @@ export class RepoLayoutComponent {
       }
     } finally {
       this.isForking.set(false);
+    }
+  }
+
+  private async checkPendingInvitation(owner: string, repo: string): Promise<void> {
+    this.pendingInvitation.set(null);
+    this.repoContext.collaboratorPermissions.set([]);
+    if (!this.isLoggedIn() || this.repoContext.canEdit()) return;
+    try {
+      const inv = await this.collaboratorService.getMyInvitation(owner, repo);
+      if (inv.status === 'PENDING') {
+        this.pendingInvitation.set(inv);
+      } else if (inv.status === 'ACCEPTED') {
+        this.repoContext.collaboratorPermissions.set(inv.permissions);
+      }
+    } catch {
+      // No invitation — expected for most visitors
+    }
+  }
+
+  async acceptInvitation(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo || this.respondingToInvitation()) return;
+    this.respondingToInvitation.set(true);
+    try {
+      await this.collaboratorService.acceptInvitation(owner, repo);
+      this.pendingInvitation.set(null);
+      this.toastService.success('You are now a collaborator on this repository');
+      void this.loadRepo();
+    } catch {
+      this.toastService.error('Failed to accept invitation');
+    } finally {
+      this.respondingToInvitation.set(false);
+    }
+  }
+
+  async declineInvitation(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo || this.respondingToInvitation()) return;
+    this.respondingToInvitation.set(true);
+    try {
+      await this.collaboratorService.declineInvitation(owner, repo);
+      this.pendingInvitation.set(null);
+      this.toastService.success('Invitation declined');
+    } catch {
+      this.toastService.error('Failed to decline invitation');
+    } finally {
+      this.respondingToInvitation.set(false);
     }
   }
 

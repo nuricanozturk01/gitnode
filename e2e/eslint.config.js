@@ -37,7 +37,7 @@ module.exports = defineConfig(
     languageOptions: {
       globals: globals.node,
       parserOptions: {
-        projectService: true,
+        project: ['./tsconfig.json'],
         tsconfigRootDir: __dirname,
       },
     },
@@ -55,6 +55,12 @@ module.exports = defineConfig(
       '@typescript-eslint/no-empty-function': [
         'error',
         { allow: ['arrowFunctions'] },
+      ],
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/await-thenable': 'error',
+      '@typescript-eslint/no-misused-promises': [
+        'error',
+        { checksVoidReturn: { attributes: false } },
       ],
     },
   },

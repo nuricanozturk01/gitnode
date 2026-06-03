@@ -1,3 +1,4 @@
+/
 <div class="pr-detail-page min-w-0 space-y-5 sm:space-y-6">
   @if (loading()) {
   <section class="repo-panel flex justify-center py-20">
@@ -12,7 +13,7 @@
       <lucide-icon name="arrowLeft" class="size-4 shrink-0"></lucide-icon>
       <span>Pull requests</span>
     </a>
-    @if (p.status === 'OPEN' && isLoggedIn() && repoContext.canEdit()) {
+    @if (p.status === 'OPEN' && isLoggedIn() && repoContext.hasPermission('PULL_REQUEST_MERGE')) {
     <button
       type="button"
       class="btn btn-outline btn-sm border-base-300 text-error hover:border-error/50 hover:bg-error/10 shrink-0"
@@ -316,7 +317,7 @@
             </div>
           </div>
         </article>
-        } @if (isLoggedIn() && !isMergedOrClosed()) {
+        } @if (canReview() && !isMergedOrClosed()) {
         <article
           class="border-primary/20 from-base-100 to-base-200/20 rounded-xl border border-dashed bg-gradient-to-br p-4 sm:p-5"
         >

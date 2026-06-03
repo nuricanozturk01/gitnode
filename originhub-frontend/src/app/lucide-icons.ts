@@ -88,6 +88,7 @@ import {
   LayoutDashboard,
   UserPen,
   FilePlus,
+  UserPlus,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -164,4 +165,5 @@ export const LUCIDE_ICONS = {
   LayoutDashboard,
   UserPen,
   FilePlus,
+  UserPlus,
 };

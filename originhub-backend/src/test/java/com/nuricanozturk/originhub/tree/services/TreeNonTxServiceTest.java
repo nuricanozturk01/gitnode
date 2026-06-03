@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.shared.cache.RepoCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
 import com.nuricanozturk.originhub.tree.dtos.BlobResponse;
@@ -54,6 +55,8 @@ class TreeNonTxServiceTest {
   @TempDir Path workDir;
 
   @Mock private GitProvider gitProvider;
+
+  @Mock private RepoCacheInvalidator cacheInvalidator;
 
   @InjectMocks private TreeNonTxService service;
 

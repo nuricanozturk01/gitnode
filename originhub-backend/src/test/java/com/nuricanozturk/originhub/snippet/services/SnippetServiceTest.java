@@ -24,9 +24,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.shared.cache.SnippetCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
+import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetDetail;
@@ -70,6 +72,8 @@ class SnippetServiceTest {
   @Mock private SnippetMapper snippetMapper;
   @Mock private SnippetFileStorageService fileStorage;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private SnippetCacheInvalidator snippetCacheInvalidator;
+  @Mock private RepoRepository repoRepository;
 
   @InjectMocks private SnippetService snippetService;
 

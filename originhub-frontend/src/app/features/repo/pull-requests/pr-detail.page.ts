@@ -108,8 +108,16 @@ export class PrDetailPage {
 
   readonly canMerge = computed(() => {
     const p = this.pr();
-    return p?.status === 'OPEN' && !p?.isDraft && this.isLoggedIn() && this.repoContext.canEdit();
+    return (
+      p?.status === 'OPEN' && !p?.isDraft && this.isLoggedIn() && this.repoContext.hasPermission('PULL_REQUEST_MERGE')
+    );
   });
+
+  readonly canReview = computed(
+    () =>
+      this.isLoggedIn() &&
+      (this.repoContext.hasPermission('PULL_REQUEST_REVIEW') || this.repoContext.hasPermission('PULL_REQUEST_MERGE')),
+  );
 
   readonly isMergedOrClosed = computed(() => {
     const p = this.pr();

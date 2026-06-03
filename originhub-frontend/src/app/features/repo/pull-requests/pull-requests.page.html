@@ -41,7 +41,7 @@
           </div>
         </div>
       </div>
-      @if (repoContext.canEdit()) {
+      @if (repoContext.hasPermission('PULL_REQUEST_CREATE')) {
       <a
         [routerLink]="['/', owner(), repoName(), 'pulls', 'new']"
         class="btn btn-primary btn-sm shrink-0 gap-2 self-start sm:self-auto"
@@ -79,7 +79,7 @@
     <p class="max-w-sm text-center text-sm leading-relaxed">
       There aren’t any {{ tab() }} pull requests in this repository yet.
     </p>
-    @if (tab() === 'open' && repoContext.canEdit()) {
+    @if (tab() === 'open' && repoContext.hasPermission('PULL_REQUEST_CREATE')) {
     <a [routerLink]="['/', owner(), repoName(), 'pulls', 'new']" class="btn btn-primary btn-sm mt-3 gap-2">
       <lucide-icon name="plus" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
       Create pull request

@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.shared.configs;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
 
   private final RepoRepository repoRepository;
   private final JwtUtils jwtUtils;
+  private final CollaboratorAccessPort collaboratorAccessPort;
 
   @Override
   public boolean preHandle(
@@ -68,15 +70,46 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
       throws IOException {
 
     final var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
       return this.writeForbidden(response);
     }
+
+    return this.checkAuthorization(authHeader, request, response, repo);
+  }
+
+  private boolean checkAuthorization(
+      final String authHeader,
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final Repo repo)
+      throws IOException {
 
     try {
       final var requesterId = this.jwtUtils.extractUserId(authHeader);
       final boolean isOwner = repo.getOwner().getId().equals(requesterId);
 
-      return isOwner || this.writeForbidden(response);
+      if (isOwner) {
+        return true;
+      }
+
+      final boolean isCollaborator =
+          this.collaboratorAccessPort.isActiveCollaborator(repo.getId(), requesterId);
+
+      if (isCollaborator) {
+        return true;
+      }
+
+      final boolean isInvitationEndpoint =
+          request.getRequestURI().endsWith("/collaborators/invitation")
+              || request.getRequestURI().contains("/collaborators/invitation/");
+
+      if (isInvitationEndpoint
+          && this.collaboratorAccessPort.hasPendingInvitation(repo.getId(), requesterId)) {
+        return true;
+      }
+
+      return this.writeForbidden(response);
     } catch (final Exception _) {
       return this.writeUnauthorized(response);
     }

@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.shared.repo.repositories;
 
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
@@ -57,4 +58,12 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   @Modifying
   @Query("UPDATE Repo r SET r.forkCount = r.forkCount - 1 WHERE r.id = :id AND r.forkCount > 0")
   void decrementForkCount(@Param("id") UUID id);
+
+  @Query(
+      "SELECT r FROM Repo r WHERE r.owner.username = :ownerUsername "
+          + "AND (r.isPrivate = false OR r.id IN :collaboratorRepoIds)")
+  Page<Repo> findVisibleReposByOwner(
+      @Param("ownerUsername") String ownerUsername,
+      @Param("collaboratorRepoIds") Collection<UUID> collaboratorRepoIds,
+      Pageable pageable);
 }

@@ -17,6 +17,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/guards/auth.guard';
 import { repoOwnerGuard } from './core/repo/guards/repo-owner.guard';
+import { repoSettingsGuard } from './core/repo/guards/repo-settings.guard';
 import { guestGuard } from './core/auth/guards/guest.guard';
 import { redirectIfAuthGuard } from './core/auth/guards/redirect-if-auth.guard';
 
@@ -83,6 +84,10 @@ export const routes: Routes = [
     loadComponent: () => import('./features/project/board/board.page').then((m) => m.BoardPage),
   },
 
+  {
+    path: 'accept-invite/:token',
+    loadComponent: () => import('./features/collaborator/accept-invite.page').then((m) => m.AcceptInvitePage),
+  },
   {
     path: 'snippets',
     loadComponent: () => import('./features/snippets/snippets/snippets.page').then((m) => m.SnippetsPage),
@@ -208,7 +213,12 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./features/repo/settings/repo-settings.page').then((m) => m.RepoSettingsPage),
-        canActivate: [repoOwnerGuard],
+        canActivate: [repoSettingsGuard],
+      },
+      {
+        path: 'my-permissions',
+        loadComponent: () =>
+          import('./features/repo/my-permissions/repo-my-permissions.page').then((m) => m.RepoMyPermissionsPage),
       },
     ],
   },

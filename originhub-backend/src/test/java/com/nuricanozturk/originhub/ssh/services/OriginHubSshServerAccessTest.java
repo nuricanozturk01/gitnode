@@ -55,11 +55,10 @@ class OriginHubSshServerAccessTest {
   // helpers
   // -----------------------------------------------------------------------
 
-  private static Tenant tenant(String username, boolean admin) {
+  private static Tenant tenant(String username) {
     Tenant t = new Tenant();
     t.setId(UUID.randomUUID());
     t.setUsername(username);
-    t.setAdmin(admin);
     return t;
   }
 
@@ -75,9 +74,9 @@ class OriginHubSshServerAccessTest {
   // -----------------------------------------------------------------------
 
   @Test
-  @DisplayName("write — denied when requester is not owner and not admin")
+  @DisplayName("write — denied when requester is not repo owner")
   void write_denied_forNonOwner() {
-    Tenant stranger = tenant("stranger", false);
+    Tenant stranger = tenant("stranger");
 
     assertThatThrownBy(() -> callAssertAccess(stranger, "alice", "myrepo", true))
         .isInstanceOf(IOException.class)
@@ -87,21 +86,11 @@ class OriginHubSshServerAccessTest {
   @Test
   @DisplayName("write — allowed when tenant username matches repo owner")
   void write_allowed_forOwner() {
-    Tenant owner = tenant("alice", false);
+    Tenant owner = tenant("alice");
     Repo r = repo(false);
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(owner, "alice", "myrepo", true));
-  }
-
-  @Test
-  @DisplayName("write — allowed for admin even when username differs from repo owner")
-  void write_allowed_forAdmin() {
-    Tenant admin = tenant("adminuser", true);
-    Repo r = repo(false);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
-
-    assertThatNoException().isThrownBy(() -> callAssertAccess(admin, "alice", "myrepo", true));
   }
 
   // -----------------------------------------------------------------------
@@ -111,7 +100,7 @@ class OriginHubSshServerAccessTest {
   @Test
   @DisplayName("read — denied on private repo for non-owner")
   void read_denied_privateRepo_forNonOwner() {
-    Tenant stranger = tenant("stranger", false);
+    Tenant stranger = tenant("stranger");
     Repo r = repo(true);
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
 
@@ -123,21 +112,11 @@ class OriginHubSshServerAccessTest {
   @Test
   @DisplayName("read — allowed on private repo for owner")
   void read_allowed_privateRepo_forOwner() {
-    Tenant owner = tenant("alice", false);
+    Tenant owner = tenant("alice");
     Repo r = repo(true);
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(owner, "alice", "myrepo", false));
-  }
-
-  @Test
-  @DisplayName("read — allowed on private repo for admin")
-  void read_allowed_privateRepo_forAdmin() {
-    Tenant admin = tenant("adminuser", true);
-    Repo r = repo(true);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
-
-    assertThatNoException().isThrownBy(() -> callAssertAccess(admin, "alice", "myrepo", false));
   }
 
   // -----------------------------------------------------------------------
@@ -147,7 +126,7 @@ class OriginHubSshServerAccessTest {
   @Test
   @DisplayName("read — allowed on public repo for anonymous / any user")
   void read_allowed_publicRepo_forStranger() {
-    Tenant stranger = tenant("stranger", false);
+    Tenant stranger = tenant("stranger");
     Repo r = repo(false);
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
 
@@ -157,7 +136,7 @@ class OriginHubSshServerAccessTest {
   @Test
   @DisplayName("read — allowed on public repo when repo not found (no privacy check)")
   void read_allowed_whenRepoNotFound() {
-    Tenant stranger = tenant("stranger", false);
+    Tenant stranger = tenant("stranger");
     when(repoRepository.findByOwnerUsernameAndName("alice", "ghost")).thenReturn(Optional.empty());
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(stranger, "alice", "ghost", false));

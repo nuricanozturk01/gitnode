@@ -34,6 +34,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,7 +54,6 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.treewalk.filter.AndTreeFilter;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jspecify.annotations.NullMarked;
@@ -322,21 +322,70 @@ public class TreeNonTxService {
     final Map<String, RevCommit> result = HashMap.newHashMap(paths.size());
     if (paths.isEmpty()) return result;
 
-    // Separate RevWalk per path: reset() does not clear SEEN flags on already-parsed commits,
-    // so reusing a single walk causes markStart() to silently no-op for commits visited in a
-    // prior iteration, returning a stale or null result for subsequent paths.
-    for (final String p : paths) {
-      try (final var walk = new RevWalk(gitRepo)) {
-        walk.setTreeFilter(AndTreeFilter.create(PathFilter.create(p), TreeFilter.ANY_DIFF));
-        walk.markStart(walk.parseCommit(startCommit.getId()));
-        final var commit = walk.next();
-        if (commit != null) {
-          result.put(p, commit);
+    final var remaining = new HashSet<>(paths);
+
+    try (final var walk = new RevWalk(gitRepo)) {
+      walk.markStart(walk.parseCommit(startCommit.getId()));
+
+      RevCommit commit;
+      while (!remaining.isEmpty() && (commit = walk.next()) != null) {
+        if (commit.getParentCount() == 0) {
+          this.assignAllToCommit(remaining, result, commit);
+          break;
         }
+        this.resolveChangedPaths(gitRepo, walk, commit, remaining, result);
       }
     }
 
     return result;
+  }
+
+  private void assignAllToCommit(
+      final Set<String> remaining, final Map<String, RevCommit> result, final RevCommit commit) {
+
+    for (final String p : remaining) {
+      result.put(p, commit);
+    }
+    remaining.clear();
+  }
+
+  private void resolveChangedPaths(
+      final Repository gitRepo,
+      final RevWalk walk,
+      final RevCommit commit,
+      final Set<String> remaining,
+      final Map<String, RevCommit> result)
+      throws IOException {
+
+    final var parent = walk.parseCommit(commit.getParent(0).getId());
+
+    try (final var tw = new TreeWalk(gitRepo)) {
+      tw.addTree(parent.getTree());
+      tw.addTree(commit.getTree());
+      tw.setRecursive(true);
+      tw.setFilter(TreeFilter.ANY_DIFF);
+
+      while (tw.next() && !remaining.isEmpty()) {
+        this.matchChangedPath(tw.getPathString(), remaining, result, commit);
+      }
+    }
+  }
+
+  private void matchChangedPath(
+      final String changedPath,
+      final Set<String> remaining,
+      final Map<String, RevCommit> result,
+      final RevCommit commit) {
+
+    final var iter = remaining.iterator();
+    while (iter.hasNext()) {
+      final var candidate = iter.next();
+      if (changedPath.equals(candidate) || changedPath.startsWith(candidate + "/")) {
+        result.put(candidate, commit);
+        iter.remove();
+        break;
+      }
+    }
   }
 
   private void processForNonEmptyPath(final TreeWalk treeWalk, final String path)

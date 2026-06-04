@@ -1,8 +1,9 @@
 /**
  * SCN-API-COLLAB-PERM — Collaborator permission enforcement.
  *
- * Each section grants a collaborator a specific permission set, exercises the
- * protected endpoint, then verifies the correct allow/deny behaviour.
+ * Each section grants the shared intruder user a specific permission set,
+ * exercises the protected endpoint, then verifies the correct allow/deny
+ * behaviour. Each test creates its own private repo so parallel runs are safe.
  *
  * Covers:
  *  PULL_REQUEST_CREATE — create PR (403 without, 201 with)
@@ -15,11 +16,31 @@
 import type { APIRequestContext } from '@playwright/test';
 
 import { expect, test } from './fixtures/scenario';
-import { deleteUser, registerAndLogin } from './helpers/register-and-login';
 import { prepareFeatureBranch } from './helpers/scenario-api';
 
 function repoCollaboratorsApi(owner: string, repo: string): string {
   return `/api/repos/${owner}/${repo}/collaborators`;
+}
+
+async function inviteAndAccept(
+  bareApi: APIRequestContext,
+  ownerAuth: string,
+  owner: string,
+  repo: string,
+  username: string,
+  permissions: string[],
+  collabAuth: string,
+): Promise<void> {
+  const inviteResp = await bareApi.post(repoCollaboratorsApi(owner, repo), {
+    headers: { Authorization: ownerAuth },
+    data: { username, permissions },
+  });
+  if (!inviteResp.ok()) {
+    throw new Error(`invite failed (${inviteResp.status()}): ${await inviteResp.text()}`);
+  }
+  await bareApi.post(`${repoCollaboratorsApi(owner, repo)}/invitation/accept`, {
+    headers: { Authorization: collabAuth },
+  });
 }
 
 async function setPermissions(
@@ -39,19 +60,30 @@ async function setPermissions(
   }
 }
 
+async function removeCollaborator(
+  bareApi: APIRequestContext,
+  ownerAuth: string,
+  owner: string,
+  repo: string,
+  username: string,
+): Promise<void> {
+  await bareApi
+    .delete(`${repoCollaboratorsApi(owner, repo)}/${username}`, {
+      headers: { Authorization: ownerAuth },
+    })
+    .catch(() => {});
+}
+
 // ─── SCN-COLLAB-PERM-PR-CREATE ────────────────────────────────────────────────
 
 test.describe('SCN-COLLAB-PERM-PR-CREATE — PULL_REQUEST_CREATE enforcement', () => {
   test('collab without PR_CREATE cannot create PR; with PR_CREATE can create PR', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-prcreate-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
-      // Setup: feature branch owned by owner
       const featureBranch = `feat-perm-test-${Date.now().toString(36)}`;
       await prepareFeatureBranch(
         bareApi,
@@ -61,27 +93,21 @@ test.describe('SCN-COLLAB-PERM-PR-CREATE — PULL_REQUEST_CREATE enforcement', (
         featureBranch,
       );
 
-      // Invite with READ only
-      const inviteResp = await bareApi.post(
-        repoCollaboratorsApi(owner.username, privateRepo.name),
-        {
-          headers: { Authorization: owner.authorization },
-          data: { username, permissions: ['READ'] },
-        },
-      );
-      expect(inviteResp.status()).toBe(201);
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ'],
+        intruder.authorization,
       );
 
       // Without PR_CREATE → 403
       const denyResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: {
             title: 'Denied PR',
             description: '',
@@ -93,13 +119,12 @@ test.describe('SCN-COLLAB-PERM-PR-CREATE — PULL_REQUEST_CREATE enforcement', (
       );
       expect(denyResp.status()).toBe(403);
 
-      // Grant PR_CREATE
       await setPermissions(
         bareApi,
         owner.authorization,
         owner.username,
         privateRepo.name,
-        username,
+        intruder.username,
         ['READ', 'PULL_REQUEST_CREATE'],
       );
 
@@ -107,7 +132,7 @@ test.describe('SCN-COLLAB-PERM-PR-CREATE — PULL_REQUEST_CREATE enforcement', (
       const allowResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: {
             title: 'Allowed PR',
             description: '',
@@ -121,7 +146,13 @@ test.describe('SCN-COLLAB-PERM-PR-CREATE — PULL_REQUEST_CREATE enforcement', (
       const pr = await allowResp.json();
       expect(pr.status).toBe('OPEN');
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 });
@@ -132,13 +163,10 @@ test.describe('SCN-COLLAB-PERM-PR-REVIEW — PULL_REQUEST_REVIEW enforcement', (
   test('collab without PR_REVIEW cannot comment; with PR_REVIEW can comment', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-prreview-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
-      // Owner creates a PR for testing
       const featureBranch = `feat-review-test-${Date.now().toString(36)}`;
       await prepareFeatureBranch(
         bareApi,
@@ -160,35 +188,32 @@ test.describe('SCN-COLLAB-PERM-PR-REVIEW — PULL_REQUEST_REVIEW enforcement', (
       expect(prResp.status()).toBe(201);
       const { number: prNumber } = await prResp.json();
 
-      // Invite with READ only
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ'],
+        intruder.authorization,
       );
 
       // Without PR_REVIEW → 403
       const denyResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/comments`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { body: 'Denied comment' },
         },
       );
       expect(denyResp.status()).toBe(403);
 
-      // Grant PR_REVIEW
       await setPermissions(
         bareApi,
         owner.authorization,
         owner.username,
         privateRepo.name,
-        username,
+        intruder.username,
         ['READ', 'PULL_REQUEST_REVIEW'],
       );
 
@@ -196,7 +221,7 @@ test.describe('SCN-COLLAB-PERM-PR-REVIEW — PULL_REQUEST_REVIEW enforcement', (
       const allowResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/comments`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { body: 'Allowed comment' },
         },
       );
@@ -204,18 +229,22 @@ test.describe('SCN-COLLAB-PERM-PR-REVIEW — PULL_REQUEST_REVIEW enforcement', (
       const comment = await allowResp.json();
       expect(comment.body).toBe('Allowed comment');
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 
   test('collab with PULL_REQUEST_MERGE (but not explicit REVIEW) can also comment', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-mergerev-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
       const featureBranch = `feat-mergerev-${Date.now().toString(36)}`;
       await prepareFeatureBranch(
@@ -237,28 +266,33 @@ test.describe('SCN-COLLAB-PERM-PR-REVIEW — PULL_REQUEST_REVIEW enforcement', (
       });
       const { number: prNumber } = await prResp.json();
 
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ', 'PULL_REQUEST_MERGE'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ', 'PULL_REQUEST_MERGE'],
+        intruder.authorization,
       );
 
       // MERGE implies REVIEW → comment allowed
       const commentResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/comments`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { body: 'Comment via MERGE permission' },
         },
       );
       expect(commentResp.status()).toBe(201);
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 });
@@ -269,11 +303,9 @@ test.describe('SCN-COLLAB-PERM-PR-MERGE — PULL_REQUEST_MERGE enforcement', () 
   test('collab without PR_MERGE cannot merge; with PR_MERGE can merge', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-prmerge-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
       const featureBranch = `feat-merge-test-${Date.now().toString(36)}`;
       await prepareFeatureBranch(
@@ -296,34 +328,32 @@ test.describe('SCN-COLLAB-PERM-PR-MERGE — PULL_REQUEST_MERGE enforcement', () 
       expect(prResp.status()).toBe(201);
       const { number: prNumber } = await prResp.json();
 
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ'],
+        intruder.authorization,
       );
 
       // Without PR_MERGE → 403
       const denyResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/merge`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { strategy: 'MERGE_COMMIT', commitMessage: 'Denied merge' },
         },
       );
       expect(denyResp.status()).toBe(403);
 
-      // Grant PR_MERGE
       await setPermissions(
         bareApi,
         owner.authorization,
         owner.username,
         privateRepo.name,
-        username,
+        intruder.username,
         ['READ', 'PULL_REQUEST_MERGE'],
       );
 
@@ -331,7 +361,7 @@ test.describe('SCN-COLLAB-PERM-PR-MERGE — PULL_REQUEST_MERGE enforcement', () 
       const allowResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/merge`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { strategy: 'MERGE_COMMIT', commitMessage: 'Allowed merge' },
         },
       );
@@ -339,7 +369,13 @@ test.describe('SCN-COLLAB-PERM-PR-MERGE — PULL_REQUEST_MERGE enforcement', () 
       const merged = await allowResp.json();
       expect(merged.status).toBe('MERGED');
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 });
@@ -350,13 +386,10 @@ test.describe('SCN-COLLAB-PERM-ISSUE-MANAGE — ISSUE_MANAGE enforcement', () =>
   test('collab without ISSUE_MANAGE cannot close issue; with ISSUE_MANAGE can', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-issuemgr-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
-      // Owner creates an issue
       const issueResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/issues`,
         {
@@ -367,34 +400,32 @@ test.describe('SCN-COLLAB-PERM-ISSUE-MANAGE — ISSUE_MANAGE enforcement', () =>
       expect(issueResp.status()).toBe(201);
       const { number: issueNumber } = await issueResp.json();
 
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ'],
+        intruder.authorization,
       );
 
       // Without ISSUE_MANAGE → 403 on status change
       const denyResp = await bareApi.patch(
         `/api/repos/${owner.username}/${privateRepo.name}/issues/${issueNumber}`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { status: 'CLOSED' },
         },
       );
       expect(denyResp.status()).toBe(403);
 
-      // Grant ISSUE_MANAGE
       await setPermissions(
         bareApi,
         owner.authorization,
         owner.username,
         privateRepo.name,
-        username,
+        intruder.username,
         ['READ', 'ISSUE_MANAGE'],
       );
 
@@ -402,7 +433,7 @@ test.describe('SCN-COLLAB-PERM-ISSUE-MANAGE — ISSUE_MANAGE enforcement', () =>
       const allowResp = await bareApi.patch(
         `/api/repos/${owner.username}/${privateRepo.name}/issues/${issueNumber}`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { status: 'CLOSED' },
         },
       );
@@ -410,18 +441,22 @@ test.describe('SCN-COLLAB-PERM-ISSUE-MANAGE — ISSUE_MANAGE enforcement', () =>
       const updated = await allowResp.json();
       expect(updated.status).toBe('CLOSED');
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 
   test('collab without ISSUE_MANAGE cannot delete other user comment', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-cmt-deny-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
       const issueResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/issues`,
@@ -432,7 +467,6 @@ test.describe('SCN-COLLAB-PERM-ISSUE-MANAGE — ISSUE_MANAGE enforcement', () =>
       );
       const { number: issueNumber } = await issueResp.json();
 
-      // Owner adds a comment
       const commentResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/issues/${issueNumber}/comments`,
         {
@@ -443,25 +477,30 @@ test.describe('SCN-COLLAB-PERM-ISSUE-MANAGE — ISSUE_MANAGE enforcement', () =>
       expect(commentResp.status()).toBe(201);
       const { id: commentId } = await commentResp.json();
 
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ'],
+        intruder.authorization,
       );
 
       // Collab without ISSUE_MANAGE cannot delete owner's comment
       const denyDel = await bareApi.delete(
         `/api/repos/${owner.username}/${privateRepo.name}/issues/${issueNumber}/comments/${commentId}`,
-        { headers: { Authorization: collabAuth } },
+        { headers: { Authorization: intruder.authorization } },
       );
       expect(denyDel.status()).toBe(403);
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 });
@@ -472,81 +511,86 @@ test.describe('SCN-COLLAB-PERM-SETTINGS-WRITE — SETTINGS_WRITE enforcement', (
   test('collab without SETTINGS_WRITE cannot update description; with SETTINGS_WRITE can', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-setwrite-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ'],
+        intruder.authorization,
       );
 
       // Without SETTINGS_WRITE → 403
       const denyResp = await bareApi.patch(`/api/repo/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: collabAuth },
+        headers: { Authorization: intruder.authorization },
         data: { name: privateRepo.name, description: 'Updated by collab' },
       });
       expect(denyResp.status()).toBe(403);
 
-      // Grant SETTINGS_WRITE
       await setPermissions(
         bareApi,
         owner.authorization,
         owner.username,
         privateRepo.name,
-        username,
+        intruder.username,
         ['READ', 'SETTINGS_WRITE'],
       );
 
       // With SETTINGS_WRITE → 200
       const allowResp = await bareApi.patch(`/api/repo/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: collabAuth },
+        headers: { Authorization: intruder.authorization },
         data: { name: privateRepo.name, description: 'Updated by collab' },
       });
       expect(allowResp.status()).toBe(200);
       const updated = await allowResp.json();
       expect(updated.description).toBe('Updated by collab');
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 
   test('collab with SETTINGS_WRITE cannot rename repo (owner-only op)', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-noname-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ', 'SETTINGS_WRITE'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['READ', 'SETTINGS_WRITE'],
+        intruder.authorization,
       );
 
       // Rename is owner-only → 403
       const denyRename = await bareApi.patch(`/api/repo/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: collabAuth },
+        headers: { Authorization: intruder.authorization },
         data: { name: `${privateRepo.name}-renamed` },
       });
       expect(denyRename.status()).toBe(403);
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 });
@@ -557,11 +601,9 @@ test.describe('SCN-COLLAB-PERM-ADMIN — ADMIN implies all permissions', () => {
   test('collab with ADMIN can create PR, comment, and update settings', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-admin-${Date.now().toString(36)}`;
-    const { authorization: collabAuth } = await registerAndLogin(bareApi, username);
-
     try {
       const featureBranch = `feat-admin-test-${Date.now().toString(36)}`;
       await prepareFeatureBranch(
@@ -572,20 +614,19 @@ test.describe('SCN-COLLAB-PERM-ADMIN — ADMIN implies all permissions', () => {
         featureBranch,
       );
 
-      await bareApi.post(repoCollaboratorsApi(owner.username, privateRepo.name), {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['ADMIN'] },
-      });
-      await bareApi.post(
-        `${repoCollaboratorsApi(owner.username, privateRepo.name)}/invitation/accept`,
-        {
-          headers: { Authorization: collabAuth },
-        },
+      await inviteAndAccept(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+        ['ADMIN'],
+        intruder.authorization,
       );
 
       // Can create PR (PULL_REQUEST_CREATE implied by ADMIN)
       const prResp = await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/pulls`, {
-        headers: { Authorization: collabAuth },
+        headers: { Authorization: intruder.authorization },
         data: {
           title: 'Admin creates PR',
           description: '',
@@ -601,7 +642,7 @@ test.describe('SCN-COLLAB-PERM-ADMIN — ADMIN implies all permissions', () => {
       const commentResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/comments`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { body: 'Admin comment' },
         },
       );
@@ -609,7 +650,7 @@ test.describe('SCN-COLLAB-PERM-ADMIN — ADMIN implies all permissions', () => {
 
       // Can update description (SETTINGS_WRITE implied by ADMIN)
       const settingsResp = await bareApi.patch(`/api/repo/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: collabAuth },
+        headers: { Authorization: intruder.authorization },
         data: { name: privateRepo.name, description: 'Admin updated description' },
       });
       expect(settingsResp.status()).toBe(200);
@@ -618,7 +659,7 @@ test.describe('SCN-COLLAB-PERM-ADMIN — ADMIN implies all permissions', () => {
       const issueResp = await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/issues`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { title: 'Admin issue', description: '' },
         },
       );
@@ -628,13 +669,19 @@ test.describe('SCN-COLLAB-PERM-ADMIN — ADMIN implies all permissions', () => {
       const toggleResp = await bareApi.patch(
         `/api/repos/${owner.username}/${privateRepo.name}/issues/${issueNumber}`,
         {
-          headers: { Authorization: collabAuth },
+          headers: { Authorization: intruder.authorization },
           data: { status: 'CLOSED' },
         },
       );
       expect(toggleResp.status()).toBe(200);
     } finally {
-      await deleteUser(bareApi, collabAuth);
+      await removeCollaborator(
+        bareApi,
+        owner.authorization,
+        owner.username,
+        privateRepo.name,
+        intruder.username,
+      );
     }
   });
 });

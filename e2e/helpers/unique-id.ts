@@ -7,10 +7,13 @@ export function uniqueE2eSuffix(): string {
  * Project code prefix: 1–10 chars, starts with letter, uppercase alphanumeric (API validation).
  */
 export function uniqueProjectCodePrefix(): string {
-  const raw = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, '');
-  return `S${raw}`.slice(0, 10);
+  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const alnum = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = letters[Math.floor(Math.random() * letters.length)];
+  for (let i = 1; i < 10; i++) {
+    code += alnum[Math.floor(Math.random() * alnum.length)];
+  }
+  return code;
 }
 
 export function uniqueScenarioProjectName(): string {

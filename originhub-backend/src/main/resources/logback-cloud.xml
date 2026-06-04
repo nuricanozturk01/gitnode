@@ -11,7 +11,7 @@
     </layout>
 
     <username>originhub</username>
-    <channel>originhub-prod-log</channel>
+    <channel>originhub-cloud</channel>
     <iconEmoji>:beetle:</iconEmoji>
     <colorCoding>true</colorCoding>
   </appender>

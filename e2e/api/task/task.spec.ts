@@ -1,9 +1,10 @@
 import { projectApi, projectBoardsApi, projectsApi, projectTasksApi } from '@helpers/paths';
 
+import { uniqueProjectCodePrefix } from '../../helpers/unique-id';
 import { expect, test } from '../fixtures/authenticated-api';
 
 test.describe.serial('Task module API — all endpoints', () => {
-  const extraProjectCode = `X${Date.now().toString(36).slice(-3).toUpperCase()}`;
+  const extraProjectCode = uniqueProjectCodePrefix();
   let boardId: string;
   let columnId: string;
   let taskCode: string;

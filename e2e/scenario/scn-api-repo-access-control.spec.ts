@@ -3,9 +3,10 @@
  *
  * Private: only owner + accepted collaborators can access.
  * Public: anyone can read; write operations still require auth + ownership.
+ *
+ * All tests use the shared intruder user instead of registering ephemeral accounts.
  */
 import { expect, test } from './fixtures/scenario';
-import { deleteUser, registerAndLogin } from './helpers/register-and-login';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // PRIVATE REPO ACCESS
@@ -65,107 +66,118 @@ test.describe('SCN-API-PRIVATE-REPO — access control', () => {
   test('pending collaborator is denied private repo before accepting', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-pending-${Date.now().toString(36)}`;
-    const { authorization } = await registerAndLogin(bareApi, username);
-
     try {
       await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/collaborators`, {
         headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
+        data: { username: intruder.username, permissions: ['READ'] },
       });
 
       const repoResp = await bareApi.get(`/api/repos/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: authorization },
+        headers: { Authorization: intruder.authorization },
       });
       expect(repoResp.status()).toBe(403);
     } finally {
-      await deleteUser(bareApi, authorization);
+      await bareApi
+        .delete(
+          `/api/repos/${owner.username}/${privateRepo.name}/collaborators/${intruder.username}`,
+          { headers: { Authorization: owner.authorization } },
+        )
+        .catch(() => {});
     }
   });
 
-  test('accepted collaborator can access private repo', async ({ bareApi, owner, privateRepo }) => {
-    const username = `scn-accepted-${Date.now().toString(36)}`;
-    const { authorization } = await registerAndLogin(bareApi, username);
-
+  test('accepted collaborator can access private repo', async ({
+    bareApi,
+    owner,
+    intruder,
+    privateRepo,
+  }) => {
     try {
       await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/collaborators`, {
         headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
+        data: { username: intruder.username, permissions: ['READ'] },
       });
       await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/collaborators/invitation/accept`,
-        { headers: { Authorization: authorization } },
+        { headers: { Authorization: intruder.authorization } },
       );
 
       const repoResp = await bareApi.get(`/api/repo/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: authorization },
+        headers: { Authorization: intruder.authorization },
       });
       expect(repoResp.status()).toBe(200);
     } finally {
-      await deleteUser(bareApi, authorization);
+      await bareApi
+        .delete(
+          `/api/repos/${owner.username}/${privateRepo.name}/collaborators/${intruder.username}`,
+          { headers: { Authorization: owner.authorization } },
+        )
+        .catch(() => {});
     }
   });
 
-  test('declined collaborator is denied private repo', async ({ bareApi, owner, privateRepo }) => {
-    const username = `scn-declined-${Date.now().toString(36)}`;
-    const { authorization } = await registerAndLogin(bareApi, username);
-
+  test('declined collaborator is denied private repo', async ({
+    bareApi,
+    owner,
+    intruder,
+    privateRepo,
+  }) => {
     try {
       await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/collaborators`, {
         headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
+        data: { username: intruder.username, permissions: ['READ'] },
       });
       await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/collaborators/invitation/decline`,
-        { headers: { Authorization: authorization } },
+        { headers: { Authorization: intruder.authorization } },
       );
 
       const repoResp = await bareApi.get(`/api/repos/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: authorization },
+        headers: { Authorization: intruder.authorization },
       });
       expect(repoResp.status()).toBe(403);
     } finally {
-      await deleteUser(bareApi, authorization);
+      await bareApi
+        .delete(
+          `/api/repos/${owner.username}/${privateRepo.name}/collaborators/${intruder.username}`,
+          { headers: { Authorization: owner.authorization } },
+        )
+        .catch(() => {});
     }
   });
 
   test('removed collaborator is denied private repo after removal', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-removed-${Date.now().toString(36)}`;
-    const { authorization } = await registerAndLogin(bareApi, username);
+    await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/collaborators`, {
+      headers: { Authorization: owner.authorization },
+      data: { username: intruder.username, permissions: ['READ'] },
+    });
+    await bareApi.post(
+      `/api/repos/${owner.username}/${privateRepo.name}/collaborators/invitation/accept`,
+      { headers: { Authorization: intruder.authorization } },
+    );
+    // Verify access before removal
+    const beforeResp = await bareApi.get(`/api/repo/${owner.username}/${privateRepo.name}`, {
+      headers: { Authorization: intruder.authorization },
+    });
+    expect(beforeResp.status()).toBe(200);
 
-    try {
-      await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/collaborators`, {
-        headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
-      });
-      await bareApi.post(
-        `/api/repos/${owner.username}/${privateRepo.name}/collaborators/invitation/accept`,
-        { headers: { Authorization: authorization } },
-      );
-      // Verify access before removal
-      const beforeResp = await bareApi.get(`/api/repo/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: authorization },
-      });
-      expect(beforeResp.status()).toBe(200);
+    await bareApi.delete(
+      `/api/repos/${owner.username}/${privateRepo.name}/collaborators/${intruder.username}`,
+      { headers: { Authorization: owner.authorization } },
+    );
 
-      await bareApi.delete(
-        `/api/repos/${owner.username}/${privateRepo.name}/collaborators/${username}`,
-        { headers: { Authorization: owner.authorization } },
-      );
-
-      const afterResp = await bareApi.get(`/api/repos/${owner.username}/${privateRepo.name}`, {
-        headers: { Authorization: authorization },
-      });
-      expect(afterResp.status()).toBe(403);
-    } finally {
-      await deleteUser(bareApi, authorization);
-    }
+    const afterResp = await bareApi.get(`/api/repos/${owner.username}/${privateRepo.name}`, {
+      headers: { Authorization: intruder.authorization },
+    });
+    expect(afterResp.status()).toBe(403);
   });
 
   test('private repo does not appear in owner profile listing for non-collaborator', async ({
@@ -187,23 +199,21 @@ test.describe('SCN-API-PRIVATE-REPO — access control', () => {
   test('private repo appears in owner profile listing for accepted collaborator', async ({
     bareApi,
     owner,
+    intruder,
     privateRepo,
   }) => {
-    const username = `scn-proflist-${Date.now().toString(36)}`;
-    const { authorization } = await registerAndLogin(bareApi, username);
-
     try {
       await bareApi.post(`/api/repos/${owner.username}/${privateRepo.name}/collaborators`, {
         headers: { Authorization: owner.authorization },
-        data: { username, permissions: ['READ'] },
+        data: { username: intruder.username, permissions: ['READ'] },
       });
       await bareApi.post(
         `/api/repos/${owner.username}/${privateRepo.name}/collaborators/invitation/accept`,
-        { headers: { Authorization: authorization } },
+        { headers: { Authorization: intruder.authorization } },
       );
 
       const listResp = await bareApi.get(`/api/repo/${owner.username}`, {
-        headers: { Authorization: authorization },
+        headers: { Authorization: intruder.authorization },
         params: { page: '0', size: '50' },
       });
       expect(listResp.status()).toBe(200);
@@ -211,7 +221,12 @@ test.describe('SCN-API-PRIVATE-REPO — access control', () => {
       const names: string[] = body.content.map((r: { name: string }) => r.name);
       expect(names).toContain(privateRepo.name);
     } finally {
-      await deleteUser(bareApi, authorization);
+      await bareApi
+        .delete(
+          `/api/repos/${owner.username}/${privateRepo.name}/collaborators/${intruder.username}`,
+          { headers: { Authorization: owner.authorization } },
+        )
+        .catch(() => {});
     }
   });
 });

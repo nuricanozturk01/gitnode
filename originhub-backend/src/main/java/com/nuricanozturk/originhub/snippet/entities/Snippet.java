@@ -99,6 +99,7 @@ public class Snippet {
 
   @OneToMany(mappedBy = "snippet", cascade = CascadeType.ALL, orphanRemoval = true)
   @OrderBy("position ASC")
+  @org.hibernate.annotations.BatchSize(size = 25)
   private List<SnippetFile> files = new ArrayList<>();
 
   @CreationTimestamp

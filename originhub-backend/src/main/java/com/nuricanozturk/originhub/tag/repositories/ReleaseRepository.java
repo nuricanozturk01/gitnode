@@ -21,15 +21,33 @@ import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @NullMarked
 public interface ReleaseRepository extends JpaRepository<Release, UUID> {
 
-  List<Release> findAllByRepoIdOrderByCreatedAtDesc(UUID repoId);
+  @Query(
+      """
+      SELECT r FROM Release r
+      JOIN FETCH r.repo
+      JOIN FETCH r.author
+      WHERE r.repo.id = :repoId
+      ORDER BY r.createdAt DESC
+      """)
+  List<Release> findAllByRepoIdOrderByCreatedAtDesc(@Param("repoId") UUID repoId);
 
-  Optional<Release> findByRepoIdAndTagName(UUID repoId, String tagName);
+  @Query(
+      """
+      SELECT r FROM Release r
+      JOIN FETCH r.repo
+      JOIN FETCH r.author
+      WHERE r.repo.id = :repoId AND r.tagName = :tagName
+      """)
+  Optional<Release> findByRepoIdAndTagName(
+      @Param("repoId") UUID repoId, @Param("tagName") String tagName);
 
   Optional<Release> findFirstByRepoIdAndIsDraftFalseAndIsPrereleaseFalseOrderByPublishedAtDesc(
       UUID repoId);

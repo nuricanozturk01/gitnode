@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.collaborator.entities.CollaboratorStatus;
 import com.nuricanozturk.originhub.collaborator.entities.RepoCollaborator;
 import com.nuricanozturk.originhub.collaborator.mappers.CollaboratorMapper;
 import com.nuricanozturk.originhub.collaborator.repositories.CollaboratorRepository;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.events.CollaboratorInvitedEvent;
 import com.nuricanozturk.originhub.shared.collaborator.events.CollaboratorRemovedEvent;
@@ -62,6 +63,10 @@ public class CollaboratorService implements CollaboratorAccessPort {
   private final CollaboratorMapper collaboratorMapper;
   private final ApplicationEventPublisher eventPublisher;
 
+  @Audited(
+      action = "INVITE_COLLABORATOR",
+      entityType = "COLLABORATOR",
+      entityIdSpEL = "#result.getId().toString()")
   @Transactional
   public CollaboratorInfo invite(
       final UUID requesterId,
@@ -145,6 +150,7 @@ public class CollaboratorService implements CollaboratorAccessPort {
             .map(this.collaboratorMapper::toInfo));
   }
 
+  @Audited(action = "REMOVE_COLLABORATOR", entityType = "COLLABORATOR")
   @Transactional
   public void remove(
       final UUID requesterId,
@@ -181,6 +187,10 @@ public class CollaboratorService implements CollaboratorAccessPort {
             repo.getId(), repo.getName(), target.getId(), target.getUsername()));
   }
 
+  @Audited(
+      action = "UPDATE_COLLABORATOR_PERMISSIONS",
+      entityType = "COLLABORATOR",
+      entityIdSpEL = "#result.getId().toString()")
   @Transactional
   public CollaboratorInfo updatePermissions(
       final UUID requesterId,
@@ -314,6 +324,10 @@ public class CollaboratorService implements CollaboratorAccessPort {
         collaborator.getTokenExpiresAt());
   }
 
+  @Audited(
+      action = "ACCEPT_COLLABORATOR_INVITE",
+      entityType = "COLLABORATOR",
+      entityIdSpEL = "#result.getId().toString()")
   @Transactional
   public CollaboratorInfo acceptViaToken(final UUID requesterId, final String token) {
     final var collaborator =

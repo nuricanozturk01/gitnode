@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.ssh.services;
 
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -46,6 +47,7 @@ public class SshKeyService {
   private final SshKeyRepository sshKeyRepository;
   private final TenantRepository tenantRepository;
 
+  @Audited(action = "ADD_SSH_KEY", entityType = "SSH_KEY", entityIdSpEL = "#result.id().toString()")
   @Transactional
   public SshKeyInfo addKey(final UUID tenantId, final AddSshKeyForm form) {
 
@@ -75,6 +77,7 @@ public class SshKeyService {
     return this.toInfo(saved);
   }
 
+  @Audited(action = "DELETE_SSH_KEY", entityType = "SSH_KEY", entityIdSpEL = "#keyId.toString()")
   @Transactional
   public void deleteKey(final UUID keyId, final UUID tenantId) {
     if (!this.sshKeyRepository.existsById(keyId)) {

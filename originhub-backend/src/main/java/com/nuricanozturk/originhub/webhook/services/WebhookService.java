@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
@@ -61,6 +62,10 @@ public class WebhookService {
         .toList();
   }
 
+  @Audited(
+      action = "CREATE_WEBHOOK",
+      entityType = "WEBHOOK",
+      entityIdSpEL = "#result.id().toString()")
   @Transactional
   public WebhookInfo create(
       final UUID requesterId, final String owner, final String repoName, final WebhookForm form) {
@@ -115,6 +120,10 @@ public class WebhookService {
     return this.webhookMapper.toInfo(this.webhookRepository.save(webhook));
   }
 
+  @Audited(
+      action = "DELETE_WEBHOOK",
+      entityType = "WEBHOOK",
+      entityIdSpEL = "#webhookId.toString()")
   @Transactional
   public void delete(
       final UUID requesterId, final String owner, final String repoName, final UUID webhookId) {

@@ -17,6 +17,7 @@ import com.nuricanozturk.originhub.issue.entities.IssueStatus;
 import com.nuricanozturk.originhub.issue.mappers.IssueMapper;
 import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -63,6 +64,7 @@ public class IssueService implements IssueQueryService {
   private final ApplicationEventPublisher eventPublisher;
   private final CollaboratorAccessPort collaboratorAccessPort;
 
+  @Audited(action = "CREATE_ISSUE", entityType = "ISSUE", entityIdSpEL = "#result.id().toString()")
   @Transactional
   public IssueDetail create(
       final String owner, final String repoName, final UUID authorId, final IssueForm form) {
@@ -223,6 +225,7 @@ public class IssueService implements IssueQueryService {
     }
   }
 
+  @Audited(action = "DELETE_ISSUE", entityType = "ISSUE")
   @Transactional
   public void delete(
       final String owner, final String repoName, final int number, final UUID requesterId) {

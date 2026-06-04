@@ -28,6 +28,7 @@ import com.nuricanozturk.originhub.pr.entities.PullRequest;
 import com.nuricanozturk.originhub.pr.mappers.PrMapper;
 import com.nuricanozturk.originhub.pr.repositories.PrCommentRepository;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitStats;
@@ -94,6 +95,10 @@ public class PullRequestService {
   private final PrMapper prMapper;
   private final ApplicationEventPublisher eventPublisher;
 
+  @Audited(
+      action = "CREATE_PR",
+      entityType = "PULL_REQUEST",
+      entityIdSpEL = "#result.id().toString()")
   @Transactional
   public PrDetail create(
       final String owner, final String repoName, final UUID authorId, final PrForm form)
@@ -146,6 +151,7 @@ public class PullRequestService {
     return this.toDetail(this.prRepository.save(pr));
   }
 
+  @Audited(action = "CLOSE_PR", entityType = "PULL_REQUEST")
   @Transactional
   public void close(final String owner, final String repoName, final int number) {
 
@@ -169,6 +175,10 @@ public class PullRequestService {
             PrStatus.CLOSED.name()));
   }
 
+  @Audited(
+      action = "MERGE_PR",
+      entityType = "PULL_REQUEST",
+      entityIdSpEL = "#result.id().toString()")
   @Transactional
   public PrDetail merge(
       final String owner,

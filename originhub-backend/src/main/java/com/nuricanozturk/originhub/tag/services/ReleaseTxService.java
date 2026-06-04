@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.tag.services;
 
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.cache.RepoCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -53,6 +54,10 @@ public class ReleaseTxService {
   private final ReleaseMapper releaseMapper;
   private final RepoCacheInvalidator cacheInvalidator;
 
+  @Audited(
+      action = "CREATE_RELEASE",
+      entityType = "RELEASE",
+      entityIdSpEL = "#result.id().toString()")
   @Transactional
   public ReleaseInfo create(
       final String owner,
@@ -127,6 +132,7 @@ public class ReleaseTxService {
     return updated;
   }
 
+  @Audited(action = "DELETE_RELEASE", entityType = "RELEASE", entityIdSpEL = "#id.toString()")
   @Transactional
   public void delete(final UUID id, final UUID requesterId, final String repoOwnerUsername) {
 

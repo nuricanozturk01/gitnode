@@ -129,6 +129,21 @@ spring:
             user-info-uri: https://gitlab.com/api/v4/user
             user-name-attribute: id
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: originhub
+
 logging:
   level:
     root: warn

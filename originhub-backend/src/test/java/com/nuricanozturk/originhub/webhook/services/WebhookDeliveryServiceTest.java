@@ -25,7 +25,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
+import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +51,7 @@ import tools.jackson.databind.ObjectMapper;
 class WebhookDeliveryServiceTest {
 
   @Mock private RestClient restClient;
+  @Mock private WebhookDeadLetterRepository deadLetterRepository;
 
   private ObjectMapper objectMapper;
   private WebhookDeliveryService deliveryService;
@@ -55,7 +59,10 @@ class WebhookDeliveryServiceTest {
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
-    deliveryService = new WebhookDeliveryService(objectMapper, restClient);
+    deliveryService =
+        new WebhookDeliveryService(
+            objectMapper, restClient, deadLetterRepository, new SimpleMeterRegistry());
+    deliveryService.retryBaseDelay = Duration.ZERO;
   }
 
   @Test

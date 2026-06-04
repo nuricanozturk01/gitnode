@@ -2,11 +2,19 @@ services:
   postgres:
     container_name: originhub-postgres
     hostname: originhub-postgres
-    image: postgres:17
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
     environment:
       POSTGRES_DB: originhub
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
+    command: >
+      postgres
+      -c shared_preload_libraries=pgaudit
+      -c pgaudit.log=write,ddl,role
+      -c log_destination=stderr
+      -c log_min_duration_statement=500
     ports:
       - "5432:5432"
     networks:
@@ -20,6 +28,34 @@ services:
       - "6379:6379"
     networks:
       - originhub
+
+  prometheus:
+    container_name: originhub-prometheus
+    image: prom/prometheus:v3.4.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - originhub
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+
+  grafana:
+    container_name: originhub-grafana
+    image: grafana/grafana:12.0.1
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    networks:
+      - originhub
+    depends_on:
+      - prometheus
 
 networks:
   originhub:

@@ -15,8 +15,14 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
+import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -39,14 +45,38 @@ import tools.jackson.databind.ObjectMapper;
 @NullMarked
 public class WebhookDeliveryService {
 
+  private static final int MAX_ATTEMPTS = 3;
+
+  /** Overridable in tests to avoid real sleeps. */
+  Duration retryBaseDelay = Duration.ofSeconds(1);
+
   private final ObjectMapper objectMapper;
   private final RestClient restClient;
+  private final WebhookDeadLetterRepository deadLetterRepository;
+  private final Counter deliverySuccessCounter;
+  private final Counter deliveryFailureCounter;
+  private final Timer deliveryTimer;
 
   public WebhookDeliveryService(
       final ObjectMapper objectMapper,
-      @Qualifier("webhookRestClient") final RestClient restClient) {
+      @Qualifier("webhookRestClient") final RestClient restClient,
+      final WebhookDeadLetterRepository deadLetterRepository,
+      final MeterRegistry meterRegistry) {
     this.objectMapper = objectMapper;
     this.restClient = restClient;
+    this.deadLetterRepository = deadLetterRepository;
+    this.deliverySuccessCounter =
+        Counter.builder("webhook.delivery.success")
+            .description("Successful webhook deliveries")
+            .register(meterRegistry);
+    this.deliveryFailureCounter =
+        Counter.builder("webhook.delivery.failure")
+            .description("Failed webhook deliveries routed to DLQ")
+            .register(meterRegistry);
+    this.deliveryTimer =
+        Timer.builder("webhook.delivery.duration")
+            .description("Webhook HTTP delivery duration")
+            .register(meterRegistry);
   }
 
   @Async
@@ -58,6 +88,8 @@ public class WebhookDeliveryService {
       final String logLabel,
       final WebhookEventType type,
       final Map<String, Object> data) {
+
+    final String body;
     try {
       final var payload = new LinkedHashMap<String, Object>();
       payload.put("event", type.getValue());
@@ -66,19 +98,74 @@ public class WebhookDeliveryService {
         payload.put("repoId", repoId.toString());
       }
       payload.put("data", data);
-
-      final var body = this.objectMapper.writeValueAsString(payload);
-
-      var spec = this.restClient.post().uri(url).contentType(MediaType.APPLICATION_JSON).body(body);
-
-      if (secret != null && !secret.isBlank()) {
-        spec = spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, secret));
-      }
-
-      spec.retrieve().toBodilessEntity();
-
+      body = this.objectMapper.writeValueAsString(payload);
     } catch (final Exception ex) {
-      log.warn("{} delivery failed id={} url={}: {}", logLabel, id, url, ex.getMessage());
+      log.error("{} payload serialization failed id={}: {}", logLabel, id, ex.getMessage());
+      return;
+    }
+
+    Exception lastException = null;
+    for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        this.deliveryTimer.record(() -> this.doDeliver(url, secret, body));
+        this.deliverySuccessCounter.increment();
+        return;
+      } catch (final Exception ex) {
+        lastException = ex;
+        if (attempt < MAX_ATTEMPTS) {
+          log.warn(
+              "{} delivery attempt {}/{} failed id={} url={}: {}",
+              logLabel,
+              attempt,
+              MAX_ATTEMPTS,
+              id,
+              url,
+              ex.getMessage());
+          try {
+            Thread.sleep(this.retryBaseDelay.multipliedBy(1L << (attempt - 1)));
+          } catch (final InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            break;
+          }
+        }
+      }
+    }
+
+    log.error(
+        "{} delivery permanently failed after {} attempts id={} url={}, routing to DLQ",
+        logLabel,
+        MAX_ATTEMPTS,
+        id,
+        url);
+    this.deliveryFailureCounter.increment();
+    this.saveDeadLetter(id, url, type, body, lastException);
+  }
+
+  private void doDeliver(final String url, final @Nullable String secret, final String body) {
+    var spec = this.restClient.post().uri(url).contentType(MediaType.APPLICATION_JSON).body(body);
+    if (secret != null && !secret.isBlank()) {
+      spec = spec.header("X-Hub-Signature-256", this.computeHmacSha256(body, secret));
+    }
+    spec.retrieve().toBodilessEntity();
+  }
+
+  private void saveDeadLetter(
+      final UUID webhookId,
+      final String url,
+      final WebhookEventType type,
+      final String body,
+      final @Nullable Exception ex) {
+    try {
+      final var dl = new WebhookDeadLetter();
+      dl.setWebhookId(webhookId);
+      dl.setUrl(url);
+      dl.setEventType(type.getValue());
+      dl.setPayload(body);
+      dl.setErrorMessage(ex != null ? ex.getMessage() : "unknown");
+      dl.setAttemptCount(MAX_ATTEMPTS);
+      this.deadLetterRepository.save(dl);
+    } catch (final Exception saveEx) {
+      log.error("Failed to persist webhook dead letter id={}: {}", webhookId, saveEx.getMessage());
     }
   }
 

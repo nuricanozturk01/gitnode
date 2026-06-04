@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.shared.repo.services;
 
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -56,6 +57,7 @@ public class RepoService {
   private final RepoStorageService repoStorageService;
   private final CollaboratorAccessPort collaboratorAccessPort;
 
+  @Audited(action = "CREATE_REPO", entityType = "REPO", entityIdSpEL = "#result.getId().toString()")
   @Transactional
   public RepoInfo create(final UUID tenantId, final RepoForm form) {
 
@@ -172,6 +174,7 @@ public class RepoService {
     this.repoRepository.save(repo);
   }
 
+  @Audited(action = "DELETE_REPO", entityType = "REPO")
   @Transactional
   public void delete(final UUID tenantId, final String repoName, final String owner) {
 

@@ -225,7 +225,7 @@ public class ErrorHandler {
       return null;
     }
 
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
         .contentType(MediaType.APPLICATION_JSON)
         .body(ex.getMessage());
   }

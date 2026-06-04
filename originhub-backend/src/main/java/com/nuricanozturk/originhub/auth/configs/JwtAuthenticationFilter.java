@@ -20,6 +20,7 @@ import static com.nuricanozturk.originhub.shared.auth.utils.BearerTokenUtils.isB
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.TokenExpiredException;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -30,6 +31,8 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -58,7 +61,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     final var jwt = getJwtToken(authHeader);
 
-    this.jwtUtils.verifyAndValidate(jwt);
+    try {
+      this.jwtUtils.verifyAndValidate(jwt);
+    } catch (final TokenExpiredException e) {
+      response.setStatus(HttpStatus.UNAUTHORIZED.value());
+      response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      response.getWriter().write("\"" + e.getMessage() + "\"");
+      return;
+    }
 
     final var tenantId = this.jwtUtils.extractUserId(jwt);
 

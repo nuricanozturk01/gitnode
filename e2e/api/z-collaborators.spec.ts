@@ -1,5 +1,4 @@
 import { reposApi } from '@helpers/paths';
-import { E2E_PASSWORD, uniqueEmail, uniqueUsername } from '@helpers/test-user';
 
 import { expect, test } from './fixtures/authenticated-api';
 
@@ -12,43 +11,22 @@ test.describe.serial('Collaborator API — all endpoints', () => {
   let collaboratorUsername: string;
   let collaboratorAuthorization: string;
 
-  test.beforeAll(async ({ authedRequest, session: _session }) => {
+  test.beforeAll(async ({ authedRequest, session }) => {
     privateRepoName = `e2e-collab-${Date.now().toString(36)}`;
 
-    // Create a private repo
     await authedRequest.post('/api/repo', {
       data: { name: privateRepoName, description: 'Collab test', isPrivate: true },
     });
 
-    // Register a second user to be the collaborator
-    collaboratorUsername = uniqueUsername('collab');
-    const email = uniqueEmail(collaboratorUsername);
-    const registerResp = await authedRequest.post('/api/auth/register', {
-      data: {
-        username: collaboratorUsername,
-        email,
-        password: E2E_PASSWORD,
-      },
-    });
-    const loginResp = await authedRequest.post('/api/auth/login', {
-      data: { usernameOrEmail: collaboratorUsername, password: E2E_PASSWORD },
-    });
-    if (loginResp.ok()) {
-      const body = await loginResp.json();
-      collaboratorAuthorization = `Bearer ${body.token}`;
-    } else {
-      // fallback: try register response
-      const body = await registerResp.json();
-      collaboratorAuthorization = `Bearer ${body.token}`;
-    }
+    collaboratorUsername = session.intruderUsername;
+    collaboratorAuthorization = session.intruderAuthorization;
   });
 
-  test.afterAll(async ({ authedRequest }) => {
-    if (collaboratorAuthorization) {
-      await authedRequest.delete('/api/users/me', {
-        headers: { Authorization: collaboratorAuthorization },
-      });
-    }
+  test.afterAll(async ({ authedRequest, session }) => {
+    await authedRequest
+      .delete(`${repoCollaboratorsApi(session.username, privateRepoName)}/${collaboratorUsername}`)
+      .catch(() => {});
+    await authedRequest.delete(`/api/repo/${session.username}/${privateRepoName}`).catch(() => {});
   });
 
   test('POST /collaborators — owner invites collaborator', async ({ authedRequest, session }) => {
@@ -179,8 +157,6 @@ test.describe.serial('Collaborator Invite Link API', () => {
   let linkUsername: string;
   let linkAuthorization: string;
   let inviteToken: string;
-  let wrongUsername: string;
-  let wrongAuthorization: string;
 
   let ownerUsername: string;
 
@@ -191,31 +167,19 @@ test.describe.serial('Collaborator Invite Link API', () => {
       data: { name: linkRepoName, description: 'Invite link test', isPrivate: true },
     });
 
-    linkUsername = uniqueUsername('link');
-    const email = uniqueEmail(linkUsername);
-    const reg = await authedRequest.post('/api/auth/register', {
-      data: { username: linkUsername, email, password: E2E_PASSWORD },
-    });
-    const regBody = await reg.json();
-    linkAuthorization = `Bearer ${regBody.token}`;
+    linkUsername = session.intruderUsername;
+    linkAuthorization = session.intruderAuthorization;
 
-    // Invite the user
     await authedRequest.post(repoCollaboratorsApi(ownerUsername, linkRepoName), {
       data: { username: linkUsername, permissions: ['READ'] },
     });
   });
 
-  test.afterAll(async ({ authedRequest }) => {
-    if (wrongAuthorization) {
-      await authedRequest.delete('/api/users/me', {
-        headers: { Authorization: wrongAuthorization },
-      });
-    }
-    if (linkAuthorization) {
-      await authedRequest.delete('/api/users/me', {
-        headers: { Authorization: linkAuthorization },
-      });
-    }
+  test.afterAll(async ({ authedRequest, session }) => {
+    await authedRequest
+      .delete(`${repoCollaboratorsApi(session.username, linkRepoName)}/${linkUsername}`)
+      .catch(() => {});
+    await authedRequest.delete(`/api/repo/${session.username}/${linkRepoName}`).catch(() => {});
   });
 
   test('POST /{username}/invite-link — owner generates invite link', async ({
@@ -281,7 +245,6 @@ test.describe.serial('Collaborator Invite Link API', () => {
       baseURL: session.baseUrl,
       extraHTTPHeaders: { Authorization: linkAuthorization },
     });
-    // Token cleared after first accept; new lookup should 404
     const response = await inviteeCtx.get(`/api/invitations/${inviteToken}`);
     expect([400, 404]).toContain(response.status());
     await inviteeCtx.dispose();
@@ -291,24 +254,33 @@ test.describe.serial('Collaborator Invite Link API', () => {
     authedRequest,
     session,
   }) => {
-    wrongUsername = uniqueUsername('wrongusr');
-    const wrongReg = await authedRequest.post('/api/auth/register', {
-      data: { username: wrongUsername, email: uniqueEmail(wrongUsername), password: E2E_PASSWORD },
+    // Create a separate repo and invite intruder; then owner (not the invitee) tries to accept
+    const altRepoName = `e2e-link-wrong-${Date.now().toString(36)}`;
+    await authedRequest.post('/api/repo', {
+      data: { name: altRepoName, description: 'Wrong user test', isPrivate: true },
     });
-    const wrongBody = await wrongReg.json();
-    wrongAuthorization = `Bearer ${wrongBody.token}`;
 
-    await authedRequest.post(repoCollaboratorsApi(session.username, linkRepoName), {
-      data: { username: wrongUsername, permissions: ['READ'] },
-    });
-    const linkResp = await authedRequest.post(
-      `${repoCollaboratorsApi(session.username, linkRepoName)}/${wrongUsername}/invite-link`,
-    );
-    const { token } = (await linkResp.json()) as { token: string };
+    try {
+      await authedRequest.post(repoCollaboratorsApi(session.username, altRepoName), {
+        data: { username: session.intruderUsername, permissions: ['READ'] },
+      });
 
-    // Owner (authedRequest) tries to accept another user's invitation
-    const ownerResp = await authedRequest.post(`/api/invitations/${token}/accept`);
-    expect([400, 403]).toContain(ownerResp.status());
+      const linkResp = await authedRequest.post(
+        `${repoCollaboratorsApi(session.username, altRepoName)}/${session.intruderUsername}/invite-link`,
+      );
+      const { token } = (await linkResp.json()) as { token: string };
+
+      // Owner is not the invitee — should be rejected
+      const ownerResp = await authedRequest.post(`/api/invitations/${token}/accept`);
+      expect([400, 403]).toContain(ownerResp.status());
+    } finally {
+      await authedRequest
+        .delete(
+          `${repoCollaboratorsApi(session.username, altRepoName)}/${session.intruderUsername}`,
+        )
+        .catch(() => {});
+      await authedRequest.delete(`/api/repo/${session.username}/${altRepoName}`).catch(() => {});
+    }
   });
 
   test('GET /api/invitations/unknown-token — 404 or 400 for unknown token', async ({

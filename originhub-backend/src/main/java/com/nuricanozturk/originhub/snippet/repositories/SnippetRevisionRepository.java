@@ -33,8 +33,8 @@ public interface SnippetRevisionRepository extends JpaRepository<SnippetRevision
   @Query(
       value =
           """
-         SELECT r FROM SnippetRevision r JOIN FETCH r.author
-           WHERE r.snippet.id = :snippetId ORDER BY r.createdAt DESC
+            SELECT r FROM SnippetRevision r JOIN FETCH r.author
+              WHERE r.snippet.id = :snippetId ORDER BY r.createdAt DESC
         """,
       countQuery = "SELECT COUNT(r) FROM SnippetRevision r WHERE r.snippet.id = :snippetId")
   Page<SnippetRevision> findAllBySnippetIdOrderByCreatedAtDesc(

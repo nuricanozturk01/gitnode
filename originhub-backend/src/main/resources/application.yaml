@@ -130,5 +130,8 @@ spring:
             user-name-attribute: id
 
 logging:
-  config: classpath:logback.xml
+  level:
+    root: warn
+    org.apache.sshd.server.session.ServerSessionImpl: error
+    com.nuricanozturk.originhub.ssh: info
 

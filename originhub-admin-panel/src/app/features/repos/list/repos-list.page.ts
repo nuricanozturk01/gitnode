@@ -1,5 +1,4 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AdminRepoService } from '../../../core/admin/admin-repo.service';
 import type { AdminRepoSummary } from '../../../core/admin/admin.models';
@@ -11,7 +10,7 @@ import { PaginationComponent } from '../../../shared/components/pagination/pagin
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repos-list',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, PaginationComponent],
+  imports: [LucideAngularModule, PaginationComponent],
   templateUrl: './repos-list.page.html',
 })
 export class ReposListPage implements OnInit {

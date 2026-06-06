@@ -12,15 +12,15 @@
  */
 import type { APIRequestContext } from '@playwright/test';
 
+import { expect, test } from './fixtures/scenario';
 import { getApiBaseUrl, isSamlE2eEnabled } from './helpers/env';
 import {
   initiateSpAuthnRequest,
   provisionSamlE2eScenario,
-  teardownSamlE2eScenario,
   type SamlDiscoverResponse,
   type SamlE2eContext,
+  teardownSamlE2eScenario,
 } from './helpers/saml-e2e';
-import { expect, test } from './fixtures/scenario';
 
 const samlEnabled = isSamlE2eEnabled();
 
@@ -50,7 +50,9 @@ test.describe('SCN-SAML — SAML2 login via samltest.dev', () => {
     }
   });
 
-  test('SCN-SAML-01 — discover returns registration for SSO-enabled org domain', async ({ bareApi }) => {
+  test('SCN-SAML-01 — discover returns registration for SSO-enabled org domain', async ({
+    bareApi,
+  }) => {
     const response = await bareApi.get('/api/auth/sso/saml/discover', {
       params: { email: samlContext.email },
     });
@@ -70,10 +72,15 @@ test.describe('SCN-SAML — SAML2 login via samltest.dev', () => {
     expect(response.status()).toBe(404);
   });
 
-  test('SCN-SAML-03 — admin SSO metadata test and enabled org configuration', async ({ bareApi }) => {
-    const testResponse = await bareApi.post(`/api/admin/organizations/${samlContext.slug}/sso/test`, {
-      headers: { Authorization: samlContext.admin.authorization },
-    });
+  test('SCN-SAML-03 — admin SSO metadata test and enabled org configuration', async ({
+    bareApi,
+  }) => {
+    const testResponse = await bareApi.post(
+      `/api/admin/organizations/${samlContext.slug}/sso/test`,
+      {
+        headers: { Authorization: samlContext.admin.authorization },
+      },
+    );
     expect(testResponse.status()).toBe(200);
     const testBody = (await testResponse.json()) as { valid: boolean; cached: boolean };
     expect(testBody.valid).toBe(true);
@@ -95,7 +102,9 @@ test.describe('SCN-SAML — SAML2 login via samltest.dev', () => {
     expect(org.emailDomains).toContain(samlContext.domain);
   });
 
-  test('SCN-SAML-04 — SP-initiated AuthnRequest reaches samltest.dev login', async ({ bareApi }) => {
+  test('SCN-SAML-04 — SP-initiated AuthnRequest reaches samltest.dev login', async ({
+    bareApi,
+  }) => {
     const result = await initiateSpAuthnRequest(bareApi, samlContext);
 
     expect(result.acsUrl).toBe(`${getApiBaseUrl()}/login/saml2/sso/${samlContext.slug}`);

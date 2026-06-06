@@ -2,13 +2,13 @@ import type { APIRequestContext } from '@playwright/test';
 
 import {
   adminLogin,
+  type AdminSession,
   configureOrganizationLdap,
   createOrganization,
   deleteOrganization,
   listAllOrganizations,
   setOrganizationLdapEnabled,
   testOrganizationLdap,
-  type AdminSession,
 } from './admin-api';
 import { createE2eRunId } from './e2e-run-id';
 import { getAdminCredentials, getLdapServerConfig, type LdapServerConfig } from './env';
@@ -16,8 +16,8 @@ import { assertLdapTcpReachable } from './ldap-preflight';
 import {
   createProvisionedUserTracker,
   deleteTrackedProvisionedUsers,
-  trackProvisionedUser,
   type ProvisionedUserTracker,
+  trackProvisionedUser,
 } from './provisioned-user-cleanup';
 
 export interface LdapE2eContext {
@@ -70,7 +70,9 @@ async function cleanupStaleLdapE2eOrgs(
   }
 }
 
-export async function provisionLdapE2eScenario(request: APIRequestContext): Promise<LdapE2eContext> {
+export async function provisionLdapE2eScenario(
+  request: APIRequestContext,
+): Promise<LdapE2eContext> {
   const runId = createE2eRunId();
   const slug = buildLdapSlug(runId);
   const ldap = getLdapServerConfig();

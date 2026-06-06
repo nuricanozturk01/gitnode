@@ -2,24 +2,29 @@ import type { APIRequestContext, APIResponse } from '@playwright/test';
 
 import {
   adminLogin,
+  type AdminSession,
   configureOrganizationSso,
   createOrganization,
   deleteOrganization,
   listAllOrganizations,
   setOrganizationSsoEnabled,
   testOrganizationSso,
-  type AdminSession,
 } from './admin-api';
 import { createE2eRunId } from './e2e-run-id';
 import { getAdminCredentials, getApiBaseUrl } from './env';
-import { parseHtmlForm, resolveUrl } from './saml-http';
-import { createSamlTestApp, deleteSamlTestApp, samlTestMetadataUri, type SamlTestApp } from './samltest-dev';
 import {
   createProvisionedUserTracker,
   deleteTrackedProvisionedUsers,
-  trackProvisionedUser,
   type ProvisionedUserTracker,
+  trackProvisionedUser,
 } from './provisioned-user-cleanup';
+import { parseHtmlForm, resolveUrl } from './saml-http';
+import {
+  createSamlTestApp,
+  deleteSamlTestApp,
+  type SamlTestApp,
+  samlTestMetadataUri,
+} from './samltest-dev';
 
 export interface SamlE2eContext {
   runId: string;
@@ -61,7 +66,9 @@ async function cleanupStaleSamlE2eOrgs(
   }
 }
 
-export async function provisionSamlE2eScenario(request: APIRequestContext): Promise<SamlE2eContext> {
+export async function provisionSamlE2eScenario(
+  request: APIRequestContext,
+): Promise<SamlE2eContext> {
   const runId = createE2eRunId();
   const slug = buildSamlSlug(runId);
   const domain = `${slug}.local`;
@@ -149,8 +156,8 @@ export async function teardownSamlE2eScenario(
   await deleteSamlTestApp(context.samlTestApp.id);
 }
 
-async function readRedirectLocation(response: APIResponse, baseUrl: string): Promise<string> {
-  const location = response.headers()['location'];
+function readRedirectLocation(response: APIResponse, baseUrl: string): string {
+  const location = response.headers().location;
   if (!location) {
     throw new Error(`Expected redirect from ${baseUrl}, got status ${response.status()}`);
   }
@@ -172,14 +179,17 @@ export async function initiateSpAuthnRequest(
   }
 
   const authnForm = parseHtmlForm(await authnResponse.text());
-  if (!authnForm || authnForm.method !== 'POST') {
+  if (authnForm?.method !== 'POST') {
     throw new Error('SP authenticate response did not contain a POST form');
   }
   if (!authnForm.fields.SAMLRequest) {
     throw new Error('SP authenticate form missing SAMLRequest');
   }
 
-  if (!authnForm.action.includes('samltest.dev') || !authnForm.action.includes(context.samlTestApp.id)) {
+  if (
+    !authnForm.action.includes('samltest.dev') ||
+    !authnForm.action.includes(context.samlTestApp.id)
+  ) {
     throw new Error(`Unexpected IdP SSO URL in SP form: ${authnForm.action}`);
   }
 
@@ -192,7 +202,7 @@ export async function initiateSpAuthnRequest(
     throw new Error(`Expected IdP SSO redirect (302), got ${idpSsoResponse.status()}`);
   }
 
-  const idpLoginUrl = await readRedirectLocation(idpSsoResponse, authnForm.action);
+  const idpLoginUrl = readRedirectLocation(idpSsoResponse, authnForm.action);
   if (!idpLoginUrl.includes('samltest.dev')) {
     throw new Error(`Unexpected IdP login URL: ${idpLoginUrl}`);
   }

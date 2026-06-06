@@ -5,13 +5,13 @@ export interface HtmlForm {
 }
 
 export function parseHtmlForm(html: string): HtmlForm | null {
-  const formTag = html.match(/<form[^>]*>/i)?.[0];
+  const formTag = (/<form[^>]*>/i.exec(html))?.[0];
   if (!formTag) {
     return null;
   }
 
-  const actionMatch = formTag.match(/action="([^"]*)"/i);
-  const methodMatch = formTag.match(/method="([^"]*)"/i);
+  const actionMatch = /action="([^"]*)"/i.exec(formTag);
+  const methodMatch = /method="([^"]*)"/i.exec(formTag);
   if (!actionMatch) {
     return null;
   }

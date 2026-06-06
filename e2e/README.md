@@ -17,13 +17,13 @@ Default API: `http://localhost:8080` · Node **24** · needs **git** for scenari
 
 ## Commands
 
-| Command | What |
-| --- | --- |
-| `pnpm test:e2e` | API → scenario → teardown |
-| `pnpm test:e2e:api` | REST tests only |
-| `pnpm test:e2e:scenario` | Scenario + teardown |
-| `pnpm test:e2e:saml` | SAML SSO (optional, local) |
-| `pnpm test:e2e:ldap` | LDAP SSO (optional, local) |
+| Command                  | What                       |
+| ------------------------ | -------------------------- |
+| `pnpm test:e2e`          | API → scenario → teardown  |
+| `pnpm test:e2e:api`      | REST tests only            |
+| `pnpm test:e2e:scenario` | Scenario + teardown        |
+| `pnpm test:e2e:saml`     | SAML SSO (optional, local) |
+| `pnpm test:e2e:ldap`     | LDAP SSO (optional, local) |
 
 Optional `.env`: copy [.env.example](.env.example) to `.env`.
 

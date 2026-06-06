@@ -12,15 +12,15 @@
  */
 import type { APIRequestContext } from '@playwright/test';
 
+import { expect, test } from './fixtures/scenario';
 import { getApiBaseUrl, isLdapE2eEnabled } from './helpers/env';
 import {
+  type LdapDiscoverResponse,
+  type LdapE2eContext,
   ldapLogin,
   provisionLdapE2eScenario,
   teardownLdapE2eScenario,
-  type LdapDiscoverResponse,
-  type LdapE2eContext,
 } from './helpers/ldap-e2e';
-import { expect, test } from './fixtures/scenario';
 
 const ldapEnabled = isLdapE2eEnabled();
 
@@ -100,11 +100,15 @@ test.describe('SCN-LDAP — LDAP login via test OpenLDAP', () => {
   test('SCN-LDAP-04 — LDAP login returns JWT for valid directory credentials', async ({
     bareApi,
   }) => {
-    const loginInfo = await ldapLogin(bareApi, {
-      email: ldapContext.email,
-      username: ldapContext.username,
-      password: ldapContext.password,
-    }, { trackIn: ldapContext });
+    const loginInfo = await ldapLogin(
+      bareApi,
+      {
+        email: ldapContext.email,
+        username: ldapContext.username,
+        password: ldapContext.password,
+      },
+      { trackIn: ldapContext },
+    );
 
     expect(loginInfo.username).toBe(ldapContext.username);
     expect(loginInfo.email).toBeTruthy();
@@ -127,11 +131,15 @@ test.describe('SCN-LDAP — LDAP login via test OpenLDAP', () => {
   });
 
   test('SCN-LDAP-06 — LDAP JWT authorizes authenticated API requests', async ({ bareApi }) => {
-    const loginInfo = await ldapLogin(bareApi, {
-      email: ldapContext.email,
-      username: ldapContext.username,
-      password: ldapContext.password,
-    }, { trackIn: ldapContext });
+    const loginInfo = await ldapLogin(
+      bareApi,
+      {
+        email: ldapContext.email,
+        username: ldapContext.username,
+        password: ldapContext.password,
+      },
+      { trackIn: ldapContext },
+    );
 
     const meResponse = await bareApi.get('/api/users/me', {
       headers: { Authorization: `Bearer ${loginInfo.token}` },

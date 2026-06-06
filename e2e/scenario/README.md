@@ -21,12 +21,12 @@ Needs **git** on `PATH`.
 
 **Not run in CI.** Skipped unless you use the dedicated commands below.
 
-| | LDAP | SAML |
-| --- | --- | --- |
-| **Command** | `pnpm test:e2e:ldap` | `pnpm test:e2e:saml` |
-| **Extra setup** | `make ldap-up` | `make saml-keygen` (once) |
-| **Backend** | local profile, LDAP enabled | local profile, SAML enabled + signing keys |
-| **Admin** | `admin` / `Admin123` | same |
+|                 | LDAP                        | SAML                                       |
+| --------------- | --------------------------- | ------------------------------------------ |
+| **Command**     | `pnpm test:e2e:ldap`        | `pnpm test:e2e:saml`                       |
+| **Extra setup** | `make ldap-up`              | `make saml-keygen` (once)                  |
+| **Backend**     | local profile, LDAP enabled | local profile, SAML enabled + signing keys |
+| **Admin**       | `admin` / `Admin123`        | same                                       |
 
 **LDAP — copy/paste**
 
@@ -56,21 +56,21 @@ Needs outbound HTTPS to [samltest.dev](https://www.samltest.dev). Does not compl
 
 ## Spec files
 
-| File | SCN IDs |
-| --- | --- |
-| `scn-git-http-private-repo.spec.ts` | SCN-PRIV-GIT-01 … 04 |
-| `scn-git-http-public-repo.spec.ts` | SCN-PUB-GIT-01 … 04 |
-| `scn-api-pull-request-*.spec.ts` | SCN-PRIV-PR-*, SCN-PUB-PR-* |
-| `scn-api-repo-settings-pull-request.spec.ts` | SCN-API-PRSET-01, 02 |
-| `scn-api-pull-request-head-branch-lifecycle.spec.ts` | SCN-PR-DEL-01 … 04 |
-| `scn-api-task-repository-pull-request.spec.ts` | SCN-TASK-* |
-| `scn-api-issue-private-repository.spec.ts` | SCN-API-ISSUE-01 |
-| `scn-api-branch-default-and-archive.spec.ts` | SCN-API-BRANCH-01, SCN-API-ARCHIVE-01 |
-| `scn-api-webhook-repo-push.spec.ts` | SCN-API-WH-01 |
-| `scn-api-collaborator-access.spec.ts` | SCN-COLLABORATOR-01 … 08 |
-| `scn-api-collaborator-permission-enforcement.spec.ts` | SCN-COLLAB-PERM-* |
-| `scn-api-saml-login.spec.ts` | SCN-SAML-01 … 04 |
-| `scn-api-ldap-login.spec.ts` | SCN-LDAP-01 … 06 |
+| File                                                  | SCN IDs                               |
+| ----------------------------------------------------- | ------------------------------------- |
+| `scn-git-http-private-repo.spec.ts`                   | SCN-PRIV-GIT-01 … 04                  |
+| `scn-git-http-public-repo.spec.ts`                    | SCN-PUB-GIT-01 … 04                   |
+| `scn-api-pull-request-*.spec.ts`                      | SCN-PRIV-PR-_, SCN-PUB-PR-_           |
+| `scn-api-repo-settings-pull-request.spec.ts`          | SCN-API-PRSET-01, 02                  |
+| `scn-api-pull-request-head-branch-lifecycle.spec.ts`  | SCN-PR-DEL-01 … 04                    |
+| `scn-api-task-repository-pull-request.spec.ts`        | SCN-TASK-\*                           |
+| `scn-api-issue-private-repository.spec.ts`            | SCN-API-ISSUE-01                      |
+| `scn-api-branch-default-and-archive.spec.ts`          | SCN-API-BRANCH-01, SCN-API-ARCHIVE-01 |
+| `scn-api-webhook-repo-push.spec.ts`                   | SCN-API-WH-01                         |
+| `scn-api-collaborator-access.spec.ts`                 | SCN-COLLABORATOR-01 … 08              |
+| `scn-api-collaborator-permission-enforcement.spec.ts` | SCN-COLLAB-PERM-\*                    |
+| `scn-api-saml-login.spec.ts`                          | SCN-SAML-01 … 04                      |
+| `scn-api-ldap-login.spec.ts`                          | SCN-LDAP-01 … 06                      |
 
 Test steps and expectations live in the spec files and test titles.
 
@@ -78,8 +78,8 @@ Test steps and expectations live in the spec files and test titles.
 
 ## Known quirks
 
-| Topic | Note |
-| --- | --- |
+| Topic              | Note                                          |
+| ------------------ | --------------------------------------------- |
 | HTTP Git write ACL | SCN-PRIV/PUB-GIT-04 skipped — SSH is stricter |
-| SAML / LDAP UI | API-only; check login page manually |
-| SAML / LDAP in CI | Always skipped |
+| SAML / LDAP UI     | API-only; check login page manually           |
+| SAML / LDAP in CI  | Always skipped                                |

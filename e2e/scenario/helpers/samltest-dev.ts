@@ -31,7 +31,9 @@ export async function createSamlTestApp(options: CreateSamlTestAppOptions): Prom
   });
 
   if (!response.ok) {
-    throw new Error(`samltest.dev create app failed (${response.status}): ${await response.text()}`);
+    throw new Error(
+      `samltest.dev create app failed (${response.status}): ${await response.text()}`,
+    );
   }
 
   return (await response.json()) as SamlTestApp;

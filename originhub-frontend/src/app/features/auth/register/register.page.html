@@ -1,7 +1,6 @@
 <div class="bg-base-200 flex min-h-screen items-center justify-center p-4">
   <div class="card bg-base-100 w-full max-w-md shadow-lg">
     <div class="card-body gap-6">
-
       <!-- Branding -->
       <div class="text-center">
         <a
@@ -19,10 +18,10 @@
       </div>
 
       @if (error()) {
-        <div class="alert alert-error" role="alert">
-          <lucide-icon name="circle-alert" class="size-4 shrink-0"></lucide-icon>
-          <span>{{ error() }}</span>
-        </div>
+      <div class="alert alert-error" role="alert">
+        <lucide-icon name="circle-alert" class="size-4 shrink-0"></lucide-icon>
+        <span>{{ error() }}</span>
+      </div>
       }
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
@@ -39,9 +38,9 @@
             autocomplete="username"
           />
           @if (form.get('username')?.invalid && form.get('username')?.touched) {
-            <span class="label">
-              <span class="label-text-alt text-error">3+ chars, letters, numbers, -_</span>
-            </span>
+          <span class="label">
+            <span class="label-text-alt text-error">3+ chars, letters, numbers, -_</span>
+          </span>
           }
         </div>
 
@@ -58,9 +57,9 @@
             autocomplete="email"
           />
           @if (form.get('email')?.invalid && form.get('email')?.touched) {
-            <span class="label">
-              <span class="label-text-alt text-error">Valid email required</span>
-            </span>
+          <span class="label">
+            <span class="label-text-alt text-error">Valid email required</span>
+          </span>
           }
         </div>
 
@@ -77,9 +76,9 @@
             autocomplete="name"
           />
           @if (form.get('displayName')?.invalid && form.get('displayName')?.touched) {
-            <span class="label">
-              <span class="label-text-alt text-error">Required</span>
-            </span>
+          <span class="label">
+            <span class="label-text-alt text-error">Required</span>
+          </span>
           }
         </div>
 
@@ -96,18 +95,16 @@
             autocomplete="new-password"
           />
           @if (form.get('password')?.invalid && form.get('password')?.touched) {
-            <span class="label">
-              <span class="label-text-alt text-error">Min 6 characters</span>
-            </span>
+          <span class="label">
+            <span class="label-text-alt text-error">Min 6 characters</span>
+          </span>
           }
         </div>
 
         <button type="submit" class="btn btn-primary mt-2 w-full" [disabled]="form.invalid || loading()">
           @if (loading()) {
-            <span class="loading loading-spinner loading-sm"></span>
-          } @else {
-            Create account
-          }
+          <span class="loading loading-spinner loading-sm"></span>
+          } @else { Create account }
         </button>
       </form>
 
@@ -206,7 +203,6 @@
         Already have an account?
         <a routerLink="/login" class="link link-primary font-medium no-underline hover:underline">Sign in</a>
       </p>
-
     </div>
   </div>
 </div>

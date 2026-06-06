@@ -1,136 +1,134 @@
 @if (loading()) {
-<section class="contrib-graph contrib-graph--loading" aria-busy="true" aria-label="Loading contribution graph">
-  <div class="contrib-graph__header">
-    <div class="skeleton h-4 w-48 rounded"></div>
-    <div class="skeleton h-3 w-64 rounded"></div>
-  </div>
-  <div class="contrib-graph__skeleton-grid">
-    @for (row of [0, 1, 2, 3, 4, 5, 6]; track row) {
-    <div class="skeleton contrib-graph__skeleton-row"></div>
-    }
-  </div>
-</section>
+  <section class="contrib-graph contrib-graph--loading" aria-busy="true" aria-label="Loading contribution graph">
+    <div class="contrib-graph__header">
+      <div class="skeleton h-4 w-48 rounded"></div>
+      <div class="skeleton h-3 w-64 rounded"></div>
+    </div>
+    <div class="contrib-graph__skeleton-grid">
+      @for (row of [0, 1, 2, 3, 4, 5, 6]; track row) {
+        <div class="skeleton contrib-graph__skeleton-row"></div>
+      }
+    </div>
+  </section>
 } @else if (loadFailed()) {
-<section class="contrib-graph contrib-graph--empty">
-  <p class="contrib-graph__empty-text">Contribution activity could not be loaded.</p>
-  <p class="contrib-graph__empty-hint">Restart the backend if you recently updated OriginHub, then refresh this page.</p>
-</section>
+  <section class="contrib-graph contrib-graph--empty">
+    <p class="contrib-graph__empty-text">Contribution activity could not be loaded.</p>
+    <p class="contrib-graph__empty-hint">
+      Restart the backend if you recently updated OriginHub, then refresh this page.
+    </p>
+  </section>
 } @else if (data(); as graph) {
-<section class="contrib-graph" aria-label="Contribution activity">
-  <div class="contrib-graph__header">
-    <div>
-      <h2 class="contrib-graph__title">
-        {{ graph.totalContributions.toLocaleString() }}
-        {{ graph.totalContributions === 1 ? 'contribution' : 'contributions' }}
-        in the last year
-      </h2>
-      <p class="contrib-graph__subtitle">
-        @if (graph.includesPrivateActivity) {
-        Includes private repository and snippet activity visible only to you.
-        } @else {
-        Public activity on repositories, pull requests, issues, releases, and snippets.
-        }
-      </p>
+  <section class="contrib-graph" aria-label="Contribution activity">
+    <div class="contrib-graph__header">
+      <div>
+        <h2 class="contrib-graph__title">
+          {{ graph.totalContributions.toLocaleString() }}
+          {{ graph.totalContributions === 1 ? 'contribution' : 'contributions' }}
+          in the last year
+        </h2>
+        <p class="contrib-graph__subtitle">
+          @if (graph.includesPrivateActivity) {
+            Includes private repository and snippet activity visible only to you.
+          } @else {
+            Public activity on repositories, pull requests, issues, releases, and snippets.
+          }
+        </p>
+      </div>
+      <div class="contrib-graph__stats" aria-label="Contribution streaks">
+        <div class="contrib-graph__stat">
+          <span class="contrib-graph__stat-value">{{ graph.currentStreak }}</span>
+          <span class="contrib-graph__stat-label">day current streak</span>
+        </div>
+        <div class="contrib-graph__stat">
+          <span class="contrib-graph__stat-value">{{ graph.longestStreak }}</span>
+          <span class="contrib-graph__stat-label">day longest streak</span>
+        </div>
+      </div>
     </div>
-    <div class="contrib-graph__stats" aria-label="Contribution streaks">
-      <div class="contrib-graph__stat">
-        <span class="contrib-graph__stat-value">{{ graph.currentStreak }}</span>
-        <span class="contrib-graph__stat-label">day current streak</span>
-      </div>
-      <div class="contrib-graph__stat">
-        <span class="contrib-graph__stat-value">{{ graph.longestStreak }}</span>
-        <span class="contrib-graph__stat-label">day longest streak</span>
-      </div>
-    </div>
-  </div>
 
-  <div class="contrib-graph__scroll">
-    <div class="contrib-graph__layout">
-      <div class="contrib-graph__weekdays" aria-hidden="true">
-        <span></span>
-        @for (label of weekdayLabels(); track label) {
-        <span>{{ label }}</span>
-        }
-      </div>
-
-      <div class="contrib-graph__grid-wrap">
-        <div class="contrib-graph__months" aria-hidden="true">
-          @for (week of weeks(); track week.key) {
-          <span class="contrib-graph__month">{{ week.monthLabel }}</span>
+    <div class="contrib-graph__scroll">
+      <div class="contrib-graph__layout">
+        <div class="contrib-graph__weekdays" aria-hidden="true">
+          <span></span>
+          @for (label of weekdayLabels(); track label) {
+            <span>{{ label }}</span>
           }
         </div>
 
-        <div class="contrib-graph__grid" role="grid" aria-label="Daily contributions">
-          @for (week of weeks(); track week.key) {
-          <div class="contrib-graph__week" role="row">
-            @for (day of week.days; track $index) {
-            @if (day) {
-            <button
-              type="button"
-              class="contrib-graph__cell"
-              [class.contrib-graph__cell--level-0]="day.level === 0"
-              [class.contrib-graph__cell--level-1]="day.level === 1"
-              [class.contrib-graph__cell--level-2]="day.level === 2"
-              [class.contrib-graph__cell--level-3]="day.level === 3"
-              [class.contrib-graph__cell--level-4]="day.level === 4"
-              [attr.aria-label]="formatDayLabel(day) + ': ' + contributionLabel(day.count)"
-              (mouseenter)="showTooltip(day, $event)"
-              (mousemove)="moveTooltip($event)"
-              (mouseleave)="hideTooltip()"
-              (focus)="showTooltip(day, $event)"
-              (blur)="hideTooltip()"
-            ></button>
-            } @else {
-            <span class="contrib-graph__cell contrib-graph__cell--pad" aria-hidden="true"></span>
-            }
+        <div class="contrib-graph__grid-wrap">
+          <div class="contrib-graph__months" aria-hidden="true">
+            @for (week of weeks(); track week.key) {
+              <span class="contrib-graph__month">{{ week.monthLabel }}</span>
             }
           </div>
-          }
+
+          <div class="contrib-graph__grid" role="grid" aria-label="Daily contributions">
+            @for (week of weeks(); track week.key) {
+              <div class="contrib-graph__week" role="row">
+                @for (day of week.days; track $index) {
+                  @if (day) {
+                    <button
+                      type="button"
+                      class="contrib-graph__cell"
+                      [class.contrib-graph__cell--level-0]="day.level === 0"
+                      [class.contrib-graph__cell--level-1]="day.level === 1"
+                      [class.contrib-graph__cell--level-2]="day.level === 2"
+                      [class.contrib-graph__cell--level-3]="day.level === 3"
+                      [class.contrib-graph__cell--level-4]="day.level === 4"
+                      [attr.aria-label]="formatDayLabel(day) + ': ' + contributionLabel(day.count)"
+                      (mouseenter)="showTooltip(day, $event)"
+                      (mousemove)="moveTooltip($event)"
+                      (mouseleave)="hideTooltip()"
+                      (focus)="showTooltip(day, $event)"
+                      (blur)="hideTooltip()"
+                    ></button>
+                  } @else {
+                    <span class="contrib-graph__cell contrib-graph__cell--pad" aria-hidden="true"></span>
+                  }
+                }
+              </div>
+            }
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="contrib-graph__footer">
-    <p class="contrib-graph__footnote">
-      Counts issues, pull requests, releases, snippets, and related comments on visible repositories.
-    </p>
-    <div class="contrib-graph__legend" aria-label="Contribution intensity legend">
-      <span>Less</span>
-      @for (level of legendLevels; track level) {
-      <span
-        class="contrib-graph__legend-cell"
-        [class.contrib-graph__cell--level-0]="level === 0"
-        [class.contrib-graph__cell--level-1]="level === 1"
-        [class.contrib-graph__cell--level-2]="level === 2"
-        [class.contrib-graph__cell--level-3]="level === 3"
-        [class.contrib-graph__cell--level-4]="level === 4"
-      ></span>
-      }
-      <span>More</span>
+    <div class="contrib-graph__footer">
+      <p class="contrib-graph__footnote">
+        Counts issues, pull requests, releases, snippets, and related comments on visible repositories.
+      </p>
+      <div class="contrib-graph__legend" aria-label="Contribution intensity legend">
+        <span>Less</span>
+        @for (level of legendLevels; track level) {
+          <span
+            class="contrib-graph__legend-cell"
+            [class.contrib-graph__cell--level-0]="level === 0"
+            [class.contrib-graph__cell--level-1]="level === 1"
+            [class.contrib-graph__cell--level-2]="level === 2"
+            [class.contrib-graph__cell--level-3]="level === 3"
+            [class.contrib-graph__cell--level-4]="level === 4"
+          ></span>
+        }
+        <span>More</span>
+      </div>
     </div>
-  </div>
-</section>
+  </section>
 
-@if (tooltip(); as tip) {
-<div
-  class="contrib-graph__tooltip"
-  role="tooltip"
-  [style.left.px]="tip.x + 12"
-  [style.top.px]="tip.y + 12"
->
-  <strong>{{ contributionLabel(tip.day.count) }}</strong>
-  <span>{{ formatDayLabel(tip.day) }}</span>
-  @if (tip.day.count > 0) {
-  <ul class="contrib-graph__tooltip-list">
-    @for (line of breakdownLines(tip.day); track line) {
-    <li>{{ line }}</li>
-    }
-  </ul>
+  @if (tooltip(); as tip) {
+    <div class="contrib-graph__tooltip" role="tooltip" [style.left.px]="tip.x + 12" [style.top.px]="tip.y + 12">
+      <strong>{{ contributionLabel(tip.day.count) }}</strong>
+      <span>{{ formatDayLabel(tip.day) }}</span>
+      @if (tip.day.count > 0) {
+        <ul class="contrib-graph__tooltip-list">
+          @for (line of breakdownLines(tip.day); track line) {
+            <li>{{ line }}</li>
+          }
+        </ul>
+      }
+    </div>
   }
-</div>
-} } @else {
-<section class="contrib-graph contrib-graph--empty">
-  <p class="contrib-graph__empty-text">No contribution activity to display yet.</p>
-</section>
+} @else {
+  <section class="contrib-graph contrib-graph--empty">
+    <p class="contrib-graph__empty-text">No contribution activity to display yet.</p>
+  </section>
 }

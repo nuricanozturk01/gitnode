@@ -48,7 +48,14 @@ type ProfileTab = 'overview' | 'repositories' | 'projects' | 'snippets';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-profile',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent, MarkdownPipe, ContributionGraphComponent],
+  imports: [
+    RouterLink,
+    LucideAngularModule,
+    RelativeTimePipe,
+    AvatarComponent,
+    MarkdownPipe,
+    ContributionGraphComponent,
+  ],
   templateUrl: './user-profile.page.html',
   styleUrl: './user-profile.page.css',
 })

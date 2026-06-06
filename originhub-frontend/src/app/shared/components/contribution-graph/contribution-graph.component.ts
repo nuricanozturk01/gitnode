@@ -91,7 +91,8 @@ export class ContributionGraphComponent {
     if (b.pullRequestComments > 0) {
       lines.push(formatCount(b.pullRequestComments, 'PR comment', 'PR comments'));
     }
-    if (b.pullRequestMerges > 0) lines.push(formatCount(b.pullRequestMerges, 'pull request merged', 'pull requests merged'));
+    if (b.pullRequestMerges > 0)
+      lines.push(formatCount(b.pullRequestMerges, 'pull request merged', 'pull requests merged'));
     if (b.releases > 0) lines.push(formatCount(b.releases, 'release published', 'releases published'));
     if (b.snippets > 0) lines.push(formatCount(b.snippets, 'snippet created', 'snippets created'));
     if (b.snippetRevisions > 0) lines.push(formatCount(b.snippetRevisions, 'snippet edit', 'snippet edits'));

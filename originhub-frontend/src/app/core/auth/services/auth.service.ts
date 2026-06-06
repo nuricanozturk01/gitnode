@@ -95,9 +95,7 @@ export class AuthService {
   }
 
   async loginLdap(form: LdapLoginForm): Promise<TokenResponse> {
-    const res = await firstValueFrom(
-      this.http.post<TokenResponse>(`${this.api}/api/auth/sso/ldap/login`, form),
-    );
+    const res = await firstValueFrom(this.http.post<TokenResponse>(`${this.api}/api/auth/sso/ldap/login`, form));
     this.userService.invalidateMe();
     this.tokenService.saveTokens(res);
     this.scheduleAutoLogout();

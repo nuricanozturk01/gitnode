@@ -1,7 +1,0 @@
-/** @deprecated Use the injection token LUCIDE_ICONS instead. Will be removed in v1.0. */
-export class Icons {
-    constructor(icons) {
-        this.icons = icons;
-    }
-}
-//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiaWNvbnMucHJvdmlkZXIuanMiLCJzb3VyY2VSb290IjoiIiwic291cmNlcyI6WyIuLi8uLi8uLi8uLi8uLi9zcmMvbGliL2ljb25zLnByb3ZpZGVyLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLHlGQUF5RjtBQUN6RixNQUFNLE9BQU8sS0FBSztJQUNoQixZQUFvQixLQUFhO1FBQWIsVUFBSyxHQUFMLEtBQUssQ0FBUTtJQUFHLENBQUM7Q0FDdEMiLCJzb3VyY2VzQ29udGVudCI6WyIvKiogQGRlcHJlY2F0ZWQgVXNlIHRoZSBpbmplY3Rpb24gdG9rZW4gTFVDSURFX0lDT05TIGluc3RlYWQuIFdpbGwgYmUgcmVtb3ZlZCBpbiB2MS4wLiAqL1xuZXhwb3J0IGNsYXNzIEljb25zIHtcbiAgY29uc3RydWN0b3IocHJpdmF0ZSBpY29uczogb2JqZWN0KSB7fVxufVxuIl19

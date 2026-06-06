@@ -94,7 +94,6 @@
 
   <modules>
     <module>originhub-backend</module>
-    <module>originhub-actions</module>
     <module>originhub-events</module>
   </modules>
 

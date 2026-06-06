@@ -39,6 +39,33 @@ jobs:
       - name: Build and Verify
         run: mvn -B -ntp verify
 
+  originhub-runner-checks:
+    name: OriginHub Runner Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./originhub-runner
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: originhub-runner/go.sum
+
+      - name: Format check
+        run: make fmt-check
+
+      - name: Test
+        run: make test
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
+
   originhub-frontend-checks:
     name: OriginHub Checks (${{ matrix.project }})
     runs-on: ubuntu-latest

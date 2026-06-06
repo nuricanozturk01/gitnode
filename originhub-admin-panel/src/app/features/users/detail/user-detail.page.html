@@ -1,0 +1,91 @@
+<div class="mx-auto max-w-3xl">
+  <nav class="text-base-content/70 mb-6 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <a routerLink="/users" class="link link-hover no-underline">Users</a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">{{ user()?.username ?? 'User' }}</span>
+  </nav>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (error()) {
+  <div class="alert alert-error" role="alert">
+    <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+    <span>{{ error() }}</span>
+  </div>
+  } @else if (user(); as detail) {
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <div class="flex flex-wrap items-center gap-2">
+        <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">{{ detail.username }}</h1>
+        @if (detail.bootstrapAdmin) {
+        <span class="badge-pill badge-pill--primary">Bootstrap admin</span>
+        } @else if (detail.platformAdmin) {
+        <span class="badge-pill badge-pill--primary">Platform admin</span>
+        } @if (detail.enabled) {
+        <span class="badge-pill badge-pill--success">Enabled</span>
+        } @else {
+        <span class="badge-pill badge-pill--error">Disabled</span>
+        }
+      </div>
+      <p class="text-base-content/65 mt-1 text-sm">{{ detail.email }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (auditLogsQuery(); as query) {
+      <a routerLink="/audit-logs" [queryParams]="query" class="btn btn-outline btn-sm gap-1">
+        <lucide-icon name="scrollText" class="size-4"></lucide-icon>
+        Audit logs
+      </a>
+      }
+      <button
+        type="button"
+        class="btn btn-sm btn-outline gap-1"
+        [class.user-action-btn--disable]="detail.enabled"
+        [class.user-action-btn--enable]="!detail.enabled"
+        [disabled]="toggling()"
+        (click)="toggleEnabled()"
+      >
+        @if (toggling()) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } @else if (detail.enabled) {
+        <lucide-icon name="userX" class="size-4"></lucide-icon>
+        Disable } @else {
+        <lucide-icon name="userCheck" class="size-4"></lucide-icon>
+        Enable }
+      </button>
+    </div>
+  </header>
+
+  <section class="repo-panel p-6">
+    <h2 class="text-base-content text-lg font-semibold">Details</h2>
+    <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
+      <div class="sm:col-span-2">
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">User ID</dt>
+        <dd class="mt-1 font-mono text-xs break-all">{{ detail.id }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Display name</dt>
+        <dd class="mt-1">{{ detail.displayName ?? '—' }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Status</dt>
+        <dd class="mt-1">{{ detail.enabled ? 'Enabled' : 'Disabled' }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Created</dt>
+        <dd class="mt-1">{{ formatDateTime(detail.createdAt) }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Updated</dt>
+        <dd class="mt-1">{{ formatDateTime(detail.updatedAt) }}</dd>
+      </div>
+    </dl>
+  </section>
+  }
+</div>

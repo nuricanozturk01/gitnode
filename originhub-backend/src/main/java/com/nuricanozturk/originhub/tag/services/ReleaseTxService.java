@@ -57,7 +57,8 @@ public class ReleaseTxService {
   @Audited(
       action = "CREATE_RELEASE",
       entityType = "RELEASE",
-      entityIdSpEL = "#result.id().toString()")
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', tag=' + #form.tagName")
   @Transactional
   public ReleaseInfo create(
       final String owner,
@@ -132,7 +133,11 @@ public class ReleaseTxService {
     return updated;
   }
 
-  @Audited(action = "DELETE_RELEASE", entityType = "RELEASE", entityIdSpEL = "#id.toString()")
+  @Audited(
+      action = "DELETE_RELEASE",
+      entityType = "RELEASE",
+      entityIdSpEL = "#id.toString()",
+      detailsSpEL = "'owner=' + #repoOwnerUsername")
   @Transactional
   public void delete(final UUID id, final UUID requesterId, final String repoOwnerUsername) {
 

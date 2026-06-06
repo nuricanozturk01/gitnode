@@ -92,7 +92,10 @@ public class TagNonTxService {
     }
   }
 
-  @Audited(action = "CREATE_TAG", entityType = "TAG")
+  @Audited(
+      action = "CREATE_TAG",
+      entityType = "TAG",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', tag=' + #form.name")
   @CacheEvict(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public TagInfo create(final String owner, final String repoName, final CreateTagForm form)
       throws IOException {
@@ -112,7 +115,10 @@ public class TagNonTxService {
     return this.get(owner, repoName, form.getName());
   }
 
-  @Audited(action = "DELETE_TAG", entityType = "TAG")
+  @Audited(
+      action = "DELETE_TAG",
+      entityType = "TAG",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', tag=' + #tagName")
   @CacheEvict(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public void delete(final String owner, final String repoName, final String tagName)
       throws IOException {

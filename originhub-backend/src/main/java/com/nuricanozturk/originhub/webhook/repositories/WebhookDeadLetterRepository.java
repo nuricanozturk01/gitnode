@@ -16,11 +16,15 @@
 package com.nuricanozturk.originhub.webhook.repositories;
 
 import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -28,4 +32,12 @@ import org.springframework.stereotype.Repository;
 public interface WebhookDeadLetterRepository extends JpaRepository<WebhookDeadLetter, UUID> {
 
   Page<WebhookDeadLetter> findAllByOrderByFailedAtDesc(Pageable pageable);
+
+  @Query(
+      "SELECT d FROM WebhookDeadLetter d "
+          + "WHERE (d.nextRetryAt IS NULL OR d.nextRetryAt <= :now) "
+          + "AND d.dlqRetryCount < :maxRetries "
+          + "ORDER BY d.failedAt ASC")
+  List<WebhookDeadLetter> findDueForRetry(
+      @Param("now") Instant now, @Param("maxRetries") int maxRetries, Pageable pageable);
 }

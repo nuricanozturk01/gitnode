@@ -21,13 +21,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.events.task.TaskCreatedEvent;
 import com.nuricanozturk.originhub.issue.api.IssueQueryService;
 import com.nuricanozturk.originhub.pr.api.PrQueryPort;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
-import com.nuricanozturk.originhub.shared.task.events.TaskCreatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.task.dtos.TaskDetail;

@@ -1,22 +1,14 @@
-# E2E teardown
+# Teardown
 
-Playwright project `teardown` runs **after** scenario (or alone in CI’s third job).
+Deletes the **owner** and **intruder** users created in global-setup. Runs automatically at the end of `pnpm test:e2e`.
 
-## What it does
-
-[`delete-e2e-users.spec.ts`](delete-e2e-users.spec.ts):
-
-1. `DELETE /api/users/me` as **intruder** → expect **204**
-2. `DELETE /api/users/me` as **owner** → expect **204**
-3. Remove `e2e/.auth/session.json`
-4. Remove `scenario/.workdirs` and `.git-workdirs` (always, including when user delete is skipped)
-
-Skipped when `session.preserveUsers` is true (accounts from `.env`); workdir cleanup still runs.
-
-## Run
+## Run alone
 
 ```bash
-pnpm test:e2e:teardown
+cd e2e
+pnpm test:e2e:teardown    # needs e2e/.auth/session.json from a prior run
 ```
 
-Needs `e2e/.auth/session.json` from a prior run. With `E2E_TEARDOWN_ONLY=1`, `global-setup` does not re-register users.
+Skipped when accounts come from `.env` (`E2E_PRESERVE_USERS=1`).
+
+Also removes temp git workdirs under `scenario/.workdirs`.

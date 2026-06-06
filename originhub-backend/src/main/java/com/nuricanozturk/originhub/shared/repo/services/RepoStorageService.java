@@ -15,10 +15,10 @@
  */
 package com.nuricanozturk.originhub.shared.repo.services;
 
+import com.nuricanozturk.originhub.events.repo.RepoInitRollbackRequestedEvent;
+import com.nuricanozturk.originhub.events.repo.RepoRenameRollbackRequstedEvent;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
-import com.nuricanozturk.originhub.shared.repo.events.RepoInitRollbackRequestedEvent;
-import com.nuricanozturk.originhub.shared.repo.events.RepoRenameRollbackRequstedEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -158,6 +158,47 @@ public class RepoStorageService {
     try (var walk = Files.walk(path)) {
 
       walk.sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+    }
+  }
+
+  public long calculateRepoStorageBytes(final String owner, final String repoName) {
+
+    final var path = Path.of(this.repoRoot, owner, repoName + ".git");
+
+    if (!Files.exists(path)) {
+      return 0L;
+    }
+
+    try (var walk = Files.walk(path)) {
+      return walk.filter(Files::isRegularFile).mapToLong(this::safeFileSize).sum();
+    } catch (final IOException e) {
+      log.warn("Failed to calculate storage for {}/{}: {}", owner, repoName, e.getMessage());
+      return 0L;
+    }
+  }
+
+  public long calculateTotalStorageBytes() {
+
+    final var root = Path.of(this.repoRoot);
+
+    if (!Files.isDirectory(root)) {
+      return 0L;
+    }
+
+    try (var walk = Files.walk(root)) {
+      return walk.filter(Files::isRegularFile).mapToLong(this::safeFileSize).sum();
+    } catch (final IOException e) {
+      log.warn("Failed to calculate total repo storage: {}", e.getMessage());
+      return 0L;
+    }
+  }
+
+  private long safeFileSize(final Path path) {
+
+    try {
+      return Files.size(path);
+    } catch (final IOException _) {
+      return 0L;
     }
   }
 }

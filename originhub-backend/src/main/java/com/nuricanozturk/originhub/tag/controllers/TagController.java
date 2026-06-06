@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.tag.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.tag.dtos.CreateTagForm;
 import com.nuricanozturk.originhub.tag.dtos.TagInfo;
@@ -76,6 +77,7 @@ public class TagController {
   }
 
   @PostMapping
+  @RateLimit(limit = 50, windowSeconds = 3600, key = "tag.create")
   public ResponseEntity<TagInfo> create(
       @PathVariable final String owner,
       @PathVariable final String repo,

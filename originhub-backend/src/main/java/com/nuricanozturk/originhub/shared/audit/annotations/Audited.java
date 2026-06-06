@@ -33,4 +33,11 @@ public @interface Audited {
    * parameter names. Example: {@code "#result.id"}, {@code "#keyId"}.
    */
   String entityIdSpEL() default "";
+
+  /**
+   * SpEL expression to build the details string. Same bound variables as entityIdSpEL. Must
+   * evaluate to a String. Never include secrets, passwords, tokens, or key material. Example:
+   * {@code "'repo=' + #owner + '/' + #repoName"}.
+   */
+  String detailsSpEL() default "";
 }

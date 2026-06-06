@@ -16,20 +16,24 @@
 package com.nuricanozturk.originhub.shared.audit.repositories;
 
 import com.nuricanozturk.originhub.shared.audit.entities.AuditLog;
-import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
 @NullMarked
-public interface AuditLogRepository extends JpaRepository<AuditLog, UUID> {
+public interface AuditLogRepository
+    extends JpaRepository<AuditLog, UUID>, JpaSpecificationExecutor<AuditLog> {
 
-  Page<AuditLog> findAllByActorUsernameOrderByOccurredAtDesc(
-      String actorUsername, Pageable pageable);
+  @Query("SELECT DISTINCT a.action FROM AuditLog a ORDER BY a.action")
+  List<String> findDistinctActions(Pageable pageable);
 
-  Page<AuditLog> findAllByOccurredAtAfterOrderByOccurredAtDesc(Instant after, Pageable pageable);
+  @Query(
+      "SELECT DISTINCT a.entityType FROM AuditLog a WHERE a.entityType IS NOT NULL ORDER BY a.entityType")
+  List<String> findDistinctEntityTypes(Pageable pageable);
 }

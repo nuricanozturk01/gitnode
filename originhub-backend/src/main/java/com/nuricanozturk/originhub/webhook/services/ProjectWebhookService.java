@@ -68,7 +68,8 @@ public class ProjectWebhookService {
   @Audited(
       action = "CREATE_PROJECT_WEBHOOK",
       entityType = "WEBHOOK",
-      entityIdSpEL = "#result.id().toString()")
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'project=' + #ownerUsername + '/' + #projectCode + ', url=' + #form.url()")
   @Transactional
   public WebhookInfo create(
       final String ownerUsername, final String projectCode, final WebhookForm form) {
@@ -125,7 +126,8 @@ public class ProjectWebhookService {
   @Audited(
       action = "DELETE_PROJECT_WEBHOOK",
       entityType = "WEBHOOK",
-      entityIdSpEL = "#webhookId.toString()")
+      entityIdSpEL = "#webhookId.toString()",
+      detailsSpEL = "'project=' + #ownerUsername + '/' + #projectCode")
   @Transactional
   public void delete(final String ownerUsername, final String projectCode, final UUID webhookId) {
     final var project = this.resolveProject(ownerUsername, projectCode);

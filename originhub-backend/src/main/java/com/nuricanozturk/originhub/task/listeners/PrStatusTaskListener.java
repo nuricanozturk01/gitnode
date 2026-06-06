@@ -15,8 +15,8 @@
  */
 package com.nuricanozturk.originhub.task.listeners;
 
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestCreatedEvent;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
+import com.nuricanozturk.originhub.events.pr.PullRequestCreatedEvent;
+import com.nuricanozturk.originhub.events.pr.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.task.services.TaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

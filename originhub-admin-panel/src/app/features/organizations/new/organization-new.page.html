@@ -1,0 +1,76 @@
+<div class="mx-auto max-w-2xl">
+  <nav class="text-base-content/70 mb-6 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/organizations" class="link link-hover no-underline">Organizations</a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">New</span>
+  </nav>
+
+  <header class="mb-8">
+    <h1 class="text-base-content text-2xl font-bold tracking-tight">New organization</h1>
+    <p class="text-base-content/65 mt-1 text-sm">Create an enterprise tenant. SSO can be configured after creation.</p>
+  </header>
+
+  @if (error()) {
+  <div class="alert alert-error mb-4" role="alert">
+    <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+    <span>{{ error() }}</span>
+  </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="repo-panel flex flex-col gap-5 p-6">
+    <div class="form-control">
+      <label class="label" for="orgName">
+        <span class="label-text font-medium">Organization name</span>
+      </label>
+      <input
+        id="orgName"
+        type="text"
+        formControlName="name"
+        class="input input-bordered w-full"
+        placeholder="Acme Corp"
+        (blur)="slugifyFromName()"
+      />
+    </div>
+
+    <div class="form-control">
+      <label class="label" for="orgSlug">
+        <span class="label-text font-medium">Slug</span>
+      </label>
+      <input
+        id="orgSlug"
+        type="text"
+        formControlName="slug"
+        class="input input-bordered mono w-full"
+        placeholder="acme-corp"
+      />
+      <span class="label">
+        <span class="label-text-alt text-base-content/60">Lowercase letters, numbers, and hyphens only</span>
+      </span>
+    </div>
+
+    <div class="form-control">
+      <label class="label" for="emailDomains">
+        <span class="label-text font-medium">Email domains</span>
+      </label>
+      <input
+        id="emailDomains"
+        type="text"
+        formControlName="emailDomains"
+        class="input input-bordered w-full"
+        placeholder="acme.com, acme.io"
+      />
+      <span class="label">
+        <span class="label-text-alt text-base-content/60">Comma-separated list of allowed email domains</span>
+      </span>
+    </div>
+
+    <div class="flex flex-wrap gap-2 pt-2">
+      <button type="submit" class="btn btn-primary" [disabled]="form.invalid || saving()">
+        @if (saving()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } @else { Create organization }
+      </button>
+      <a routerLink="/organizations" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>

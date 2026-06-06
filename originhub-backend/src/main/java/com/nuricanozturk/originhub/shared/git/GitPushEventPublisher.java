@@ -15,8 +15,8 @@
  */
 package com.nuricanozturk.originhub.shared.git;
 
+import com.nuricanozturk.originhub.events.repo.RepoPushedEvent;
 import com.nuricanozturk.originhub.shared.cache.RepoCacheInvalidator;
-import com.nuricanozturk.originhub.shared.repo.events.RepoPushedEvent;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import java.nio.file.Path;
 import java.util.Collection;

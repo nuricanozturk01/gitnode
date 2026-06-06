@@ -40,37 +40,17 @@ jobs:
         run: mvn -B -ntp verify
 
   originhub-frontend-checks:
-    name: OriginHub Frontend Checks
+    name: OriginHub Checks (${{ matrix.project }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project:
+          - originhub-frontend
+          - e2e
+          - originhub-admin-panel
     defaults:
       run:
-        working-directory: ./originhub-frontend
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Node
-        uses: actions/setup-node@v5
-        with:
-          node-version: "24"
-
-      - name: Enable Corepack
-        run: corepack enable
-
-      - name: Install pnpm
-        run: corepack prepare pnpm@10 --activate
-
-      - name: Install dependencies
-        run: pnpm install --ignore-scripts
-
-      - name: Check
-        run: pnpm run lint
-
-  originhub-e2e-checks:
-    name: OriginHub E2E Checks
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./e2e
+        working-directory: ./${{ matrix.project }}
     steps:
       - uses: actions/checkout@v5
 

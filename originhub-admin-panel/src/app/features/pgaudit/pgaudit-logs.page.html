@@ -1,0 +1,19 @@
+<div class="mx-auto max-w-6xl">
+  <nav class="text-base-content/70 mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">pgAudit logs</span>
+  </nav>
+
+  <header class="mb-4">
+    <h1 class="text-base-content text-2xl font-bold tracking-tight">pgAudit logs</h1>
+    <p class="text-base-content/60 mt-0.5 text-sm">
+      PostgreSQL server audit trail for write, DDL, and role operations. Enable in Platform settings when needed.
+    </p>
+  </header>
+
+  <app-pgaudit-logs-panel />
+</div>

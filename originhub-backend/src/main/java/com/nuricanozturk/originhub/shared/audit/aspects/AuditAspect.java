@@ -26,6 +26,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -36,6 +37,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 @Slf4j
 @Aspect
 @Component
+@ConditionalOnProperty(name = "originhub.audit.enabled", havingValue = "true")
 @NullMarked
 @RequiredArgsConstructor
 public class AuditAspect {
@@ -48,9 +50,11 @@ public class AuditAspect {
     try {
       final var actor = this.resolveActor();
       final var ip = this.resolveIpAddress();
-      final var entityId = this.resolveEntityId(jp, audited, returnValue);
+      final var context = this.buildContext(jp, returnValue);
+      final var entityId = this.evalSpEL(audited.entityIdSpEL(), context, "entityIdSpEL");
+      final var details = this.evalSpEL(audited.detailsSpEL(), context, "detailsSpEL");
       this.auditLogService.log(
-          actor, audited.action(), this.nullIfEmpty(audited.entityType()), entityId, null, ip);
+          actor, audited.action(), this.nullIfEmpty(audited.entityType()), entityId, details, ip);
     } catch (final Exception ex) {
       final var signature = jp.getSignature();
       log.debug(
@@ -60,17 +64,15 @@ public class AuditAspect {
     }
   }
 
-  private @Nullable String resolveEntityId(
-      final JoinPoint jp, final Audited audited, final @Nullable Object returnValue) {
-    final var spel = audited.entityIdSpEL();
-    if (spel.isBlank()) {
-      return null;
+  private StandardEvaluationContext buildContext(
+      final JoinPoint jp, final @Nullable Object returnValue) {
+    final var context = new StandardEvaluationContext();
+    context.setVariable("result", returnValue);
+    final var sig = (MethodSignature) jp.getSignature();
+    if (sig == null) {
+      return context;
     }
     try {
-      final var parser = new SpelExpressionParser();
-      final var context = new StandardEvaluationContext();
-      context.setVariable("result", returnValue);
-      final var sig = (MethodSignature) jp.getSignature();
       final var paramNames = sig.getParameterNames();
       final var args = jp.getArgs();
       if (paramNames != null) {
@@ -78,10 +80,23 @@ public class AuditAspect {
           context.setVariable(paramNames[i], args[i]);
         }
       }
+    } catch (final Exception ignored) {
+      // param names unavailable; SpEL expressions referencing params will resolve to null
+    }
+    return context;
+  }
+
+  private @Nullable String evalSpEL(
+      final @Nullable String spel, final StandardEvaluationContext context, final String label) {
+    if (spel == null || spel.isBlank()) {
+      return null;
+    }
+    try {
+      final var parser = new SpelExpressionParser();
       final var value = parser.parseExpression(spel).getValue(context);
       return value != null ? value.toString() : null;
     } catch (final Exception ex) {
-      log.debug("entityIdSpEL eval failed '{}': {}", spel, ex.getMessage());
+      log.debug("{} eval failed '{}': {}", label, spel, ex.getMessage());
       return null;
     }
   }

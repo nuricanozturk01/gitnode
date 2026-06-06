@@ -159,6 +159,20 @@ class AuthServiceTest {
   }
 
   @Test
+  @DisplayName("login throws AccessNotAllowedException when user is disabled")
+  void login_throws_whenUserDisabled() {
+    String salt = "fixedsalt1234567";
+    Tenant tenant = tenantWithCredentials("alice", "alice@example.com", VALID_PASSWORD, salt);
+    tenant.setEnabled(false);
+    LoginForm form = LoginForm.builder().usernameOrEmail("alice").password(VALID_PASSWORD).build();
+    when(tenantRepository.findByUsernameOrEmail("alice")).thenReturn(Optional.of(tenant));
+
+    assertThatThrownBy(() -> authService.login(form))
+        .isInstanceOf(AccessNotAllowedException.class)
+        .hasMessageContaining("userDisabled");
+  }
+
+  @Test
   @DisplayName("login returns LoginInfo when credentials are valid")
   void login_returnsLoginInfo_whenSuccess() {
     String salt = "fixedsalt1234567";

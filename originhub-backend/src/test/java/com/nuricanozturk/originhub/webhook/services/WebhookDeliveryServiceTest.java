@@ -26,6 +26,8 @@ import static org.mockito.Mockito.when;
 
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -59,9 +61,12 @@ class WebhookDeliveryServiceTest {
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
+    CircuitBreakerRegistry registry =
+        CircuitBreakerRegistry.of(
+            java.util.Map.of("webhook-delivery", CircuitBreakerConfig.ofDefaults()));
     deliveryService =
         new WebhookDeliveryService(
-            objectMapper, restClient, deadLetterRepository, new SimpleMeterRegistry());
+            objectMapper, restClient, deadLetterRepository, registry, new SimpleMeterRegistry());
     deliveryService.retryBaseDelay = Duration.ZERO;
   }
 

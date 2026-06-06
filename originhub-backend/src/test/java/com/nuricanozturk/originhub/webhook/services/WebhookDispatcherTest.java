@@ -22,14 +22,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.nuricanozturk.originhub.shared.issue.events.IssueStatusChangedEvent;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
-import com.nuricanozturk.originhub.shared.project.events.ProjectCreatedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueStatusChangedEvent;
+import com.nuricanozturk.originhub.events.pr.PullRequestStatusChangedEvent;
+import com.nuricanozturk.originhub.events.project.ProjectCreatedEvent;
+import com.nuricanozturk.originhub.events.repo.RepoCreatedEvent;
+import com.nuricanozturk.originhub.events.repo.RepoPushedEvent;
+import com.nuricanozturk.originhub.events.snippet.SnippetCreatedEvent;
+import com.nuricanozturk.originhub.events.task.TaskCreatedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import com.nuricanozturk.originhub.shared.repo.events.RepoCreatedEvent;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
-import com.nuricanozturk.originhub.shared.snippet.events.SnippetCreatedEvent;
-import com.nuricanozturk.originhub.shared.task.events.TaskCreatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.webhook.entities.ProjectWebhook;
@@ -183,9 +184,7 @@ class WebhookDispatcherTest {
     Webhook webhook = repoWebhook(repoId, WebhookEventType.REPO_CREATED);
     when(webhookRepository.findAllByRepoIdAndEnabledTrue(repoId)).thenReturn(List.of(webhook));
 
-    webhookDispatcher.onRepoPushed(
-        new com.nuricanozturk.originhub.shared.repo.events.RepoPushedEvent(
-            repoId, "main", "alice"));
+    webhookDispatcher.onRepoPushed(new RepoPushedEvent(repoId, "main", "alice"));
 
     verify(deliveryService, never()).deliver(any(), any(), any(), any(), any(), any(), any());
   }

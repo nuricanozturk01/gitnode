@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.tag.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.tag.dtos.CreateReleaseForm;
 import com.nuricanozturk.originhub.tag.dtos.CreateTagForm;
@@ -112,6 +113,7 @@ public class ReleaseController {
   }
 
   @PostMapping
+  @RateLimit(limit = 30, windowSeconds = 3600, key = "release.create")
   public ResponseEntity<ReleaseInfo> create(
       @PathVariable final String owner,
       @PathVariable final String repo,

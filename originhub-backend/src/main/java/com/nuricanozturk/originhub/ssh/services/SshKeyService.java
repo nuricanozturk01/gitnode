@@ -47,7 +47,11 @@ public class SshKeyService {
   private final SshKeyRepository sshKeyRepository;
   private final TenantRepository tenantRepository;
 
-  @Audited(action = "ADD_SSH_KEY", entityType = "SSH_KEY", entityIdSpEL = "#result.id().toString()")
+  @Audited(
+      action = "ADD_SSH_KEY",
+      entityType = "SSH_KEY",
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'title=' + #form.title")
   @Transactional
   public SshKeyInfo addKey(final UUID tenantId, final AddSshKeyForm form) {
 

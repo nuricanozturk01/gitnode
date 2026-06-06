@@ -1,0 +1,14 @@
+import { LucideIconData } from './types';
+/**
+ * @component @name BugPlay
+ * @description Lucide SVG icon component, renders SVG Element with children.
+ *
+ * @preview ![img](data:image/svg+xml;base64,PHN2ZyAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzAwMCIgc3R5bGU9ImJhY2tncm91bmQtY29sb3I6ICNmZmY7IGJvcmRlci1yYWRpdXM6IDJweCIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTAgMTkuNjU1QTYgNiAwIDAgMSA2IDE0di0zYTQgNCAwIDAgMSA0LTRoNGE0IDQgMCAwIDEgNCAzLjk3IiAvPgogIDxwYXRoIGQ9Ik0xNCAxNS4wMDNhMSAxIDAgMCAxIDEuNTE3LS44NTlsNC45OTcgMi45OTdhMSAxIDAgMCAxIDAgMS43MThsLTQuOTk3IDIuOTk3YTEgMSAwIDAgMS0xLjUxNy0uODZ6IiAvPgogIDxwYXRoIGQ9Ik0xNC4xMiAzLjg4IDE2IDIiIC8+CiAgPHBhdGggZD0iTTIxIDVhNCA0IDAgMCAxLTMuNTUgMy45NyIgLz4KICA8cGF0aCBkPSJNMyAyMWE0IDQgMCAwIDEgMy44MS00IiAvPgogIDxwYXRoIGQ9Ik0zIDVhNCA0IDAgMCAwIDMuNTUgMy45NyIgLz4KICA8cGF0aCBkPSJNNiAxM0gyIiAvPgogIDxwYXRoIGQ9Im04IDIgMS44OCAxLjg4IiAvPgogIDxwYXRoIGQ9Ik05IDcuMTNWNmEzIDMgMCAxIDEgNiAwdjEuMTMiIC8+Cjwvc3ZnPgo=) - https://lucide.dev/icons/bug-play
+ * @see https://lucide.dev/guide/packages/lucide-vue-next - Documentation
+ *
+ * @param {Object} props - Lucide icons props and any valid SVG attribute
+ * @returns {FunctionalComponent} Vue component
+ *
+ */
+declare const BugPlay: LucideIconData;
+export default BugPlay;

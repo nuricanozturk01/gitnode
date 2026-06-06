@@ -1,0 +1,10 @@
+import * as icons from './icons/lucide-icons';
+export * from './lib/lucide-angular.component';
+export * from './lib/lucide-angular.module';
+export * from './lib/lucide-icon.config';
+export * from './lib/lucide-icon.provider';
+export * from './icons/lucide-icons';
+export * from './icons/types';
+export * from './aliases';
+export { icons };
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicHVibGljLWFwaS5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIi4uLy4uLy4uLy4uL3NyYy9wdWJsaWMtYXBpLnRzIl0sIm5hbWVzIjpbXSwibWFwcGluZ3MiOiJBQUFBLE9BQU8sS0FBSyxLQUFLLE1BQU0sc0JBQXNCLENBQUM7QUFFOUMsY0FBYyxnQ0FBZ0MsQ0FBQztBQUMvQyxjQUFjLDZCQUE2QixDQUFDO0FBQzVDLGNBQWMsMEJBQTBCLENBQUM7QUFDekMsY0FBYyw0QkFBNEIsQ0FBQztBQUMzQyxjQUFjLHNCQUFzQixDQUFDO0FBQ3JDLGNBQWMsZUFBZSxDQUFDO0FBQzlCLGNBQWMsV0FBVyxDQUFDO0FBQzFCLE9BQU8sRUFBRSxLQUFLLEVBQUUsQ0FBQyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCAqIGFzIGljb25zIGZyb20gJy4vaWNvbnMvbHVjaWRlLWljb25zJztcblxuZXhwb3J0ICogZnJvbSAnLi9saWIvbHVjaWRlLWFuZ3VsYXIuY29tcG9uZW50JztcbmV4cG9ydCAqIGZyb20gJy4vbGliL2x1Y2lkZS1hbmd1bGFyLm1vZHVsZSc7XG5leHBvcnQgKiBmcm9tICcuL2xpYi9sdWNpZGUtaWNvbi5jb25maWcnO1xuZXhwb3J0ICogZnJvbSAnLi9saWIvbHVjaWRlLWljb24ucHJvdmlkZXInO1xuZXhwb3J0ICogZnJvbSAnLi9pY29ucy9sdWNpZGUtaWNvbnMnO1xuZXhwb3J0ICogZnJvbSAnLi9pY29ucy90eXBlcyc7XG5leHBvcnQgKiBmcm9tICcuL2FsaWFzZXMnO1xuZXhwb3J0IHsgaWNvbnMgfTtcbiJdfQ==

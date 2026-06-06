@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.webhook.controllers;
 
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookUpdateForm;
@@ -49,6 +50,7 @@ public class UserWebhookController {
   }
 
   @PostMapping
+  @RateLimit(limit = 10, windowSeconds = 3600, key = "user.webhook.create")
   public ResponseEntity<WebhookInfo> create(
       @PathVariable final String username, @Valid @RequestBody final WebhookForm form) {
     return ResponseEntity.status(HttpStatus.CREATED)

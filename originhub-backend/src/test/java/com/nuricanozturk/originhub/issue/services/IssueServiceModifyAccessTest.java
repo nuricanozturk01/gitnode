@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.events.issue.IssueDeletedEvent;
 import com.nuricanozturk.originhub.issue.api.TaskQueryPort;
 import com.nuricanozturk.originhub.issue.dtos.IssueCommentUpdateForm;
 import com.nuricanozturk.originhub.issue.dtos.IssueUpdateForm;
@@ -16,7 +17,6 @@ import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
-import com.nuricanozturk.originhub.shared.issue.events.IssueDeletedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;

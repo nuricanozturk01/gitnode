@@ -22,9 +22,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.events.branch.BranchCreatedEvent;
+import com.nuricanozturk.originhub.events.branch.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
-import com.nuricanozturk.originhub.shared.branch.events.BranchCreatedEvent;
-import com.nuricanozturk.originhub.shared.branch.events.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;

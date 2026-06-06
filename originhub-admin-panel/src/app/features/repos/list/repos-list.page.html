@@ -1,0 +1,87 @@
+<div class="mx-auto max-w-6xl">
+  <header class="mb-6">
+    <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Repositories</h1>
+    <p class="text-base-content/65 mt-1 text-sm">Browse every repository on the platform.</p>
+  </header>
+
+  <div class="repo-panel mb-4 grid gap-3 p-4 md:grid-cols-2">
+    <label class="input input-bordered flex items-center gap-2">
+      <lucide-icon name="search" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+      <input
+        type="search"
+        class="grow"
+        placeholder="Search owner or repo name"
+        [value]="search()"
+        (input)="onSearchInput($event)"
+        aria-label="Search repositories"
+      />
+    </label>
+    <label class="input input-bordered flex items-center gap-2">
+      <lucide-icon name="user" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+      <input
+        type="search"
+        class="grow"
+        placeholder="Filter by owner username"
+        [value]="owner()"
+        (input)="onOwnerInput($event)"
+        aria-label="Filter by owner"
+      />
+    </label>
+  </div>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else {
+  <div class="repo-panel overflow-hidden">
+    @if (repos().length === 0) {
+    <div class="text-base-content/60 p-10 text-center text-sm">No repositories match your filters.</div>
+    } @else {
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Repository</th>
+            <th>Visibility</th>
+            <th>Default branch</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (repo of repos(); track repo.id) {
+          <tr class="hover">
+            <td>
+              <div class="font-medium">{{ repo.fullName }}</div>
+              @if (repo.description) {
+              <div class="text-base-content/55 max-w-md truncate text-xs">{{ repo.description }}</div>
+              }
+            </td>
+            <td>
+              @if (repo.isPrivate) {
+              <span class="badge-pill">Private</span>
+              } @else {
+              <span class="badge-pill badge-pill--success">Public</span>
+              } @if (repo.isArchived) {
+              <span class="badge-pill badge-pill--neutral ml-1">Archived</span>
+              }
+            </td>
+            <td class="mono text-sm">{{ repo.defaultBranch }}</td>
+            <td class="text-base-content/80 text-sm">{{ formatDate(repo.createdAt) }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalElements]="totalElements()"
+      [pageSize]="pageSize"
+      [disabled]="loading()"
+      (pageChange)="onPageChange($event)"
+    />
+    }
+  </div>
+  }
+</div>

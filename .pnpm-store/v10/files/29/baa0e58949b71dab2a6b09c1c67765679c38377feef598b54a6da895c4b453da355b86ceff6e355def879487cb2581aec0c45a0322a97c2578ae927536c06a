@@ -1,0 +1,14 @@
+import { LucideIconData } from './types';
+/**
+ * @component @name SquircleDashed
+ * @description Lucide SVG icon component, renders SVG Element with children.
+ *
+ * @preview ![img](data:image/svg+xml;base64,PHN2ZyAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzAwMCIgc3R5bGU9ImJhY2tncm91bmQtY29sb3I6ICNmZmY7IGJvcmRlci1yYWRpdXM6IDJweCIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTMuNzcgMy4wNDNhMzQgMzQgMCAwIDAtMy41NCAwIiAvPgogIDxwYXRoIGQ9Ik0xMy43NzEgMjAuOTU2YTMzIDMzIDAgMCAxLTMuNTQxLjAwMSIgLz4KICA8cGF0aCBkPSJNMjAuMTggMTcuNzRjLS41MSAxLjE1LTEuMjkgMS45My0yLjQzOSAyLjQ0IiAvPgogIDxwYXRoIGQ9Ik0yMC4xOCA2LjI1OWMtLjUxLTEuMTQ4LTEuMjkxLTEuOTI5LTIuNDQtMi40MzgiIC8+CiAgPHBhdGggZD0iTTIwLjk1NyAxMC4yM2EzMyAzMyAwIDAgMSAwIDMuNTQiIC8+CiAgPHBhdGggZD0iTTMuMDQzIDEwLjIzYTM0IDM0IDAgMCAwIC4wMDEgMy41NDEiIC8+CiAgPHBhdGggZD0iTTYuMjYgMjAuMTc5Yy0xLjE1LS41MDgtMS45My0xLjI5LTIuNDQtMi40MzgiIC8+CiAgPHBhdGggZD0iTTYuMjYgMy44MmMtMS4xNDkuNTEtMS45MyAxLjI5MS0yLjQ0IDIuNDQiIC8+Cjwvc3ZnPgo=) - https://lucide.dev/icons/squircle-dashed
+ * @see https://lucide.dev/guide/packages/lucide-vue-next - Documentation
+ *
+ * @param {Object} props - Lucide icons props and any valid SVG attribute
+ * @returns {FunctionalComponent} Vue component
+ *
+ */
+declare const SquircleDashed: LucideIconData;
+export default SquircleDashed;

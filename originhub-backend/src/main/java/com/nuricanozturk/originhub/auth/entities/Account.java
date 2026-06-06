@@ -33,6 +33,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
+import org.jspecify.annotations.Nullable;
 
 @Getter
 @Setter
@@ -62,6 +63,10 @@ public class Account {
 
   @Column(name = "avatar_url")
   private String avatarUrl;
+
+  @Column(name = "ldap_groups", length = 2000)
+  @Nullable
+  private String ldapGroups;
 
   @CreationTimestamp
   @Column(name = "created_at", nullable = false)

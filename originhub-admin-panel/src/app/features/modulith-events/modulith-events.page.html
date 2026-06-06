@@ -1,0 +1,207 @@
+<div class="mx-auto max-w-6xl">
+  <nav class="text-base-content/70 mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">Modulith events</span>
+  </nav>
+
+  <header class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight">Modulith events</h1>
+      <p class="text-base-content/60 mt-0.5 text-sm">{{ resultsSummary() }}</p>
+    </div>
+  </header>
+
+  @if (!available() && !initialLoading()) {
+  <div class="repo-panel audit-empty p-8">
+    <lucide-icon name="workflow" class="text-base-content/35 mx-auto size-10"></lucide-icon>
+    <h2 class="text-base-content mt-4 text-lg font-semibold">Modulith event viewer disabled</h2>
+    <p class="text-base-content/60 mx-auto mt-2 max-w-xl text-sm">{{ availabilityMessage() }}</p>
+    <a routerLink="/settings" class="btn btn-primary btn-sm mt-4">Open platform settings</a>
+  </div>
+  } @else {
+  <div class="repo-panel overflow-hidden">
+    <div class="audit-toolbar border-base-300/60 border-b p-3">
+      <label class="audit-toolbar__search input input-bordered input-sm flex items-center gap-2">
+        <lucide-icon name="search" class="text-base-content/45 size-3.5 shrink-0"></lucide-icon>
+        <input
+          type="search"
+          class="grow"
+          placeholder="Search event type, listener, payload…"
+          [value]="search()"
+          (input)="onSearchInput($event)"
+        />
+      </label>
+
+      <div class="join audit-toolbar__period" role="group" aria-label="Lifecycle filter">
+        @for (option of lifecycleOptions; track option.value) {
+        <button
+          type="button"
+          class="btn btn-sm join-item"
+          [class.btn-primary]="lifecycle() === option.value"
+          [class.btn-ghost]="lifecycle() !== option.value"
+          (click)="onLifecycleChange(option.value)"
+        >
+          {{ option.label }}
+        </button>
+        }
+      </div>
+
+      <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="toggleFilters()">
+        <lucide-icon name="slidersHorizontal" class="size-3.5"></lucide-icon>
+        Filters
+      </button>
+
+      <button type="button" class="btn btn-outline btn-sm gap-1" [disabled]="refreshing()" (click)="refresh()">
+        @if (refreshing()) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } @else {
+        <lucide-icon name="refreshCw" class="size-3.5"></lucide-icon>
+        } Refresh
+      </button>
+    </div>
+
+    @if (filtersExpanded()) {
+    <div class="audit-filters">
+      <label class="form-control w-full max-w-xs">
+        <div class="label py-1"><span class="label-text text-xs">Event type</span></div>
+        <select class="select select-bordered select-sm" [value]="eventType()" (change)="onEventTypeChange($event)">
+          <option value="">All types</option>
+          @for (option of eventTypeOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="form-control w-full max-w-xs">
+        <div class="label py-1"><span class="label-text text-xs">Listener</span></div>
+        <select class="select select-bordered select-sm" [value]="listenerId()" (change)="onListenerChange($event)">
+          <option value="">All listeners</option>
+          @for (option of listenerOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="form-control w-full max-w-xs">
+        <div class="label py-1"><span class="label-text text-xs">Status</span></div>
+        <select class="select select-bordered select-sm" [value]="status()" (change)="onStatusChange($event)">
+          <option value="">All statuses</option>
+          @for (option of statusOptions(); track option) {
+          <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </label>
+
+      @if (filtersTruncated()) {
+      <div class="text-warning col-span-full flex items-center gap-1.5 text-xs">
+        <lucide-icon name="triangleAlert" class="size-3.5 shrink-0"></lucide-icon>
+        Filter options are showing first 200 results. Use search to narrow down.
+      </div>
+      }
+    </div>
+    } @if (initialLoading()) {
+    <div class="audit-empty"><span class="loading loading-spinner loading-md text-primary"></span></div>
+    } @else if (entries().length === 0) {
+    <div class="audit-empty">
+      <p class="text-base-content/60 text-sm">No matching events in event_publication.</p>
+    </div>
+    } @else {
+    <div class="audit-table-section">
+      <div class="audit-table-wrap" [class.audit-table-wrap--busy]="tableLoading()">
+        <table class="audit-table table-sm table-pin-rows table">
+          <thead>
+            <tr>
+              <th>Published</th>
+              <th>Status</th>
+              <th>Event type</th>
+              <th>Listener</th>
+              <th>Preview</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of entries(); track entry.id) {
+            <tr class="audit-row" tabindex="0" (click)="openDetail(entry)" (keydown.enter)="openDetail(entry)">
+              <td class="text-xs whitespace-nowrap">{{ formatDateTime(entry.publicationDate) }}</td>
+              <td><span [class]="statusBadgeClass(entry.status)">{{ entry.status ?? '—' }}</span></td>
+              <td class="truncate text-sm">{{ entry.eventType }}</td>
+              <td class="truncate text-xs">{{ entry.listenerId }}</td>
+              <td class="audit-context">{{ summaryLine(entry) }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      @if (totalPages() > 1) {
+      <div class="border-base-300/60 border-t p-3">
+        <app-pagination
+          [page]="page()"
+          [totalPages]="totalPages()"
+          [totalElements]="totalElements()"
+          [pageSize]="pageSize"
+          [disabled]="tableLoading()"
+          (pageChange)="onPageChange($event)"
+        />
+      </div>
+      }
+    </div>
+    }
+  </div>
+  }
+</div>
+
+<div class="modal" [class.modal-open]="detailOpen()" role="dialog" aria-modal="true">
+  @if (selectedEntry(); as entry) {
+  <div class="modal-box audit-detail-modal max-w-3xl">
+    <div class="audit-detail-modal__header">
+      <div>
+        <p class="text-base-content/60 text-xs tracking-wide uppercase">Modulith event</p>
+        <h2 class="text-base-content text-lg font-bold">{{ entry.eventType }}</h2>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm btn-square" (click)="closeDetail()">
+        <lucide-icon name="x" class="size-4"></lucide-icon>
+      </button>
+    </div>
+    <div class="audit-detail-modal__grid">
+      <div class="audit-kv">
+        <span class="audit-kv__k">Status</span><span class="audit-kv__v">{{ entry.status ?? '—' }}</span>
+      </div>
+      <div class="audit-kv">
+        <span class="audit-kv__k">Attempts</span><span class="audit-kv__v">{{ entry.completionAttempts ?? '—' }}</span>
+      </div>
+      <div class="audit-kv">
+        <span class="audit-kv__k">Listener</span
+        ><span class="audit-kv__v audit-kv__v--mono">{{ entry.listenerId }}</span>
+      </div>
+      <div class="audit-kv">
+        <span class="audit-kv__k">Published</span
+        ><span class="audit-kv__v">{{ formatDateTime(entry.publicationDate) }}</span>
+      </div>
+      <div class="audit-kv">
+        <span class="audit-kv__k">Completed</span
+        ><span class="audit-kv__v">{{ formatDateTime(entry.completionDate) }}</span>
+      </div>
+      <div class="audit-kv audit-kv--full">
+        <span class="audit-kv__k">Serialized event</span>
+        <div class="audit-copy-row audit-copy-row--top">
+          @if (detailLoading()) {
+          <span class="loading loading-spinner loading-sm"></span>
+          } @else {
+          <span class="audit-kv__v audit-kv__v--mono flex-1 break-all whitespace-pre-wrap"
+            >{{ detailPayload() ?? '—' }}</span
+          >
+          @if (detailPayload()) {
+          <button type="button" class="btn btn-ghost btn-xs" (click)="copyText('Payload', detailPayload())">
+            Copy
+          </button>
+          } }
+        </div>
+      </div>
+    </div>
+  </div>
+  }
+  <button type="button" class="modal-backdrop" aria-label="Close" (click)="closeDetail()"></button>
+</div>

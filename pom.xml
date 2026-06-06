@@ -33,6 +33,7 @@
     <checkstyle.version>13.0.0</checkstyle.version>
     <error-prone.version>2.45.0</error-prone.version>
     <spotbugs.version>4.9.8</spotbugs.version>
+    <jacoco.version>0.8.13</jacoco.version>
   </properties>
 
   <scm>
@@ -94,6 +95,7 @@
   <modules>
     <module>originhub-backend</module>
     <module>originhub-actions</module>
+    <module>originhub-events</module>
   </modules>
 
   <build>

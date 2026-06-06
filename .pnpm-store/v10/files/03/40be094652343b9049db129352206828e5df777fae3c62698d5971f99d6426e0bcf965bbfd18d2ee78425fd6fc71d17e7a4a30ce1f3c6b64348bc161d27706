@@ -1,0 +1,10 @@
+{
+  "module": "../../fesm2015/lucide-angular-src-icons.mjs",
+  "es2020": "../../fesm2020/lucide-angular-src-icons.mjs",
+  "esm2020": "../../esm2020/src/icons/lucide-angular-src-icons.mjs",
+  "fesm2020": "../../fesm2020/lucide-angular-src-icons.mjs",
+  "fesm2015": "../../fesm2015/lucide-angular-src-icons.mjs",
+  "typings": "lucide-angular-src-icons.d.ts",
+  "sideEffects": false,
+  "name": "lucide-angular/src/icons"
+}

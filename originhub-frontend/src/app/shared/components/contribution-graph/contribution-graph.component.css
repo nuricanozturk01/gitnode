@@ -1,0 +1,325 @@
+:host {
+  display: block;
+}
+
+.contrib-graph {
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+  border-radius: 1rem;
+  background: var(--color-base-100);
+  padding: 1.25rem;
+  box-shadow: 0 1px 2px oklch(0% 0 0 / 0.04);
+}
+
+.contrib-graph__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.contrib-graph__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-base-content);
+}
+
+.contrib-graph__subtitle {
+  margin: 0.35rem 0 0;
+  max-width: 42rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+}
+
+.contrib-graph__stats {
+  display: flex;
+  gap: 1rem;
+}
+
+.contrib-graph__stat {
+  min-width: 5.5rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+  background: color-mix(in oklch, var(--color-base-200) 45%, var(--color-base-100));
+}
+
+.contrib-graph__stat-value {
+  display: block;
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--color-base-content);
+}
+
+.contrib-graph__stat-label {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  color: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+}
+
+.contrib-graph__scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 0.25rem;
+}
+
+.contrib-graph__layout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem 0.75rem;
+  min-width: max-content;
+}
+
+.contrib-graph__weekdays {
+  display: grid;
+  grid-template-rows: repeat(7, var(--contrib-cell-size));
+  gap: var(--contrib-cell-gap);
+  padding-top: calc(var(--contrib-month-height) + 0.35rem);
+  font-size: 0.6875rem;
+  line-height: var(--contrib-cell-size);
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+.contrib-graph__weekdays span:nth-child(2),
+.contrib-graph__weekdays span:nth-child(4),
+.contrib-graph__weekdays span:nth-child(6) {
+  visibility: visible;
+}
+
+.contrib-graph__weekdays span:not(:nth-child(2)):not(:nth-child(4)):not(:nth-child(6)):not(:first-child) {
+  visibility: hidden;
+}
+
+.contrib-graph__grid-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.contrib-graph__months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc(var(--contrib-cell-size) + var(--contrib-cell-gap));
+  gap: var(--contrib-cell-gap);
+  min-height: var(--contrib-month-height);
+  font-size: 0.6875rem;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+.contrib-graph__month {
+  display: block;
+  white-space: nowrap;
+}
+
+.contrib-graph__grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc(var(--contrib-cell-size) + var(--contrib-cell-gap));
+  gap: var(--contrib-cell-gap);
+}
+
+.contrib-graph__week {
+  display: grid;
+  grid-template-rows: repeat(7, var(--contrib-cell-size));
+  gap: var(--contrib-cell-gap);
+}
+
+.contrib-graph__cell {
+  width: var(--contrib-cell-size);
+  height: var(--contrib-cell-size);
+  border-radius: 2px;
+  border: 1px solid transparent;
+  padding: 0;
+  cursor: default;
+  transition:
+    transform 0.12s ease,
+    outline-color 0.12s ease;
+}
+
+button.contrib-graph__cell {
+  cursor: pointer;
+}
+
+.contrib-graph__cell:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.contrib-graph__cell:hover {
+  transform: scale(1.15);
+}
+
+.contrib-graph__cell--pad {
+  pointer-events: none;
+  opacity: 0;
+}
+
+.contrib-graph__cell--level-0 {
+  background: var(--contrib-level-0);
+  border-color: color-mix(in oklch, var(--color-base-content) 6%, var(--contrib-level-0));
+}
+
+.contrib-graph__cell--level-1 {
+  background: var(--contrib-level-1);
+}
+
+.contrib-graph__cell--level-2 {
+  background: var(--contrib-level-2);
+}
+
+.contrib-graph__cell--level-3 {
+  background: var(--contrib-level-3);
+}
+
+.contrib-graph__cell--level-4 {
+  background: var(--contrib-level-4);
+}
+
+.contrib-graph__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 0.875rem;
+}
+
+.contrib-graph__footnote {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+}
+
+.contrib-graph__empty-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+}
+
+.contrib-graph__learn-more {
+  font-size: 0.75rem;
+  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  text-decoration: none;
+}
+
+.contrib-graph__learn-more:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.contrib-graph__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.6875rem;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+.contrib-graph__legend-cell {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+}
+
+.contrib-graph__tooltip {
+  position: fixed;
+  z-index: 60;
+  max-width: 16rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.625rem;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 12%, var(--color-base-300));
+  background: var(--color-base-100);
+  box-shadow: 0 8px 24px oklch(0% 0 0 / 0.16);
+  pointer-events: none;
+}
+
+.contrib-graph__tooltip strong {
+  display: block;
+  font-size: 0.8125rem;
+  color: var(--color-base-content);
+}
+
+.contrib-graph__tooltip span {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+}
+
+.contrib-graph__tooltip-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
+}
+
+.contrib-graph--loading .contrib-graph__skeleton-grid {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.contrib-graph__skeleton-row {
+  height: 0.75rem;
+  width: 100%;
+  min-width: 42rem;
+}
+
+.contrib-graph--empty {
+  padding: 2rem 1.25rem;
+  text-align: center;
+}
+
+.contrib-graph__empty-text {
+  margin: 0;
+  font-size: 0.875rem;
+  color: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+}
+
+:host {
+  --contrib-cell-size: 0.75rem;
+  --contrib-cell-gap: 0.1875rem;
+  --contrib-month-height: 1rem;
+  --contrib-level-0: color-mix(in oklch, var(--color-base-300) 88%, var(--color-base-100));
+  --contrib-level-1: color-mix(in oklch, var(--color-primary) 22%, var(--color-base-200));
+  --contrib-level-2: color-mix(in oklch, var(--color-primary) 42%, var(--color-base-200));
+  --contrib-level-3: color-mix(in oklch, var(--color-primary) 62%, var(--color-base-300));
+  --contrib-level-4: color-mix(in oklch, var(--color-primary) 82%, var(--color-base-300));
+}
+
+@media (prefers-color-scheme: dark) {
+  :host {
+    --contrib-level-0: color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+    --contrib-level-1: color-mix(in oklch, var(--color-primary) 28%, var(--color-base-300));
+    --contrib-level-2: color-mix(in oklch, var(--color-primary) 48%, var(--color-base-300));
+    --contrib-level-3: color-mix(in oklch, var(--color-primary) 68%, var(--color-base-300));
+    --contrib-level-4: color-mix(in oklch, var(--color-primary) 88%, var(--color-base-300));
+  }
+}
+
+@media (max-width: 640px) {
+  :host {
+    --contrib-cell-size: 0.6875rem;
+  }
+
+  .contrib-graph {
+    padding: 1rem;
+  }
+
+  .contrib-graph__stats {
+    width: 100%;
+  }
+
+  .contrib-graph__stat {
+    flex: 1;
+  }
+}

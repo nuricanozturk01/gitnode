@@ -72,7 +72,8 @@ public class UserWebhookService {
   @Audited(
       action = "CREATE_USER_WEBHOOK",
       entityType = "WEBHOOK",
-      entityIdSpEL = "#result.id().toString()")
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'username=' + #username + ', url=' + #form.url()")
   @Transactional
   public WebhookInfo create(final String username, final WebhookForm form) {
     final var userId = this.resolveUserId(username);
@@ -121,7 +122,8 @@ public class UserWebhookService {
   @Audited(
       action = "DELETE_USER_WEBHOOK",
       entityType = "WEBHOOK",
-      entityIdSpEL = "#webhookId.toString()")
+      entityIdSpEL = "#webhookId.toString()",
+      detailsSpEL = "'username=' + #username")
   @Transactional
   public void delete(final String username, final UUID webhookId) {
     final var userId = this.resolveUserId(username);

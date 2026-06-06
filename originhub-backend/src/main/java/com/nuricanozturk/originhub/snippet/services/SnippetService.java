@@ -15,15 +15,15 @@
  */
 package com.nuricanozturk.originhub.snippet.services;
 
+import com.nuricanozturk.originhub.events.snippet.SnippetCreatedEvent;
+import com.nuricanozturk.originhub.events.snippet.SnippetDeletedEvent;
+import com.nuricanozturk.originhub.events.snippet.SnippetUpdatedEvent;
 import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.cache.SnippetCacheInvalidator;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
-import com.nuricanozturk.originhub.shared.snippet.events.SnippetCreatedEvent;
-import com.nuricanozturk.originhub.shared.snippet.events.SnippetDeletedEvent;
-import com.nuricanozturk.originhub.shared.snippet.events.SnippetUpdatedEvent;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetDetail;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetForm;

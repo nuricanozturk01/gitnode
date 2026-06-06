@@ -1,43 +1,63 @@
 # OriginHub E2E
 
-Playwright tests for the OriginHub API and scenario flows. See also:
+Playwright tests against the OriginHub API. No browser — HTTP only.
 
-- [API tests](api/README.md) — REST coverage, auth, modules
-- [Scenario tests](scenario/README.md) — SCN-\* catalog, HTTP Git, expected outcomes
-- [Teardown](teardown/README.md) — user cleanup after a full run
+## Quick start (local)
 
-## Prerequisites
-
-- **Node.js 24** (`engines` in `package.json`)
-- **API** reachable (default `http://localhost:8080`), e.g. `make up` or Spring Boot with `local` profile
-- **Git** on `PATH` for scenario tests only
+From repo root:
 
 ```bash
-cd e2e
-pnpm install
-cp .env.example .env   # optional — local credentials and API URL
+make infra                                                          # Postgres + Redis
+./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
+
+cd e2e && pnpm install && pnpm test:e2e                           # full suite
 ```
 
-## How to run
+Default API: `http://localhost:8080` · Node **24** · needs **git** for scenario tests.
 
-| Command                       | What runs                                                             |
-| ----------------------------- | --------------------------------------------------------------------- |
-| `pnpm test:e2e`               | **API** → **scenario** → **teardown** (full suite)                    |
-| `pnpm test:e2e:api`           | API project only (teardown does **not** run)                          |
-| `pnpm test:e2e:scenario`      | Scenario + teardown (`E2E_SCENARIO_ONLY=1`, skips API project)        |
-| `pnpm test:e2e:scenario:only` | Scenario only (used in CI before the teardown job)                    |
-| `pnpm test:e2e:teardown`      | Teardown only (`E2E_TEARDOWN_ONLY=1`, needs `e2e/.auth/session.json`) |
+## Commands
 
-## Environment (`.env`)
+| Command | What |
+| --- | --- |
+| `pnpm test:e2e` | API → scenario → teardown |
+| `pnpm test:e2e:api` | REST tests only |
+| `pnpm test:e2e:scenario` | Scenario + teardown |
+| `pnpm test:e2e:saml` | SAML SSO (optional, local) |
+| `pnpm test:e2e:ldap` | LDAP SSO (optional, local) |
 
-Optional file: `e2e/.env` (see [.env.example](.env.example)).
+Optional `.env`: copy [.env.example](.env.example) to `.env`.
 
-| Variable                                          | When unset                          | When set                              |
-| ------------------------------------------------- | ----------------------------------- | ------------------------------------- |
-| `ORIGINHUB_API_BASE_URL`                          | `http://localhost:8080`             | Used for all requests                 |
-| `E2E_OWNER_USERNAME` + `E2E_OWNER_PASSWORD`       | Owner is **auto-registered**        | Owner logs in via `/api/auth/login`   |
-| `E2E_INTRUDER_USERNAME` + `E2E_INTRUDER_PASSWORD` | Intruder is **auto-registered**     | Intruder logs in                      |
-| `E2E_PRESERVE_USERS`                              | `1` if any account came from `.env` | Teardown skips `DELETE /api/users/me` |
+## SAML & LDAP (optional, not in CI)
 
-CI does not use `.env`; it auto-registers users and deletes them in the teardown
-job ([workflow](../.github/workflows/originhub-e2e.yaml)).
+Both are **skipped by default**. Run locally when you work on enterprise SSO.
+
+**LDAP**
+
+```bash
+make infra
+./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
+make ldap-up                    # test OpenLDAP on localhost:389
+cd e2e && pnpm test:e2e:ldap
+make ldap-down                  # when done
+```
+
+**SAML**
+
+```bash
+make saml-keygen                # once — ~/.originhub/saml/
+make infra
+./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
+cd e2e && pnpm test:e2e:saml    # needs internet → samltest.dev
+```
+
+Admin login for both: `admin` / `Admin123` (local profile).
+
+## Docs
+
+- [API tests](api/README.md)
+- [Scenario tests](scenario/README.md)
+- [Teardown](teardown/README.md)
+
+## CI
+
+GitHub Actions runs API + scenario against production. **SAML and LDAP are not run in CI** (no env flags, no LDAP container).

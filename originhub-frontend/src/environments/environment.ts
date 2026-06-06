@@ -1,4 +1,7 @@
 export const environment = {
   apiUrl: 'http://localhost:8080',
   gitUrl: 'git@originhub-local',
+  sso: {
+    samlRegistrationId: 'saml',
+  },
 };

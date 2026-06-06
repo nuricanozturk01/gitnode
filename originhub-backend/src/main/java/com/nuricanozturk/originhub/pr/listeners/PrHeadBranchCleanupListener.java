@@ -15,11 +15,11 @@
  */
 package com.nuricanozturk.originhub.pr.listeners;
 
+import com.nuricanozturk.originhub.events.pr.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.pr.entities.PrStatus;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import java.io.IOException;

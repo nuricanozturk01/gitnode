@@ -32,6 +32,7 @@ import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.stereotype.Component;
@@ -65,6 +66,19 @@ public class JwtUtils {
       return UUID.fromString(this.extractClaim(jwt, Claims::getSubject));
     } catch (final JwtException ex) {
       throw new TokenExpiredException("invalidToken");
+    }
+  }
+
+  public @Nullable UUID tryExtractUserId(final @Nullable String token) {
+
+    if (token == null || token.isBlank()) {
+      return null;
+    }
+
+    try {
+      return this.extractUserId(token);
+    } catch (RuntimeException ex) {
+      return null;
     }
   }
 

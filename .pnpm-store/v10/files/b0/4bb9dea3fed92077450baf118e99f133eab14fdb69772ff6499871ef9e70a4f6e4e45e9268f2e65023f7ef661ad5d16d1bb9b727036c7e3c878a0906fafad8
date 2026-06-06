@@ -1,0 +1,14 @@
+import { LucideIconData } from './types';
+/**
+ * @component @name Croissant
+ * @description Lucide SVG icon component, renders SVG Element with children.
+ *
+ * @preview ![img](data:image/svg+xml;base64,PHN2ZyAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzAwMCIgc3R5bGU9ImJhY2tncm91bmQtY29sb3I6ICNmZmY7IGJvcmRlci1yYWRpdXM6IDJweCIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJNMTAuMiAxOEg0Ljc3NGExLjUgMS41IDAgMCAxLTEuMzUyLS45NyAxMSAxMSAwIDAgMSAuMTMyLTYuNDg3IiAvPgogIDxwYXRoIGQ9Ik0xOCAxMC4yVjQuNzc0YTEuNSAxLjUgMCAwIDAtLjk3LTEuMzUyIDExIDExIDAgMCAwLTYuNDg2LjEzMiIgLz4KICA8cGF0aCBkPSJNMTggNWE0IDMgMCAwIDEgNCAzIDIgMiAwIDAgMS0yIDIgMTAgMTAgMCAwIDAtNS4xMzkgMS40MiIgLz4KICA8cGF0aCBkPSJNNSAxOGEzIDQgMCAwIDAgMyA0IDIgMiAwIDAgMCAyLTIgMTAgMTAgMCAwIDEgMS40Mi01LjE0IiAvPgogIDxwYXRoIGQ9Ik04LjcwOSAyLjU1NGExMCAxMCAwIDAgMC02LjE1NSA2LjE1NSAxLjUgMS41IDAgMCAwIC42NzYgMS42MjZsOS44MDcgNS40MmEyIDIgMCAwIDAgMi43MTgtMi43MThsLTUuNDItOS44MDdhMS41IDEuNSAwIDAgMC0xLjYyNi0uNjc2IiAvPgo8L3N2Zz4K) - https://lucide.dev/icons/croissant
+ * @see https://lucide.dev/guide/packages/lucide-vue-next - Documentation
+ *
+ * @param {Object} props - Lucide icons props and any valid SVG attribute
+ * @returns {FunctionalComponent} Vue component
+ *
+ */
+declare const Croissant: LucideIconData;
+export default Croissant;

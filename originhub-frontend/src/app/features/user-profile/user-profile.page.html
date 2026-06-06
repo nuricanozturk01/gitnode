@@ -167,6 +167,13 @@
         </section>
         }
 
+        <app-contribution-graph
+          [data]="contributions()"
+          [loading]="contributionsLoading()"
+          [loadFailed]="contributionsLoadFailed()"
+          [username]="u.username"
+        />
+
         <!-- stats card -->
         <div
           class="border-base-300/80 bg-base-100 flex flex-wrap items-center gap-3 rounded-xl border px-5 py-4"

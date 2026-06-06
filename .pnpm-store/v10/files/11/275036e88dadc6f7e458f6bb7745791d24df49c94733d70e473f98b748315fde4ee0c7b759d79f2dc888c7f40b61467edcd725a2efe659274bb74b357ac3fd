@@ -1,0 +1,14 @@
+import { LucideIconData } from './types';
+/**
+ * @component @name Pickaxe
+ * @description Lucide SVG icon component, renders SVG Element with children.
+ *
+ * @preview ![img](data:image/svg+xml;base64,PHN2ZyAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogIHdpZHRoPSIyNCIKICBoZWlnaHQ9IjI0IgogIHZpZXdCb3g9IjAgMCAyNCAyNCIKICBmaWxsPSJub25lIgogIHN0cm9rZT0iIzAwMCIgc3R5bGU9ImJhY2tncm91bmQtY29sb3I6ICNmZmY7IGJvcmRlci1yYWRpdXM6IDJweCIKICBzdHJva2Utd2lkdGg9IjIiCiAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIgogIHN0cm9rZS1saW5lam9pbj0icm91bmQiCj4KICA8cGF0aCBkPSJtMTQgMTMtOC4zODEgOC4zOGExIDEgMCAwIDEtMy4wMDEtM0wxMSA5Ljk5OSIgLz4KICA8cGF0aCBkPSJNMTUuOTczIDQuMDI3QTEzIDEzIDAgMCAwIDUuOTAyIDIuMzczYy0xLjM5OC4zNDItMS4wOTIgMi4xNTguMjc3IDIuNjAxYTE5LjkgMTkuOSAwIDAgMSA1LjgyMiAzLjAyNCIgLz4KICA8cGF0aCBkPSJNMTYuMDAxIDExLjk5OWExOS45IDE5LjkgMCAwIDEgMy4wMjQgNS44MjRjLjQ0NCAxLjM2OSAyLjI2IDEuNjc2IDIuNjAzLjI3OEExMyAxMyAwIDAgMCAyMCA4LjA2OSIgLz4KICA8cGF0aCBkPSJNMTguMzUyIDMuMzUyYTEuMjA1IDEuMjA1IDAgMCAwLTEuNzA0IDBsLTUuMjk2IDUuMjk2YTEuMjA1IDEuMjA1IDAgMCAwIDAgMS43MDRsMi4yOTYgMi4yOTZhMS4yMDUgMS4yMDUgMCAwIDAgMS43MDQgMGw1LjI5Ni01LjI5NmExLjIwNSAxLjIwNSAwIDAgMCAwLTEuNzA0eiIgLz4KPC9zdmc+Cg==) - https://lucide.dev/icons/pickaxe
+ * @see https://lucide.dev/guide/packages/lucide-vue-next - Documentation
+ *
+ * @param {Object} props - Lucide icons props and any valid SVG attribute
+ * @returns {FunctionalComponent} Vue component
+ *
+ */
+declare const Pickaxe: LucideIconData;
+export default Pickaxe;

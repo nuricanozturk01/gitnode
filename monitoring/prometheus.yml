@@ -3,11 +3,16 @@ global:
   evaluation_interval: 15s
 
 scrape_configs:
-  - job_name: originhub
+  # App running in Docker (make app) on the originhub network
+  - job_name: originhub-docker
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - originhub:8080
+
+  # App running on the host (./mvnw spring-boot:run)
+  - job_name: originhub-host
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
           - host.docker.internal:8080
-    # When running inside Docker compose alongside the app container, replace
-    # host.docker.internal with the app service name, e.g.:
-    # - targets: ['originhub-app:8080']

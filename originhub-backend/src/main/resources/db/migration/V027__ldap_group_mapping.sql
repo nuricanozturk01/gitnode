@@ -1,0 +1,1 @@
+ALTER TABLE sso_account ADD COLUMN IF NOT EXISTS ldap_groups VARCHAR(2000);

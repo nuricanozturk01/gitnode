@@ -67,4 +67,11 @@ public class WebhookDeadLetter {
   @CreationTimestamp
   @Column(name = "failed_at", nullable = false)
   private Instant failedAt;
+
+  @Nullable
+  @Column(name = "next_retry_at")
+  private Instant nextRetryAt;
+
+  @Column(name = "dlq_retry_count", nullable = false)
+  private int dlqRetryCount = 0;
 }

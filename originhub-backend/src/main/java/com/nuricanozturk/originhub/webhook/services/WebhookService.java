@@ -65,7 +65,8 @@ public class WebhookService {
   @Audited(
       action = "CREATE_WEBHOOK",
       entityType = "WEBHOOK",
-      entityIdSpEL = "#result.id().toString()")
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', url=' + #form.url()")
   @Transactional
   public WebhookInfo create(
       final UUID requesterId, final String owner, final String repoName, final WebhookForm form) {
@@ -123,7 +124,8 @@ public class WebhookService {
   @Audited(
       action = "DELETE_WEBHOOK",
       entityType = "WEBHOOK",
-      entityIdSpEL = "#webhookId.toString()")
+      entityIdSpEL = "#webhookId.toString()",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName")
   @Transactional
   public void delete(
       final UUID requesterId, final String owner, final String repoName, final UUID webhookId) {

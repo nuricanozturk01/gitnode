@@ -18,9 +18,13 @@ package com.nuricanozturk.originhub.webhook.services;
 import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,6 +50,7 @@ import tools.jackson.databind.ObjectMapper;
 public class WebhookDeliveryService {
 
   private static final int MAX_ATTEMPTS = 3;
+  private static final String WEBHOOK_CB_CONFIG = "webhook-delivery";
 
   /** Overridable in tests to avoid real sleeps. */
   Duration retryBaseDelay = Duration.ofSeconds(1);
@@ -53,6 +58,7 @@ public class WebhookDeliveryService {
   private final ObjectMapper objectMapper;
   private final RestClient restClient;
   private final WebhookDeadLetterRepository deadLetterRepository;
+  private final CircuitBreakerRegistry circuitBreakerRegistry;
   private final Counter deliverySuccessCounter;
   private final Counter deliveryFailureCounter;
   private final Timer deliveryTimer;
@@ -61,10 +67,12 @@ public class WebhookDeliveryService {
       final ObjectMapper objectMapper,
       @Qualifier("webhookRestClient") final RestClient restClient,
       final WebhookDeadLetterRepository deadLetterRepository,
+      final CircuitBreakerRegistry circuitBreakerRegistry,
       final MeterRegistry meterRegistry) {
     this.objectMapper = objectMapper;
     this.restClient = restClient;
     this.deadLetterRepository = deadLetterRepository;
+    this.circuitBreakerRegistry = circuitBreakerRegistry;
     this.deliverySuccessCounter =
         Counter.builder("webhook.delivery.success")
             .description("Successful webhook deliveries")
@@ -89,7 +97,21 @@ public class WebhookDeliveryService {
       final WebhookEventType type,
       final Map<String, Object> data) {
 
-    final String body;
+    final var body = this.serializePayload(id, repoId, type, data, logLabel);
+    if (body == null) {
+      return;
+    }
+
+    this.attemptDeliveryWithRetry(id, url, secret, type, body, logLabel);
+  }
+
+  private @Nullable String serializePayload(
+      final UUID id,
+      final @Nullable UUID repoId,
+      final WebhookEventType type,
+      final Map<String, Object> data,
+      final String logLabel) {
+
     try {
       final var payload = new LinkedHashMap<String, Object>();
       payload.put("event", type.getValue());
@@ -98,35 +120,38 @@ public class WebhookDeliveryService {
         payload.put("repoId", repoId.toString());
       }
       payload.put("data", data);
-      body = this.objectMapper.writeValueAsString(payload);
+      return this.objectMapper.writeValueAsString(payload);
     } catch (final Exception ex) {
       log.error("{} payload serialization failed id={}: {}", logLabel, id, ex.getMessage());
-      return;
+      return null;
     }
+  }
 
+  private void attemptDeliveryWithRetry(
+      final UUID id,
+      final String url,
+      final @Nullable String secret,
+      final WebhookEventType type,
+      final String body,
+      final String logLabel) {
+
+    final CircuitBreaker circuitBreaker = this.circuitBreakerFor(url);
     Exception lastException = null;
     for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
-        this.deliveryTimer.record(() -> this.doDeliver(url, secret, body));
+        this.deliveryTimer.record(
+            () -> circuitBreaker.executeRunnable(() -> this.doDeliver(url, secret, body)));
         this.deliverySuccessCounter.increment();
+        return;
+      } catch (final CallNotPermittedException ex) {
+        log.warn("{} circuit OPEN, routing directly to DLQ id={} url={}", logLabel, id, url);
+        this.deliveryFailureCounter.increment();
+        this.saveDeadLetter(id, url, type, body, ex);
         return;
       } catch (final Exception ex) {
         lastException = ex;
-        if (attempt < MAX_ATTEMPTS) {
-          log.warn(
-              "{} delivery attempt {}/{} failed id={} url={}: {}",
-              logLabel,
-              attempt,
-              MAX_ATTEMPTS,
-              id,
-              url,
-              ex.getMessage());
-          try {
-            Thread.sleep(this.retryBaseDelay.multipliedBy(1L << (attempt - 1)));
-          } catch (final InterruptedException ie) {
-            Thread.currentThread().interrupt();
-            break;
-          }
+        if (attempt < MAX_ATTEMPTS && this.sleepBeforeRetry(logLabel, id, url, attempt, ex)) {
+          break;
         }
       }
     }
@@ -139,6 +164,47 @@ public class WebhookDeliveryService {
         url);
     this.deliveryFailureCounter.increment();
     this.saveDeadLetter(id, url, type, body, lastException);
+  }
+
+  private boolean sleepBeforeRetry(
+      final String logLabel,
+      final UUID id,
+      final String url,
+      final int attempt,
+      final Exception cause) {
+
+    log.warn(
+        "{} delivery attempt {}/{} failed id={} url={}: {}",
+        logLabel,
+        attempt,
+        MAX_ATTEMPTS,
+        id,
+        url,
+        cause.getMessage());
+    try {
+      Thread.sleep(this.retryBaseDelay.multipliedBy(1L << (attempt - 1)));
+      return false;
+    } catch (final InterruptedException ie) {
+      Thread.currentThread().interrupt();
+      return true;
+    }
+  }
+
+  void redeliverRaw(final String url, final @Nullable String secret, final String body) {
+    final CircuitBreaker circuitBreaker = this.circuitBreakerFor(url);
+    this.deliveryTimer.record(
+        () -> circuitBreaker.executeRunnable(() -> this.doDeliver(url, secret, body)));
+  }
+
+  private CircuitBreaker circuitBreakerFor(final String url) {
+    String host;
+    try {
+      final var h = URI.create(url).getHost();
+      host = h != null ? h : "unknown";
+    } catch (final IllegalArgumentException ignored) {
+      host = "unknown";
+    }
+    return this.circuitBreakerRegistry.circuitBreaker("webhook." + host, WEBHOOK_CB_CONFIG);
   }
 
   private void doDeliver(final String url, final @Nullable String secret, final String body) {

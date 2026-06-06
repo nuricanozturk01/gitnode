@@ -1,15 +1,36 @@
 server:
   port: 8080
+  http2:
+    enabled: true
   tomcat:
     connection-timeout: 20000
     max-part-count: 50
     accept-count: 50
   compression:
     enabled: true
-    mime-types: application/json,application/xml,text/html,text/plain
-    min-response-size: 2048
+    mime-types: application/json,application/xml,text/html,text/plain,text/css,application/javascript,image/svg+xml
+    min-response-size: 1024
 
 originhub:
+  platform:
+    admin-usernames: ${ORIGINHUB_PLATFORM_ADMIN_USERNAMES:}
+  bootstrap:
+    admin:
+      username: ${ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME:admin}
+      # Set ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD in production; empty skips bootstrap (warn log)
+      password: ${ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD:}
+      enabled: ${ORIGINHUB_BOOTSTRAP_ADMIN_ENABLED:true}
+  admin:
+    stats:
+      # Statistics responses are cached in memory for this many seconds (overridable in admin Settings)
+      cache-ttl-seconds: ${ORIGINHUB_ADMIN_STATS_CACHE_TTL_SECONDS:300}
+    pgaudit:
+      enabled: ${ORIGINHUB_ADMIN_PGAUDIT_ENABLED:false}
+      # Mount the Postgres log volume into the app container (see docker-compose / Makefile)
+      log-directory: ${ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY:}
+      max-scan-lines: ${ORIGINHUB_ADMIN_PGAUDIT_MAX_SCAN_LINES:50000}
+    modulith-events:
+      enabled: ${ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED:false}
   http:
     enabled: ${ORIGINHUB_HTTP_ENABLED:true}
     port: 8080
@@ -20,11 +41,32 @@ originhub:
   jwt:
     secret: ${ORIGINHUB_JWT_SECRET}
   cors:
-    allowed-origins: ${ORIGINHUB_CORS_ALLOWED_ORIGINS:http://localhost:4200,https://originhub.nuricanozturk.com}
+    allowed-origins: ${ORIGINHUB_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4300,https://originhub.nuricanozturk.com}
   frontend:
     base-url: ${ORIGINHUB_FRONTEND_BASE_URL:http://localhost:4200}
   git:
     repo-root: ${ORIGINHUB_GIT_REPO__ROOT:${user.home}/.originhub}
+  audit:
+    enabled: ${ORIGINHUB_AUDIT_ENABLED:true}
+  webhook:
+    dlq:
+      retry-cron: ${ORIGINHUB_WEBHOOK_DLQ_RETRY_CRON:0 */5 * * * *}
+      batch-size: ${ORIGINHUB_WEBHOOK_DLQ_BATCH_SIZE:50}
+  sso:
+    ldap:
+      # Master switch for LDAP login/discover endpoints. Per-org LDAP config lives in admin panel.
+      enabled: ${ORIGINHUB_SSO_LDAP_ENABLED:false}
+    saml:
+      enabled: ${ORIGINHUB_SSO_SAML_ENABLED:false}
+      # Legacy self-hosted fallback when no DB organizations have SSO enabled
+      registration-id: ${ORIGINHUB_SSO_SAML_REGISTRATION_ID:saml}
+      idp-metadata-uri: ${ORIGINHUB_SSO_SAML_IDP_METADATA_URI:}
+      sp-entity-id: ${ORIGINHUB_SSO_SAML_SP_ENTITY_ID:originhub}
+      # Default attribute names for legacy registration-id only; per-org overrides live in DB
+      email-attribute: ${ORIGINHUB_SSO_SAML_EMAIL_ATTRIBUTE:email}
+      username-attribute: ${ORIGINHUB_SSO_SAML_USERNAME_ATTRIBUTE:}
+      sp-signing-key-path: ${ORIGINHUB_SSO_SAML_SP_SIGNING_KEY_PATH:}
+      sp-signing-cert-path: ${ORIGINHUB_SSO_SAML_SP_SIGNING_CERT_PATH:}
 
 app:
   schema: public
@@ -129,17 +171,44 @@ spring:
             user-info-uri: https://gitlab.com/api/v4/user
             user-name-attribute: id
 
+resilience4j:
+  circuitbreaker:
+    configs:
+      webhook-delivery:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 10s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+    instances:
+      saml-metadata:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,circuitbreakers
       base-path: /actuator
   endpoint:
     health:
       show-details: when-authorized
     prometheus:
-      enabled: true
+      enabled: ${ORIGINHUB_OBSERVABILITY_ENABLED:true}
+  prometheus:
+    metrics:
+      export:
+        enabled: ${ORIGINHUB_OBSERVABILITY_ENABLED:true}
   metrics:
     tags:
       application: originhub

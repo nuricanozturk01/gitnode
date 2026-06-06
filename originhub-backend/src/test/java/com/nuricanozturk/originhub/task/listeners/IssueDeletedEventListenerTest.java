@@ -2,7 +2,7 @@ package com.nuricanozturk.originhub.task.listeners;
 
 import static org.mockito.Mockito.verify;
 
-import com.nuricanozturk.originhub.shared.issue.events.IssueDeletedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueDeletedEvent;
 import com.nuricanozturk.originhub.task.repositories.TaskRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;

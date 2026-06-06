@@ -21,6 +21,7 @@ import com.nuricanozturk.originhub.collaborator.dtos.InviteLinkResponse;
 import com.nuricanozturk.originhub.collaborator.dtos.UpdateCollaboratorPermissionsForm;
 import com.nuricanozturk.originhub.collaborator.services.CollaboratorService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,7 @@ public class CollaboratorController {
   private final JwtUtils jwtUtils;
 
   @PostMapping
+  @RateLimit(limit = 50, windowSeconds = 3600, key = "collaborator.invite")
   public ResponseEntity<CollaboratorInfo> invite(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final String owner,
@@ -131,6 +133,7 @@ public class CollaboratorController {
   }
 
   @PostMapping("/{username}/invite-link")
+  @RateLimit(limit = 30, windowSeconds = 3600, key = "collaborator.invite-link")
   public ResponseEntity<InviteLinkResponse> generateInviteLink(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final String owner,
@@ -144,6 +147,7 @@ public class CollaboratorController {
 
   @SuppressWarnings("unused")
   @PostMapping("/{username}/send-invitation")
+  @RateLimit(limit = 30, windowSeconds = 3600, key = "collaborator.send-invitation")
   public ResponseEntity<Void> sendInvitationEmail(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final String owner,

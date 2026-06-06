@@ -15,6 +15,8 @@
  */
 package com.nuricanozturk.originhub.profile.services;
 
+import com.nuricanozturk.originhub.events.profile.TenantDeletedEvent;
+import com.nuricanozturk.originhub.events.profile.UsernameChangedEvent;
 import com.nuricanozturk.originhub.profile.dtos.ChangePasswordForm;
 import com.nuricanozturk.originhub.profile.dtos.TenantPublicProfileDto;
 import com.nuricanozturk.originhub.profile.dtos.UpdateDisplayNameForm;
@@ -23,8 +25,6 @@ import com.nuricanozturk.originhub.profile.dtos.UpdateUsernameForm;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.profile.events.TenantDeletedEvent;
-import com.nuricanozturk.originhub.shared.profile.events.UsernameChangedEvent;
 import com.nuricanozturk.originhub.shared.tenant.dtos.TenantInfo;
 import com.nuricanozturk.originhub.shared.tenant.mappers.TenantMapper;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
@@ -124,7 +124,7 @@ public class ProfileService {
     final var tenantOpt = this.tenantRepository.findById(tenantId);
 
     if (tenantOpt.isEmpty()) {
-      throw new ItemNotFoundException(USER_NOT_FOUND);
+      return;
     }
 
     final var tenant = tenantOpt.get();

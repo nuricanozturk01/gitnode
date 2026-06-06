@@ -1,0 +1,23 @@
+<label
+  class="sso-switch"
+  [class.sso-switch--sm]="size() === 'sm'"
+  [class.sso-switch--md]="size() === 'md'"
+  [class.sso-switch--lg]="size() === 'lg'"
+  [class.sso-switch--disabled]="disabled()"
+>
+  <input
+    type="checkbox"
+    class="sso-switch__input"
+    [checked]="checked()"
+    [disabled]="disabled()"
+    [attr.aria-label]="ariaLabel()"
+    (change)="onInputChange($event)"
+  />
+  <span class="sso-switch__track" aria-hidden="true">
+    <span class="sso-switch__thumb"></span>
+  </span>
+  @if (showLabels()) {
+    <span class="sso-switch__label sso-switch__label-on">On</span>
+    <span class="sso-switch__label sso-switch__label-off">Off</span>
+  }
+</label>

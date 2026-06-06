@@ -1,3 +1,167 @@
 :host {
   display: block;
 }
+
+.register-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.25rem 0;
+  color: color-mix(in oklch, var(--color-base-content) 45%, transparent);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.register-divider::before,
+.register-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in oklch, var(--color-base-content) 12%, transparent);
+}
+
+.register-alt {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.register-alt__group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.register-alt__label {
+  margin: 0;
+  padding: 0 0.125rem;
+  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.register-alt__hint {
+  margin: -0.125rem 0 0.375rem;
+  padding: 0 0.125rem;
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.register-alt__grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.register-alt__grid--social {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.register-alt__grid--enterprise {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.register-alt__btn {
+  display: flex;
+  min-height: 3.25rem;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border-radius: 0.625rem;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 12%, transparent);
+  background: color-mix(in oklch, var(--color-base-100) 88%, var(--color-base-200));
+  padding: 0.625rem 0.5rem;
+  color: var(--color-base-content);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.register-alt__btn:hover {
+  border-color: color-mix(in oklch, var(--color-primary) 35%, transparent);
+  background: color-mix(in oklch, var(--color-primary) 6%, var(--color-base-100));
+  box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) 8%, transparent);
+}
+
+.register-alt__btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.register-alt__btn:active {
+  transform: scale(0.98);
+}
+
+.register-alt__btn--enterprise {
+  min-height: 4rem;
+  align-items: flex-start;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.register-alt__btn-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.register-alt__btn-desc {
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  font-size: 0.6875rem;
+  line-height: 1.35;
+}
+
+.register-alt__icon {
+  display: flex;
+  height: 1.75rem;
+  width: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background: color-mix(in oklch, var(--color-base-content) 6%, transparent);
+}
+
+.register-alt__icon--github {
+  color: var(--color-base-content);
+}
+
+.register-alt__icon--gitlab {
+  color: #fc6d26;
+}
+
+.register-alt__icon--google {
+  color: #4285f4;
+}
+
+.register-alt__icon--ldap {
+  color: var(--color-primary);
+}
+
+.register-alt__icon--saml {
+  color: color-mix(in oklch, var(--color-info) 85%, var(--color-base-content));
+}
+
+.register-alt__name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.register-alt__panel {
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
+  background: color-mix(in oklch, var(--color-base-200) 55%, var(--color-base-100));
+  padding: 0.75rem;
+}

@@ -1,0 +1,5 @@
+@import '../audit/list/audit-logs-list.page.css';
+
+.audit-toolbar__period {
+  flex-wrap: wrap;
+}

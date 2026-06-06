@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.webhook.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookForm;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookInfo;
 import com.nuricanozturk.originhub.webhook.dtos.WebhookUpdateForm;
@@ -57,6 +58,7 @@ public class WebhookController {
   }
 
   @PostMapping
+  @RateLimit(limit = 10, windowSeconds = 3600, key = "webhook.create")
   public ResponseEntity<WebhookInfo> create(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final String owner,

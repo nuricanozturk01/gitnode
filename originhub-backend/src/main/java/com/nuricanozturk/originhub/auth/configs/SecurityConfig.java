@@ -20,10 +20,13 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -38,6 +41,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 @NullMarked
 public class SecurityConfig {
@@ -54,13 +58,17 @@ public class SecurityConfig {
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
+  @Nullable
+  @Autowired(required = false)
+  private SamlAuthenticationSuccessHandler samlSuccessHandler;
+
   @Value("${originhub.cors.allowed-origins}")
   private List<String> allowedOrigins;
 
   @Bean
-  public SecurityFilterChain doFilter(final HttpSecurity http) {
+  public SecurityFilterChain doFilter(final HttpSecurity http) throws Exception {
 
-    return http.exceptionHandling(c -> c.authenticationEntryPoint(this.authenticationEntryPoint))
+    http.exceptionHandling(c -> c.authenticationEntryPoint(this.authenticationEntryPoint))
         .cors(this::cors)
         .headers(f -> f.frameOptions(HeadersConfigurer.FrameOptionsConfig::disable))
         .csrf(AbstractHttpConfigurer::disable)
@@ -69,8 +77,13 @@ public class SecurityConfig {
         .formLogin(AbstractHttpConfigurer::disable)
         .httpBasic(AbstractHttpConfigurer::disable)
         .sessionManagement(s -> s.sessionCreationPolicy(STATELESS))
-        .addFilterBefore(this.jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-        .build();
+        .addFilterBefore(this.jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+
+    if (this.samlSuccessHandler != null) {
+      http.saml2Login(saml2 -> saml2.successHandler(this.samlSuccessHandler));
+    }
+
+    return http.build();
   }
 
   private void authorizeHttpRequests(
@@ -93,6 +106,7 @@ public class SecurityConfig {
             "/api/auth/register",
             "/api/auth/refresh-token",
             "/api/auth/login",
+            "/api/auth/sso/**",
             "/login/oauth2/code/*",
             "/oauth2/authorization/*",
             "/login/success",
@@ -100,13 +114,20 @@ public class SecurityConfig {
             "/logout/success")
         .permitAll();
 
-    auth.requestMatchers("/actuator/**").permitAll();
+    auth.requestMatchers("/saml2/**", "/login/saml2/**").permitAll();
+
+    auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
+    auth.requestMatchers("/actuator/**").authenticated();
+
+    auth.requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll();
+    auth.requestMatchers("/api/admin/**").authenticated();
     auth.requestMatchers("/public/**").permitAll();
     auth.requestMatchers("/git/**").permitAll();
 
     auth.requestMatchers(HttpMethod.GET, "/api/snippets/**").permitAll();
     auth.requestMatchers(HttpMethod.GET, "/api/invitations/*").permitAll();
     auth.requestMatchers(HttpMethod.GET, "/api/users/*").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/users/*/contributions").permitAll();
     auth.requestMatchers(HttpMethod.GET, "/api/repo/*", "/api/repo/*/*").permitAll();
     auth.requestMatchers(HttpMethod.GET, "/api/repos/**").permitAll();
     auth.requestMatchers(HttpMethod.GET, "/api/projects/**").permitAll();

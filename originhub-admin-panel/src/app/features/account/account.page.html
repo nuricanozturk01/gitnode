@@ -1,0 +1,168 @@
+<div class="mx-auto max-w-2xl">
+  <header class="mb-8">
+    <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Account</h1>
+    <p class="text-base-content/65 mt-1 text-sm md:text-base">
+      Manage your administrator profile, password, and active session.
+    </p>
+  </header>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else { @if (profileError()) {
+  <div class="alert alert-error mb-4" role="alert">
+    <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+    <span>{{ profileError() }}</span>
+  </div>
+  } @if (profile(); as user) {
+  <section class="repo-panel mb-6 p-6">
+    <h2 class="text-base-content text-lg font-semibold">Profile</h2>
+    <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Username</dt>
+        <dd class="mt-1 font-medium">{{ user.username }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Email</dt>
+        <dd class="mt-1">{{ user.email }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Member since</dt>
+        <dd class="mt-1">{{ formatDateTime(user.createdAt) }}</dd>
+      </div>
+      <div>
+        <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Last updated</dt>
+        <dd class="mt-1">{{ formatDateTime(user.updatedAt) }}</dd>
+      </div>
+    </dl>
+  </section>
+
+  <form [formGroup]="displayNameForm" (ngSubmit)="saveDisplayName()" class="repo-panel mb-6 flex flex-col gap-4 p-6">
+    <div>
+      <h2 class="text-base-content text-lg font-semibold">Display name</h2>
+      <p class="text-base-content/65 mt-1 text-sm">Optional label shown alongside your username.</p>
+    </div>
+    <div class="form-control">
+      <label class="label" for="displayName">
+        <span class="label-text font-medium">Display name</span>
+      </label>
+      <input
+        id="displayName"
+        type="text"
+        maxlength="100"
+        formControlName="displayName"
+        class="input input-bordered w-full"
+        autocomplete="name"
+      />
+    </div>
+    @if (displayNameError()) {
+    <div class="alert alert-error" role="alert">
+      <span>{{ displayNameError() }}</span>
+    </div>
+    }
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingDisplayName()">
+        @if (savingDisplayName()) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } Save display name
+      </button>
+    </div>
+  </form>
+
+  <form [formGroup]="passwordForm" (ngSubmit)="savePassword()" class="repo-panel mb-6 flex flex-col gap-4 p-6">
+    <div>
+      <h2 class="text-base-content text-lg font-semibold">Password</h2>
+      <p class="text-base-content/65 mt-1 text-sm">
+        Change the password used to sign in to the admin panel and the main OriginHub application.
+      </p>
+    </div>
+
+    <div class="form-control">
+      <label class="label" for="currentPassword">
+        <span class="label-text font-medium">Current password</span>
+      </label>
+      <input
+        id="currentPassword"
+        type="password"
+        formControlName="currentPassword"
+        class="input input-bordered w-full"
+        autocomplete="current-password"
+      />
+    </div>
+
+    <div class="form-control">
+      <label class="label" for="newPassword">
+        <span class="label-text font-medium">New password</span>
+      </label>
+      <input
+        id="newPassword"
+        type="password"
+        formControlName="newPassword"
+        class="input input-bordered w-full"
+        autocomplete="new-password"
+      />
+      @if (passwordForm.controls.newPassword.touched && passwordForm.controls.newPassword.hasError('minlength')) {
+      <div class="label">
+        <span class="label-text-alt text-error">Password must be at least 6 characters</span>
+      </div>
+      }
+    </div>
+
+    <div class="form-control">
+      <label class="label" for="confirmPassword">
+        <span class="label-text font-medium">Confirm new password</span>
+      </label>
+      <input
+        id="confirmPassword"
+        type="password"
+        formControlName="confirmPassword"
+        class="input input-bordered w-full"
+        autocomplete="new-password"
+      />
+      @if (passwordForm.touched && passwordForm.hasError('passwordMismatch')) {
+      <div class="label">
+        <span class="label-text-alt text-error">Passwords do not match</span>
+      </div>
+      }
+    </div>
+
+    @if (passwordError()) {
+    <div class="alert alert-error" role="alert">
+      <span>{{ passwordError() }}</span>
+    </div>
+    }
+
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary btn-sm" [disabled]="savingPassword() || passwordForm.invalid">
+        @if (savingPassword()) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } Update password
+      </button>
+    </div>
+  </form>
+
+  <section class="repo-panel p-6">
+    <div class="flex items-start gap-3">
+      <lucide-icon name="clock" class="text-base-content/50 mt-0.5 size-5 shrink-0"></lucide-icon>
+      <div class="min-w-0 flex-1">
+        <h2 class="text-base-content text-lg font-semibold">Session</h2>
+        <p class="text-base-content/65 mt-1 text-sm">
+          Signed in as <span class="font-medium">{{ sessionSummary().username ?? user.username }}</span>. Access tokens
+          refresh automatically before they expire.
+        </p>
+        <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Access token expires</dt>
+            <dd class="mt-1">{{ formatDateTime(sessionSummary().accessExpiresAt) }}</dd>
+          </div>
+          <div>
+            <dt class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Session expires</dt>
+            <dd class="mt-1">{{ formatDateTime(sessionSummary().refreshExpiresAt) }}</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </section>
+  } }
+</div>

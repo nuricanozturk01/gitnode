@@ -1,0 +1,55 @@
+<div class="activity-chart">
+  <svg
+    [attr.viewBox]="'0 0 ' + chartWidth + ' ' + height()"
+    class="activity-chart__svg"
+    role="img"
+    aria-label="Activity chart"
+  >
+    @for (line of gridLines(); track line) {
+      <line
+        [attr.x1]="padding.left"
+        [attr.x2]="chartWidth - padding.right"
+        [attr.y1]="gridY(line)"
+        [attr.y2]="gridY(line)"
+        class="activity-chart__grid"
+      />
+      <text [attr.x]="padding.left - 8" [attr.y]="gridY(line) + 4" class="activity-chart__axis" text-anchor="end">
+        {{ line }}
+      </text>
+    }
+
+    @for (label of labels(); track label; let i = $index) {
+      <text
+        [attr.x]="barX(i) + barGroupWidth() / 2"
+        [attr.y]="height() - 8"
+        class="activity-chart__axis"
+        text-anchor="middle"
+      >
+        {{ label }}
+      </text>
+    }
+
+    @for (s of series(); track s.key; let si = $index) {
+      @for (value of s.values; track $index; let i = $index) {
+        <rect
+          [attr.x]="innerBarX(i, si, series().length)"
+          [attr.y]="barY(value)"
+          [attr.width]="innerBarWidth(i, si, series().length)"
+          [attr.height]="barHeight(value)"
+          [attr.fill]="s.color"
+          rx="3"
+          class="activity-chart__bar"
+        />
+      }
+    }
+  </svg>
+
+  <div class="activity-chart__legend">
+    @for (s of series(); track s.key) {
+      <span class="activity-chart__legend-item">
+        <span class="activity-chart__swatch" [style.background-color]="s.color"></span>
+        {{ s.label }}
+      </span>
+    }
+  </div>
+</div>

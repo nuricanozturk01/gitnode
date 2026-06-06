@@ -1,0 +1,274 @@
+<section class="repo-panel org-auth-accordion overflow-hidden">
+  <div class="org-auth-accordion__header" [class.org-auth-accordion__header--open]="expanded()">
+    <button
+      type="button"
+      class="org-auth-accordion__trigger"
+      [attr.aria-expanded]="expanded()"
+      (click)="toggleExpanded()"
+    >
+      <span class="org-auth-accordion__icon" aria-hidden="true">
+        <lucide-icon name="building2" class="size-5"></lucide-icon>
+      </span>
+      <span class="text-base-content font-semibold">LDAP Sign-In</span>
+      @if (organization().ldapEnabled) {
+        <span class="badge-pill badge-pill--success">Enabled</span>
+      } @else {
+        <span class="badge-pill badge-pill--neutral">Disabled</span>
+      }
+      <lucide-icon
+        name="chevronDown"
+        class="org-auth-accordion__chevron size-4"
+        [class.org-auth-accordion__chevron--open]="expanded()"
+      ></lucide-icon>
+    </button>
+
+    <div class="org-auth-accordion__actions">
+      <app-sso-switch
+        [checked]="organization().ldapEnabled"
+        [disabled]="toggling() || saving() || organization().ssoEnabled"
+        size="sm"
+        [showLabels]="false"
+        [ariaLabel]="'Enable LDAP for ' + organization().name"
+        (checkedChange)="onQuickToggle($event)"
+      />
+    </div>
+  </div>
+
+  @if (expanded()) {
+    <div class="org-auth-accordion__content">
+      <div class="org-auth-accordion__content-inner">
+        <p class="text-base-content/65 text-sm leading-relaxed">
+          Connect this organization to the customer's LDAP directory. Users with matching email domains sign in with
+          work email, LDAP username, and password.
+        </p>
+
+        @if (organization().ssoEnabled) {
+          <div class="alert alert-warning rounded-lg" role="status">
+            <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+            <span>SAML SSO is active for this organization. Disable SAML before enabling LDAP.</span>
+          </div>
+        }
+
+        @if (!organization().ldapEnabled && organization().ldapConfigured) {
+          <div class="alert alert-warning rounded-lg" role="status">
+            <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+            <span>LDAP is configured but disabled — enable the switch above so users can sign in.</span>
+          </div>
+        }
+
+        <div class="border-base-300 border-t pt-4">
+          <h3 class="text-base-content mb-1 font-semibold">Directory configuration</h3>
+          <p class="text-base-content/60 mb-4 text-xs">Connection details provided by the customer's IT team</p>
+
+          <form [formGroup]="form" class="flex flex-col gap-5" (ngSubmit)="onSave()">
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="form-control min-w-0 sm:col-span-2">
+                <label class="label" for="ldapUrl">
+                  <span class="label-text font-medium">LDAP URL</span>
+                </label>
+                <input
+                  id="ldapUrl"
+                  type="text"
+                  formControlName="url"
+                  class="input input-bordered mono w-full min-w-0"
+                  placeholder="ldap://ldap.example.com:389"
+                />
+              </div>
+
+              <div class="form-control min-w-0 sm:col-span-2">
+                <label class="label" for="ldapBaseDn">
+                  <span class="label-text font-medium">Base DN</span>
+                </label>
+                <input
+                  id="ldapBaseDn"
+                  type="text"
+                  formControlName="baseDn"
+                  class="input input-bordered mono w-full min-w-0"
+                  placeholder="dc=corp,dc=example,dc=com"
+                />
+              </div>
+
+              <div class="form-control min-w-0">
+                <label class="label flex-wrap gap-x-2" for="ldapManagerDn">
+                  <span class="label-text font-medium">Manager DN</span>
+                  <span class="label-text-alt">Optional</span>
+                </label>
+                <input
+                  id="ldapManagerDn"
+                  type="text"
+                  formControlName="managerDn"
+                  class="input input-bordered mono w-full min-w-0"
+                  placeholder="cn=svc,ou=services,dc=corp,dc=com"
+                />
+              </div>
+
+              <div class="form-control min-w-0">
+                <label class="label flex-wrap gap-x-2" for="ldapManagerPassword">
+                  <span class="label-text font-medium">Manager password</span>
+                  <span class="label-text-alt">
+                    @if (organization().managerPasswordConfigured) {
+                      Leave blank to keep current
+                    }
+                  </span>
+                </label>
+                <input
+                  id="ldapManagerPassword"
+                  type="password"
+                  formControlName="managerPassword"
+                  class="input input-bordered w-full min-w-0"
+                  autocomplete="new-password"
+                />
+              </div>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="form-control min-w-0">
+                <label class="label" for="ldapUserSearchBase">
+                  <span class="label-text font-medium">User search base</span>
+                </label>
+                <input
+                  id="ldapUserSearchBase"
+                  type="text"
+                  formControlName="userSearchBase"
+                  class="input input-bordered mono w-full min-w-0"
+                  placeholder="dc=example,dc=com"
+                />
+              </div>
+              <div class="form-control min-w-0">
+                <label class="label" for="ldapUserSearchFilter">
+                  <span class="label-text font-medium">User search filter</span>
+                </label>
+                <input
+                  id="ldapUserSearchFilter"
+                  type="text"
+                  formControlName="userSearchFilter"
+                  class="input input-bordered mono w-full min-w-0"
+                  placeholder="(uid={0})"
+                />
+              </div>
+              <div class="form-control min-w-0">
+                <label class="label" for="ldapEmailAttribute">
+                  <span class="label-text font-medium">Email attribute</span>
+                </label>
+                <input
+                  id="ldapEmailAttribute"
+                  type="text"
+                  formControlName="emailAttribute"
+                  class="input input-bordered w-full min-w-0"
+                />
+              </div>
+              <div class="form-control min-w-0">
+                <label class="label" for="ldapDisplayNameAttribute">
+                  <span class="label-text font-medium">Display name attribute</span>
+                </label>
+                <input
+                  id="ldapDisplayNameAttribute"
+                  type="text"
+                  formControlName="displayNameAttribute"
+                  class="input input-bordered w-full min-w-0"
+                />
+              </div>
+            </div>
+
+            <label class="label cursor-pointer justify-start gap-3">
+              <input type="checkbox" class="checkbox checkbox-primary" formControlName="useStartTls" />
+              <span class="label-text">Use StartTLS (plain ldap:// with TLS upgrade)</span>
+            </label>
+
+            <details class="collapse-arrow bg-base-200/40 border-base-300 collapse rounded-lg border">
+              <summary class="collapse-title min-h-0 py-3 text-sm font-medium">Advanced: group mapping</summary>
+              <div class="collapse-content flex flex-col gap-4 pt-0 pb-4">
+                <div class="grid gap-4 sm:grid-cols-2">
+                  <div class="form-control min-w-0">
+                    <label class="label" for="ldapGroupSearchBase">
+                      <span class="label-text font-medium">Group search base</span>
+                    </label>
+                    <input
+                      id="ldapGroupSearchBase"
+                      type="text"
+                      formControlName="groupSearchBase"
+                      class="input input-bordered mono w-full min-w-0"
+                    />
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="ldapGroupSearchFilter">
+                      <span class="label-text font-medium">Group search filter</span>
+                    </label>
+                    <input
+                      id="ldapGroupSearchFilter"
+                      type="text"
+                      formControlName="groupSearchFilter"
+                      class="input input-bordered mono w-full min-w-0"
+                    />
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="ldapGroupRoleAttribute">
+                      <span class="label-text font-medium">Group role attribute</span>
+                    </label>
+                    <input
+                      id="ldapGroupRoleAttribute"
+                      type="text"
+                      formControlName="groupRoleAttribute"
+                      class="input input-bordered w-full min-w-0"
+                    />
+                  </div>
+                  <div class="form-control min-w-0">
+                    <label class="label" for="ldapAdminGroupDns">
+                      <span class="label-text font-medium">Admin group DNs</span>
+                    </label>
+                    <input
+                      id="ldapAdminGroupDns"
+                      type="text"
+                      formControlName="adminGroupDns"
+                      class="input input-bordered mono w-full min-w-0"
+                      placeholder="cn=admins,ou=groups,dc=corp,dc=com"
+                    />
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            @if (testResult(); as result) {
+              <div
+                class="alert"
+                [class.alert-success]="result.success"
+                [class.alert-error]="!result.success"
+                role="status"
+              >
+                @if (result.success) {
+                  <lucide-icon name="checkCircle" class="size-4 shrink-0"></lucide-icon>
+                } @else {
+                  <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+                }
+                <p class="break-words">{{ result.message }}</p>
+              </div>
+            }
+
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button type="submit" class="btn btn-primary w-full sm:w-auto" [disabled]="form.invalid || saving()">
+                @if (saving()) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                } @else {
+                  Save LDAP settings
+                }
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline w-full gap-2 sm:w-auto"
+                [disabled]="testing() || saving()"
+                (click)="onTest()"
+              >
+                @if (testing()) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                } @else {
+                  <lucide-icon name="play" class="size-4"></lucide-icon>
+                }
+                Test connection
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  }
+</section>

@@ -15,8 +15,8 @@
  */
 package com.nuricanozturk.originhub.repo.listeners;
 
-import com.nuricanozturk.originhub.shared.repo.events.RepoRenameRollbackRequstedEvent;
-import com.nuricanozturk.originhub.shared.repo.events.RepoRenamedEvent;
+import com.nuricanozturk.originhub.events.repo.RepoRenameRollbackRequstedEvent;
+import com.nuricanozturk.originhub.events.repo.RepoRenamedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;

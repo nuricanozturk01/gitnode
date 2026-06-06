@@ -1,5 +1,10 @@
 package com.nuricanozturk.originhub.issue.services;
 
+import com.nuricanozturk.originhub.events.issue.IssueCommentedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueCreatedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueDeletedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueStatusChangedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueUpdatedEvent;
 import com.nuricanozturk.originhub.issue.api.IssueData;
 import com.nuricanozturk.originhub.issue.api.IssueQueryService;
 import com.nuricanozturk.originhub.issue.api.TaskQueryPort;
@@ -17,16 +22,12 @@ import com.nuricanozturk.originhub.issue.entities.IssueStatus;
 import com.nuricanozturk.originhub.issue.mappers.IssueMapper;
 import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.issue.events.IssueCommentedEvent;
-import com.nuricanozturk.originhub.shared.issue.events.IssueCreatedEvent;
-import com.nuricanozturk.originhub.shared.issue.events.IssueDeletedEvent;
-import com.nuricanozturk.originhub.shared.issue.events.IssueStatusChangedEvent;
-import com.nuricanozturk.originhub.shared.issue.events.IssueUpdatedEvent;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -63,6 +64,11 @@ public class IssueService implements IssueQueryService {
   private final ApplicationEventPublisher eventPublisher;
   private final CollaboratorAccessPort collaboratorAccessPort;
 
+  @Audited(
+      action = "CREATE_ISSUE",
+      entityType = "ISSUE",
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', title=' + #form.title")
   @Transactional
   public IssueDetail create(
       final String owner, final String repoName, final UUID authorId, final IssueForm form) {
@@ -223,6 +229,10 @@ public class IssueService implements IssueQueryService {
     }
   }
 
+  @Audited(
+      action = "DELETE_ISSUE",
+      entityType = "ISSUE",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', number=' + #number")
   @Transactional
   public void delete(
       final String owner, final String repoName, final int number, final UUID requesterId) {

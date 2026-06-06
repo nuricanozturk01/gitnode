@@ -23,6 +23,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.events.pr.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.pr.dtos.MergeStrategy;
 import com.nuricanozturk.originhub.pr.dtos.PrDetail;
 import com.nuricanozturk.originhub.pr.dtos.PrInfo;
@@ -37,7 +38,6 @@ import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import java.time.Instant;

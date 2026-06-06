@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.snippet.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetCommentForm;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetCommentInfo;
@@ -60,6 +61,7 @@ public class SnippetCommentController {
   }
 
   @PostMapping
+  @RateLimit(limit = 150, windowSeconds = 600, key = "snippet.comment")
   public ResponseEntity<SnippetCommentInfo> add(
       final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @PathVariable final UUID snippetId,

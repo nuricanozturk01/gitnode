@@ -16,7 +16,9 @@
 package com.nuricanozturk.originhub.shared.repo.repositories;
 
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
+import java.time.Instant;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
@@ -66,4 +68,26 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
       @Param("ownerUsername") String ownerUsername,
       @Param("collaboratorRepoIds") Collection<UUID> collaboratorRepoIds,
       Pageable pageable);
+
+  long countByCreatedAtAfter(Instant since);
+
+  @Query("SELECT r FROM Repo r JOIN FETCH r.owner WHERE r.createdAt >= :since")
+  List<Repo> findAllByCreatedAtAfter(@Param("since") Instant since);
+
+  @Query("SELECT r FROM Repo r JOIN FETCH r.owner")
+  Page<Repo> findAllWithOwner(Pageable pageable);
+
+  @Query(
+      """
+      SELECT r FROM Repo r JOIN FETCH r.owner o
+      WHERE (:owner = '' OR LOWER(o.username) LIKE LOWER(CONCAT('%', :owner, '%')))
+        AND (
+          :query = ''
+          OR LOWER(r.name) LIKE LOWER(CONCAT('%', :query, '%'))
+          OR LOWER(o.username) LIKE LOWER(CONCAT('%', :query, '%'))
+          OR LOWER(CONCAT(o.username, '/', r.name)) LIKE LOWER(CONCAT('%', :query, '%'))
+        )
+      """)
+  Page<Repo> searchWithOwner(
+      @Param("query") String query, @Param("owner") String owner, Pageable pageable);
 }

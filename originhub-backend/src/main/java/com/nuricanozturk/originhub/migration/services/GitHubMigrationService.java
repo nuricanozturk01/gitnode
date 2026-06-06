@@ -15,13 +15,13 @@
  */
 package com.nuricanozturk.originhub.migration.services;
 
+import com.nuricanozturk.originhub.events.pr.GithubPullRequestMigrationRequestedEvent;
+import com.nuricanozturk.originhub.events.tag.GithubTagReleaseMigrationRequestedEvent;
 import com.nuricanozturk.originhub.migration.dtos.MigrationServiceProvider;
 import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;
 import com.nuricanozturk.originhub.migration.entities.MigrationJob;
 import com.nuricanozturk.originhub.migration.repositories.MigrationJobRepository;
-import com.nuricanozturk.originhub.shared.pr.events.GithubPullRequestMigrationRequestedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoMigrationService;
-import com.nuricanozturk.originhub.shared.tag.events.GithubTagReleaseMigrationRequestedEvent;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import java.io.IOException;
 import java.time.Instant;

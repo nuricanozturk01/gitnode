@@ -15,11 +15,12 @@
  */
 package com.nuricanozturk.originhub.repo.controllers;
 
+import com.nuricanozturk.originhub.events.repo.RepoRenamedEvent;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
-import com.nuricanozturk.originhub.shared.repo.events.RepoRenamedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class RepoController {
   private final ApplicationEventPublisher eventPublisher;
 
   @PostMapping
+  @RateLimit(limit = 50, windowSeconds = 3600, key = "repo.create")
   public ResponseEntity<RepoInfo> create(
       final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       final @Valid @RequestBody RepoForm repoForm) {
@@ -119,6 +121,7 @@ public class RepoController {
   }
 
   @PostMapping("/{owner}/{repo}/fork")
+  @RateLimit(limit = 30, windowSeconds = 3600, key = "repo.fork")
   public ResponseEntity<RepoInfo> fork(
       final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @PathVariable final String owner,

@@ -21,6 +21,7 @@ import com.nuricanozturk.originhub.migration.dtos.MigrationStatus;
 import com.nuricanozturk.originhub.migration.entities.MigrationJob;
 import com.nuricanozturk.originhub.migration.services.GitMigrationService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,7 @@ public class RepoMigrationController {
   private final JwtUtils tokenService;
 
   @PostMapping
+  @RateLimit(limit = 10, windowSeconds = 3600, key = "migration.create")
   public ResponseEntity<MigrationJobResponse> create(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @RequestBody @Valid final MigrationForm form) {

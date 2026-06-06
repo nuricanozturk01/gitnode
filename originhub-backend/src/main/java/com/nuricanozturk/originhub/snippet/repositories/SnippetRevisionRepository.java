@@ -30,7 +30,15 @@ import org.springframework.stereotype.Repository;
 @NullMarked
 public interface SnippetRevisionRepository extends JpaRepository<SnippetRevision, UUID> {
 
-  Page<SnippetRevision> findAllBySnippetIdOrderByCreatedAtDesc(UUID snippetId, Pageable pageable);
+  @Query(
+      value =
+          """
+            SELECT r FROM SnippetRevision r JOIN FETCH r.author
+              WHERE r.snippet.id = :snippetId ORDER BY r.createdAt DESC
+        """,
+      countQuery = "SELECT COUNT(r) FROM SnippetRevision r WHERE r.snippet.id = :snippetId")
+  Page<SnippetRevision> findAllBySnippetIdOrderByCreatedAtDesc(
+      @Param("snippetId") UUID snippetId, Pageable pageable);
 
   @Query("SELECT r FROM SnippetRevision r JOIN FETCH r.author WHERE r.id = :id")
   Optional<SnippetRevision> findByIdWithAuthor(@Param("id") UUID id);

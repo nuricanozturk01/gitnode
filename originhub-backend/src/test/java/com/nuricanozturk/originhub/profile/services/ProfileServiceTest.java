@@ -19,9 +19,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.events.profile.TenantDeletedEvent;
+import com.nuricanozturk.originhub.events.profile.UsernameChangedEvent;
 import com.nuricanozturk.originhub.profile.dtos.ChangePasswordForm;
 import com.nuricanozturk.originhub.profile.dtos.TenantPublicProfileDto;
 import com.nuricanozturk.originhub.profile.dtos.UpdateDisplayNameForm;
@@ -30,8 +33,6 @@ import com.nuricanozturk.originhub.profile.dtos.UpdateUsernameForm;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.profile.events.TenantDeletedEvent;
-import com.nuricanozturk.originhub.shared.profile.events.UsernameChangedEvent;
 import com.nuricanozturk.originhub.shared.tenant.dtos.TenantInfo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.mappers.TenantMapper;
@@ -243,14 +244,15 @@ class ProfileServiceTest {
   }
 
   @Test
-  @DisplayName("deleteAccount throws when user not found")
-  void deleteAccount_throws_whenUserNotFound() {
+  @DisplayName("deleteAccount is idempotent when user not found")
+  void deleteAccount_noop_whenUserNotFound() {
     UUID tenantId = UUID.randomUUID();
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> profileService.deleteAccount(tenantId))
-        .isInstanceOf(ItemNotFoundException.class)
-        .hasMessageContaining("userNotFound");
+    profileService.deleteAccount(tenantId);
+
+    verify(tenantRepository, never()).delete(any());
+    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test

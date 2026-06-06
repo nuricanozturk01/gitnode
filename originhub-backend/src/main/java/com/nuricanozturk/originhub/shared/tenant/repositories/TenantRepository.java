@@ -17,11 +17,14 @@ package com.nuricanozturk.originhub.shared.tenant.repositories;
 
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -50,4 +53,15 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID> {
 
   @Query("from Tenant t where t.email in :emails")
   List<Tenant> findAllByEmailIn(Collection<String> emails);
+
+  Page<Tenant> findAllByOrderByCreatedAtDesc(Pageable pageable);
+
+  Page<Tenant> findAllByUsernameContainingIgnoreCaseOrderByCreatedAtDesc(
+      String username, Pageable pageable);
+
+  long countByEnabledTrue();
+
+  long countByCreatedAtAfter(Instant since);
+
+  List<Tenant> findAllByCreatedAtAfter(Instant since);
 }

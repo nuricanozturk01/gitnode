@@ -15,6 +15,9 @@
  */
 package com.nuricanozturk.originhub.shared.repo.services;
 
+import com.nuricanozturk.originhub.events.repo.RepoCreatedEvent;
+import com.nuricanozturk.originhub.events.repo.RepoDeletedEvent;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -23,8 +26,6 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundE
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoForm;
 import com.nuricanozturk.originhub.shared.repo.dtos.RepoInfo;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import com.nuricanozturk.originhub.shared.repo.events.RepoCreatedEvent;
-import com.nuricanozturk.originhub.shared.repo.events.RepoDeletedEvent;
 import com.nuricanozturk.originhub.shared.repo.mappers.RepoMapper;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -56,6 +57,11 @@ public class RepoService {
   private final RepoStorageService repoStorageService;
   private final CollaboratorAccessPort collaboratorAccessPort;
 
+  @Audited(
+      action = "CREATE_REPO",
+      entityType = "REPO",
+      entityIdSpEL = "#result.getId().toString()",
+      detailsSpEL = "'name=' + #form.name + ', private=' + #form.isPrivate")
   @Transactional
   public RepoInfo create(final UUID tenantId, final RepoForm form) {
 
@@ -172,6 +178,10 @@ public class RepoService {
     this.repoRepository.save(repo);
   }
 
+  @Audited(
+      action = "DELETE_REPO",
+      entityType = "REPO",
+      detailsSpEL = "'owner=' + #owner + ', repo=' + #repoName")
   @Transactional
   public void delete(final UUID tenantId, final String repoName, final String owner) {
 

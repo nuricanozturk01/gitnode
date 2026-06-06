@@ -21,6 +21,7 @@ import com.nuricanozturk.originhub.auth.dtos.RecoveryCodeRequestForm;
 import com.nuricanozturk.originhub.auth.dtos.RegistrationForm;
 import com.nuricanozturk.originhub.shared.auth.dtos.LoginInfo;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.auth.services.TenantAuthGuard;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestException;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -90,6 +91,7 @@ public class AuthService {
             .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
 
     this.checkPassword(tenant, form);
+    TenantAuthGuard.requireEnabled(tenant);
 
     return this.createLoginInfo(tenant);
   }
@@ -117,6 +119,8 @@ public class AuthService {
         this.tenantRepository
             .findById(tenantId)
             .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
+
+    TenantAuthGuard.requireEnabled(tenant);
 
     return this.createLoginInfo(tenant);
   }
@@ -179,6 +183,7 @@ public class AuthService {
     tenant.setEmail(email);
     password.ifPresent(p -> tenant.setHash(DigestUtils.sha256Hex(p + salt)));
     tenant.setSalt(salt);
+    tenant.setEnabled(true);
     tenant.setCreatedAt(Instant.now());
 
     return this.tenantRepository.save(tenant);

@@ -1,0 +1,26 @@
+<div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+  <p class="text-base-content/65 text-sm">{{ summary() }}</p>
+  <div class="join">
+    <button
+      type="button"
+      class="btn btn-sm join-item btn-ghost"
+      [disabled]="!canPrev() || disabled()"
+      (click)="goPrev()"
+      aria-label="Previous page"
+    >
+      <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+    </button>
+    <span class="btn btn-sm join-item btn-ghost pointer-events-none min-w-24">
+      Page {{ page() + 1 }} / {{ totalPages() || 1 }}
+    </span>
+    <button
+      type="button"
+      class="btn btn-sm join-item btn-ghost"
+      [disabled]="!canNext() || disabled()"
+      (click)="goNext()"
+      aria-label="Next page"
+    >
+      <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+    </button>
+  </div>
+</div>

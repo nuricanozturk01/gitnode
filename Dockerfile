@@ -26,20 +26,23 @@ COPY pom.xml ./
 COPY .mvn ./.mvn
 COPY originhub-backend/pom.xml ./originhub-backend/
 COPY originhub-actions/pom.xml ./originhub-actions/
-RUN mvn dependency:go-offline -pl originhub-backend -q
+COPY originhub-events/pom.xml ./originhub-events/
+RUN mvn dependency:go-offline -pl originhub-backend -am -q
 
 COPY --from=frontend-build /app/dist/originhub-frontend/browser \
      ./originhub-backend/src/main/resources/static
 
 COPY originhub-backend/src ./originhub-backend/src
-RUN mvn package -pl originhub-backend -DskipTests -Derrorprone.skip=true
+COPY originhub-events/src ./originhub-events/src
+RUN mvn package -pl originhub-backend -am -DskipTests -Derrorprone.skip=true
 
 # ─── Stage 3: Final Image ─────────────────────────────────────────────────
 FROM eclipse-temurin:25-jre-alpine
 
 LABEL org.opencontainers.image.title="OriginHub"
-LABEL org.opencontainers.image.description="Self-hosted Git hosting platform"
+LABEL org.opencontainers.image.description="Self-hosted Git hosting platform with enterprise SSO, observability, and audit logging"
 LABEL org.opencontainers.image.source="https://github.com/nuricanozturk01/originhub"
+LABEL org.opencontainers.image.features="git-hosting,saml-sso,ldap-sso,prometheus,audit-log"
 
 RUN addgroup -g 1001 -S forge && adduser -u 1001 -S forge -G forge
 

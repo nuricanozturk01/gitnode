@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.tag.services;
 
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -91,6 +92,10 @@ public class TagNonTxService {
     }
   }
 
+  @Audited(
+      action = "CREATE_TAG",
+      entityType = "TAG",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', tag=' + #form.name")
   @CacheEvict(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public TagInfo create(final String owner, final String repoName, final CreateTagForm form)
       throws IOException {
@@ -110,6 +115,10 @@ public class TagNonTxService {
     return this.get(owner, repoName, form.getName());
   }
 
+  @Audited(
+      action = "DELETE_TAG",
+      entityType = "TAG",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', tag=' + #tagName")
   @CacheEvict(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public void delete(final String owner, final String repoName, final String tagName)
       throws IOException {

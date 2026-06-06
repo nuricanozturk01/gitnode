@@ -19,6 +19,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { User } from '../../../domain/auth/models/user.model';
+import type { UserContributionsResponse } from '../../../domain/profile/models/contribution.model';
 
 @Injectable({ providedIn: 'root' })
 export class UserService {
@@ -75,6 +76,12 @@ export class UserService {
 
   getPublicProfile(username: string): Promise<UserPublicProfile> {
     return firstValueFrom(this.http.get<UserPublicProfile>(`${this.api}/${encodeURIComponent(username)}`));
+  }
+
+  getContributions(username: string): Promise<UserContributionsResponse> {
+    return firstValueFrom(
+      this.http.get<UserContributionsResponse>(`${this.api}/${encodeURIComponent(username)}/contributions`),
+    );
   }
 
   updateProfile(form: UpdateProfileForm): Promise<User> {

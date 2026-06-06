@@ -21,8 +21,10 @@ import com.nuricanozturk.originhub.profile.dtos.TenantSearchResult;
 import com.nuricanozturk.originhub.profile.dtos.UpdateDisplayNameForm;
 import com.nuricanozturk.originhub.profile.dtos.UpdateProfileForm;
 import com.nuricanozturk.originhub.profile.dtos.UpdateUsernameForm;
+import com.nuricanozturk.originhub.profile.dtos.UserContributionsResponse;
 import com.nuricanozturk.originhub.profile.services.ProfileService;
 import com.nuricanozturk.originhub.profile.services.TenantSearchService;
+import com.nuricanozturk.originhub.profile.services.UserContributionService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.tenant.dtos.TenantInfo;
 import jakarta.validation.Valid;
@@ -53,6 +55,7 @@ public class ProfileController {
 
   private final TenantSearchService tenantSearchService;
   private final ProfileService profileService;
+  private final UserContributionService userContributionService;
   private final JwtUtils jwtUtils;
 
   @GetMapping("/me")
@@ -125,15 +128,6 @@ public class ProfileController {
     return ResponseEntity.noContent().build();
   }
 
-  @GetMapping("/{username}")
-  public ResponseEntity<TenantPublicProfileDto> getPublicProfile(
-      @PathVariable final String username) {
-
-    final var profile = this.profileService.getPublicProfile(username);
-
-    return ResponseEntity.ok(profile);
-  }
-
   @GetMapping("/search")
   public ResponseEntity<List<TenantSearchResult>> search(@RequestParam("q") final String query) {
 
@@ -146,5 +140,26 @@ public class ProfileController {
     final var results = this.tenantSearchService.search(trimmed);
 
     return ResponseEntity.ok(results);
+  }
+
+  @GetMapping("/{username}/contributions")
+  public ResponseEntity<UserContributionsResponse> getContributions(
+      @PathVariable final String username,
+      final @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authHeader) {
+
+    final var viewerTenantId = this.jwtUtils.tryExtractUserId(authHeader);
+    final var contributions =
+        this.userContributionService.getContributions(username, viewerTenantId);
+
+    return ResponseEntity.ok(contributions);
+  }
+
+  @GetMapping("/{username}")
+  public ResponseEntity<TenantPublicProfileDto> getPublicProfile(
+      @PathVariable final String username) {
+
+    final var profile = this.profileService.getPublicProfile(username);
+
+    return ResponseEntity.ok(profile);
   }
 }

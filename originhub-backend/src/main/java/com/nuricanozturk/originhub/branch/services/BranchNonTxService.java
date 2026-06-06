@@ -17,10 +17,10 @@ package com.nuricanozturk.originhub.branch.services;
 
 import static java.util.Comparator.comparing;
 
+import com.nuricanozturk.originhub.events.branch.BranchCreatedEvent;
+import com.nuricanozturk.originhub.events.branch.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchInfo;
-import com.nuricanozturk.originhub.shared.branch.events.BranchCreatedEvent;
-import com.nuricanozturk.originhub.shared.branch.events.BranchDeletedEvent;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;

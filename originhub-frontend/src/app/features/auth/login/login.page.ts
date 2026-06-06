@@ -23,6 +23,8 @@ import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/services/auth.service';
 import { ToastService } from '../../../core/toast/toast.service';
 
+type LoginMode = 'standard' | 'ldap' | 'saml';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-login',
@@ -40,13 +42,37 @@ export class LoginPage implements OnInit {
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly loginMode = signal<LoginMode>('standard');
 
   readonly form = this.fb.nonNullable.group({
     usernameOrEmail: ['', [Validators.required]],
     password: ['', [Validators.required, Validators.minLength(6)]],
   });
 
+  readonly ldapForm = this.fb.nonNullable.group({
+    workEmail: ['', [Validators.required, Validators.email]],
+    username: ['', [Validators.required, Validators.minLength(2)]],
+    password: ['', [Validators.required]],
+  });
+
+  readonly samlForm = this.fb.nonNullable.group({
+    workEmail: ['', [Validators.required, Validators.email]],
+  });
+
   ngOnInit() {
+    const mode = this.route.snapshot.queryParamMap.get('mode');
+    if (mode === 'ldap' || mode === 'saml') {
+      this.loginMode.set(mode);
+    }
+
+    const loginError = this.route.snapshot.queryParamMap.get('error');
+    if (loginError === 'userDisabled') {
+      const msg = 'This account has been disabled.';
+      this.error.set(msg);
+      this.toast.error(msg);
+      return;
+    }
+
     const token = this.route.snapshot.queryParamMap.get('token');
     const refreshToken = this.route.snapshot.queryParamMap.get('refresh_token');
     const username = this.route.snapshot.queryParamMap.get('username');
@@ -75,10 +101,67 @@ export class LoginPage implements OnInit {
       this.toast.success('Login successful');
       this.router.navigate(['/dashboard']);
     } catch (e) {
-      const msg =
-        e instanceof HttpErrorResponse
-          ? (e.error?.message ?? e.statusText ?? 'Login failed')
-          : ((e as Error).message ?? 'Login failed');
+      const msg = this.extractErrorMessage(e, 'Login failed');
+      this.error.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  async onLdapSubmit(): Promise<void> {
+    if (this.ldapForm.invalid) return;
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const raw = this.ldapForm.getRawValue();
+      await this.authService.discoverLdap(raw.workEmail.trim());
+      await this.authService.loginLdap({
+        email: raw.workEmail.trim(),
+        username: raw.username.trim(),
+        password: raw.password,
+      });
+      this.toast.success('Login successful');
+      this.router.navigate(['/dashboard']);
+    } catch (e) {
+      const msg = this.extractErrorMessage(e, 'LDAP authentication failed');
+      this.error.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  switchToLdap(): void {
+    this.error.set(null);
+    this.ldapForm.reset();
+    this.loginMode.set('ldap');
+  }
+
+  switchToSaml(): void {
+    this.error.set(null);
+    this.samlForm.reset();
+    this.loginMode.set('saml');
+  }
+
+  switchToStandard(): void {
+    this.error.set(null);
+    this.loginMode.set('standard');
+  }
+
+  async onSamlSubmit(): Promise<void> {
+    if (this.samlForm.invalid) {
+      this.samlForm.markAllAsTouched();
+      return;
+    }
+    this.loading.set(true);
+    this.error.set(null);
+    try {
+      const { workEmail } = this.samlForm.getRawValue();
+      const discovery = await this.authService.discoverSaml(workEmail.trim());
+      window.location.href = `${environment.apiUrl}${discovery.redirectUrl}`;
+    } catch (e) {
+      const msg = this.extractErrorMessage(e, 'No SSO configuration found for this email domain');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {
@@ -96,5 +179,32 @@ export class LoginPage implements OnInit {
 
   loginWithGoogle(): void {
     window.location.href = `${environment.apiUrl}/oauth2/authorization/google`;
+  }
+
+  loginWithSaml(): void {
+    if (this.loginMode() !== 'saml') {
+      this.switchToSaml();
+      return;
+    }
+    void this.onSamlSubmit();
+  }
+
+  private extractErrorMessage(e: unknown, fallback: string): string {
+    if (e instanceof HttpErrorResponse) {
+      if (typeof e.error === 'string' && e.error) {
+        if (e.error === 'userDisabled') {
+          return 'This account has been disabled.';
+        }
+        if (e.error === 'wrongPassword') {
+          return 'Invalid LDAP username or password.';
+        }
+        if (e.error === 'ldapUserSearchBaseInvalid') {
+          return 'LDAP user search base is misconfigured. Contact your administrator.';
+        }
+        return e.error;
+      }
+      return e.error?.message ?? e.statusText ?? fallback;
+    }
+    return (e as Error).message ?? fallback;
   }
 }

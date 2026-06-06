@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.ssh.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.ssh.dtos.AddSshKeyForm;
 import com.nuricanozturk.originhub.ssh.dtos.SshKeyInfo;
 import com.nuricanozturk.originhub.ssh.services.SshKeyService;
@@ -57,6 +58,7 @@ public class SshKeyController {
   }
 
   @PostMapping
+  @RateLimit(limit = 15, windowSeconds = 3600, key = "ssh.add-key")
   public ResponseEntity<SshKeyInfo> addKey(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @Valid @RequestBody final AddSshKeyForm form) {

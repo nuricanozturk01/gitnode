@@ -89,6 +89,11 @@ import {
   UserPen,
   FilePlus,
   UserPlus,
+  Building2,
+  Gauge,
+  Activity,
+  BarChart3,
+  ScrollText,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -166,4 +171,9 @@ export const LUCIDE_ICONS = {
   UserPen,
   FilePlus,
   UserPlus,
+  Building2,
+  Gauge,
+  Activity,
+  BarChart3,
+  ScrollText,
 };

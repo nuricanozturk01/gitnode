@@ -36,7 +36,7 @@
               class="text-primary size-3.5 shrink-0 sm:size-4"
               aria-hidden="true"
             ></lucide-icon>
-            <span class="min-w-0 leading-snug">Self-hosted Git · HTTPS &amp; SSH</span>
+            <span class="min-w-0 leading-snug">Self-hosted Git · Enterprise SSO · Observability</span>
           </div>
 
           <h1 class="text-3xl leading-[1.1] font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
@@ -47,8 +47,8 @@
           <p
             class="text-base-content/70 mt-4 max-w-lg text-sm leading-relaxed text-pretty sm:mt-5 sm:text-base sm:leading-relaxed md:text-lg"
           >
-            OriginHub is a modern Git platform you run yourself. Repositories, pull requests, and a familiar web
-            experience — without giving up custody of your source.
+            OriginHub is a modern Git platform you run yourself — repositories, pull requests, enterprise SAML/LDAP
+            sign-in, admin tooling, and observability — without giving up custody of your source.
           </p>
 
           <div
@@ -273,7 +273,8 @@
       <div class="mx-auto mb-12 max-w-2xl text-center sm:mb-16 lg:mb-20">
         <h2 id="landing-features-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">Everything you need</h2>
         <p class="text-base-content/65 mt-3 text-sm text-pretty sm:text-base sm:text-lg">
-          A cohesive experience for teams that want GitHub-like workflows without the SaaS footprint.
+          Git hosting plus enterprise SSO, admin tooling, observability, and audit — a cohesive experience for teams
+          that want GitHub-like workflows without the SaaS footprint.
         </p>
       </div>
 
@@ -571,6 +572,121 @@
             <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Admin role</span>
           </div>
         </article>
+      </div>
+
+      <!-- Enterprise & operations -->
+      <div class="mt-16 sm:mt-20">
+        <div class="mb-8 flex items-center gap-4 sm:mb-10">
+          <div class="bg-base-300/60 h-px flex-1"></div>
+          <span class="text-base-content/40 text-[11px] font-semibold tracking-widest uppercase sm:text-xs"
+            >Enterprise &amp; operations</span
+          >
+          <div class="bg-base-300/60 h-px flex-1"></div>
+        </div>
+
+        <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-6 md:gap-5">
+          <article
+            class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-6 md:flex-row md:items-stretch md:gap-8 lg:p-8"
+          >
+            <div class="flex min-w-0 flex-1 flex-col">
+              <div class="mb-4 flex flex-wrap items-center gap-3">
+                <div class="bg-primary/15 text-primary flex h-12 w-12 items-center justify-center rounded-xl">
+                  <lucide-icon name="building2" class="size-6" aria-hidden="true"></lucide-icon>
+                </div>
+                <span class="badge badge-primary badge-outline badge-sm font-normal">Enterprise</span>
+              </div>
+              <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">SAML &amp; LDAP SSO</h3>
+              <p class="text-base-content/70 mt-2 max-w-3xl flex-1 text-sm leading-relaxed sm:text-base">
+                Per-organization identity: map email domains to SAML 2.0 IdPs or corporate LDAP directories. Users sign
+                in with work email from the login page; JIT provisioning creates accounts on first successful
+                authentication. Configure metadata, connection tests, and directory search bases from the admin panel.
+              </p>
+            </div>
+            <div
+              class="border-base-300/60 mt-6 flex min-w-0 flex-col justify-center gap-2 border-t pt-6 md:mt-0 md:w-72 md:shrink-0 md:border-t-0 md:border-l md:pt-0 md:pl-8"
+            >
+              <span class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Includes</span>
+              <div class="flex flex-wrap gap-2 md:flex-col md:gap-2">
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">SAML 2.0 SP</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">LDAP bind</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Domain routing</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Group mapping</span>
+              </div>
+            </div>
+          </article>
+
+          <article
+            class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+          >
+            <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+              <lucide-icon name="layoutDashboard" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Admin panel</h3>
+            <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+              Separate platform-admin UI for instance statistics, user enable/disable, and organization lifecycle —
+              including SAML and LDAP configuration per org.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Dashboard stats</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">User management</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Org SSO/LDAP</span>
+            </div>
+          </article>
+
+          <article
+            class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+          >
+            <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+              <lucide-icon name="gauge" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Rate limiting</h3>
+            <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+              Redis-backed request limits on sensitive endpoints — login, registration, repo creation, webhooks, and SSO
+              discovery — to reduce abuse and credential stuffing.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Per-endpoint keys</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Redis sliding window</span>
+            </div>
+          </article>
+
+          <article
+            class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+          >
+            <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+              <lucide-icon name="barChart3" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Prometheus &amp; Grafana</h3>
+            <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+              Spring Boot Actuator exposes Micrometer metrics at
+              <span class="font-mono text-xs opacity-90">/actuator/prometheus</span>. Docker Compose ships Prometheus
+              and a pre-provisioned Grafana dashboard for JVM, HTTP, and custom tags.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Micrometer</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Grafana dashboard</span>
+            </div>
+          </article>
+
+          <article
+            class="feature-card feature-card--lift border-base-300/70 bg-base-100 flex min-w-0 flex-col rounded-2xl border p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+          >
+            <div class="bg-primary/15 text-primary mb-4 flex h-12 w-12 items-center justify-center rounded-xl">
+              <lucide-icon name="scrollText" class="size-6" aria-hidden="true"></lucide-icon>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Audit logging</h3>
+            <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+              Application-level audit trail with partitioned storage, append-only enforcement, and admin API queries.
+              PostgreSQL ships with <span class="font-mono text-xs opacity-90">pgAudit</span> for database write, DDL,
+              and role events in server logs.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">@Audited actions</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">pgAudit</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Admin API</span>
+            </div>
+          </article>
+        </div>
       </div>
 
       <!-- On the roadmap -->

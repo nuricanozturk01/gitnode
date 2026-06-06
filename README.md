@@ -14,7 +14,10 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
+[![Prometheus](https://img.shields.io/badge/Prometheus-ready-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io/)
+[![Grafana](https://img.shields.io/badge/Grafana-ready-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Multi-Instance](https://img.shields.io/badge/Multi--Instance-ready-4CAF50?style=for-the-badge)](README.md#multi-instance-deployment)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 <br/>
@@ -53,7 +56,7 @@ OriginHub is built for developers and teams who care about ownership — whether
 
 ## ✨ Features
 
-OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — all on your own infrastructure.
+OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — plus **enterprise SAML/LDAP SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all on your own infrastructure.
 
 <div align="center">
 
@@ -63,7 +66,9 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 | 🗂 [Code Browsing](#-code-browsing) | 🔀 [Pull Requests](#-pull-requests) | 🐛 [Issues](#-issues) |
 | 📋 [Project Boards](#-project-management-kanban) | 📝 [Code Snippets](#-code-snippets-gist-like) | 🏷 [Tags & Releases](#-tags--releases) |
 | 🔔 [Webhooks](#-webhooks) | 🔐 [Authentication](#-authentication) | 👥 [Collaborators](#-collaborators) |
-| 🍴 [Repository Forks](#-repository-forks) | 🛡 [Access Policies](#-repo-access-policies) | ⚡ [Actions *(soon)*](#-actions--cicd-coming-soon) |
+| 🍴 [Repository Forks](#-repository-forks) | 🛡 [Access Policies](#-repo-access-policies) | 🏢 [Enterprise SSO](#-enterprise-saml--ldap-sso) |
+| 📊 [Admin Panel](#-admin-panel) | ⚡ [Rate Limiting](#-rate-limiting) | 📈 [Observability](#-prometheus--grafana-observability) |
+| 📜 [Audit Logging](#-audit-logging) | ⚡ [Actions *(soon)*](#-actions--cicd-coming-soon) | |
 
 </div>
 
@@ -128,8 +133,10 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 
 ### 🔔 Webhooks
 
-- **Signed HTTP delivery** to your services for pushes, PR events, and more
-- **Retries** on delivery failure with full delivery log visibility
+- **Signed HTTP delivery** (`X-Hub-Signature-256`) to your services for pushes, PR events, and more
+- **Automatic retries** (3 attempts, exponential back-off) on delivery failure
+- **Dead-letter queue (DLQ)** — permanently failed deliveries are queued and retried on a schedule; admin can inspect and replay from the admin panel
+- **Per-host circuit breaker** (Resilience4j) — when a target endpoint fails repeatedly the circuit opens; subsequent deliveries go straight to the DLQ instead of burning retries; circuit auto-recovers when the endpoint comes back
 - Configured per-repository in **Settings → Webhooks**
 
 ### 🏷 Tags & Releases
@@ -169,12 +176,53 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 
 - YAML workflows, job/step execution, SSE logs, run history, triggers (push / PR / manual)
 
+### 🏢 Enterprise SAML & LDAP SSO
+
+- **Per-organization identity** — map email domains to a SAML 2.0 IdP or corporate LDAP directory
+- **SAML 2.0 service provider** — metadata URI, connection test, cached IdP XML, SP entity ID override
+- **LDAP directory auth** — manager bind, user search base/filter, email and display-name attributes, optional group mapping
+- **Work-email login flow** — users enter work email on the login page; OriginHub routes to the correct org and provisions accounts on first successful sign-in
+- **Mutually exclusive per org** — SAML and LDAP cannot both be enabled on the same organization
+- Configure in the **admin panel** (`originhub-admin-panel`, port **4300** in local dev)
+
+### 📊 Admin Panel
+
+Separate Angular app for **platform administrators** (not repo owners):
+
+- **Dashboard** — users, repositories, organizations, storage; activity tables (daily/weekly); top contributors; cached stats
+- **Users** — search, enable/disable accounts
+- **Organizations** — create, edit, delete; configure **SAML** or **LDAP** per org; test connections before enabling
+- **Audit log API** — query application audit events (`GET /api/admin/audit-logs`)
+
+See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for setup. Requires `ORIGINHUB_PLATFORM_ADMIN_USERNAMES` and bootstrap admin credentials.
+
+### ⚡ Rate Limiting
+
+- Redis-backed sliding-window limits on sensitive endpoints
+- Covers authentication (login, register, password recovery), repo/PR/issue creation, webhooks, tags, snippets, and SSO/LDAP discovery
+- Returns **429** with `rateLimitExceeded` when limits are hit
+
+### 📈 Prometheus & Grafana Observability
+
+- **Micrometer** metrics exported at `/actuator/prometheus` (toggle with `ORIGINHUB_OBSERVABILITY_ENABLED`)
+- **Docker Compose** includes Prometheus (**9090**) and Grafana (**3000**, admin / admin) with a pre-provisioned OriginHub dashboard
+- Scrape targets: app container (`originhub:8080`) or host-run backend (`host.docker.internal:8080`)
+- **Circuit breaker health** at `/actuator/circuitbreakers` — real-time `CLOSED / OPEN / HALF_OPEN` state for webhook delivery and SAML metadata circuit breakers; included in `/actuator/health` details
+
+### 📜 Audit Logging
+
+- **Application audit log** — `@Audited` actions persisted to partitioned `audit_logs` tables (append-only triggers)
+- **Admin API** — paginated queries by actor and recent window
+- **pgAudit** — custom Postgres image logs write, DDL, and role operations to container stderr (`shared_preload_libraries=pgaudit`)
+- Toggle application audit with `ORIGINHUB_AUDIT_ENABLED` (default `true`)
+
 ### 🔐 Authentication
 
-- Bearer Auth Username + password with JWT
+- Bearer Auth username + password with JWT
 - Basic Auth for git repo operations
 - OAuth2: **Google**, **GitHub**, **GitLab**
 - SSH public keys for Git over SSH
+- **Enterprise SAML 2.0** and **LDAP** per organization (see above)
 
 ---
 
@@ -186,10 +234,14 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 | Framework   | Spring Boot 4, Spring Security, Spring Data JPA  |
 | Git Engine  | Eclipse JGit                                     |
 | SSH Server  | Apache MINA SSHD                                 |
-| Auth        | JWT, OAuth2 (Google · GitHub · GitLab)           |
-| Database    | PostgreSQL, Flyway                               |
-| Cache       | Redis                                            |
+| Auth        | JWT, OAuth2 (Google · GitHub · GitLab), SAML 2.0, LDAP |
+| Database    | PostgreSQL 17 + Flyway, pgAudit                |
+| Cache       | Redis (cache + rate limiting)                    |
+| Observability | Micrometer, Prometheus, Grafana              |
+| Resilience  | Resilience4j circuit breakers (webhook delivery, SAML metadata) |
+| Audit       | Application audit log (partitioned PostgreSQL)   |
 | Frontend    | Angular 21, TypeScript 5                         |
+| Admin UI    | Angular 21 (`originhub-admin-panel`)             |
 | Styling     | Tailwind CSS 4, DaisyUI 5                        |
 | Container   | Docker (multi-stage build, single image)         |
 
@@ -204,17 +256,10 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 ```bash
 SECRET=$(openssl rand -base64 64 | tr -d '\n')
 docker network create originhub
-docker run -d \
-  --name originhub-postgres \
-  --network originhub \
-  -e POSTGRES_DB=originhub \
-  -e POSTGRES_USER=admin \
-  -e POSTGRES_PASSWORD=admin123 \
-  postgres:17
-docker run -d \
-  --name originhub-redis \
-  --network originhub \
-  redis:7-alpine redis-server --save ""
+
+# Infrastructure (Postgres with pgAudit, Redis, Prometheus, Grafana)
+docker compose up -d
+
 docker run -d \
   --name originhub \
   --network originhub \
@@ -228,42 +273,102 @@ docker run -d \
   -e SPRING_DATA_REDIS_HOST=originhub-redis \
   -e SPRING_DATA_REDIS_PORT=6379 \
   -e SPRING_PROFILES_ACTIVE=os \
+  -e ORIGINHUB_OBSERVABILITY_ENABLED=true \
+  -e ORIGINHUB_AUDIT_ENABLED=true \
   -v originhub-repos:/data/repos \
   repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 ```
 
-### Option 2 — Makefile
+### Option 2 — Makefile + Docker Compose (recommended)
 
 ```bash
 git clone https://github.com/nuricanozturk01/originhub.git
 cd originhub
-make up
+make up          # Postgres (pgAudit) + Redis + Prometheus + Grafana + app
 ```
 
-Edit the variables at the top of the `Makefile` before running — at minimum set `JWT_SECRET`. OAuth2 keys are optional.
+Edit the variables at the top of the `Makefile` before running — at minimum review `JWT_SECRET`. OAuth2 and SSO keys are optional.
+
+| Service     | URL                          |
+|-------------|------------------------------|
+| App         | http://localhost:8080        |
+| SSH Git     | localhost:2222               |
+| Prometheus  | http://localhost:9090        |
+| Grafana     | http://localhost:3000 (admin / admin) |
+| Admin panel | http://localhost:4300 (dev — run separately) |
+
+**Admin panel (local dev):**
+
+```bash
+cd originhub-admin-panel && pnpm install && pnpm start
+# Sign in with bootstrap admin (see application-local.yaml)
+```
 
 | Target               | Description                                     |
 |----------------------|-------------------------------------------------|
-| `make up`            | Create network, start DB, Redis, and app        |
-| `make down`          | Stop and remove containers                      |
-| `make start` / `make stop` | Start or stop existing containers         |
-| `make restart`       | Stop then start                                 |
+| `make up`            | Infra (Compose) + app container                 |
+| `make down`          | Stop and remove all containers                  |
+| `make infra`         | Postgres + Redis + Prometheus + Grafana only    |
+| `make app`           | Start app container only (single instance)      |
+| `make app-scale N=3` | Start N app instances (internal only, no external ports) |
+| `make app-scale-stop N=3` | Stop N app instances                             |
+| `make proxy`         | Start HAProxy (HTTP `:8080`, SSH `:2222`) for scaled instances |
+| `make proxy-stop`    | Stop HAProxy                                    |
+| `make up-ha N=3`     | Full HA stack: infra + N instances + proxy      |
+| `make ldap-up`       | Start Docker OpenLDAP for LDAP E2E / testing    |
+| `make saml-keygen`   | Generate SP signing key pair (~/.originhub/saml/) |
 | `make logs`          | Follow app logs                                 |
-| `make logs-db`       | Follow database logs                            |
-| `make logs-redis`    | Follow Redis logs                               |
+| `make logs-prometheus` / `make logs-grafana` | Observability logs        |
 | `make ps`            | List running containers                         |
-| `make clean`         | Remove containers and network (volumes kept)    |
 | `make purge`         | Remove everything including repo data ⚠️        |
+
+### Multi-Instance Deployment
+
+OriginHub supports production horizontal scaling. All critical shared-state concerns are handled:
+
+```bash
+make infra            # Postgres, Redis, Prometheus, Grafana
+make app-scale N=3    # 3 instances (no external ports — routed via proxy)
+make proxy            # HAProxy: HTTP on :8080, SSH on :2222
+
+# Or all at once:
+make up-ha N=3
+```
+
+All instances share:
+- **`originhub-repos` Docker volume** — Git repo data; JGit file-level locking handles concurrent access
+- **Redis** — DLQ retry lock (one instance per window), rate limiting, response cache, **and circuit breaker state**
+- **PostgreSQL** — all application state, Modulith event publication table
+
+**Circuit breaker state is shared across instances** via `DistributedCircuitBreakerGuard`: when any instance opens a CB for a webhook host (e.g. `webhook.example.com`), a Redis key is set with the CB's wait-duration as TTL. All other instances check Redis before attempting delivery — they immediately route to DLQ without burning retries.
+
+**SSH + HTTP load balancing** via HAProxy (`proxy/haproxy.cfg`):
+- SSH (`leastconn` balance) — distributes Git-over-SSH connections, honours long-lived session timeouts
+- HTTP (`roundrobin`) — distributes API/web traffic
+- TCP health checks — down instances are removed automatically, no manual intervention needed
+- Static backends for `originhub` + `originhub-1` through `originhub-4` (edit cfg to add more)
+
+Known limitations:
+- **Admin stats cache** is per-instance in-memory. Minor TTL-based inconsistency across instances — no correctness issue.
+- **Max 4 scaled instances** with the default HAProxy config. Edit `proxy/haproxy.cfg` to add more backends.
 
 ### Environment Variables
 
 | Variable                       | Required | Default               | Description                          |
 |--------------------------------|----------|-----------------------|--------------------------------------|
 | `ORIGINHUB_JWT_SECRET`         | ✅        | —                     | Min 32-char secret for JWT signing   |
-| `DB_USER`                      |          | `admin`               | PostgreSQL username                  |
-| `DB_PASSWORD`                  |          | `admin123`            | PostgreSQL password                  |
+| `ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME` |   | `admin`               | First-start platform admin username  |
+| `ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD` | ✅ prod | —                 | Bootstrap admin password (empty skips) |
+| `ORIGINHUB_PLATFORM_ADMIN_USERNAMES` |   | —                     | Comma-separated platform admin usernames |
 | `ORIGINHUB_GIT_REPO__ROOT`     |          | `/data/repos`         | Git repository storage path          |
 | `ORIGINHUB_FRONTEND_BASE_URL`  |          | `http://localhost:8080` | Public base URL                    |
+| `ORIGINHUB_CORS_ALLOWED_ORIGINS` |       | `4200,4300`           | CORS origins (include admin panel)   |
+| `ORIGINHUB_AUDIT_ENABLED`      |          | `true`                | Application audit log                |
+| `ORIGINHUB_OBSERVABILITY_ENABLED` |       | `true`                | Prometheus `/actuator/prometheus`    |
+| `ORIGINHUB_SSO_SAML_ENABLED`   |          | `false`               | Global SAML feature flag             |
+| `ORIGINHUB_SSO_LDAP_ENABLED`   |          | `false`               | Global LDAP feature flag             |
+| `ORIGINHUB_SSO_SAML_SP_SIGNING_KEY_PATH` | | —                   | SP signing private key (SAML)        |
+| `ORIGINHUB_SSO_SAML_SP_SIGNING_CERT_PATH` | | —                   | SP signing certificate (SAML)        |
 | `SPRING_DATA_REDIS_HOST`       |          | `originhub-redis`     | Redis hostname                       |
 | `SPRING_DATA_REDIS_PORT`       |          | `6379`                | Redis port                           |
 | `OAUTH2_GOOGLE_CLIENT_ID`      |          | —                     | Google OAuth2 client ID              |
@@ -291,6 +396,15 @@ OriginHub is under active development. Here's what's planned:
 - [x] Collaborators with fine-grained permissions and invite links
 - [x] Repository forks with cross-fork pull requests
 - [x] Repo access policies
+- [x] Enterprise SAML & LDAP SSO (per-organization)
+- [x] Platform admin panel (stats, users, organizations)
+- [x] Redis-backed rate limiting
+- [x] Prometheus & Grafana observability
+- [x] Application audit log + pgAudit PostgreSQL
+- [x] Webhook dead-letter queue (DLQ) with scheduled retry
+- [x] Circuit breakers (Resilience4j) for webhook delivery and SAML metadata
+- [x] JaCoCo CI coverage gate
+- [x] Multi-instance deployment (Redis distributed lock, shared volume)
 - [ ] Actions — CI/CD
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Two-factor authentication (TOTP)

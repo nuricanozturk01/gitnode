@@ -41,6 +41,7 @@
 
   <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR"/>
   <logger name="org.apache.sshd.server.session.ServerSessionImpl" level="ERROR"/>
+  <logger name="org.apache.sshd.common.util.logging" level="ERROR"/>
   <logger name="com.nuricanozturk.originhub.ssh" level="INFO"/>
   <logger name="com.nuricanozturk.originhub" level="DEBUG"/>
 

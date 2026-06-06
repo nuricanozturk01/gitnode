@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.snippet.controllers;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetDetail;
 import com.nuricanozturk.originhub.snippet.dtos.SnippetForm;
@@ -55,6 +56,7 @@ public class SnippetController {
   private final SnippetService snippetService;
 
   @PostMapping
+  @RateLimit(limit = 50, windowSeconds = 600, key = "snippet.create")
   public ResponseEntity<SnippetDetail> create(
       final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @Valid @RequestBody final SnippetForm form) {
@@ -116,6 +118,7 @@ public class SnippetController {
   }
 
   @PostMapping("/{snippetId}/fork")
+  @RateLimit(limit = 30, windowSeconds = 600, key = "snippet.fork")
   public ResponseEntity<SnippetDetail> fork(
       final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
       @PathVariable final UUID snippetId) {

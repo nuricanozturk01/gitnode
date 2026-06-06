@@ -22,6 +22,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.events.issue.IssueCommentedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueCreatedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueStatusChangedEvent;
+import com.nuricanozturk.originhub.events.issue.IssueUpdatedEvent;
 import com.nuricanozturk.originhub.issue.api.IssueData;
 import com.nuricanozturk.originhub.issue.api.TaskQueryPort;
 import com.nuricanozturk.originhub.issue.dtos.IssueCommentForm;
@@ -37,9 +41,6 @@ import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.issue.events.IssueCommentedEvent;
-import com.nuricanozturk.originhub.shared.issue.events.IssueCreatedEvent;
-import com.nuricanozturk.originhub.shared.issue.events.IssueStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
@@ -229,8 +230,7 @@ class IssueServiceTest {
     assertThat(issue.getStatus()).isEqualTo(IssueStatus.CLOSED.name());
     assertThat(issue.getClosedAt()).isNotNull();
     verify(eventPublisher).publishEvent(any(IssueStatusChangedEvent.class));
-    verify(eventPublisher, never())
-        .publishEvent(any(com.nuricanozturk.originhub.shared.issue.events.IssueUpdatedEvent.class));
+    verify(eventPublisher, never()).publishEvent(any(IssueUpdatedEvent.class));
   }
 
   @Test

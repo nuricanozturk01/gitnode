@@ -88,6 +88,11 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
             .findByUsernameOrEmail(providerInfo.email())
             .orElseGet(() -> this.createUserFromOAuth(providerInfo));
 
+    if (!tenant.isEnabled()) {
+      this.redirectLoginError(response, "userDisabled");
+      return;
+    }
+
     final var redirectUrl =
         UriComponentsBuilder.fromUriString("%s/login".formatted(this.frontendBaseUrl))
             .queryParam(TOKEN, this.jwtUtils.generateToken(tenant))
@@ -138,6 +143,16 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     account.setCreatedAt(Instant.now());
 
     this.accountRepository.save(account);
+  }
+
+  private void redirectLoginError(final HttpServletResponse response, final String error)
+      throws IOException {
+
+    response.sendRedirect(
+        UriComponentsBuilder.fromUriString("%s/login".formatted(this.frontendBaseUrl))
+            .queryParam("error", error)
+            .build()
+            .toUriString());
   }
 
   private record OAuthProviderInfo(

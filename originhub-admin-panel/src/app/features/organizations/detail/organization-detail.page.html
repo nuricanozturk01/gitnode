@@ -1,0 +1,76 @@
+<div class="mx-auto max-w-3xl min-w-0">
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (organization(); as org) {
+  <nav class="text-base-content/70 mb-6 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/organizations" class="link link-hover no-underline">Organizations</a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content min-w-0 truncate font-medium">{{ org.name }}</span>
+  </nav>
+
+  <header class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="min-w-0 flex-1">
+      <h1 class="text-base-content text-2xl font-bold tracking-tight break-words md:text-3xl">{{ org.name }}</h1>
+      <p class="text-base-content/65 mono mt-1 text-sm break-all">{{ org.slug }}</p>
+    </div>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm text-error w-full shrink-0 gap-1 sm:w-auto"
+      [disabled]="deleting()"
+      (click)="onDelete()"
+    >
+      @if (deleting()) {
+      <span class="loading loading-spinner loading-sm"></span>
+      } @else {
+      <lucide-icon name="trash2" class="size-4"></lucide-icon>
+      } Delete
+    </button>
+  </header>
+
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-3">
+      <h2 class="text-base-content font-semibold">Organization details</h2>
+    </div>
+    <form [formGroup]="form" class="flex flex-col gap-5 p-4 sm:p-6" (ngSubmit)="onSaveOrg()">
+      <div class="form-control">
+        <label class="label" for="editName">
+          <span class="label-text font-medium">Name</span>
+        </label>
+        <input id="editName" type="text" formControlName="name" class="input input-bordered w-full min-w-0" />
+      </div>
+
+      <div class="form-control">
+        <label class="label" for="editDomains">
+          <span class="label-text font-medium">Email domains</span>
+        </label>
+        <input
+          id="editDomains"
+          type="text"
+          formControlName="emailDomains"
+          class="input input-bordered w-full min-w-0"
+          placeholder="example.com, example.io"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <button type="submit" class="btn btn-primary w-full sm:w-auto" [disabled]="form.invalid || saving()">
+          @if (saving()) {
+          <span class="loading loading-spinner loading-sm"></span>
+          } @else { Save changes }
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="mt-8">
+    <h2 class="text-base-content mb-4 text-lg font-semibold">Authentication</h2>
+    <div class="flex flex-col gap-4">
+      <app-sso-config [organization]="org" (updated)="onSsoUpdated($event)" />
+      <app-ldap-config [organization]="org" (updated)="onLdapUpdated($event)" />
+    </div>
+  </section>
+
+  }
+</div>

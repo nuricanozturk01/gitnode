@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -64,6 +65,11 @@ public class ProjectWebhookService {
         .toList();
   }
 
+  @Audited(
+      action = "CREATE_PROJECT_WEBHOOK",
+      entityType = "WEBHOOK",
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'project=' + #ownerUsername + '/' + #projectCode + ', url=' + #form.url()")
   @Transactional
   public WebhookInfo create(
       final String ownerUsername, final String projectCode, final WebhookForm form) {
@@ -117,6 +123,11 @@ public class ProjectWebhookService {
     return this.webhookMapper.toInfoFromProject(this.projectWebhookRepository.save(webhook));
   }
 
+  @Audited(
+      action = "DELETE_PROJECT_WEBHOOK",
+      entityType = "WEBHOOK",
+      entityIdSpEL = "#webhookId.toString()",
+      detailsSpEL = "'project=' + #ownerUsername + '/' + #projectCode")
   @Transactional
   public void delete(final String ownerUsername, final String projectCode, final UUID webhookId) {
     final var project = this.resolveProject(ownerUsername, projectCode);

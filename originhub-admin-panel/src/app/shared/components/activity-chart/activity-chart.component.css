@@ -1,0 +1,46 @@
+.activity-chart {
+  width: 100%;
+}
+
+.activity-chart__svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.activity-chart__grid {
+  stroke: color-mix(in oklch, var(--color-base-content) 12%, transparent);
+  stroke-width: 1;
+}
+
+.activity-chart__axis {
+  fill: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  font-size: 11px;
+  font-family: var(--font-sans);
+}
+
+.activity-chart__bar {
+  opacity: 0.92;
+}
+
+.activity-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  padding-inline: 0.25rem;
+}
+
+.activity-chart__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  color: color-mix(in oklch, var(--color-base-content) 75%, transparent);
+}
+
+.activity-chart__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 2px;
+}

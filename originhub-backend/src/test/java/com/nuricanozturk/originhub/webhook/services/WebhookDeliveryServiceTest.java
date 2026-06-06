@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.webhook.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -24,8 +25,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.shared.circuitbreaker.DistributedCircuitBreakerGuard;
+import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
+import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +56,8 @@ import tools.jackson.databind.ObjectMapper;
 class WebhookDeliveryServiceTest {
 
   @Mock private RestClient restClient;
+  @Mock private WebhookDeadLetterRepository deadLetterRepository;
+  @Mock private DistributedCircuitBreakerGuard cbGuard;
 
   private ObjectMapper objectMapper;
   private WebhookDeliveryService deliveryService;
@@ -55,7 +65,18 @@ class WebhookDeliveryServiceTest {
   @BeforeEach
   void setUp() {
     objectMapper = new ObjectMapper();
-    deliveryService = new WebhookDeliveryService(objectMapper, restClient);
+    CircuitBreakerRegistry registry =
+        CircuitBreakerRegistry.of(
+            java.util.Map.of("webhook-delivery", CircuitBreakerConfig.ofDefaults()));
+    deliveryService =
+        new WebhookDeliveryService(
+            objectMapper,
+            restClient,
+            deadLetterRepository,
+            registry,
+            cbGuard,
+            new SimpleMeterRegistry());
+    deliveryService.retryBaseDelay = Duration.ZERO;
   }
 
   @Test
@@ -154,6 +175,27 @@ class WebhookDeliveryServiceTest {
     verify(bodySpec).body(bodyCaptor.capture());
     assertThat(bodyCaptor.getValue()).doesNotContain("repoId");
     assertThat(bodyCaptor.getValue()).contains("\"event\":\"project.created\"");
+  }
+
+  @Test
+  @DisplayName("deliver routes to DLQ immediately when circuit globally open via Redis")
+  void deliver_routesToDlq_whenCircuitGloballyOpen() {
+    when(cbGuard.isGloballyOpen(anyString())).thenReturn(true);
+
+    assertThatCode(
+            () ->
+                deliveryService.deliver(
+                    UUID.randomUUID(),
+                    "https://hook.test",
+                    null,
+                    null,
+                    "Webhook",
+                    WebhookEventType.REPO_PUSHED,
+                    Map.of()))
+        .doesNotThrowAnyException();
+
+    verify(deadLetterRepository).save(any(WebhookDeadLetter.class));
+    verify(restClient, never()).post();
   }
 
   @Test

@@ -10,6 +10,7 @@ import com.nuricanozturk.originhub.issue.dtos.IssueLinkedTaskInfo;
 import com.nuricanozturk.originhub.issue.dtos.IssueUpdateForm;
 import com.nuricanozturk.originhub.issue.services.IssueService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
@@ -43,6 +44,7 @@ public class IssueController {
   private final RepoService repoService;
 
   @PostMapping
+  @RateLimit(limit = 100, windowSeconds = 600, key = "issue.create")
   public ResponseEntity<IssueDetail> create(
       @PathVariable final String owner,
       @PathVariable final String repo,
@@ -136,6 +138,7 @@ public class IssueController {
   }
 
   @PostMapping("/{number}/comments")
+  @RateLimit(limit = 200, windowSeconds = 600, key = "issue.comment")
   public ResponseEntity<IssueCommentInfo> addComment(
       @PathVariable final String owner,
       @PathVariable final String repo,

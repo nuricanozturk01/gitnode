@@ -20,6 +20,7 @@ import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { Location } from '@angular/common';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { ContributionGraphComponent } from '../../shared/components/contribution-graph/contribution-graph.component';
 import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
 import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 import { RepoService } from '../../core/repo/services/repo.service';
@@ -31,6 +32,7 @@ import type { User } from '../../domain/auth/models/user.model';
 import type { RepoInfo } from '../../domain/repository/models/repo-info.model';
 import type { ProjectInfo } from '../../domain/project/models/project-info.model';
 import type { SnippetInfo } from '../../domain/snippet/models/snippet.model';
+import type { UserContributionsResponse } from '../../domain/profile/models/contribution.model';
 import { paramMapSignal } from '../../core/repo/utils/route-param-signals';
 import {
   collectTopicsLower,
@@ -46,7 +48,7 @@ type ProfileTab = 'overview' | 'repositories' | 'projects' | 'snippets';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-profile',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent, MarkdownPipe],
+  imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent, MarkdownPipe, ContributionGraphComponent],
   templateUrl: './user-profile.page.html',
   styleUrl: './user-profile.page.css',
 })
@@ -81,6 +83,9 @@ export class UserProfilePage {
   readonly snippetCurrentPage = signal(0);
   readonly snippetTotalPages = signal(0);
   readonly snippetTotalElements = signal(0);
+  readonly contributions = signal<UserContributionsResponse | null>(null);
+  readonly contributionsLoading = signal(true);
+  readonly contributionsLoadFailed = signal(false);
 
   private readonly profileParams = paramMapSignal(this.route);
   readonly username = computed(() => this.profileParams().get('username') ?? '');
@@ -206,7 +211,21 @@ export class UserProfilePage {
     const username = this.username();
     if (!username) return;
     this.loading.set(true);
+    this.contributionsLoading.set(true);
+    this.contributionsLoadFailed.set(false);
     try {
+      const contributionsPromise = this.userService
+        .getContributions(username)
+        .then((response) => {
+          this.contributions.set(response);
+          return response;
+        })
+        .catch(() => {
+          this.contributions.set(null);
+          this.contributionsLoadFailed.set(true);
+          return null;
+        });
+
       const [profile, reposPage, projectsPage, snippetsPage] = await Promise.all([
         this.userService.getPublicProfile(username),
         this.repoService.listUserRepos(username, 0),
@@ -216,6 +235,7 @@ export class UserProfilePage {
         this.snippetService
           .listByOwner(username, 0)
           .catch(() => ({ content: [] as SnippetInfo[], number: 0, size: 20, totalElements: 0, totalPages: 0 })),
+        contributionsPromise,
       ]);
       this.currentPage.set(0);
       this.totalPages.set(reposPage.totalPages);
@@ -249,8 +269,11 @@ export class UserProfilePage {
       this.user.set(null);
       this.repos.set([]);
       this.projects.set([]);
+      this.contributions.set(null);
+      this.contributionsLoadFailed.set(true);
     } finally {
       this.loading.set(false);
+      this.contributionsLoading.set(false);
     }
   }
 }

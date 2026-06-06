@@ -25,6 +25,7 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.jspecify.annotations.Nullable;
@@ -72,6 +73,10 @@ public class Tenant {
 
   @Column(name = "profile_readme", columnDefinition = "TEXT")
   private String profileReadme;
+
+  @ColumnDefault("true")
+  @Column(name = "enabled", nullable = false)
+  private boolean enabled = true;
 
   @CreationTimestamp
   @Column(name = "created_at")

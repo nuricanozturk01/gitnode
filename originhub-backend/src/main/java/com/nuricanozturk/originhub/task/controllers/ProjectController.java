@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.task.controllers;
 
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.task.dtos.ProjectForm;
@@ -50,6 +51,7 @@ public class ProjectController {
   private final ProjectService projectService;
 
   @PostMapping
+  @RateLimit(limit = 50, windowSeconds = 3600, key = "project.create")
   public ResponseEntity<ProjectInfo> create(
       @PathVariable final String owner,
       @AuthenticationPrincipal final Tenant caller,

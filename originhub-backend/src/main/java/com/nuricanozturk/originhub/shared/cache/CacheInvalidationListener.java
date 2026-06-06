@@ -15,8 +15,8 @@
  */
 package com.nuricanozturk.originhub.shared.cache;
 
-import com.nuricanozturk.originhub.shared.branch.events.BranchDeletedEvent;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
+import com.nuricanozturk.originhub.events.branch.BranchDeletedEvent;
+import com.nuricanozturk.originhub.events.pr.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

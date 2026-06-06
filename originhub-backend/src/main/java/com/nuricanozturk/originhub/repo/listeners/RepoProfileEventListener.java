@@ -15,8 +15,8 @@
  */
 package com.nuricanozturk.originhub.repo.listeners;
 
-import com.nuricanozturk.originhub.shared.profile.events.TenantDeletedEvent;
-import com.nuricanozturk.originhub.shared.profile.events.UsernameChangedEvent;
+import com.nuricanozturk.originhub.events.profile.TenantDeletedEvent;
+import com.nuricanozturk.originhub.events.profile.UsernameChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;

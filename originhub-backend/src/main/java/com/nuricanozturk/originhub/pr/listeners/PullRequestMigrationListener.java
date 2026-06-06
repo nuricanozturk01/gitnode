@@ -1,12 +1,12 @@
 package com.nuricanozturk.originhub.pr.listeners;
 
+import com.nuricanozturk.originhub.events.pr.PullRequestMigrationRequestedEvent;
 import com.nuricanozturk.originhub.pr.dtos.PrForm;
 import com.nuricanozturk.originhub.pr.services.PullRequestService;
 import com.nuricanozturk.originhub.shared.branch.dtos.BranchForm;
 import com.nuricanozturk.originhub.shared.branch.services.BranchProtocolService;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestMigrationRequestedEvent;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;

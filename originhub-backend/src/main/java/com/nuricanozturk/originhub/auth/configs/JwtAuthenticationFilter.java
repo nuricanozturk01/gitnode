@@ -19,7 +19,6 @@ import static com.nuricanozturk.originhub.shared.auth.utils.BearerTokenUtils.get
 import static com.nuricanozturk.originhub.shared.auth.utils.BearerTokenUtils.isBearerToken;
 
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
-import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.TokenExpiredException;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.FilterChain;
@@ -72,10 +71,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     final var tenantId = this.jwtUtils.extractUserId(jwt);
 
-    final var user =
-        this.tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+    final var userOpt = this.tenantRepository.findById(tenantId);
+    if (userOpt.isEmpty()) {
+      response.setStatus(HttpStatus.NOT_FOUND.value());
+      response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      response.getWriter().write("\"userNotFound\"");
+      return;
+    }
+
+    final var user = userOpt.get();
+
+    if (!user.isEnabled()) {
+      response.setStatus(HttpStatus.FORBIDDEN.value());
+      response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+      response.getWriter().write("\"userDisabled\"");
+      return;
+    }
 
     final var authentication = new UsernamePasswordAuthenticationToken(user, null, null);
 

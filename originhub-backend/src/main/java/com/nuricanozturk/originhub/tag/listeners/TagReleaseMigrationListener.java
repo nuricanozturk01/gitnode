@@ -15,7 +15,7 @@
  */
 package com.nuricanozturk.originhub.tag.listeners;
 
-import com.nuricanozturk.originhub.shared.tag.events.TagReleaseMigrationRequestedEvent;
+import com.nuricanozturk.originhub.events.tag.TagReleaseMigrationRequestedEvent;
 import com.nuricanozturk.originhub.tag.dtos.CreateReleaseForm;
 import com.nuricanozturk.originhub.tag.services.ReleaseTxService;
 import com.nuricanozturk.originhub.tag.services.TagNonTxService;

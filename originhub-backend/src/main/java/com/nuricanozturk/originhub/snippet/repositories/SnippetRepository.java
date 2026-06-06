@@ -36,20 +36,35 @@ public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
   @Query("SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.id = :id")
   Optional<Snippet> findByIdWithOwner(@Param("id") UUID id);
 
-  Page<Snippet> findAllByVisibility(Visibility visibility, Pageable pageable);
+  @Query(
+      value = "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.visibility = :visibility",
+      countQuery = "SELECT COUNT(s) FROM Snippet s WHERE s.visibility = :visibility")
+  Page<Snippet> findAllByVisibility(@Param("visibility") Visibility visibility, Pageable pageable);
 
   @Query(
-      "SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND ("
-          + "LOWER(s.title) LIKE LOWER(CONCAT('%', :q, '%')) OR "
-          + "LOWER(s.description) LIKE LOWER(CONCAT('%', :q, '%')))")
+      value =
+          "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.visibility = 'PUBLIC' AND ("
+              + "LOWER(s.title) LIKE LOWER(CONCAT('%', :q, '%')) OR "
+              + "LOWER(s.description) LIKE LOWER(CONCAT('%', :q, '%')))",
+      countQuery =
+          "SELECT COUNT(s) FROM Snippet s WHERE s.visibility = 'PUBLIC' AND ("
+              + "LOWER(s.title) LIKE LOWER(CONCAT('%', :q, '%')) OR "
+              + "LOWER(s.description) LIKE LOWER(CONCAT('%', :q, '%')))")
   Page<Snippet> searchPublic(@Param("q") String q, Pageable pageable);
 
   @Query("SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND s.owner.username = :username")
   Page<Snippet> findPublicByOwnerUsername(@Param("username") String username, Pageable pageable);
 
-  List<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId);
+  @Query(
+      "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.owner.id = :ownerId ORDER BY s.createdAt DESC")
+  List<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(@Param("ownerId") UUID ownerId);
 
-  Page<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId, Pageable pageable);
+  @Query(
+      value =
+          "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.owner.id = :ownerId ORDER BY s.createdAt DESC",
+      countQuery = "SELECT COUNT(s) FROM Snippet s WHERE s.owner.id = :ownerId")
+  Page<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(
+      @Param("ownerId") UUID ownerId, Pageable pageable);
 
   @Query(
       value =

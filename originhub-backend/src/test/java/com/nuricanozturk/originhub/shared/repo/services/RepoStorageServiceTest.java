@@ -21,9 +21,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
+import com.nuricanozturk.originhub.events.repo.RepoInitRollbackRequestedEvent;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
-import com.nuricanozturk.originhub.shared.repo.events.RepoInitRollbackRequestedEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;

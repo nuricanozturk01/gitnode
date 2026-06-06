@@ -1,40 +1,26 @@
-# API E2E tests
+# API E2E
 
-## Auth and session
-
-1. **`global-setup.ts`** — resolves **owner** and **intruder** (login from `.env` or auto-register), creates shared
-   repo + project, writes `e2e/.auth/session.json`.
-2. **`fixtures/authenticated-api.ts`** — `session`, `authedRequest`, `api`.
-3. **`auth/auth.spec.ts`** — registers a disposable user (`reg_*`) for the register test, then **`DELETE /api/users/me`
-   ** in the same test (not left for teardown).
-
-`DELETE /api/users/me` is **not** tested here (see [teardown](../teardown/README.md)).
-
-## Module layout
-
-| Folder / File             | Controllers                                      | Coverage                                                                                                                           |
-| ------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `auth/`                   | `AuthController`                                 | register, login, refresh-token, password recovery                                                                                  |
-| `profile/`                | `ProfileController`                              | me, display-name, profile, password, public profile, search                                                                        |
-| `ssh/`                    | `SshKeyController`                               | list, add, delete                                                                                                                  |
-| `repo/`                   | `RepoController`                                 | create, get, list, patch, delete                                                                                                   |
-| `branch/`                 | `BranchController`                               | list, get, create, default, delete                                                                                                 |
-| `commit/`                 | `CommitController`                               | list, get, diff                                                                                                                    |
-| `tree/`                   | `TreeController`                                 | tree, blob, raw, languages, archive, PUT blob                                                                                      |
-| `snippet/`                | `SnippetController`, comments                    | CRUD, fork, revisions, repo link, raw, comments                                                                                    |
-| `issue/`                  | `IssueController`                                | CRUD, linked-tasks, comments                                                                                                       |
-| `task/`                   | Project, board, task                             | projects, boards, columns, tasks, subtasks, branches                                                                               |
-| `pr/`                     | `PullRequestController`, commits                 | CRUD, merge, commits, diff, comments (`z-pr.spec.ts`)                                                                              |
-| `tag/`                    | tags + releases                                  | full CRUD                                                                                                                          |
-| `webhook/`                | repo / user / project                            | CRUD each                                                                                                                          |
-| `migration/`              | `RepoMigrationController`                        | GET job, POST validation                                                                                                           |
-| `shared/`                 | actuator                                         | `/actuator/health`                                                                                                                 |
-| `z-collaborators.spec.ts` | `CollaboratorController`, `InviteLinkController` | invite, list, accept, decline, update-permissions, delete; invite-link generate, view (public), accept via token, reuse prevention |
+REST endpoint tests. Uses **owner** + **intruder** from [`global-setup.ts`](../global-setup.ts) → `e2e/.auth/session.json`.
 
 ## Run
 
-From `e2e/`:
-
 ```bash
+cd e2e
 pnpm test:e2e:api
 ```
+
+Needs API up (`make infra` + backend, or `make up`).
+
+## What’s covered
+
+| Folder                                 | Area                                        |
+| -------------------------------------- | ------------------------------------------- |
+| `auth/`                                | register, login, refresh, password recovery |
+| `profile/`                             | me, profile, password, public profile       |
+| `repo/`, `branch/`, `commit/`, `tree/` | Git hosting API                             |
+| `pr/`, `issue/`, `task/`               | PRs, issues, projects                       |
+| `snippet/`, `tag/`, `webhook/`         | snippets, releases, webhooks                |
+| `z-collaborators.spec.ts`              | invites & permissions                       |
+| `shared/`                              | health check                                |
+
+User cleanup after a full run: [teardown](../teardown/README.md) — not part of `test:e2e:api` alone.

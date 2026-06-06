@@ -18,5 +18,7 @@ package com.nuricanozturk.originhub.auth.dtos;
 public enum AccountType {
   GOOGLE,
   GITHUB,
-  GITLAB
+  GITLAB,
+  LDAP,
+  SAML
 }

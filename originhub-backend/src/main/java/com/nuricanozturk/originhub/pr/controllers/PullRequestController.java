@@ -25,6 +25,7 @@ import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import com.nuricanozturk.originhub.shared.repo.dtos.PageResponse;
 import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
@@ -58,6 +59,7 @@ public class PullRequestController {
   private final RepoService repoService;
 
   @PostMapping
+  @RateLimit(limit = 50, windowSeconds = 600, key = "pr.create")
   public ResponseEntity<PrDetail> create(
       @PathVariable final String owner,
       @PathVariable final String repo,
@@ -100,6 +102,7 @@ public class PullRequestController {
   }
 
   @PostMapping("/{number}/merge")
+  @RateLimit(limit = 50, windowSeconds = 600, key = "pr.merge")
   public ResponseEntity<PrDetail> merge(
       @PathVariable final String owner,
       @PathVariable final String repo,

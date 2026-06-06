@@ -23,6 +23,7 @@ import com.nuricanozturk.originhub.auth.dtos.RegistrationForm;
 import com.nuricanozturk.originhub.auth.services.AuthService;
 import com.nuricanozturk.originhub.shared.auth.dtos.LoginInfo;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +45,7 @@ class AuthController {
   private final JwtUtils jwtUtils;
 
   @PostMapping("/login")
+  @RateLimit(limit = 30, windowSeconds = 60, key = "auth.login")
   public ResponseEntity<LoginInfo> login(@RequestBody @Valid final LoginForm form) {
 
     final var loginInfo = this.authService.login(form);
@@ -52,6 +54,7 @@ class AuthController {
   }
 
   @PostMapping("/register")
+  @RateLimit(limit = 20, windowSeconds = 300, key = "auth.register")
   public ResponseEntity<LoginInfo> register(@RequestBody @Valid final RegistrationForm form) {
 
     final var loginInfo = this.authService.register(form);
@@ -62,6 +65,7 @@ class AuthController {
   }
 
   @PostMapping("/recover-password")
+  @RateLimit(limit = 20, windowSeconds = 300, key = "auth.recover-password")
   public ResponseEntity<Void> recoverPassword(@RequestBody @Valid final RecoverPasswordForm form) {
 
     this.authService.recoverPassword(form);
@@ -70,6 +74,7 @@ class AuthController {
   }
 
   @PostMapping("/refresh-token")
+  @RateLimit(limit = 60, windowSeconds = 60, key = "auth.refresh-token")
   public ResponseEntity<LoginInfo> refreshToken(@RequestBody @Valid final RefreshTokenForm form) {
 
     this.jwtUtils.verifyAndValidate(form.getRefreshToken());
@@ -82,6 +87,7 @@ class AuthController {
   }
 
   @PostMapping("/send-password-recovery-mail")
+  @RateLimit(limit = 10, windowSeconds = 300, key = "auth.send-recovery-mail")
   public ResponseEntity<Boolean> sendPasswordRecoveryMail(
       @RequestBody @Valid final RecoveryCodeRequestForm form) {
 

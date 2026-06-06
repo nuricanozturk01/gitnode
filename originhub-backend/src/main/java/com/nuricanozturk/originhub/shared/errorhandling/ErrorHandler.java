@@ -20,6 +20,7 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestExc
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.TokenExpiredException;
+import com.nuricanozturk.originhub.shared.errorhandling.exceptions.TooManyRequestsException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ValidationException;
@@ -226,6 +227,23 @@ public class ErrorHandler {
     }
 
     return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(ex.getMessage());
+  }
+
+  @ExceptionHandler(TooManyRequestsException.class)
+  @Nullable ResponseEntity<String> handleException(
+      final TooManyRequestsException ex,
+      final HttpServletRequest request,
+      final @Nullable HttpServletResponse response) {
+
+    if (response == null) {
+      log.debug("Rate limit exceeded", ex);
+
+      return null;
+    }
+
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
         .contentType(MediaType.APPLICATION_JSON)
         .body(ex.getMessage());
   }

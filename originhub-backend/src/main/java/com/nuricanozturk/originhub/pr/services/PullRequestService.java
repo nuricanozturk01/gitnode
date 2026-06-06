@@ -18,6 +18,8 @@ package com.nuricanozturk.originhub.pr.services;
 import static com.nuricanozturk.originhub.shared.util.FileDiffParser.parseFileDiff;
 import static com.nuricanozturk.originhub.shared.util.FileDiffParser.prepareTreeParser;
 
+import com.nuricanozturk.originhub.events.pr.PullRequestCreatedEvent;
+import com.nuricanozturk.originhub.events.pr.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.pr.dtos.PrDetail;
 import com.nuricanozturk.originhub.pr.dtos.PrForm;
 import com.nuricanozturk.originhub.pr.dtos.PrInfo;
@@ -28,6 +30,7 @@ import com.nuricanozturk.originhub.pr.entities.PullRequest;
 import com.nuricanozturk.originhub.pr.mappers.PrMapper;
 import com.nuricanozturk.originhub.pr.repositories.PrCommentRepository;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitStats;
@@ -35,8 +38,6 @@ import com.nuricanozturk.originhub.shared.commit.dtos.FileDiff;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.git.provider.GitProvider;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestCreatedEvent;
-import com.nuricanozturk.originhub.shared.pr.events.PullRequestStatusChangedEvent;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import java.io.IOException;
@@ -94,6 +95,13 @@ public class PullRequestService {
   private final PrMapper prMapper;
   private final ApplicationEventPublisher eventPublisher;
 
+  @Audited(
+      action = "CREATE_PR",
+      entityType = "PULL_REQUEST",
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL =
+          "'repo=' + #owner + '/' + #repoName + ', title=' + #form.title"
+              + " + ', ' + #form.sourceBranch + ' -> ' + #form.targetBranch")
   @Transactional
   public PrDetail create(
       final String owner, final String repoName, final UUID authorId, final PrForm form)
@@ -146,6 +154,10 @@ public class PullRequestService {
     return this.toDetail(this.prRepository.save(pr));
   }
 
+  @Audited(
+      action = "CLOSE_PR",
+      entityType = "PULL_REQUEST",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', number=' + #number")
   @Transactional
   public void close(final String owner, final String repoName, final int number) {
 
@@ -169,6 +181,11 @@ public class PullRequestService {
             PrStatus.CLOSED.name()));
   }
 
+  @Audited(
+      action = "MERGE_PR",
+      entityType = "PULL_REQUEST",
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', number=' + #number")
   @Transactional
   public PrDetail merge(
       final String owner,

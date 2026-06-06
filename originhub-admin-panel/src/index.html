@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en" data-theme="originhub-light">
+  <head>
+    <meta charset="utf-8" />
+    <script>
+      (function () {
+        var k = 'originhub-admin-theme';
+        var allowed = { originhub: 1, 'originhub-light': 1 };
+        var light = 'originhub-light';
+        try {
+          var t = localStorage.getItem(k);
+          if (t && allowed[t]) {
+            document.documentElement.setAttribute('data-theme', t);
+            document.documentElement.style.colorScheme = t === light ? 'light' : 'dark';
+          } else {
+            document.documentElement.setAttribute('data-theme', light);
+            document.documentElement.style.colorScheme = 'light';
+          }
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', light);
+          document.documentElement.style.colorScheme = 'light';
+        }
+      })();
+    </script>
+    <title>OriginHub Admin</title>
+    <base href="/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  </head>
+  <body>
+    <app-root></app-root>
+  </body>
+</html>

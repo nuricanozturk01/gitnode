@@ -22,7 +22,9 @@ import { environment } from '../../../../environments/environment';
 import { TokenService } from './token.service';
 import { UserService } from '../../user/services/user.service';
 import type { LoginForm } from '../../../domain/auth/models/login-form.model';
+import type { LdapDiscoverResponse, LdapLoginForm } from '../../../domain/auth/models/ldap-login-form.model';
 import type { RegisterForm } from '../../../domain/auth/models/register-form.model';
+import type { SamlDiscoverResponse } from '../../../domain/auth/models/saml-discover.model';
 import type { TokenResponse } from '../../../domain/auth/ports/auth.port';
 
 @Injectable({ providedIn: 'root' })
@@ -90,6 +92,32 @@ export class AuthService {
     this.tokenService.saveTokens(res);
     this.scheduleAutoLogout();
     return res;
+  }
+
+  async loginLdap(form: LdapLoginForm): Promise<TokenResponse> {
+    const res = await firstValueFrom(
+      this.http.post<TokenResponse>(`${this.api}/api/auth/sso/ldap/login`, form),
+    );
+    this.userService.invalidateMe();
+    this.tokenService.saveTokens(res);
+    this.scheduleAutoLogout();
+    return res;
+  }
+
+  async discoverSaml(email: string): Promise<SamlDiscoverResponse> {
+    return firstValueFrom(
+      this.http.get<SamlDiscoverResponse>(`${this.api}/api/auth/sso/saml/discover`, {
+        params: { email },
+      }),
+    );
+  }
+
+  async discoverLdap(email: string): Promise<LdapDiscoverResponse> {
+    return firstValueFrom(
+      this.http.get<LdapDiscoverResponse>(`${this.api}/api/auth/sso/ldap/discover`, {
+        params: { email },
+      }),
+    );
   }
 
   async register(form: RegisterForm): Promise<TokenResponse> {

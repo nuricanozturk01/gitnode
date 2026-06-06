@@ -24,6 +24,7 @@ import com.nuricanozturk.originhub.admin.dtos.TimeSeriesPoint;
 import com.nuricanozturk.originhub.admin.dtos.UploadActivityResponse;
 import com.nuricanozturk.originhub.admin.dtos.UploadActivityStat;
 import com.nuricanozturk.originhub.auth.api.OrganizationAdminPort;
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.repo.services.RepoStorageService;
@@ -37,12 +38,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,53 +68,51 @@ public class AdminStatsService {
   private final AdminPlatformSettingsService adminPlatformSettingsService;
   private final OrganizationAdminPort organizationAdminPort;
 
-  private final AtomicReference<@Nullable StorageCache> storageCache = new AtomicReference<>();
-  private final AtomicReference<@Nullable OverviewCache> overviewCache = new AtomicReference<>();
-  private final Map<String, CachedRepoActivity> cachedRepoActivity = new ConcurrentHashMap<>();
-  private final Map<String, CachedUploadActivity> cachedUploadActivity = new ConcurrentHashMap<>();
+  @Caching(
+      evict = {
+        @CacheEvict(cacheNames = CacheNames.ADMIN_STATS_OVERVIEW, allEntries = true),
+        @CacheEvict(cacheNames = CacheNames.ADMIN_STATS_REPO_ACTIVITY, allEntries = true),
+        @CacheEvict(cacheNames = CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY, allEntries = true)
+      })
+  public void evictAllCaches() {}
 
-  public void evictAllCaches() {
-
-    this.overviewCache.set(null);
-    this.storageCache.set(null);
-    this.cachedRepoActivity.clear();
-    this.cachedUploadActivity.clear();
-  }
-
+  @Caching(
+      cacheable =
+          @Cacheable(
+              cacheNames = CacheNames.ADMIN_STATS_OVERVIEW,
+              key = "'all'",
+              condition = "!#refresh"),
+      put =
+          @CachePut(
+              cacheNames = CacheNames.ADMIN_STATS_OVERVIEW,
+              key = "'all'",
+              condition = "#refresh"))
   @Transactional(readOnly = true)
   public AdminStatsOverviewResponse getOverview(final boolean refresh) {
 
     final var now = Instant.now();
     final var cacheTtlSeconds = this.adminPlatformSettingsService.getStatsCacheTtlSeconds();
-    final OverviewCache cached = this.overviewCache.get();
-
-    if (!refresh
-        && cached != null
-        && now.isBefore(cached.cachedAt().plus(cacheTtlSeconds, ChronoUnit.SECONDS))) {
-      return new AdminStatsOverviewResponse(
-          cached.overview(), cached.cachedAt(), cacheTtlSeconds, true);
-    }
-
     final var overview = this.computeOverview(now);
-    this.overviewCache.set(new OverviewCache(overview, now));
-
     return new AdminStatsOverviewResponse(overview, now, cacheTtlSeconds, false);
   }
 
+  @Caching(
+      cacheable =
+          @Cacheable(
+              cacheNames = CacheNames.ADMIN_STATS_REPO_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "!#refresh"),
+      put =
+          @CachePut(
+              cacheNames = CacheNames.ADMIN_STATS_REPO_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "#refresh"))
   @Transactional(readOnly = true)
   public RepoActivityResponse getRepoActivity(final String period, final boolean refresh) {
 
     final var normalizedPeriod = this.normalizePeriod(period);
-    final var now = Instant.now();
-    final var cacheTtlSeconds = this.adminPlatformSettingsService.getStatsCacheTtlSeconds();
-    final var cached = this.cachedRepoActivity.get(normalizedPeriod);
-
-    if (!refresh
-        && cached != null
-        && now.isBefore(cached.cachedAt().plus(cacheTtlSeconds, ChronoUnit.SECONDS))) {
-      return cached.response();
-    }
-
     final var since = this.periodStart(normalizedPeriod);
     final var repos = this.repoRepository.findAllByCreatedAtAfter(since);
 
@@ -125,30 +126,29 @@ public class AdminStatsService {
             .sorted(Comparator.comparing(RepoActivityStat::ownerUsername))
             .toList();
 
-    final var response =
-        new RepoActivityResponse(
-            new PeriodStats(normalizedPeriod, repos.size()),
-            byOwner,
-            this.buildRepoTimeSeries(repos, since));
-
-    this.cachedRepoActivity.put(normalizedPeriod, new CachedRepoActivity(now, response));
-    return response;
+    return new RepoActivityResponse(
+        new PeriodStats(normalizedPeriod, repos.size()),
+        byOwner,
+        this.buildRepoTimeSeries(repos, since));
   }
 
+  @Caching(
+      cacheable =
+          @Cacheable(
+              cacheNames = CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "!#refresh"),
+      put =
+          @CachePut(
+              cacheNames = CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "#refresh"))
   @Transactional(readOnly = true)
   public UploadActivityResponse getUploadActivity(final String period, final boolean refresh) {
 
     final var normalizedPeriod = this.normalizePeriod(period);
-    final var now = Instant.now();
-    final var cacheTtlSeconds = this.adminPlatformSettingsService.getStatsCacheTtlSeconds();
-    final var cached = this.cachedUploadActivity.get(normalizedPeriod);
-
-    if (!refresh
-        && cached != null
-        && now.isBefore(cached.cachedAt().plus(cacheTtlSeconds, ChronoUnit.SECONDS))) {
-      return cached.response();
-    }
-
     final var since = this.periodStart(normalizedPeriod);
     final var repos = this.repoRepository.findAllByCreatedAtAfter(since);
 
@@ -177,15 +177,11 @@ public class AdminStatsService {
             .sorted(Comparator.comparing(UploadActivityStat::ownerUsername))
             .toList();
 
-    final var response =
-        new UploadActivityResponse(
-            new PeriodStats(normalizedPeriod, repos.size()),
-            sortedByOwner,
-            this.buildRepoTimeSeries(repos, since),
-            UPLOAD_NOTE);
-
-    this.cachedUploadActivity.put(normalizedPeriod, new CachedUploadActivity(now, response));
-    return response;
+    return new UploadActivityResponse(
+        new PeriodStats(normalizedPeriod, repos.size()),
+        sortedByOwner,
+        this.buildRepoTimeSeries(repos, since),
+        UPLOAD_NOTE);
   }
 
   private AdminStatsOverview computeOverview(final Instant now) {
@@ -197,7 +193,7 @@ public class AdminStatsService {
         this.tenantRepository.count(),
         this.tenantRepository.countByEnabledTrue(),
         this.repoRepository.count(),
-        this.resolveTotalStorageBytes(now),
+        this.repoStorageService.calculateTotalStorageBytes(),
         true,
         STORAGE_NOTE,
         this.tenantRepository.countByCreatedAtAfter(dayStart),
@@ -206,29 +202,6 @@ public class AdminStatsService {
         this.repoRepository.countByCreatedAtAfter(weekStart),
         this.organizationAdminPort.countOrganizations(),
         this.organizationAdminPort.countSsoEnabledOrganizations());
-  }
-
-  private record StorageCache(long bytes, Instant cachedAt) {}
-
-  private record OverviewCache(AdminStatsOverview overview, Instant cachedAt) {}
-
-  private record CachedRepoActivity(Instant cachedAt, RepoActivityResponse response) {}
-
-  private record CachedUploadActivity(Instant cachedAt, UploadActivityResponse response) {}
-
-  private long resolveTotalStorageBytes(final Instant now) {
-
-    final var cacheTtlSeconds = this.adminPlatformSettingsService.getStatsCacheTtlSeconds();
-    final StorageCache cached = this.storageCache.get();
-
-    if (cached != null
-        && now.isBefore(cached.cachedAt().plus(cacheTtlSeconds, ChronoUnit.SECONDS))) {
-      return cached.bytes();
-    }
-
-    final var bytes = this.repoStorageService.calculateTotalStorageBytes();
-    this.storageCache.set(new StorageCache(bytes, now));
-    return bytes;
   }
 
   private String normalizePeriod(final @Nullable String period) {

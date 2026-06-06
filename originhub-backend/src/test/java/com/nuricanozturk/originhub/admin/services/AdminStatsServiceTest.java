@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.admin.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.nuricanozturk.originhub.admin.dtos.RepoActivityStat;
@@ -51,7 +52,7 @@ class AdminStatsServiceTest {
   @BeforeEach
   void setUp() {
 
-    when(adminPlatformSettingsService.getStatsCacheTtlSeconds()).thenReturn(300L);
+    lenient().when(adminPlatformSettingsService.getStatsCacheTtlSeconds()).thenReturn(300L);
   }
 
   @Test
@@ -87,8 +88,8 @@ class AdminStatsServiceTest {
   }
 
   @Test
-  @DisplayName("getOverview serves cached response until refresh")
-  void getOverview_usesCacheUntilRefresh() {
+  @DisplayName("getOverview returns fromCache=false (caching delegated to Spring Redis proxy)")
+  void getOverview_alwaysReturnsFreshFlag() {
 
     when(tenantRepository.count()).thenReturn(10L);
     when(tenantRepository.countByEnabledTrue()).thenReturn(9L);
@@ -101,14 +102,8 @@ class AdminStatsServiceTest {
     when(organizationAdminPort.countOrganizations()).thenReturn(0L);
     when(organizationAdminPort.countSsoEnabledOrganizations()).thenReturn(0L);
 
-    adminStatsService.getOverview(false);
-    final var cached = adminStatsService.getOverview(false);
-
-    assertThat(cached.fromCache()).isTrue();
-
-    final var refreshed = adminStatsService.getOverview(true);
-
-    assertThat(refreshed.fromCache()).isFalse();
+    assertThat(adminStatsService.getOverview(false).fromCache()).isFalse();
+    assertThat(adminStatsService.getOverview(true).fromCache()).isFalse();
   }
 
   @Test
@@ -170,23 +165,8 @@ class AdminStatsServiceTest {
   }
 
   @Test
-  @DisplayName("evictAllCaches forces fresh overview on next request")
-  void evictAllCaches_clearsOverviewCache() {
-    when(tenantRepository.count()).thenReturn(10L);
-    when(tenantRepository.countByEnabledTrue()).thenReturn(9L);
-    when(repoRepository.count()).thenReturn(4L);
-    when(repoStorageService.calculateTotalStorageBytes()).thenReturn(1024L);
-    when(tenantRepository.countByCreatedAtAfter(org.mockito.ArgumentMatchers.any(Instant.class)))
-        .thenReturn(0L);
-    when(repoRepository.countByCreatedAtAfter(org.mockito.ArgumentMatchers.any(Instant.class)))
-        .thenReturn(0L);
-    when(organizationAdminPort.countOrganizations()).thenReturn(0L);
-    when(organizationAdminPort.countSsoEnabledOrganizations()).thenReturn(0L);
-
-    adminStatsService.getOverview(false);
+  @DisplayName("evictAllCaches completes without error")
+  void evictAllCaches_completesWithoutError() {
     adminStatsService.evictAllCaches();
-    final var refreshed = adminStatsService.getOverview(false);
-
-    assertThat(refreshed.fromCache()).isFalse();
   }
 }

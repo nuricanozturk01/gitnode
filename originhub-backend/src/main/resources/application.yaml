@@ -92,7 +92,7 @@ spring:
       jdbc:
         schema-initialization:
           enabled: false
-      republish-outstanding-events-on-restart: true
+      republish-outstanding-events-on-restart: false
       completion-mode: update
 
   datasource:

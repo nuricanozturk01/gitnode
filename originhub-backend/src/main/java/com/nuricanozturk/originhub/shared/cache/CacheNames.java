@@ -27,5 +27,9 @@ public final class CacheNames {
   public static final String SNIPPET_DETAIL = "snippet:detail";
   public static final String SNIPPET_LIST_PUBLIC = "snippet:list:public";
 
+  public static final String ADMIN_STATS_OVERVIEW = "admin:stats:overview";
+  public static final String ADMIN_STATS_REPO_ACTIVITY = "admin:stats:repo-activity";
+  public static final String ADMIN_STATS_UPLOAD_ACTIVITY = "admin:stats:upload-activity";
+
   private CacheNames() {}
 }

@@ -49,6 +49,7 @@ public class CacheConfig implements CachingConfigurer {
   private static final Duration COMMIT_TTL = Duration.ofMinutes(10);
   private static final Duration SNIPPET_DETAIL_TTL = Duration.ofMinutes(10);
   private static final Duration SNIPPET_LIST_PUBLIC_TTL = Duration.ofMinutes(2);
+  private static final Duration ADMIN_STATS_TTL = Duration.ofSeconds(300);
 
   @Bean
   public RedisCacheManager cacheManager(final RedisConnectionFactory connectionFactory) {
@@ -74,15 +75,21 @@ public class CacheConfig implements CachingConfigurer {
             .disableCachingNullValues();
 
     final Map<String, RedisCacheConfiguration> perRegion =
-        Map.of(
-            CacheNames.BRANCHES, defaultConfig.entryTtl(BRANCH_TTL),
-            CacheNames.TAGS, defaultConfig.entryTtl(TAG_TTL),
-            CacheNames.TREE, defaultConfig.entryTtl(TREE_TTL),
-            CacheNames.BLOB, defaultConfig.entryTtl(BLOB_TTL),
-            CacheNames.SNIPPET_DETAIL, defaultConfig.entryTtl(SNIPPET_DETAIL_TTL),
-            CacheNames.SNIPPET_LIST_PUBLIC, defaultConfig.entryTtl(SNIPPET_LIST_PUBLIC_TTL),
-            CacheNames.LANGUAGES, defaultConfig.entryTtl(LANGUAGE_TTL),
-            CacheNames.COMMITS, defaultConfig.entryTtl(COMMIT_TTL));
+        Map.ofEntries(
+            Map.entry(CacheNames.BRANCHES, defaultConfig.entryTtl(BRANCH_TTL)),
+            Map.entry(CacheNames.TAGS, defaultConfig.entryTtl(TAG_TTL)),
+            Map.entry(CacheNames.TREE, defaultConfig.entryTtl(TREE_TTL)),
+            Map.entry(CacheNames.BLOB, defaultConfig.entryTtl(BLOB_TTL)),
+            Map.entry(CacheNames.SNIPPET_DETAIL, defaultConfig.entryTtl(SNIPPET_DETAIL_TTL)),
+            Map.entry(
+                CacheNames.SNIPPET_LIST_PUBLIC, defaultConfig.entryTtl(SNIPPET_LIST_PUBLIC_TTL)),
+            Map.entry(CacheNames.LANGUAGES, defaultConfig.entryTtl(LANGUAGE_TTL)),
+            Map.entry(CacheNames.COMMITS, defaultConfig.entryTtl(COMMIT_TTL)),
+            Map.entry(CacheNames.ADMIN_STATS_OVERVIEW, defaultConfig.entryTtl(ADMIN_STATS_TTL)),
+            Map.entry(
+                CacheNames.ADMIN_STATS_REPO_ACTIVITY, defaultConfig.entryTtl(ADMIN_STATS_TTL)),
+            Map.entry(
+                CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY, defaultConfig.entryTtl(ADMIN_STATS_TTL)));
 
     return RedisCacheManager.builder(connectionFactory)
         .cacheDefaults(defaultConfig)

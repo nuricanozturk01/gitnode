@@ -17,6 +17,7 @@
 [![Prometheus](https://img.shields.io/badge/Prometheus-ready-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-ready-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Multi-Instance](https://img.shields.io/badge/Multi--Instance-ready-4CAF50?style=for-the-badge)](README.md#multi-instance-deployment)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 <br/>
@@ -308,13 +309,48 @@ cd originhub-admin-panel && pnpm install && pnpm start
 | `make up`            | Infra (Compose) + app container                 |
 | `make down`          | Stop and remove all containers                  |
 | `make infra`         | Postgres + Redis + Prometheus + Grafana only    |
-| `make app`           | Start app container only                        |
+| `make app`           | Start app container only (single instance)      |
+| `make app-scale N=3` | Start N app instances (internal only, no external ports) |
+| `make app-scale-stop N=3` | Stop N app instances                             |
+| `make proxy`         | Start HAProxy (HTTP `:8080`, SSH `:2222`) for scaled instances |
+| `make proxy-stop`    | Stop HAProxy                                    |
+| `make up-ha N=3`     | Full HA stack: infra + N instances + proxy      |
 | `make ldap-up`       | Start Docker OpenLDAP for LDAP E2E / testing    |
 | `make saml-keygen`   | Generate SP signing key pair (~/.originhub/saml/) |
 | `make logs`          | Follow app logs                                 |
 | `make logs-prometheus` / `make logs-grafana` | Observability logs        |
 | `make ps`            | List running containers                         |
 | `make purge`         | Remove everything including repo data ⚠️        |
+
+### Multi-Instance Deployment
+
+OriginHub supports production horizontal scaling. All critical shared-state concerns are handled:
+
+```bash
+make infra            # Postgres, Redis, Prometheus, Grafana
+make app-scale N=3    # 3 instances (no external ports — routed via proxy)
+make proxy            # HAProxy: HTTP on :8080, SSH on :2222
+
+# Or all at once:
+make up-ha N=3
+```
+
+All instances share:
+- **`originhub-repos` Docker volume** — Git repo data; JGit file-level locking handles concurrent access
+- **Redis** — DLQ retry lock (one instance per window), rate limiting, response cache, **and circuit breaker state**
+- **PostgreSQL** — all application state, Modulith event publication table
+
+**Circuit breaker state is shared across instances** via `DistributedCircuitBreakerGuard`: when any instance opens a CB for a webhook host (e.g. `webhook.example.com`), a Redis key is set with the CB's wait-duration as TTL. All other instances check Redis before attempting delivery — they immediately route to DLQ without burning retries.
+
+**SSH + HTTP load balancing** via HAProxy (`proxy/haproxy.cfg`):
+- SSH (`leastconn` balance) — distributes Git-over-SSH connections, honours long-lived session timeouts
+- HTTP (`roundrobin`) — distributes API/web traffic
+- TCP health checks — down instances are removed automatically, no manual intervention needed
+- Static backends for `originhub` + `originhub-1` through `originhub-4` (edit cfg to add more)
+
+Known limitations:
+- **Admin stats cache** is per-instance in-memory. Minor TTL-based inconsistency across instances — no correctness issue.
+- **Max 4 scaled instances** with the default HAProxy config. Edit `proxy/haproxy.cfg` to add more backends.
 
 ### Environment Variables
 
@@ -368,6 +404,7 @@ OriginHub is under active development. Here's what's planned:
 - [x] Webhook dead-letter queue (DLQ) with scheduled retry
 - [x] Circuit breakers (Resilience4j) for webhook delivery and SAML metadata
 - [x] JaCoCo CI coverage gate
+- [x] Multi-instance deployment (Redis distributed lock, shared volume)
 - [ ] Actions — CI/CD
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Two-factor authentication (TOTP)

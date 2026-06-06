@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.shared.lock.DistributedLockService;
 import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookRepository;
@@ -38,10 +39,13 @@ public class WebhookDlqRetryScheduler {
 
   private static final int MAX_DLQ_RETRIES = 3;
   private static final int DLQ_BACKOFF_MINUTES = 5;
+  private static final String LOCK_KEY = "lock:webhook:dlq:retry";
+  private static final Duration LOCK_TTL = Duration.ofMinutes(4);
 
   private final WebhookDeadLetterRepository deadLetterRepository;
   private final WebhookRepository webhookRepository;
   private final WebhookDeliveryService deliveryService;
+  private final DistributedLockService lockService;
   private final Counter dlqRetrySuccessCounter;
   private final Counter dlqRetryExhaustedCounter;
   private final int batchSize;
@@ -50,11 +54,13 @@ public class WebhookDlqRetryScheduler {
       final WebhookDeadLetterRepository deadLetterRepository,
       final WebhookRepository webhookRepository,
       final WebhookDeliveryService deliveryService,
+      final DistributedLockService lockService,
       final MeterRegistry meterRegistry,
       @Value("${originhub.webhook.dlq.batch-size:50}") final int batchSize) {
     this.deadLetterRepository = deadLetterRepository;
     this.webhookRepository = webhookRepository;
     this.deliveryService = deliveryService;
+    this.lockService = lockService;
     this.batchSize = batchSize;
     this.dlqRetrySuccessCounter =
         Counter.builder("webhook.dlq.retry.success")
@@ -69,14 +75,23 @@ public class WebhookDlqRetryScheduler {
   @Scheduled(cron = "${originhub.webhook.dlq.retry-cron:0 */5 * * * *}")
   @Transactional
   public void retryDeadLetters() {
-    final var due =
-        this.deadLetterRepository.findDueForRetry(
-            Instant.now(), MAX_DLQ_RETRIES, PageRequest.of(0, this.batchSize));
-    if (due.isEmpty()) {
+    final String owner = this.lockService.generateOwner();
+    if (!this.lockService.tryLock(LOCK_KEY, owner, LOCK_TTL)) {
+      log.debug("DLQ retry skipped — another instance holds the lock");
       return;
     }
-    log.info("DLQ retry run: {} entries due", due.size());
-    due.forEach(this::processEntry);
+    try {
+      final var due =
+          this.deadLetterRepository.findDueForRetry(
+              Instant.now(), MAX_DLQ_RETRIES, PageRequest.of(0, this.batchSize));
+      if (due.isEmpty()) {
+        return;
+      }
+      log.info("DLQ retry run: {} entries due", due.size());
+      due.forEach(this::processEntry);
+    } finally {
+      this.lockService.unlock(LOCK_KEY, owner);
+    }
   }
 
   private void processEntry(final WebhookDeadLetter dl) {

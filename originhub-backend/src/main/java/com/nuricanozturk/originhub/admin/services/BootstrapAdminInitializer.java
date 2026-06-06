@@ -15,8 +15,10 @@
  */
 package com.nuricanozturk.originhub.admin.services;
 
+import com.nuricanozturk.originhub.shared.lock.DistributedLockService;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
@@ -27,7 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Slf4j
 @Component
@@ -36,26 +38,33 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
 
   private static final int SALT_LENGTH = 16;
   private static final String BOOTSTRAP_EMAIL_DOMAIN = "@originhub.local";
+  private static final String BOOTSTRAP_LOCK_KEY = "lock:bootstrap:admin";
+  private static final Duration BOOTSTRAP_LOCK_TTL = Duration.ofSeconds(30);
 
   private final TenantRepository tenantRepository;
+  private final DistributedLockService lockService;
+  private final TransactionTemplate transactionTemplate;
   private final boolean enabled;
   private final String username;
   private final String password;
 
   public BootstrapAdminInitializer(
       final TenantRepository tenantRepository,
+      final DistributedLockService lockService,
+      final TransactionTemplate transactionTemplate,
       @Value("${originhub.bootstrap.admin.enabled:true}") final boolean enabled,
       @Value("${originhub.bootstrap.admin.username:admin}") final String username,
       @Value("${originhub.bootstrap.admin.password:}") final String password) {
 
     this.tenantRepository = tenantRepository;
+    this.lockService = lockService;
+    this.transactionTemplate = transactionTemplate;
     this.enabled = enabled;
     this.username = username;
     this.password = password;
   }
 
   @Override
-  @Transactional
   public void run(final ApplicationArguments args) {
 
     if (!this.enabled) {
@@ -67,25 +76,33 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
       return;
     }
 
-    final var normalizedUsername = this.username.toLowerCase(Locale.getDefault());
-
-    if (this.tenantRepository.existsByUsername(normalizedUsername)) {
-      log.info("Bootstrap admin already exists, skipping");
+    final String owner = this.lockService.generateOwner();
+    if (!this.lockService.tryLock(BOOTSTRAP_LOCK_KEY, owner, BOOTSTRAP_LOCK_TTL)) {
+      log.info("Bootstrap admin init skipped — another instance is bootstrapping");
       return;
     }
-
-    final var salt = RandomStringUtils.secure().nextAlphanumeric(SALT_LENGTH);
-
-    final var tenant = new Tenant();
-    tenant.setUsername(normalizedUsername);
-    tenant.setEmail(normalizedUsername + BOOTSTRAP_EMAIL_DOMAIN);
-    tenant.setHash(DigestUtils.sha256Hex(this.password + salt));
-    tenant.setSalt(salt);
-    tenant.setEnabled(true);
-    tenant.setCreatedAt(Instant.now());
-
-    this.tenantRepository.save(tenant);
-
-    log.info("Bootstrap admin user created: {}", normalizedUsername);
+    try {
+      this.transactionTemplate.execute(
+          status -> {
+            final var normalizedUsername = this.username.toLowerCase(Locale.getDefault());
+            if (this.tenantRepository.existsByUsername(normalizedUsername)) {
+              log.info("Bootstrap admin already exists, skipping");
+              return null;
+            }
+            final var salt = RandomStringUtils.secure().nextAlphanumeric(SALT_LENGTH);
+            final var tenant = new Tenant();
+            tenant.setUsername(normalizedUsername);
+            tenant.setEmail(normalizedUsername + BOOTSTRAP_EMAIL_DOMAIN);
+            tenant.setHash(DigestUtils.sha256Hex(this.password + salt));
+            tenant.setSalt(salt);
+            tenant.setEnabled(true);
+            tenant.setCreatedAt(Instant.now());
+            this.tenantRepository.save(tenant);
+            log.info("Bootstrap admin user created: {}", normalizedUsername);
+            return null;
+          });
+    } finally {
+      this.lockService.unlock(BOOTSTRAP_LOCK_KEY, owner);
+    }
   }
 }

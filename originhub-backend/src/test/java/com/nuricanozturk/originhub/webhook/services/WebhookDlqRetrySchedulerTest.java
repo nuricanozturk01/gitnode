@@ -24,6 +24,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.nuricanozturk.originhub.shared.lock.DistributedLockService;
 import com.nuricanozturk.originhub.webhook.entities.Webhook;
 import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
@@ -49,18 +50,33 @@ class WebhookDlqRetrySchedulerTest {
   @Mock private WebhookDeadLetterRepository deadLetterRepository;
   @Mock private WebhookRepository webhookRepository;
   @Mock private WebhookDeliveryService deliveryService;
+  @Mock private DistributedLockService lockService;
 
   private WebhookDlqRetryScheduler scheduler;
 
   @BeforeEach
   void setUp() {
+    when(lockService.generateOwner()).thenReturn("test-owner");
+    when(lockService.tryLock(any(), any(), any())).thenReturn(true);
     scheduler =
         new WebhookDlqRetryScheduler(
             deadLetterRepository,
             webhookRepository,
             deliveryService,
+            lockService,
             new SimpleMeterRegistry(),
             50);
+  }
+
+  @Test
+  @DisplayName("retryDeadLetters skips when distributed lock not acquired")
+  void retryDeadLetters_skips_whenLockNotAcquired() {
+    when(lockService.tryLock(any(), any(), any())).thenReturn(false);
+
+    scheduler.retryDeadLetters();
+
+    verify(deadLetterRepository, never()).findDueForRetry(any(), anyInt(), any(Pageable.class));
+    verify(deliveryService, never()).redeliverRaw(any(), any(), any());
   }
 
   @Test

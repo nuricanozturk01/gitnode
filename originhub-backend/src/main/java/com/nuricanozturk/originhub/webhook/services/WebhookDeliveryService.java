@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.shared.circuitbreaker.DistributedCircuitBreakerGuard;
 import com.nuricanozturk.originhub.webhook.entities.WebhookDeadLetter;
 import com.nuricanozturk.originhub.webhook.entities.WebhookEventType;
 import com.nuricanozturk.originhub.webhook.repositories.WebhookDeadLetterRepository;
@@ -59,6 +60,7 @@ public class WebhookDeliveryService {
   private final RestClient restClient;
   private final WebhookDeadLetterRepository deadLetterRepository;
   private final CircuitBreakerRegistry circuitBreakerRegistry;
+  private final DistributedCircuitBreakerGuard cbGuard;
   private final Counter deliverySuccessCounter;
   private final Counter deliveryFailureCounter;
   private final Timer deliveryTimer;
@@ -68,11 +70,13 @@ public class WebhookDeliveryService {
       @Qualifier("webhookRestClient") final RestClient restClient,
       final WebhookDeadLetterRepository deadLetterRepository,
       final CircuitBreakerRegistry circuitBreakerRegistry,
+      final DistributedCircuitBreakerGuard cbGuard,
       final MeterRegistry meterRegistry) {
     this.objectMapper = objectMapper;
     this.restClient = restClient;
     this.deadLetterRepository = deadLetterRepository;
     this.circuitBreakerRegistry = circuitBreakerRegistry;
+    this.cbGuard = cbGuard;
     this.deliverySuccessCounter =
         Counter.builder("webhook.delivery.success")
             .description("Successful webhook deliveries")
@@ -136,6 +140,15 @@ public class WebhookDeliveryService {
       final String logLabel) {
 
     final CircuitBreaker circuitBreaker = this.circuitBreakerFor(url);
+
+    if (this.cbGuard.isGloballyOpen(circuitBreaker.getName())) {
+      log.warn(
+          "{} circuit OPEN (globally via Redis), routing to DLQ id={} url={}", logLabel, id, url);
+      this.deliveryFailureCounter.increment();
+      this.saveDeadLetter(id, url, type, body, null);
+      return;
+    }
+
     Exception lastException = null;
     for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       try {
@@ -204,7 +217,9 @@ public class WebhookDeliveryService {
     } catch (final IllegalArgumentException ignored) {
       host = "unknown";
     }
-    return this.circuitBreakerRegistry.circuitBreaker("webhook." + host, WEBHOOK_CB_CONFIG);
+    final var cb = this.circuitBreakerRegistry.circuitBreaker("webhook." + host, WEBHOOK_CB_CONFIG);
+    this.cbGuard.registerIfAbsent(cb);
+    return cb;
   }
 
   private void doDeliver(final String url, final @Nullable String secret, final String body) {

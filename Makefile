@@ -23,8 +23,10 @@ REPOS_VOLUME   := originhub-repos
 POSTGRES_LOGS_VOLUME := originhub-postgres-logs
 SPRING_PROFILE := os
 
-HTTP_PORT := 8080
-SSH_PORT  := 2222
+HTTP_PORT  := 8080
+SSH_PORT   := 2222
+PROXY_NAME := originhub-proxy
+PROXY_IMAGE:= haproxy:3.0-alpine
 
 # OAuth2 – fill in before running
 GOOGLE_CLIENT_ID     := YOUR_CLIENT
@@ -34,10 +36,13 @@ GITHUB_CLIENT_SECRET := YOUR_SECRET
 GITLAB_CLIENT_ID     := YOUR_CLIENT
 GITLAB_CLIENT_SECRET := YOUR_SECRET
 
+N ?= 1
+
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: all up down start stop restart \
   infra infra-down infra-stop infra-start \
-  app app-stop \
+  app app-stop app-scale app-scale-stop \
+  proxy proxy-stop up-ha \
   ldap-up ldap-down \
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
@@ -118,6 +123,81 @@ app-stop:
 	-docker stop $(APP_NAME)
 	-docker rm   $(APP_NAME)
 
+# ── Multiple app instances (make app-scale N=3) ───────────────────────────────
+
+app-scale:
+	@for i in $$(seq 1 $(N)); do \
+		NAME=$(APP_NAME)-$$i; \
+		if docker ps -a --format "{{.Names}}" | grep -q "^$$NAME$$"; then \
+			echo "$$NAME already exists – skipping."; \
+		else \
+			docker run -d \
+				--name $$NAME \
+				--network $(NETWORK) \
+				-e JAVA_TOOL_OPTIONS="-Xms256m -Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=100" \
+				-e SPRING_DATASOURCE_URL=jdbc:postgresql://$(POSTGRES_NAME):5432/$(POSTGRES_DB) \
+				-e SPRING_DATASOURCE_USERNAME=$(POSTGRES_USER) \
+				-e SPRING_DATASOURCE_PASSWORD=$(POSTGRES_PASS) \
+				-e ORIGINHUB_JWT_SECRET=$(JWT_SECRET) \
+				-e ORIGINHUB_GIT_REPO__ROOT=$(GIT_REPO_ROOT) \
+				-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
+				-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
+				-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
+				-e ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY=/var/log/postgresql \
+				-e ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true \
+				-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
+				-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
+				-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
+				-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
+				-e OAUTH2_GITHUB_CLIENT_SECRET=$(GITHUB_CLIENT_SECRET) \
+				-e OAUTH2_GITLAB_CLIENT_ID=$(GITLAB_CLIENT_ID) \
+				-e OAUTH2_GITLAB_CLIENT_SECRET=$(GITLAB_CLIENT_SECRET) \
+				-v $(REPOS_VOLUME):$(GIT_REPO_ROOT) \
+				-v $(POSTGRES_LOGS_VOLUME):/var/log/postgresql:ro \
+				$(IMAGE) \
+			&& echo "Started $$NAME (internal only — use 'make proxy' for external access)"; \
+		fi; \
+	done
+
+app-scale-stop:
+	@for i in $$(seq 1 $(N)); do \
+		NAME=$(APP_NAME)-$$i; \
+		docker stop $$NAME 2>/dev/null && docker rm $$NAME 2>/dev/null && echo "Stopped $$NAME" || echo "$$NAME not running"; \
+	done
+
+# ── HAProxy TCP proxy (HTTP + SSH load balancer) ──────────────────────────────
+
+proxy:
+	@docker ps -a --format "{{.Names}}" | grep -q "^$(PROXY_NAME)$$" \
+		&& echo "$(PROXY_NAME) already exists – skipping." \
+		|| docker run -d \
+			--name $(PROXY_NAME) \
+			--network $(NETWORK) \
+			-p $(HTTP_PORT):8080 \
+			-p $(SSH_PORT):22 \
+			-v $(PWD)/proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
+			$(PROXY_IMAGE) \
+		&& echo "" \
+		&& echo "  HAProxy running:" \
+		&& echo "  HTTP → http://localhost:$(HTTP_PORT)  (round-robin across instances)" \
+		&& echo "  SSH  → localhost:$(SSH_PORT)          (least-conn across instances)" \
+		&& echo ""
+
+proxy-stop:
+	-docker stop $(PROXY_NAME)
+	-docker rm   $(PROXY_NAME)
+
+# ── High-availability stack (infra + N instances + proxy) ────────────────────
+
+up-ha: infra app-scale proxy
+	@echo ""
+	@echo "  OriginHub HA stack is up ($(N) instance(s) + HAProxy)"
+	@echo "  App (via proxy) → http://localhost:$(HTTP_PORT)"
+	@echo "  SSH (via proxy) → localhost:$(SSH_PORT)"
+	@echo "  Prometheus       → http://localhost:9090"
+	@echo "  Grafana          → http://localhost:3000 (admin / admin)"
+	@echo ""
+
 # ── Logs ──────────────────────────────────────────────────────────────────────
 
 logs:
@@ -168,8 +248,9 @@ sync-postgres-logs:
 ps:
 	docker ps --filter "network=$(NETWORK)" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-purge: down
+purge: down proxy-stop
 	-docker volume rm $(REPOS_VOLUME)
+	-docker volume rm $(POSTGRES_LOGS_VOLUME)
 	@echo "All OriginHub resources removed (containers + volumes)."
 
 help:
@@ -188,6 +269,11 @@ help:
 	@echo "  make infra-start       → docker compose start"
 	@echo "  make app               → Start app container only"
 	@echo "  make app-stop          → Stop & remove app container"
+	@echo "  make app-scale N=3     → Start N app instances (no external ports — use proxy)"
+	@echo "  make app-scale-stop N=3→ Stop N app instances"
+	@echo "  make proxy             → Start HAProxy (HTTP:$(HTTP_PORT) + SSH:$(SSH_PORT)) for scaled instances"
+	@echo "  make proxy-stop        → Stop HAProxy"
+	@echo "  make up-ha N=3         → infra + 3 instances + proxy (full HA stack)"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make logs              → Follow app logs"
 	@echo "  make logs-db           → Follow Postgres logs"

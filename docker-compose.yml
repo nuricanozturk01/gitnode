@@ -35,7 +35,7 @@ services:
   redis:
     container_name: originhub-redis
     image: redis:7-alpine
-    command: redis-server --save "" --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --save "" --maxmemory 512mb --maxmemory-policy volatile-lru
     ports:
       - "6379:6379"
     healthcheck:
@@ -85,3 +85,5 @@ networks:
 volumes:
   postgres-logs:
     name: originhub-postgres-logs
+  originhub-repos:
+    name: originhub-repos

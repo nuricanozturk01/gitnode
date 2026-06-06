@@ -26,13 +26,15 @@ COPY pom.xml ./
 COPY .mvn ./.mvn
 COPY originhub-backend/pom.xml ./originhub-backend/
 COPY originhub-actions/pom.xml ./originhub-actions/
-RUN mvn dependency:go-offline -pl originhub-backend -q
+COPY originhub-events/pom.xml ./originhub-events/
+RUN mvn dependency:go-offline -pl originhub-backend -am -q
 
 COPY --from=frontend-build /app/dist/originhub-frontend/browser \
      ./originhub-backend/src/main/resources/static
 
 COPY originhub-backend/src ./originhub-backend/src
-RUN mvn package -pl originhub-backend -DskipTests -Derrorprone.skip=true
+COPY originhub-events/src ./originhub-events/src
+RUN mvn package -pl originhub-backend -am -DskipTests -Derrorprone.skip=true
 
 # ─── Stage 3: Final Image ─────────────────────────────────────────────────
 FROM eclipse-temurin:25-jre-alpine

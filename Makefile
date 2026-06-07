@@ -39,16 +39,23 @@ GITLAB_CLIENT_ID     := YOUR_CLIENT
 GITLAB_CLIENT_SECRET := YOUR_SECRET
 
 N ?= 1
+ADMIN_ENABLED  ?= true
 
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: all up down start stop restart \
   infra infra-down infra-stop infra-start \
+  monitoring monitoring-down \
   app app-stop app-scale app-scale-stop \
   proxy proxy-stop up-ha \
   runner-build runner-build-all \
   ldap-up ldap-down \
+  dev-setup dev-backend \
+  test test-backend test-runner test-lint verify \
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
+
+LOCAL_CONFIG := originhub-backend/src/main/resources/application-local.yaml
+LOCAL_CONFIG_EXAMPLE := originhub-backend/src/main/resources/application-local.yaml.example
 
 all: up
 
@@ -59,8 +66,8 @@ up: infra app
 	@echo "  OriginHub stack is up"
 	@echo "  App         → http://localhost:$(HTTP_PORT)"
 	@echo "  SSH         → localhost:$(SSH_PORT)"
-	@echo "  Prometheus  → http://localhost:9090"
-	@echo "  Grafana     → http://localhost:3000  (admin / admin)"
+	@echo "  Admin API   → $(if $(filter false,$(ADMIN_ENABLED)),disabled — ADMIN_ENABLED=false,enabled (default))"
+	@echo "  Monitoring  → optional: make monitoring"
 	@echo ""
 
 down: app-stop infra-down
@@ -73,7 +80,7 @@ stop: app-stop infra-stop
 
 restart: stop start
 
-# ── Infrastructure (Postgres · Redis · Prometheus · Grafana) ─────────────────
+# ── Infrastructure (Postgres · Redis) ───────────────────────────────────────
 
 infra:
 	docker compose up -d --build
@@ -89,6 +96,19 @@ infra-start:
 
 infra-down:
 	docker compose down
+
+# ── Observability (optional) ──────────────────────────────────────────────────
+
+monitoring:
+	docker compose --profile monitoring up -d prometheus grafana
+	@echo ""
+	@echo "  Monitoring stack is up"
+	@echo "  Prometheus  → http://localhost:9090"
+	@echo "  Grafana     → http://localhost:3000  (admin / admin)"
+	@echo ""
+
+monitoring-down:
+	docker compose --profile monitoring stop prometheus grafana
 
 # ── App container ─────────────────────────────────────────────────────────────
 
@@ -109,9 +129,8 @@ app:
 			-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
 			-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
-			-e ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY=/var/log/postgresql \
-			-e ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true \
 			-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
+			-e ORIGINHUB_ADMIN_ENABLED=$(ADMIN_ENABLED) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
 			-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
@@ -119,7 +138,6 @@ app:
 			-e OAUTH2_GITLAB_CLIENT_ID=$(GITLAB_CLIENT_ID) \
 			-e OAUTH2_GITLAB_CLIENT_SECRET=$(GITLAB_CLIENT_SECRET) \
 			-v $(REPOS_VOLUME):$(GIT_REPO_ROOT) \
-			-v $(POSTGRES_LOGS_VOLUME):/var/log/postgresql:ro \
 			$(IMAGE)
 
 app-stop:
@@ -146,9 +164,8 @@ app-scale:
 				-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
 				-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
 				-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
-				-e ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY=/var/log/postgresql \
-				-e ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true \
 				-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
+				-e ORIGINHUB_ADMIN_ENABLED=$(ADMIN_ENABLED) \
 				-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 				-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
 				-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
@@ -156,7 +173,6 @@ app-scale:
 				-e OAUTH2_GITLAB_CLIENT_ID=$(GITLAB_CLIENT_ID) \
 				-e OAUTH2_GITLAB_CLIENT_SECRET=$(GITLAB_CLIENT_SECRET) \
 				-v $(REPOS_VOLUME):$(GIT_REPO_ROOT) \
-				-v $(POSTGRES_LOGS_VOLUME):/var/log/postgresql:ro \
 				$(IMAGE) \
 			&& echo "Started $$NAME (internal only — use 'make proxy' for external access)"; \
 		fi; \
@@ -197,9 +213,45 @@ up-ha: infra app-scale proxy
 	@echo "  OriginHub HA stack is up ($(N) instance(s) + HAProxy)"
 	@echo "  App (via proxy) → http://localhost:$(HTTP_PORT)"
 	@echo "  SSH (via proxy) → localhost:$(SSH_PORT)"
-	@echo "  Prometheus       → http://localhost:9090"
-	@echo "  Grafana          → http://localhost:3000 (admin / admin)"
+	@echo "  Monitoring      → optional: make monitoring"
 	@echo ""
+
+# ── Local development ─────────────────────────────────────────────────────────
+
+dev-setup:
+	@test -f $(LOCAL_CONFIG) || (cp $(LOCAL_CONFIG_EXAMPLE) $(LOCAL_CONFIG) && echo "Created $(LOCAL_CONFIG) from example.")
+	@$(MAKE) infra
+	@cd originhub-frontend && pnpm install
+	@cd originhub-admin-panel && pnpm install
+	@cd e2e && pnpm install
+	@echo ""
+	@echo "  Dev setup complete"
+	@echo "  1. make dev-backend          → API at http://localhost:8080"
+	@echo "  2. cd originhub-frontend && pnpm start  → UI at http://localhost:4200"
+	@echo "  Bootstrap admin: admin / Admin123"
+	@echo ""
+
+dev-backend:
+	./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
+
+# ── Tests (no running server required) ────────────────────────────────────────
+
+test: test-backend test-runner test-lint
+	@echo "All tests passed."
+
+test-backend:
+	./mvnw test
+
+test-runner:
+	$(MAKE) -C $(RUNNER_DIR) test
+
+test-lint:
+	cd originhub-frontend && pnpm lint
+	cd originhub-admin-panel && pnpm lint
+	cd e2e && pnpm lint
+
+verify:
+	./mvnw verify
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 
@@ -270,13 +322,15 @@ help:
 	@echo ""
 	@echo "  OriginHub Makefile"
 	@echo "  ──────────────────────────────────────────────────────"
-	@echo "  make up                → Build infra + start full stack"
+	@echo "  make up                → Postgres + Redis + app container"
 	@echo "  make down              → Stop & remove all containers"
 	@echo "  make start             → Start stopped containers"
 	@echo "  make stop              → Stop containers (keep them)"
 	@echo "  make restart           → stop + start"
 	@echo "  ──────────────────────────────────────────────────────"
-	@echo "  make infra             → docker compose up (pg/redis/prom/grafana)"
+	@echo "  make infra             → docker compose up (pg + redis only)"
+	@echo "  make monitoring        → Start Prometheus + Grafana (optional)"
+	@echo "  make monitoring-down   → Stop Prometheus + Grafana"
 	@echo "  make infra-down        → docker compose down"
 	@echo "  make infra-stop        → docker compose stop"
 	@echo "  make infra-start       → docker compose start"
@@ -303,5 +357,14 @@ help:
 	@echo "  make ldap-up           → Start Docker OpenLDAP for LDAP E2E (port $(LDAP_PORT):10389)"
 	@echo "  make ldap-down         → Stop & remove LDAP test container"
 	@echo "  make saml-keygen       → Generate SP signing key pair (~/.originhub/saml/)"
+	@echo "  ──────────────────────────────────────────────────────"
+	@echo "  make dev-setup         → Infra + pnpm install + local config template"
+	@echo "  make dev-backend       → Run backend with local profile (:8080)"
+	@echo "  ADMIN_ENABLED=false make up → Docker stack without admin API"
+	@echo "  make test              → Backend + runner + frontend lint"
+	@echo "  make test-backend      → ./mvnw test"
+	@echo "  make test-runner       → Go tests"
+	@echo "  make test-lint         → ESLint (frontend, admin, e2e)"
+	@echo "  make verify            → Full backend CI gate"
 	@echo "  make help              → This message"
 	@echo ""

@@ -1,28 +1,25 @@
 # OriginHub Frontend
 
-Main Angular 21 SPA — repo browsing, PRs, issues, Actions, settings.
+Main Angular SPA — repos, PRs, issues, Actions.
 
-## Requirements
+Part of **base app**. Run profile: [CONTRIBUTING.md](../CONTRIBUTING.md#base-app--frontend--backend)
 
-Node.js **24** · pnpm · Backend at http://localhost:8080
-
-## Quick start
+## Run
 
 ```bash
-make dev-setup          # from repo root (once)
-cp .env.example .env    # optional
-
-pnpm start              # http://localhost:4200
+make dev-backend                  # terminal 1 — backend :8080
+cd originhub-frontend && pnpm start   # terminal 2 → :4200
 ```
 
-`set-env.js` runs before start/build and writes `src/environments/environment.ts` from `.env`.
+First time: `make dev-setup` from repo root.
 
 ## Scripts
 
-| Command                       | Description         |
-|-------------------------------|---------------------|
-| `pnpm start`                  | Dev server on :4200 |
-| `pnpm build`                  | Production build    |
-| `pnpm lint` / `pnpm lint-fix` | ESLint              |
-| `pnpm test`                   | Karma unit tests    |
-| `pnpm format`                 | Prettier            |
+| Command | Runs |
+|---------|------|
+| `pnpm start` | Dev server :4200 |
+| `pnpm build` | Production build |
+| `pnpm lint` | ESLint |
+| `pnpm test` | Karma unit tests |
+
+`set-env.js` writes `environment.ts` from `.env` (optional — see `.env.example`).

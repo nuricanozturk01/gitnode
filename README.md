@@ -205,14 +205,20 @@ Config file (`~/.originhub-runner/config.yml`) is written automatically after fi
 
 ### 📊 Admin Panel
 
-Separate Angular app for **platform administrators** (not repo owners):
+**Optional.** Separate Angular app — not started with core stack.
+
+- Backend on by default — disable with `ORIGINHUB_ADMIN_ENABLED=false` (admin module not loaded when `false`)
+- Dev: `cd originhub-admin-panel && pnpm start` → http://localhost:4300
+- See [originhub-admin-panel/README.md](originhub-admin-panel/README.md)
+
+Features when enabled:
 
 - **Dashboard** — users, repositories, organizations, storage; activity tables (daily/weekly); top contributors; cached stats
 - **Users** — search, enable/disable accounts
 - **Organizations** — create, edit, delete; configure **SAML** or **LDAP** per org; test connections before enabling
 - **Audit log API** — query application audit events (`GET /api/admin/audit-logs`)
 
-See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for setup. Requires `ORIGINHUB_PLATFORM_ADMIN_USERNAMES` and bootstrap admin credentials.
+See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for setup. Platform admin access needs bootstrap credentials (see Environment Variables in README).
 
 ### ⚡ Rate Limiting
 
@@ -222,8 +228,11 @@ See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for set
 
 ### 📈 Prometheus & Grafana Observability
 
+**Optional.** Monitoring containers are not started by default — run `make monitoring` when needed.
+
 - **Micrometer** metrics exported at `/actuator/prometheus` (toggle with `ORIGINHUB_OBSERVABILITY_ENABLED`)
-- **Docker Compose** includes Prometheus (**9090**) and Grafana (**3000**, admin / admin) with a pre-provisioned OriginHub dashboard
+- **Docker Compose profile `monitoring`** — Prometheus (**9090**) and Grafana (**3000**, admin / admin)
+- See [monitoring/README.md](monitoring/README.md) for setup
 - Scrape targets: app container (`originhub:8080`) or host-run backend (`host.docker.internal:8080`)
 - **Circuit breaker health** at `/actuator/circuitbreakers` — real-time `CLOSED / OPEN / HALF_OPEN` state for webhook delivery and SAML metadata circuit breakers; included in `/actuator/health` details
 
@@ -231,7 +240,7 @@ See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for set
 
 - **Application audit log** — `@Audited` actions persisted to partitioned `audit_logs` tables (append-only triggers)
 - **Admin API** — paginated queries by actor and recent window
-- **pgAudit** — custom Postgres image logs write, DDL, and role operations to container stderr (`shared_preload_libraries=pgaudit`)
+- **pgAudit** — Postgres image logs write, DDL, and role operations (`shared_preload_libraries=pgaudit`). Admin log viewer is **off by default** — set `ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true` and mount the Postgres log volume into the app container.
 - Toggle application audit with `ORIGINHUB_AUDIT_ENABLED` (default `true`)
 
 ### 🔐 Authentication
@@ -271,14 +280,36 @@ See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for set
 
 > 📖 Full documentation: **[originhub.nuricanozturk.com/docs](https://originhub.nuricanozturk.com/docs)** *(documentation only — not deployed to cloud)*
 
+### Developing locally
+
+See **[CONTRIBUTING.md](CONTRIBUTING.md)** for run profiles, Makefile commands, and module docs.
+
+**Base app** (Frontend + Backend):
+
+```bash
+make dev-setup && make dev-backend          # terminal 1
+cd originhub-frontend && pnpm start         # terminal 2 → :4200
+```
+
+**Full app** (+ Grafana + Admin): see [CONTRIBUTING.md#run-profiles](CONTRIBUTING.md#run-profiles)
+
+```bash
+make test    # unit tests + lint
+```
+
 ### Option 1 — Docker Run
 
 ```bash
 SECRET=$(openssl rand -base64 64 | tr -d '\n')
-docker network create originhub
 
-# Infrastructure (Postgres with pgAudit, Redis, Prometheus, Grafana)
+# Infrastructure (Postgres with pgAudit, Redis) — creates the originhub network
 docker compose up -d
+
+# Optional: Prometheus + Grafana
+docker compose --profile monitoring up -d
+
+# Optional: admin panel UI (dev, separate terminal)
+# cd originhub-admin-panel && pnpm install && pnpm start   → http://localhost:4300
 
 docker run -d \
   --name originhub \
@@ -295,63 +326,59 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=os \
   -e ORIGINHUB_OBSERVABILITY_ENABLED=true \
   -e ORIGINHUB_AUDIT_ENABLED=true \
+  -e ORIGINHUB_ADMIN_ENABLED=true \
+  -e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
+  -e ORIGINHUB_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300 \
   -v originhub-repos:/data/repos \
   repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 ```
 
-### Option 2 — Makefile + Docker Compose (recommended)
+**Admin API:** `-e ORIGINHUB_ADMIN_ENABLED=true` (default) loads `/api/admin/**`. Disable: `-e ORIGINHUB_ADMIN_ENABLED=false` — admin module not loaded at runtime.
+
+### Option 2 — Makefile (recommended)
+
+**Base stack** — Postgres + Redis + app:
 
 ```bash
-git clone https://github.com/nuricanozturk01/originhub.git
-cd originhub
-make up          # Postgres (pgAudit) + Redis + Prometheus + Grafana + app
+make up          # → http://localhost:8080
 ```
 
-Edit the variables at the top of the `Makefile` before running — at minimum review `JWT_SECRET`. OAuth2 and SSO keys are optional.
-
-| Service     | URL                          |
-|-------------|------------------------------|
-| App         | http://localhost:8080        |
-| SSH Git     | localhost:2222               |
-| Prometheus  | http://localhost:9090        |
-| Grafana     | http://localhost:3000 (admin / admin) |
-| Admin panel | http://localhost:4300 (dev — run separately) |
-
-**Admin panel (local dev):**
+**Optional add-ons:**
 
 ```bash
-cd originhub-admin-panel && pnpm install && pnpm start
-# Sign in with bootstrap admin (see application-local.yaml)
+make monitoring                  # Prometheus + Grafana
+cd originhub-admin-panel && pnpm start   # admin UI → :4300 (API on by default)
 ```
 
-| Target               | Description                                     |
-|----------------------|-------------------------------------------------|
-| `make up`            | Infra (Compose) + app container                 |
-| `make down`          | Stop and remove all containers                  |
-| `make infra`         | Postgres + Redis + Prometheus + Grafana only    |
-| `make app`           | Start app container only (single instance)      |
-| `make app-scale N=3` | Start N app instances (internal only, no external ports) |
-| `make app-scale-stop N=3` | Stop N app instances                             |
-| `make proxy`         | Start HAProxy (HTTP `:8080`, SSH `:2222`) for scaled instances |
-| `make proxy-stop`    | Stop HAProxy                                    |
-| `make up-ha N=3`     | Full HA stack: infra + N instances + proxy      |
-| `make ldap-up`       | Start Docker OpenLDAP for LDAP E2E / testing    |
-| `make saml-keygen`   | Generate SP signing key pair (~/.originhub/saml/) |
-| `make logs`          | Follow app logs                                 |
-| `make logs-prometheus` / `make logs-grafana` | Observability logs        |
-| `make ps`            | List running containers                         |
-| `make purge`         | Remove everything including repo data ⚠️        |
+Disable admin API on Docker:
+
+```bash
+ADMIN_ENABLED=false make up      # first start
+# already running: make app-stop && ADMIN_ENABLED=false make app
+```
+
+All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
+
+| Service | URL | Default |
+|---------|-----|---------|
+| App | http://localhost:8080 | ✅ |
+| SSH Git | localhost:2222 | ✅ |
+| Frontend (dev) | http://localhost:4200 | manual — `pnpm start` |
+| Admin panel | http://localhost:4300 | optional |
+| Prometheus | http://localhost:9090 | optional — `make monitoring` |
+| Grafana | http://localhost:3000 | optional — `make monitoring` |
 
 ### Multi-Instance Deployment
 
 OriginHub supports production horizontal scaling. All critical shared-state concerns are handled:
 
 ```bash
-make infra            # Postgres, Redis, Prometheus, Grafana
-make app-scale N=3    # 3 instances (no external ports — routed via proxy)
+make infra            # Postgres + Redis
+make monitoring       # optional — Prometheus + Grafana
+make app-scale N=3    # 3 instances (no external ports — use proxy)
 make proxy            # HAProxy: HTTP on :8080, SSH on :2222
 
-# Or all at once:
+# Or infra + N instances + proxy in one step:
 make up-ha N=3
 ```
 
@@ -376,13 +403,16 @@ Known limitations:
 
 | Variable                       | Required | Default               | Description                          |
 |--------------------------------|----------|-----------------------|--------------------------------------|
+| `ORIGINHUB_ADMIN_ENABLED`      |          | `true`                | Load admin module (`/api/admin/**`) |
+| `ORIGINHUB_ADMIN_PGAUDIT_ENABLED` |       | `false`               | Admin panel pgAudit log viewer |
+| `ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY` | | —                 | Postgres log dir in app container (enable viewer) |
 | `ORIGINHUB_JWT_SECRET`         | ✅        | —                     | Min 32-char secret for JWT signing   |
 | `ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME` |   | `admin`               | First-start platform admin username  |
 | `ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD` | ✅ prod | —                 | Bootstrap admin password (empty skips) |
 | `ORIGINHUB_PLATFORM_ADMIN_USERNAMES` |   | —                     | Comma-separated platform admin usernames |
 | `ORIGINHUB_GIT_REPO__ROOT`     |          | `/data/repos`         | Git repository storage path          |
 | `ORIGINHUB_FRONTEND_BASE_URL`  |          | `http://localhost:8080` | Public base URL                    |
-| `ORIGINHUB_CORS_ALLOWED_ORIGINS` |       | `4200,4300`           | CORS origins (include admin panel)   |
+| `ORIGINHUB_CORS_ALLOWED_ORIGINS` |       | `http://localhost:4200,http://localhost:4300` | CORS origins (add admin panel URL) |
 | `ORIGINHUB_AUDIT_ENABLED`      |          | `true`                | Application audit log                |
 | `ORIGINHUB_OBSERVABILITY_ENABLED` |       | `true`                | Prometheus `/actuator/prometheus`    |
 | `ORIGINHUB_SSO_SAML_ENABLED`   |          | `false`               | Global SAML feature flag             |

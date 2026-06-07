@@ -1,3 +1,8 @@
+# Local development profile — copy to application-local.yaml (gitignored).
+#   cp application-local.yaml.example application-local.yaml
+#
+# Same key set as application.yaml; local dev values. Requires: make infra
+
 server:
   port: 8080
   http2:
@@ -13,80 +18,69 @@ server:
 
 originhub:
   platform:
-    admin-usernames: ${ORIGINHUB_PLATFORM_ADMIN_USERNAMES:}
+    admin-usernames: admin
   bootstrap:
     admin:
-      username: ${ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME:admin}
-      # Set ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD in production; empty skips bootstrap (warn log)
-      password: ${ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD:}
-      enabled: ${ORIGINHUB_BOOTSTRAP_ADMIN_ENABLED:true}
+      username: admin
+      password: Admin123
+      enabled: true
   admin:
-    # Master switch: when false, admin module beans (/api/admin/**) are not loaded at runtime.
-    enabled: ${ORIGINHUB_ADMIN_ENABLED:true}
+    enabled: true
     stats:
-      # Statistics responses are cached in memory for this many seconds (overridable in admin Settings)
-      cache-ttl-seconds: ${ORIGINHUB_ADMIN_STATS_CACHE_TTL_SECONDS:300}
+      cache-ttl-seconds: 300
     pgaudit:
-      enabled: ${ORIGINHUB_ADMIN_PGAUDIT_ENABLED:false}
-      # Mount the Postgres log volume into the app container (see docker-compose / Makefile)
-      log-directory: ${ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY:}
-      max-scan-lines: ${ORIGINHUB_ADMIN_PGAUDIT_MAX_SCAN_LINES:50000}
-      # Local dev only: docker cp Postgres logs on startup (local profile)
-      local-sync-container: ${ORIGINHUB_ADMIN_PGAUDIT_LOCAL_SYNC_CONTAINER:originhub-postgres}
-      local-sync-on-startup: ${ORIGINHUB_ADMIN_PGAUDIT_LOCAL_SYNC_ON_STARTUP:false}
+      enabled: false
+      log-directory: ${ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY:${user.home}/.originhub/postgres-logs}
+      max-scan-lines: 50000
+      local-sync-container: originhub-postgres
+      local-sync-on-startup: false
     modulith-events:
-      enabled: ${ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED:false}
+      enabled: true
   http:
-    enabled: ${ORIGINHUB_HTTP_ENABLED:true}
+    enabled: true
     port: 8080
   ssh:
     port: 2222
     host-path: ${originhub.git.repo-root}/.hosts
     host-key-path: ${originhub.ssh.host-path}/ssh_host_key
   jwt:
-    secret: ${ORIGINHUB_JWT_SECRET}
+    secret: CHANGE_ME_local_dev_jwt_secret_min_32_chars
   cors:
-    allowed-origins: ${ORIGINHUB_CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:4300,https://originhub.nuricanozturk.com}
+    allowed-origins: http://localhost:4200,http://localhost:4300
   frontend:
-    base-url: ${ORIGINHUB_FRONTEND_BASE_URL:http://localhost:4200}
+    base-url: http://localhost:4200
   git:
-    repo-root: ${ORIGINHUB_GIT_REPO__ROOT:${user.home}/.originhub}
+    repo-root: ${user.home}/.originhub
   audit:
-    enabled: ${ORIGINHUB_AUDIT_ENABLED:true}
+    enabled: true
   actions:
-    enabled: ${ORIGINHUB_ACTIONS_ENABLED:true}
+    enabled: true
     runner:
-      # Runners not seen within this window are marked offline
-      heartbeat-timeout-seconds: ${ORIGINHUB_ACTIONS_RUNNER_HEARTBEAT_TIMEOUT:60}
-      # Hard limit per job; runner will be told to abort after this
-      job-timeout-minutes: ${ORIGINHUB_ACTIONS_RUNNER_JOB_TIMEOUT_MINUTES:360}
+      heartbeat-timeout-seconds: 60
+      job-timeout-minutes: 360
     artifacts:
-      store-type: ${ORIGINHUB_ACTIONS_ARTIFACTS_STORE_TYPE:local}
+      store-type: local
       local-path: ${originhub.git.repo-root}/artifacts
     cache:
-      max-size-gb: ${ORIGINHUB_ACTIONS_CACHE_MAX_SIZE_GB:10}
+      max-size-gb: 10
     secrets:
-      # 32-byte AES-256 key, base64-encoded. Required to enable the secrets vault.
-      encryption-key: ${ACTIONS_ENCRYPTION_KEY:}
+      encryption-key: ${ACTIONS_ENCRYPTION_KEY:CHANGE_ME_base64_32_byte_key}
   webhook:
     dlq:
-      retry-cron: ${ORIGINHUB_WEBHOOK_DLQ_RETRY_CRON:0 */5 * * * *}
-      batch-size: ${ORIGINHUB_WEBHOOK_DLQ_BATCH_SIZE:50}
+      retry-cron: 0 */5 * * * *
+      batch-size: 50
   sso:
     ldap:
-      # Master switch for LDAP login/discover endpoints. Per-org LDAP config lives in admin panel.
-      enabled: ${ORIGINHUB_SSO_LDAP_ENABLED:false}
+      enabled: false
     saml:
-      enabled: ${ORIGINHUB_SSO_SAML_ENABLED:false}
-      # Legacy self-hosted fallback when no DB organizations have SSO enabled
-      registration-id: ${ORIGINHUB_SSO_SAML_REGISTRATION_ID:saml}
-      idp-metadata-uri: ${ORIGINHUB_SSO_SAML_IDP_METADATA_URI:}
-      sp-entity-id: ${ORIGINHUB_SSO_SAML_SP_ENTITY_ID:originhub}
-      # Default attribute names for legacy registration-id only; per-org overrides live in DB
-      email-attribute: ${ORIGINHUB_SSO_SAML_EMAIL_ATTRIBUTE:email}
-      username-attribute: ${ORIGINHUB_SSO_SAML_USERNAME_ATTRIBUTE:}
-      sp-signing-key-path: ${ORIGINHUB_SSO_SAML_SP_SIGNING_KEY_PATH:}
-      sp-signing-cert-path: ${ORIGINHUB_SSO_SAML_SP_SIGNING_CERT_PATH:}
+      enabled: false
+      registration-id: saml
+      idp-metadata-uri: ""
+      sp-entity-id: originhub
+      email-attribute: email
+      username-attribute: ""
+      sp-signing-key-path: ${user.home}/.originhub/saml/sp-signing.key
+      sp-signing-cert-path: ${user.home}/.originhub/saml/sp-signing.crt
 
 app:
   schema: public
@@ -96,8 +90,8 @@ spring:
     type: redis
   data:
     redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
+      host: localhost
+      port: 6379
   threads:
     virtual:
       enabled: true
@@ -112,13 +106,13 @@ spring:
       jdbc:
         schema-initialization:
           enabled: false
-      republish-outstanding-events-on-restart: false
+      republish-outstanding-events-on-restart: true
       completion-mode: update
 
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/originhub}
-    username: ${SPRING_DATASOURCE_USERNAME:admin}
-    password: ${SPRING_DATASOURCE_PASSWORD:admin123}
+    url: jdbc:postgresql://localhost:5432/originhub
+    username: admin
+    password: admin123
     hikari:
       maximum-pool-size: 15
       minimum-idle: 3
@@ -154,22 +148,22 @@ spring:
       client:
         registration:
           google:
-            client-id: ${OAUTH2_GOOGLE_CLIENT_ID}
-            client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET}
+            client-id: ${OAUTH2_GOOGLE_CLIENT_ID:}
+            client-secret: ${OAUTH2_GOOGLE_CLIENT_SECRET:}
             scope: profile, email
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
             authorization-grant-type: authorization_code
             client-name: Google
           github:
-            client-id: ${OAUTH2_GITHUB_CLIENT_ID}
-            client-secret: ${OAUTH2_GITHUB_CLIENT_SECRET}
+            client-id: ${OAUTH2_GITHUB_CLIENT_ID:}
+            client-secret: ${OAUTH2_GITHUB_CLIENT_SECRET:}
             scope: profile, email
             redirect-uri: "{baseUrl}/login/oauth2/code/github"
             authorization-grant-type: authorization_code
             client-name: Github
           gitlab:
-            client-id: ${OAUTH2_GITLAB_CLIENT_ID}
-            client-secret: ${OAUTH2_GITLAB_CLIENT_SECRET}
+            client-id: ${OAUTH2_GITLAB_CLIENT_ID:}
+            client-secret: ${OAUTH2_GITLAB_CLIENT_SECRET:}
             scope: read_user, email
             redirect-uri: "{baseUrl}/login/oauth2/code/gitlab"
             authorization-grant-type: authorization_code
@@ -238,5 +232,4 @@ logging:
     root: warn
     org.apache.sshd.server.session.ServerSessionImpl: error
     com.nuricanozturk.originhub.ssh: info
-    com.nuricanozturk.originhub: warn
-
+    com.nuricanozturk.originhub: info

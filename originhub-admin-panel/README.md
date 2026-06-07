@@ -1,58 +1,25 @@
 # OriginHub Admin Panel
 
-Platform administrator UI — stats, users, organizations, SAML/LDAP SSO.
+Platform admin UI — stats, users, orgs, SSO.
 
-**Optional.** Separate Angular app — not bundled with main frontend. Run only when you need platform admin features.
+**Optional.** Needs backend admin API on. Run profile: [CONTRIBUTING.md](../CONTRIBUTING.md#full-app--grafana--admin)
 
-## Requirements
-
-- Node.js **24** · pnpm
-- Backend with **admin API enabled** (`ORIGINHUB_ADMIN_ENABLED=true`)
-
-## Quick start
+## Run
 
 ```bash
-# 1. Enable admin API on backend (application-local.yaml or env)
-#    originhub.admin.enabled: true
-
-make dev-setup && make dev-backend     # terminal 1
-
-# 2. Start admin panel
-cp .env.example .env                   # optional
-pnpm start                             # terminal 2 → http://localhost:4300
+# 1. Enable admin API in application-local.yaml → originhub.admin.enabled: true
+make dev-backend                        # terminal 1
+cd originhub-admin-panel && pnpm start  # terminal 2 → :4300
 ```
 
-Login: bootstrap admin **admin** / **Admin123** (local profile).
-
-## Backend flag
-
-Admin panel needs backend admin module active:
-
-| Property                  | Env var                   | Default |
-|---------------------------|---------------------------|---------|
-| `originhub.admin.enabled` | `ORIGINHUB_ADMIN_ENABLED` | `false` |
-
-When `false`, `/api/admin/**` endpoints and all admin module beans are **not loaded** at runtime.
-
-```yaml
-# application-local.yaml
-originhub:
-  admin:
-    enabled: true
-```
-
-Or Docker: `ADMIN_ENABLED=true make app`
-
-## How it works
-
-- Separate app on port **4300** (main UI is :4200)
-- Calls `POST /api/admin/auth/login` → JWT stored in admin-specific localStorage keys
-- `set-env.js` writes `environment.ts` from `ORIGINHUB_API_URL` (default `http://localhost:8080`)
+Login: `admin` / `Admin123`
 
 ## Scripts
 
-| Command      | Description      |
+| Command      | Runs             |
 |--------------|------------------|
 | `pnpm start` | Dev server :4300 |
 | `pnpm build` | Production build |
 | `pnpm lint`  | ESLint           |
+
+Backend flag (on by default): disable with `ORIGINHUB_ADMIN_ENABLED=false` or `originhub.admin.enabled: false`

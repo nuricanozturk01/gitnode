@@ -65,6 +65,9 @@ public class SecurityConfig {
   @Value("${originhub.cors.allowed-origins}")
   private List<String> allowedOrigins;
 
+  @Value("${originhub.admin.enabled:true}")
+  private boolean adminEnabled;
+
   @Bean
   public SecurityFilterChain doFilter(final HttpSecurity http) throws Exception {
 
@@ -119,8 +122,11 @@ public class SecurityConfig {
     auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
     auth.requestMatchers("/actuator/**").authenticated();
 
-    auth.requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll();
-    auth.requestMatchers("/api/admin/**").authenticated();
+    if (this.adminEnabled) {
+      auth.requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll();
+      auth.requestMatchers("/api/admin/**").authenticated();
+    }
+
     auth.requestMatchers("/public/**").permitAll();
     auth.requestMatchers("/git/**").permitAll();
 

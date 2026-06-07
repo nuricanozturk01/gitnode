@@ -1,24 +1,15 @@
 # API E2E
 
-REST endpoint tests. Shared **owner** + **intruder** accounts from [`global-setup.ts`](../global-setup.ts) → `e2e/.auth/session.json`.
+REST endpoint tests. Shared owner/intruder from `global-setup.ts`.
 
 ## Run
 
-```bash
-pnpm test:e2e:api
-```
+| Command | Runs |
+|---------|------|
+| `pnpm test:e2e:api` | All REST tests |
 
-Needs API up (`make infra` + `make dev-backend`, or `make up`).
+Needs backend at :8080. User cleanup: [teardown](../teardown/README.md) (not included in api-only run).
 
 ## Coverage
 
-| Folder | Area |
-|--------|------|
-| `auth/` | register, login, refresh, password recovery |
-| `profile/` | me, profile, password, public profile |
-| `repo/`, `branch/`, `commit/`, `tree/` | Git hosting |
-| `pr/`, `issue/`, `task/` | PRs, issues, projects |
-| `snippet/`, `tag/`, `webhook/` | snippets, releases, webhooks |
-| `z-collaborators.spec.ts` | invites & permissions |
-
-User cleanup runs in [teardown](../teardown/README.md) — not part of `test:e2e:api` alone.
+`auth/` · `profile/` · `repo/` · `branch/` · `commit/` · `tree/` · `pr/` · `issue/` · `task/` · `snippet/` · `tag/` · `webhook/` · collaborators

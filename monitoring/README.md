@@ -19,7 +19,7 @@ Included when `monitoring.enabled: true` (default in `deploy/helm/originhub/valu
 
 | Service | Local (kind) | Production |
 |---------|--------------|------------|
-| Grafana UI | http://grafana.originhub.local | https://{domain.grafanaHost} |
+| Grafana UI | http://grafana.originhub.test | https://{domain.grafanaHost} |
 | Prometheus | in-cluster `originhub-prometheus:9090` | same (internal) |
 
 Domain: set **`domain.grafanaHost`** in `deploy/helm/originhub/values.yml`.

@@ -1,6 +1,6 @@
 FROM node:24-alpine AS build
 
-ARG API_URL=http://api.originhub.local
+ARG API_URL=http://api.originhub.test
 ENV ORIGINHUB_API_URL=${API_URL}
 
 RUN corepack enable && corepack prepare pnpm@10 --activate

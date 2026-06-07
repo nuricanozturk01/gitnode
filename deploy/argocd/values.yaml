@@ -1,6 +1,6 @@
 # Argo CD Helm values — https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
 global:
-  domain: argocd.originhub.local
+  domain: argocd.originhub.test
 
 configs:
   params:
@@ -10,7 +10,7 @@ server:
   ingress:
     enabled: true
     ingressClassName: nginx
-    hostname: argocd.originhub.local
+    hostname: argocd.originhub.test
     tls: false
   metrics:
     enabled: true

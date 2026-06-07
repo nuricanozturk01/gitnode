@@ -392,12 +392,12 @@ Skip local image build: `ORIGINHUB_LOCAL_BUILD=0 make k8s-bootstrap`
 
 | Service | URL | Default |
 |---------|-----|---------|
-| Frontend (SPA) | http://app.originhub.local | ✅ |
-| API | http://api.originhub.local | ✅ |
-| Admin panel | http://admin.originhub.local | ✅ (`admin` / `Admin123`) |
-| Grafana | http://grafana.originhub.local | ✅ (`admin` / `admin`) |
-| Argo CD | http://argocd.originhub.local | ✅ |
-| Prometheus UI | http://prometheus.originhub.local | `K8S_PROMETHEUS_INGRESS=1` |
+| Frontend (SPA) | http://app.originhub.test | ✅ |
+| API | http://api.originhub.test | ✅ |
+| Admin panel | http://admin.originhub.test | ✅ (`admin` / `Admin123`) |
+| Grafana | http://grafana.originhub.test | ✅ (`admin` / `admin`) |
+| Argo CD | http://argocd.originhub.test | ✅ |
+| Prometheus UI | http://prometheus.originhub.test | `K8S_PROMETHEUS_INGRESS=1` |
 | Git SSH | `git@127.0.0.1:30222` | ✅ |
 
 Argo CD admin password:
@@ -410,8 +410,8 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 
 | Flag | Default | Effect |
 |------|---------|--------|
-| `K8S_FRONTEND=1` | on | Frontend at `app.originhub.local` |
-| `K8S_ADMIN_PANEL=1` | on | Admin panel at `admin.originhub.local` |
+| `K8S_FRONTEND=1` | on | Frontend at `app.originhub.test` |
+| `K8S_ADMIN_PANEL=1` | on | Admin panel at `admin.originhub.test` |
 | `K8S_OBSERVABILITY=1` | on | Grafana + Prometheus |
 | `K8S_ADMIN_API=1` | on | Backend admin API |
 | `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI ingress |

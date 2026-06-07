@@ -1,6 +1,6 @@
 FROM node:24-alpine AS build
 
-ARG API_URL=http://api.originhub.local
+ARG API_URL=http://api.originhub.test
 ARG GIT_SSH_URL=git@127.0.0.1:30222
 
 RUN corepack enable && corepack prepare pnpm@10 --activate

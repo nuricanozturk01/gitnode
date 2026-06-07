@@ -56,11 +56,11 @@ First run ~10–20 minutes (builds backend + frontend + admin-panel images). `/e
 
 | Service | URL | Default |
 |---------|-----|---------|
-| Frontend (SPA) | http://app.originhub.local | ✅ |
-| API | http://api.originhub.local | ✅ |
-| Admin panel | http://admin.originhub.local | ✅ (`admin` / `Admin123`) |
-| Grafana | http://grafana.originhub.local | ✅ (`admin` / `admin`) |
-| Argo CD | http://argocd.originhub.local | ✅ |
+| Frontend (SPA) | http://app.originhub.test | ✅ |
+| API | http://api.originhub.test | ✅ |
+| Admin panel | http://admin.originhub.test | ✅ (`admin` / `Admin123`) |
+| Grafana | http://grafana.originhub.test | ✅ (`admin` / `admin`) |
+| Argo CD | http://argocd.originhub.test | ✅ |
 | Git SSH | `git@127.0.0.1:30222` | ✅ |
 
 Argo CD admin password:
@@ -73,11 +73,11 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 
 | Flag | Default | Effect |
 |------|---------|--------|
-| `K8S_FRONTEND=1` | on | Build + deploy frontend at `app.originhub.local` |
-| `K8S_ADMIN_PANEL=1` | on | Build + deploy admin panel at `admin.originhub.local` |
+| `K8S_FRONTEND=1` | on | Build + deploy frontend at `app.originhub.test` |
+| `K8S_ADMIN_PANEL=1` | on | Build + deploy admin panel at `admin.originhub.test` |
 | `K8S_OBSERVABILITY=1` | on | Deploy Grafana + Prometheus |
 | `K8S_ADMIN_API=1` | on | Backend admin API |
-| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI at `prometheus.originhub.local` |
+| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI at `prometheus.originhub.test` |
 | `ORIGINHUB_LOCAL_BUILD=0` | on | Skip local image builds (uses registry tags) |
 
 Examples:
@@ -95,7 +95,25 @@ K8S_PROMETHEUS_INGRESS=1 make k8s-bootstrap
 
 ### Troubleshooting
 
-**Ports 80/443 in use** — bootstrap auto-switches to 9080/9443. URLs become `http://app.originhub.local:9080`.
+**Ports 80/443 in use** — bootstrap fails with a clear error. Free the port or use alternate ports:
+
+```bash
+KIND_HTTP_PORT=9080 KIND_HTTPS_PORT=9443 make k8s-bootstrap
+```
+
+Then append `:9080` to all URLs (e.g. `http://argocd.originhub.test:9080`).
+
+**DNS slow / site won't open on macOS?** Use `*.originhub.test` (default) — not `*.local` (macOS mDNS conflict). Refresh hosts only:
+
+```bash
+make k8s-hosts
+```
+
+**Wrong ingress port (9080 instead of 80)?** No purge needed — kind is recreated automatically:
+
+```bash
+make k8s-fix-ports    # ~5 min, reuses existing Docker images
+```
 
 **Stale kubeconfig:**
 
@@ -128,17 +146,17 @@ Single values file: **`deploy/helm/originhub/values.yml`**
 
 ```yaml
 domain:
-  apiHost: api.originhub.local
-  frontendUrl: http://app.originhub.local   # CORS + OAuth redirects
-  grafanaHost: grafana.originhub.local
+  apiHost: api.originhub.test
+  frontendUrl: http://app.originhub.test   # CORS + OAuth redirects
+  grafanaHost: grafana.originhub.test
 
 frontend:
   enabled: true
-  host: app.originhub.local
+  host: app.originhub.test
 
 adminPanel:
   enabled: true
-  host: admin.originhub.local
+  host: admin.originhub.test
 
 monitoring:
   enabled: true

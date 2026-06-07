@@ -1,7 +1,6 @@
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
-# Default ports 80/443. When busy, bootstrap auto-generates config with 9080/9443
-# via deploy/kind/generate-kind-config.sh — do not edit hostPort here for that case.
+# Reference config — bootstrap uses deploy/kind/generate-kind-config.sh (default host ports 80/443).
 nodes:
   - role: control-plane
     kubeadmConfigPatches:

@@ -1,22 +1,17 @@
 import { expect, test } from '../fixtures/authenticated-api';
 
-const actionsBase = (owner: string, repo: string) =>
-  `/api/repos/${owner}/${repo}/actions`;
+const actionsBase = (owner: string, repo: string) => `/api/repos/${owner}/${repo}/actions`;
 
-const runnersApi = (owner: string, repo: string) =>
-  `${actionsBase(owner, repo)}/runners`;
+const runnersApi = (owner: string, repo: string) => `${actionsBase(owner, repo)}/runners`;
 
 const registrationTokenApi = (owner: string, repo: string) =>
   `${runnersApi(owner, repo)}/registration-token`;
 
-const runsApi = (owner: string, repo: string) =>
-  `${actionsBase(owner, repo)}/runs`;
+const runsApi = (owner: string, repo: string) => `${actionsBase(owner, repo)}/runs`;
 
-const workflowsApi = (owner: string, repo: string) =>
-  `${actionsBase(owner, repo)}/workflows`;
+const workflowsApi = (owner: string, repo: string) => `${actionsBase(owner, repo)}/workflows`;
 
-const secretsApi = (owner: string, repo: string) =>
-  `${actionsBase(owner, repo)}/secrets`;
+const secretsApi = (owner: string, repo: string) => `${actionsBase(owner, repo)}/secrets`;
 
 const secretApi = (owner: string, repo: string, name: string) =>
   `${secretsApi(owner, repo)}/${name}`;
@@ -26,9 +21,7 @@ test.describe('Actions API', () => {
     authedRequest,
     api,
   }) => {
-    const response = await authedRequest.post(
-      registrationTokenApi(api.owner, api.repo),
-    );
+    const response = await authedRequest.post(registrationTokenApi(api.owner, api.repo));
     expect(response.status()).toBe(200);
     const body = (await response.json()) as { token: string; expiresAt: string };
     expect(typeof body.token).toBe('string');
@@ -69,10 +62,9 @@ test.describe('Actions API', () => {
       authedRequest,
       api,
     }) => {
-      const response = await authedRequest.put(
-        secretApi(api.owner, api.repo, SECRET_NAME),
-        { data: { value: 'hello' } },
-      );
+      const response = await authedRequest.put(secretApi(api.owner, api.repo, SECRET_NAME), {
+        data: { value: 'hello' },
+      });
       expect(response.status()).toBe(204);
     });
 
@@ -82,7 +74,7 @@ test.describe('Actions API', () => {
     }) => {
       const response = await authedRequest.get(secretsApi(api.owner, api.repo));
       expect(response.status()).toBe(200);
-      const body = (await response.json()) as Array<{ name: string }>;
+      const body = (await response.json()) as { name: string }[];
       expect(Array.isArray(body)).toBe(true);
       expect(body.some((s) => s.name === SECRET_NAME)).toBe(true);
     });
@@ -91,9 +83,7 @@ test.describe('Actions API', () => {
       authedRequest,
       api,
     }) => {
-      const response = await authedRequest.delete(
-        secretApi(api.owner, api.repo, SECRET_NAME),
-      );
+      const response = await authedRequest.delete(secretApi(api.owner, api.repo, SECRET_NAME));
       expect(response.status()).toBe(204);
     });
   });

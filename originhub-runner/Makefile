@@ -8,7 +8,8 @@ OUT     = dist
 # Override by setting GOPROXY in the shell or go env.
 PUBLIC_PROXY ?= https://proxy.golang.org,direct
 
-GOLANGCI_LINT = $(shell go env GOPATH)/bin/golangci-lint
+GOLANGCI_LINT_VERSION = v2.6.0
+GOLANGCI_LINT       = $(shell go env GOPATH)/bin/golangci-lint
 
 .PHONY: build build-all build-linux-amd64 build-linux-arm64 build-macos-arm64 \
         build-windows-amd64 clean test lint lint-fix fmt fmt-check tidy
@@ -43,13 +44,17 @@ test:
 
 # ── Lint ──────────────────────────────────────────────────────────────────────
 
-$(GOLANGCI_LINT):
-	GOPROXY=$(PUBLIC_PROXY) go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
+.PHONY: ensure-golangci-lint
+ensure-golangci-lint:
+	@if [ ! -x '$(GOLANGCI_LINT)' ] || ! '$(GOLANGCI_LINT)' version 2>/dev/null | grep -q ' version 2\.'; then \
+		echo "Installing golangci-lint $(GOLANGCI_LINT_VERSION)..."; \
+		GOPROXY=$(PUBLIC_PROXY) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION); \
+	fi
 
-lint: $(GOLANGCI_LINT)
+lint: ensure-golangci-lint
 	$(GOLANGCI_LINT) run ./...
 
-lint-fix: $(GOLANGCI_LINT)
+lint-fix: ensure-golangci-lint
 	$(GOLANGCI_LINT) run --fix ./...
 
 # ── Format ────────────────────────────────────────────────────────────────────

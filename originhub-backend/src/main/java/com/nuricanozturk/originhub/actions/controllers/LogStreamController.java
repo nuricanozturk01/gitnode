@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.actions.controllers;
 
 import com.nuricanozturk.originhub.actions.dtos.request.StepLogRequest;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowLogRepository;
+import com.nuricanozturk.originhub.actions.repositories.WorkflowStepRepository;
 import com.nuricanozturk.originhub.actions.services.RunnerTokenService;
 import com.nuricanozturk.originhub.actions.services.WorkflowExecutionService;
 import com.nuricanozturk.originhub.actions.websocket.SseEmitterRegistry;
@@ -45,6 +46,7 @@ public class LogStreamController {
   private static final String BEARER = "Bearer ";
   private final WorkflowExecutionService executionService;
   private final WorkflowLogRepository logRepository;
+  private final WorkflowStepRepository stepRepository;
   private final SseEmitterRegistry sseEmitterRegistry;
   private final RunnerTokenService runnerTokenService;
   private final JwtUtils jwtUtils;
@@ -72,7 +74,7 @@ public class LogStreamController {
 
     final var emitter = this.sseEmitterRegistry.subscribe(stepId);
 
-    // Send existing logs first so the client catches up.
+    // Replay existing logs so the client catches up regardless of subscribe timing.
     final var existing = this.logRepository.findAllByStepIdOrderByLineNumberAsc(stepId);
     for (final var log : existing) {
       try {
@@ -85,6 +87,15 @@ public class LogStreamController {
         break;
       }
     }
+
+    this.stepRepository
+        .findById(stepId)
+        .ifPresent(
+            step -> {
+              if ("completed".equals(step.getStatus())) {
+                emitter.complete();
+              }
+            });
 
     return emitter;
   }

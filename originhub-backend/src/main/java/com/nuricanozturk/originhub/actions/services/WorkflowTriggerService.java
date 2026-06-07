@@ -223,7 +223,7 @@ public class WorkflowTriggerService {
       final var combinations = this.matrixExpander.expand(jobDef);
 
       for (final var matrixValues : combinations) {
-        this.createSingleJob(run, jobDef, baseName, matrixValues, context);
+        this.createSingleJob(run, jobDef, jobKey, baseName, matrixValues, context);
       }
     }
   }
@@ -231,31 +231,40 @@ public class WorkflowTriggerService {
   private void createSingleJob(
       final WorkflowRun run,
       final JobModel jobDef,
+      final String jobKey,
       final String baseName,
       final Map<String, String> matrixValues,
       final Map<String, String> context) {
 
+    final var matrixCtx =
+        matrixValues.entrySet().stream()
+            .collect(Collectors.toMap(e -> "matrix." + e.getKey(), Map.Entry::getValue));
+    final var resolvedName = this.expressionEvaluator.evaluate(baseName, matrixCtx);
+    final var nameWasInterpolated = !resolvedName.equals(baseName);
+    final var jobName =
+        nameWasInterpolated ? resolvedName : this.suffixMatrixName(resolvedName, matrixValues);
+
     final var job = new WorkflowJob();
     job.setRunId(run.getId());
-    job.setName(this.suffixMatrixName(baseName, matrixValues));
+    job.setJobKey(jobKey);
+    job.setName(jobName);
     job.setRunnerLabels(this.resolveLabels(jobDef));
     job.setNeeds(jobDef.needs());
     job.setMatrixValues(matrixValues.isEmpty() ? null : matrixValues);
 
-    if (jobDef.condition() != null
-        && !this.expressionEvaluator.evaluateCondition(jobDef.condition(), context, "success")) {
+    if (this.isSkippedByCondition(jobDef, context)) {
       job.setStatus(WorkflowJobStatus.SKIPPED);
       job.setConclusion("skipped");
       this.jobRepository.save(job);
       return;
     }
 
-    final boolean hasUnmetNeeds = jobDef.needs() != null && !jobDef.needs().isEmpty();
-    job.setStatus(hasUnmetNeeds ? WorkflowJobStatus.WAITING : WorkflowJobStatus.QUEUED);
+    final boolean hasNeeds = hasUnmetNeeds(jobDef);
+    job.setStatus(hasNeeds ? WorkflowJobStatus.WAITING : WorkflowJobStatus.QUEUED);
 
     final var savedJob = this.jobRepository.save(job);
 
-    if (!hasUnmetNeeds) {
+    if (!hasNeeds) {
       this.eventPublisher.publishEvent(
           new WorkflowJobQueuedEvent(
               savedJob.getId(),
@@ -264,6 +273,15 @@ public class WorkflowTriggerService {
               savedJob.getName(),
               savedJob.getRunnerLabels()));
     }
+  }
+
+  private boolean isSkippedByCondition(final JobModel jobDef, final Map<String, String> context) {
+    return jobDef.condition() != null
+        && !this.expressionEvaluator.evaluateCondition(jobDef.condition(), context, "success");
+  }
+
+  private static boolean hasUnmetNeeds(final JobModel jobDef) {
+    return jobDef.needs() != null && !jobDef.needs().isEmpty();
   }
 
   private String suffixMatrixName(final String baseName, final Map<String, String> matrixValues) {
@@ -285,6 +303,9 @@ public class WorkflowTriggerService {
     ctx.put("github.event_name", run.getTriggerEvent());
     if (run.getTriggerSha() != null) {
       ctx.put("github.sha", run.getTriggerSha());
+    }
+    if (run.getInputs() != null) {
+      run.getInputs().forEach((k, v) -> ctx.put("inputs." + k, v != null ? v : ""));
     }
     return ctx;
   }

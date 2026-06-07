@@ -1,12 +1,12 @@
 name: E2E | OriginHub
 
 on:
-  schedule:
-    # Four runs per day (UTC): 06:00, 14:00, 16:00, 22:00
-    - cron: "0 6 * * *"
-    - cron: "0 14 * * *"
-    - cron: "0 16 * * *"
-    - cron: "0 22 * * *"
+#  schedule:
+#    # Four runs per day (UTC): 06:00, 14:00, 16:00, 22:00
+#    - cron: "0 6 * * *"
+#    - cron: "0 14 * * *"
+#    - cron: "0 16 * * *"
+#    - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
       suite:

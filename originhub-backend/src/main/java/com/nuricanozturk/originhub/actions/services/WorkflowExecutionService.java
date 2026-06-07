@@ -93,7 +93,11 @@ public class WorkflowExecutionService {
   @Transactional
   public void handleStepStarted(final UUID stepId) {
 
-    final var step = this.requireStep(stepId);
+    final var step = this.stepRepository.findById(stepId).orElse(null);
+    if (step == null) {
+      log.warn("STEP_STARTED for unknown stepId={}, ignoring", stepId);
+      return;
+    }
     step.setStatus("running");
     step.setStartedAt(Instant.now());
     this.stepRepository.save(step);
@@ -102,7 +106,12 @@ public class WorkflowExecutionService {
   @Transactional
   public void handleStepCompleted(final UUID stepId, final String conclusion) {
 
-    final var step = this.requireStep(stepId);
+    final var step = this.stepRepository.findById(stepId).orElse(null);
+    if (step == null) {
+      log.warn("STEP_COMPLETED for unknown stepId={}, ignoring", stepId);
+      this.sseEmitterRegistry.complete(stepId);
+      return;
+    }
     step.setStatus("completed");
     step.setConclusion(conclusion);
     step.setCompletedAt(Instant.now());
@@ -174,6 +183,25 @@ public class WorkflowExecutionService {
   }
 
   @Transactional
+  public void deleteRun(final UUID runId) {
+
+    final var run =
+        this.runRepository
+            .findById(runId)
+            .orElseThrow(() -> new ItemNotFoundException("Workflow run not found: " + runId));
+
+    if (run.getStatus() == WorkflowRunStatus.QUEUED
+        || run.getStatus() == WorkflowRunStatus.IN_PROGRESS) {
+      this.cancelRun(runId);
+    }
+
+    this.runRepository.delete(run);
+    this.runStatusSseRegistry.complete(runId);
+
+    log.info("Run deleted: runId={}", runId);
+  }
+
+  @Transactional
   public void handleRunnerDisconnected(final UUID runnerId) {
 
     final var jobs =
@@ -210,6 +238,12 @@ public class WorkflowExecutionService {
   public void ingestLog(
       final UUID stepId, final int lineNumber, final String content, final String level) {
 
+    if (!this.stepRepository.existsById(stepId)) {
+      log.warn("LOG for unknown stepId={}, dropping DB write but broadcasting SSE", stepId);
+      this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, level));
+      return;
+    }
+
     final var logRecord = new WorkflowLog();
     logRecord.setStepId(stepId);
     logRecord.setLineNumber(lineNumber);
@@ -223,30 +257,40 @@ public class WorkflowExecutionService {
   private void advanceWaitingJobs(
       final UUID runId, final UUID repoId, final java.util.List<WorkflowJob> allJobs) {
 
-    final var successNames =
+    final var successKeys =
         allJobs.stream()
             .filter(j -> j.getStatus() == WorkflowJobStatus.SUCCESS)
-            .map(WorkflowJob::getName)
+            .flatMap(j -> resolveJobIdentifiers(j).stream())
             .collect(Collectors.toSet());
 
-    final var failedNames =
+    final var failedKeys =
         allJobs.stream()
             .filter(
                 j ->
                     j.getStatus() == WorkflowJobStatus.FAILURE
                         || j.getStatus() == WorkflowJobStatus.CANCELLED)
-            .map(WorkflowJob::getName)
+            .flatMap(j -> resolveJobIdentifiers(j).stream())
             .collect(Collectors.toSet());
 
     for (final var waiting : allJobs) {
-      this.advanceJobIfReady(waiting, successNames, failedNames, runId, repoId);
+      this.advanceJobIfReady(waiting, successKeys, failedKeys, runId, repoId);
     }
+  }
+
+  /** Returns both the job key and name so needs matching works regardless of which is stored. */
+  private static java.util.List<String> resolveJobIdentifiers(final WorkflowJob job) {
+    final var ids = new java.util.ArrayList<String>();
+    if (job.getJobKey() != null) {
+      ids.add(job.getJobKey());
+    }
+    ids.add(job.getName());
+    return ids;
   }
 
   private void advanceJobIfReady(
       final WorkflowJob waiting,
-      final Set<String> successNames,
-      final Set<String> failedNames,
+      final Set<String> successKeys,
+      final Set<String> failedKeys,
       final UUID runId,
       final UUID repoId) {
 
@@ -258,7 +302,7 @@ public class WorkflowExecutionService {
       return;
     }
 
-    final boolean anyNeedFailed = needs.stream().anyMatch(failedNames::contains);
+    final boolean anyNeedFailed = needs.stream().anyMatch(failedKeys::contains);
     if (anyNeedFailed) {
       waiting.setStatus(WorkflowJobStatus.SKIPPED);
       waiting.setConclusion("skipped");
@@ -268,7 +312,7 @@ public class WorkflowExecutionService {
       return;
     }
 
-    if (successNames.containsAll(needs)) {
+    if (successKeys.containsAll(needs)) {
       waiting.setStatus(WorkflowJobStatus.QUEUED);
       this.jobRepository.save(waiting);
       this.eventPublisher.publishEvent(

@@ -42,12 +42,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -73,19 +75,22 @@ public class WorkflowRunController {
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
+      @RequestParam(required = false) final String triggerEvent,
+      @RequestParam(required = false) final String triggerRef,
       @PageableDefault(size = 20) final Pageable pageable) {
 
     this.jwtUtils.extractUserId(authHeader);
     final var repoId = this.requireRepoId(owner, repo);
 
     final var page =
-        this.runRepository
-            .findAllByRepoIdOrderByCreatedAtDesc(repoId, pageable)
-            .map(run -> this.toResponse(run, List.of()));
+        (triggerEvent != null && triggerRef != null)
+            ? this.runRepository.findAllByRepoIdAndTriggerEventAndTriggerRefOrderByCreatedAtDesc(
+                repoId, triggerEvent, triggerRef, pageable)
+            : this.runRepository.findAllByRepoIdOrderByCreatedAtDesc(repoId, pageable);
 
     return ResponseEntity.ok(
         new PageResponse<>(
-            page.getContent(),
+            page.getContent().stream().map(run -> this.toResponse(run, List.of())).toList(),
             page.getTotalElements(),
             page.getTotalPages(),
             page.getNumber(),
@@ -181,11 +186,26 @@ public class WorkflowRunController {
     this.jwtUtils.extractUserId(authHeader);
     this.requireRepoId(owner, repo);
 
-    if (this.runRepository.findById(runId).isEmpty()) {
-      throw new ItemNotFoundException("Workflow run not found: " + runId);
+    final var run =
+        this.runRepository
+            .findById(runId)
+            .orElseThrow(() -> new ItemNotFoundException("Workflow run not found: " + runId));
+
+    final var emitter = this.runStatusSseRegistry.subscribe(runId);
+
+    final var status = run.getStatus();
+    if (status == com.nuricanozturk.originhub.actions.entities.WorkflowRunStatus.SUCCESS
+        || status == com.nuricanozturk.originhub.actions.entities.WorkflowRunStatus.FAILURE
+        || status == com.nuricanozturk.originhub.actions.entities.WorkflowRunStatus.CANCELLED
+        || status == com.nuricanozturk.originhub.actions.entities.WorkflowRunStatus.SKIPPED) {
+      try {
+        emitter.send(SseEmitter.event().name("run_completed").data(runId.toString()));
+      } catch (final Exception ignored) {
+      }
+      emitter.complete();
     }
 
-    return this.runStatusSseRegistry.subscribe(runId);
+    return emitter;
   }
 
   @PostMapping("/runs/{runId}/cancel")
@@ -198,6 +218,19 @@ public class WorkflowRunController {
     this.jwtUtils.extractUserId(authHeader);
     this.requireRepoId(owner, repo);
     this.executionService.cancelRun(runId);
+    return ResponseEntity.noContent().build();
+  }
+
+  @DeleteMapping("/runs/{runId}")
+  public ResponseEntity<Void> deleteRun(
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID runId) {
+
+    this.jwtUtils.extractUserId(authHeader);
+    this.requireRepoId(owner, repo);
+    this.executionService.deleteRun(runId);
     return ResponseEntity.noContent().build();
   }
 

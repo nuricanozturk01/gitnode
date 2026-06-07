@@ -119,6 +119,9 @@ public class JobDispatcher {
           .ifPresent(session -> session.send(ServerMessage.jobAssigned(payload)));
 
       job.setRunnerId(runner.getId());
+      job.setStatus(com.nuricanozturk.originhub.actions.entities.WorkflowJobStatus.IN_PROGRESS);
+      job.setStartedAt(java.time.Instant.now());
+      this.jobRepository.save(job);
       runner.setStatus(RunnerStatus.BUSY);
       this.runnerRepository.save(runner);
 
@@ -148,7 +151,9 @@ public class JobDispatcher {
     if (model == null || model.jobs() == null) {
       return null;
     }
-    final var jobModel = model.jobs().get(this.findJobKey(model, job.getName()));
+    final var key =
+        job.getJobKey() != null ? job.getJobKey() : this.findJobKey(model, job.getName());
+    final var jobModel = model.jobs().get(key);
     return new JobContext(run, jobModel);
   }
 

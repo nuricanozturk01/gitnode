@@ -162,6 +162,7 @@ class WorkflowExecutionServiceTest {
   @Test
   @DisplayName("ingestLog saves log entry and broadcasts via SSE")
   void ingestLog_savesAndBroadcasts() {
+    when(this.stepRepository.existsById(STEP_ID)).thenReturn(true);
     when(this.logRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
     this.service.ingestLog(STEP_ID, 1, "npm install", "info");

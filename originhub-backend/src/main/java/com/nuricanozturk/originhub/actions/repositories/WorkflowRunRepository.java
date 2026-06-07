@@ -17,7 +17,6 @@ package com.nuricanozturk.originhub.actions.repositories;
 
 import com.nuricanozturk.originhub.actions.entities.WorkflowRun;
 import com.nuricanozturk.originhub.actions.entities.WorkflowRunStatus;
-import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,7 +24,6 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -49,7 +47,9 @@ public interface WorkflowRunRepository extends JpaRepository<WorkflowRun, UUID> 
   List<WorkflowRun> findByRepoIdAndConcurrencyGroupAndStatusIn(
       UUID repoId, String group, List<WorkflowRunStatus> statuses);
 
-  @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT COALESCE(MAX(r.runNumber), 0) + 1 FROM WorkflowRun r WHERE r.repoId = :repoId")
   int nextRunNumber(@Param("repoId") UUID repoId);
+
+  Page<WorkflowRun> findAllByRepoIdAndTriggerEventAndTriggerRefOrderByCreatedAtDesc(
+      UUID repoId, String triggerEvent, String triggerRef, Pageable pageable);
 }

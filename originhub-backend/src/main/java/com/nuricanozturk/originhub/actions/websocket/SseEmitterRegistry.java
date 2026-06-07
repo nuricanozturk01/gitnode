@@ -54,7 +54,7 @@ public class SseEmitterRegistry {
     for (final var emitter : list) {
       try {
         emitter.send(SseEmitter.event().data(data));
-      } catch (final IOException ex) {
+      } catch (final IOException | IllegalStateException ex) {
         log.debug("SSE send failed for step {}, removing emitter", stepId);
         this.remove(stepId, emitter);
       }
@@ -79,7 +79,7 @@ public class SseEmitterRegistry {
                 emitter -> {
                   try {
                     emitter.send(SseEmitter.event().comment("keep-alive"));
-                  } catch (final IOException ex) {
+                  } catch (final IOException | IllegalStateException ex) {
                     this.remove(stepId, emitter);
                   }
                 }));

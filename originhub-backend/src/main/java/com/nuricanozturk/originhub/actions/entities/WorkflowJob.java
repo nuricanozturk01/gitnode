@@ -49,6 +49,10 @@ public class WorkflowJob {
   @Column(name = "run_id", nullable = false)
   private UUID runId;
 
+  @Column(name = "job_key", length = 256)
+  @Nullable
+  private String jobKey;
+
   @Column(name = "name", nullable = false, length = 256)
   private String name;
 

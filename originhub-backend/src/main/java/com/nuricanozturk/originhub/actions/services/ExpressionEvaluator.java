@@ -61,6 +61,10 @@ public class ExpressionEvaluator {
    * <p>Supports: {@code a == b}, {@code a != b}, {@code always()}, {@code failure()}, {@code
    * success()}, simple non-empty truthy values.
    *
+   * <p>Handles both raw expressions and {@code ${{ expr }}} wrapped forms. Operands on either side
+   * of a comparison are resolved individually so that {@code ${{ inputs.X != 'true' }}} correctly
+   * resolves {@code inputs.X} from context rather than treating the whole expression as a key.
+   *
    * @param condition the condition expression (already interpolated or raw)
    * @param ctx flat context map
    * @param jobStatus current job status ("success", "failure", "cancelled")
@@ -68,64 +72,88 @@ public class ExpressionEvaluator {
   public boolean evaluateCondition(
       final String condition, final Map<String, String> ctx, final String jobStatus) {
 
-    final String interpolated = this.evaluate(condition.trim(), ctx);
+    final String inner = this.unwrapExpression(condition.trim(), ctx);
 
-    if ("always()".equalsIgnoreCase(interpolated)) {
+    if ("always()".equalsIgnoreCase(inner)) {
       return true;
     }
-    if ("failure()".equalsIgnoreCase(interpolated)) {
+    if ("failure()".equalsIgnoreCase(inner)) {
       return "failure".equalsIgnoreCase(jobStatus);
     }
-    if ("success()".equalsIgnoreCase(interpolated)) {
+    if ("success()".equalsIgnoreCase(inner)) {
       return "success".equalsIgnoreCase(jobStatus);
     }
-    if ("cancelled()".equalsIgnoreCase(interpolated)) {
+    if ("cancelled()".equalsIgnoreCase(inner)) {
       return "cancelled".equalsIgnoreCase(jobStatus);
     }
 
-    return this.evaluateComparison(interpolated);
+    return this.evaluateComparison(inner, ctx);
   }
 
-  private boolean evaluateComparison(final String interpolated) {
-    if (interpolated.contains("==")) {
-      final String[] parts = interpolated.split("==", 2);
-      return this.normalize(parts[0]).equals(this.normalize(parts[1]));
+  /**
+   * If the condition is a single {@code ${{ expr }}} block, extracts the inner expression so that
+   * comparison operands can be resolved individually. Otherwise returns the fully interpolated
+   * string.
+   */
+  private String unwrapExpression(final String condition, final Map<String, String> ctx) {
+    final Matcher m = EXPR_PATTERN.matcher(condition);
+    if (m.matches()) {
+      return m.group(1).trim();
     }
-    if (interpolated.contains("!=")) {
-      final String[] parts = interpolated.split("!=", 2);
-      return !this.normalize(parts[0]).equals(this.normalize(parts[1]));
+    return this.evaluate(condition, ctx);
+  }
+
+  private boolean evaluateComparison(final String expr, final Map<String, String> ctx) {
+    if (expr.contains("!=")) {
+      final String[] parts = expr.split("!=", 2);
+      final String left = this.resolveOperand(parts[0].trim(), ctx);
+      final String right = this.normalize(parts[1].trim());
+      return !left.equals(right);
+    }
+    if (expr.contains("==")) {
+      final String[] parts = expr.split("==", 2);
+      final String left = this.resolveOperand(parts[0].trim(), ctx);
+      final String right = this.normalize(parts[1].trim());
+      return left.equals(right);
     }
 
-    // Treat non-empty, non-"false" string as truthy
-    return !interpolated.isEmpty() && !"false".equalsIgnoreCase(interpolated);
+    // Simple value — resolve and treat non-empty/non-false as truthy
+    final String resolved = this.resolveOperand(expr, ctx);
+    return !resolved.isEmpty() && !"false".equalsIgnoreCase(resolved);
+  }
+
+  /**
+   * Resolves a single operand: tries context lookup first, falls back to treating it as a string
+   * literal (stripping surrounding quotes).
+   */
+  private String resolveOperand(final String operand, final Map<String, String> ctx) {
+    final String resolved = this.resolveExpr(operand, ctx);
+    return resolved != null ? resolved : this.normalize(operand);
   }
 
   // ── private ──────────────────────────────────────────────────────────────
 
   @Nullable
   private String resolveExpr(final String expr, final Map<String, String> ctx) {
-    // Direct context lookup (e.g. "github.sha", "env.NODE_VERSION")
     if (ctx.containsKey(expr)) {
       return ctx.get(expr);
     }
-
-    // inputs.* — resolve to empty string if not provided (avoids bash bad substitution)
-    if (expr.startsWith("inputs.")) {
+    if (isSimpleContextRef(expr)) {
       return ctx.getOrDefault(expr, "");
     }
-
-    // matrix.* — resolve to empty string when dimension not in context
-    if (expr.startsWith("matrix.")) {
-      return ctx.getOrDefault(expr, "");
-    }
-
-    // steps.<id>.outputs.<name>
     if (expr.startsWith("steps.") && expr.contains(".outputs.")) {
       return ctx.getOrDefault(expr, "");
     }
-
-    // Fallback: unresolved → keep original placeholder
     return null;
+  }
+
+  /**
+   * Returns true for inputs.* and matrix.* refs that are plain lookups (no comparison operators).
+   */
+  private static boolean isSimpleContextRef(final String expr) {
+    return (expr.startsWith("inputs.") || expr.startsWith("matrix."))
+        && !expr.contains("==")
+        && !expr.contains("!=");
   }
 
   private String normalize(final String s) {

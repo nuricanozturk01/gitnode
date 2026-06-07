@@ -17,8 +17,8 @@ package com.nuricanozturk.originhub.actions.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +37,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -76,12 +77,12 @@ class ArtifactRetentionTest {
     a2.setFilePath(file2.toString());
     a2.setExpiresAt(Instant.now().minusSeconds(7200));
 
-    when(artifactRepository.findAllByExpiresAtBefore(any(Instant.class)))
+    when(artifactRepository.findAllByExpiresAtBefore(any(Instant.class), any(Pageable.class)))
         .thenReturn(List.of(a1, a2));
 
     service.cleanupExpiredArtifacts();
 
-    verify(artifactRepository, times(2)).delete(any(WorkflowArtifact.class));
+    verify(artifactRepository).deleteAllById(eq(List.of(a1.getId(), a2.getId())));
     assertThat(Files.exists(file1)).isFalse();
     assertThat(Files.exists(file2)).isFalse();
   }
@@ -89,11 +90,12 @@ class ArtifactRetentionTest {
   @Test
   @DisplayName("cleanupExpiredArtifacts skips delete when no expired artifacts exist")
   void cleanupExpired_skipsWhenNoneExpired() {
-    when(artifactRepository.findAllByExpiresAtBefore(any(Instant.class))).thenReturn(List.of());
+    when(artifactRepository.findAllByExpiresAtBefore(any(Instant.class), any(Pageable.class)))
+        .thenReturn(List.of());
 
     service.cleanupExpiredArtifacts();
 
-    verify(artifactRepository, never()).delete(any());
+    verify(artifactRepository, never()).deleteAllById(any());
   }
 
   @Test
@@ -108,10 +110,11 @@ class ArtifactRetentionTest {
     a1.setFilePath(nonExistentPath);
     a1.setExpiresAt(Instant.now().minusSeconds(3600));
 
-    when(artifactRepository.findAllByExpiresAtBefore(any(Instant.class))).thenReturn(List.of(a1));
+    when(artifactRepository.findAllByExpiresAtBefore(any(Instant.class), any(Pageable.class)))
+        .thenReturn(List.of(a1));
 
     service.cleanupExpiredArtifacts();
 
-    verify(artifactRepository).delete(a1);
+    verify(artifactRepository).deleteAllById(eq(List.of(a1.getId())));
   }
 }

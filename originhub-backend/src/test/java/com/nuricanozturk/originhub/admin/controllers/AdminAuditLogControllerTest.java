@@ -71,11 +71,13 @@ class AdminAuditLogControllerTest {
               isNull(),
               isNull(),
               isNull(),
+              isNull(),
               isNull()))
           .thenReturn(page);
 
       var response =
-          adminAuditLogController.search(0, 20, "repo", "alice", null, null, null, null, null);
+          adminAuditLogController.search(
+              0, 20, "repo", "alice", null, null, null, null, null, null);
 
       assertThat(response.getStatusCode().value()).isEqualTo(200);
       PageResponse<AuditLog> body = response.getBody();
@@ -95,14 +97,16 @@ class AdminAuditLogControllerTest {
               isNull(),
               isNull(),
               isNull(),
+              isNull(),
               isNull()))
           .thenReturn(new PageImpl<>(List.of()));
 
-      adminAuditLogController.search(0, 200, null, null, null, null, null, null, null);
+      adminAuditLogController.search(0, 200, null, null, null, null, null, null, null, null);
 
       verify(adminAuditLogService)
           .search(
               argThat((Pageable p) -> p.getPageSize() == 50),
+              isNull(),
               isNull(),
               isNull(),
               isNull(),
@@ -143,6 +147,7 @@ class AdminAuditLogControllerTest {
               any(Pageable.class),
               isNull(),
               eq("bob"),
+              isNull(),
               isNull(),
               isNull(),
               isNull(),

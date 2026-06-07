@@ -34,6 +34,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -110,8 +112,9 @@ class ArtifactStoreServiceTest {
     a1.setName("a1");
     final var a2 = new WorkflowArtifact();
     a2.setName("a2");
-    when(artifactRepository.findAllByRunId(RUN_ID)).thenReturn(List.of(a1, a2));
+    when(artifactRepository.findAllByRunIdOrderByCreatedAtDesc(RUN_ID, Pageable.unpaged()))
+        .thenReturn(new PageImpl<>(List.of(a1, a2)));
 
-    assertThat(service.listByRun(RUN_ID)).hasSize(2);
+    assertThat(service.listByRun(RUN_ID, Pageable.unpaged()).getContent()).hasSize(2);
   }
 }

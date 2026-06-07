@@ -36,6 +36,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,7 +66,7 @@ class CacheEvictionTest {
 
     service.evictByLruAndSizeLimit();
 
-    verify(cacheRepository, never()).findAllByOrderByAccessedAtAsc();
+    verify(cacheRepository, never()).findAllByOrderByAccessedAtAsc(any(Pageable.class));
     verify(cacheRepository, never()).delete(any());
   }
 
@@ -87,7 +88,8 @@ class CacheEvictionTest {
     final var e2 = cacheEntry(file2, oneGb, Instant.now().minusSeconds(200));
     final var e3 = cacheEntry(file3, oneGb, Instant.now().minusSeconds(100));
 
-    when(cacheRepository.findAllByOrderByAccessedAtAsc()).thenReturn(List.of(e1, e2, e3));
+    when(cacheRepository.findAllByOrderByAccessedAtAsc(any(Pageable.class)))
+        .thenReturn(List.of(e1, e2, e3));
 
     service.evictByLruAndSizeLimit();
 
@@ -105,7 +107,8 @@ class CacheEvictionTest {
     final var nonExistentPath = tempDir.resolve("missing-cache.tar.gz");
     final var e1 = cacheEntry(nonExistentPath, oneGb, Instant.now().minusSeconds(500));
 
-    when(cacheRepository.findAllByOrderByAccessedAtAsc()).thenReturn(List.of(e1));
+    when(cacheRepository.findAllByOrderByAccessedAtAsc(any(Pageable.class)))
+        .thenReturn(List.of(e1));
 
     service.evictByLruAndSizeLimit();
 
@@ -130,7 +133,8 @@ class CacheEvictionTest {
     final var e2 = cacheEntry(file2, oneGb / 4, Instant.now().minusSeconds(200));
     final var e3 = cacheEntry(file3, oneGb / 4, Instant.now().minusSeconds(100));
 
-    when(cacheRepository.findAllByOrderByAccessedAtAsc()).thenReturn(List.of(e1, e2, e3));
+    when(cacheRepository.findAllByOrderByAccessedAtAsc(any(Pageable.class)))
+        .thenReturn(List.of(e1, e2, e3));
 
     service.evictByLruAndSizeLimit();
 

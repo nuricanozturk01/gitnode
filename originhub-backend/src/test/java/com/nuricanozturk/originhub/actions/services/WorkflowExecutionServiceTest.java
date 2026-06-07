@@ -129,8 +129,8 @@ class WorkflowExecutionServiceTest {
     when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(this.runRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(this.runnerRepository.findById(RUNNER_ID)).thenReturn(Optional.of(runner));
-    when(this.jobRepository.findAllByRunnerIdAndStatus(RUNNER_ID, WorkflowJobStatus.IN_PROGRESS))
-        .thenReturn(List.of());
+    when(this.jobRepository.countByRunnerIdAndStatus(RUNNER_ID, WorkflowJobStatus.IN_PROGRESS))
+        .thenReturn(0L);
     when(this.runnerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
     when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(List.of(job));
 

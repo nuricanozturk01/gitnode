@@ -36,6 +36,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("RunnerGroupService unit tests")
@@ -102,22 +104,24 @@ class RunnerGroupServiceTest {
     g2.setLabels(List.of("windows"));
     g2.setCreatedAt(Instant.now());
 
-    when(groupRepository.findAllByOrgId(ORG_ID)).thenReturn(List.of(g1, g2));
+    when(groupRepository.findAllByOrgId(ORG_ID, Pageable.unpaged()))
+        .thenReturn(new PageImpl<>(List.of(g1, g2)));
 
-    final var result = service.listByOrg(ORG_ID);
+    final var result = service.listByOrg(ORG_ID, Pageable.unpaged());
 
-    assertThat(result).hasSize(2);
-    assertThat(result).extracting("name").containsExactly("group-a", "group-b");
+    assertThat(result.getContent()).hasSize(2);
+    assertThat(result.getContent()).extracting("name").containsExactly("group-a", "group-b");
   }
 
   @Test
   @DisplayName("listByOrg returns empty list when org has no groups")
   void listByOrg_emptyOrg_returnsEmptyList() {
-    when(groupRepository.findAllByOrgId(ORG_ID)).thenReturn(List.of());
+    when(groupRepository.findAllByOrgId(ORG_ID, Pageable.unpaged()))
+        .thenReturn(new PageImpl<>(List.of()));
 
-    final var result = service.listByOrg(ORG_ID);
+    final var result = service.listByOrg(ORG_ID, Pageable.unpaged());
 
-    assertThat(result).isEmpty();
+    assertThat(result.getContent()).isEmpty();
   }
 
   @Test

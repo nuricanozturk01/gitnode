@@ -94,6 +94,7 @@ import {
   Activity,
   BarChart3,
   ScrollText,
+  Zap,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -176,4 +177,5 @@ export const LUCIDE_ICONS = {
   Activity,
   BarChart3,
   ScrollText,
+  Zap,
 };

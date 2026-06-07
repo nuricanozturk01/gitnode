@@ -50,6 +50,7 @@ export class WorkflowDetailPage {
   readonly loading = signal(true);
   readonly dispatching = signal(false);
   readonly showDispatchModal = signal(false);
+  readonly deletingRunId = signal<string | null>(null);
 
   private readonly routeParams = parentParamMapSignal(this.route);
   readonly owner = computed(() => this.routeParams().get('owner') ?? '');
@@ -135,6 +136,22 @@ export class WorkflowDetailPage {
       this.runs.set([]);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async deleteRun(event: Event, runId: string): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.deletingRunId()) return;
+    this.deletingRunId.set(runId);
+    try {
+      await this.runService.deleteRun(this.owner(), this.repoName(), runId);
+      this.runs.update((runs) => runs.filter((r) => r.id !== runId));
+      this.toast.success('Run deleted');
+    } catch {
+      this.toast.error('Could not delete run');
+    } finally {
+      this.deletingRunId.set(null);
     }
   }
 

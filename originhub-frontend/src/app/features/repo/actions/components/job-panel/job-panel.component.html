@@ -22,11 +22,11 @@
         <lucide-icon
           name="chevronDown"
           class="size-4 shrink-0 transition-transform"
-          [class.rotate-180]="selectedJobId() === job.id"
+          [class.rotate-180]="expandedJobIds().has(job.id)"
         ></lucide-icon>
       </button>
 
-      @if (selectedJobId() === job.id && job.steps.length) {
+      @if (expandedJobIds().has(job.id) && job.steps.length) {
         <div class="border-base-300 mt-3 ml-7 space-y-1 border-l pl-3">
           @for (step of job.steps; track step.id) {
             <button

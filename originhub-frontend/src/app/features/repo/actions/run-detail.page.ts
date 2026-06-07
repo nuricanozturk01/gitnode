@@ -50,6 +50,7 @@ export class RunDetailPage {
   readonly cancelling = signal(false);
   readonly selectedJobId = signal<string | null>(null);
   readonly selectedStepId = signal<string | null>(null);
+  readonly expandedJobIds = signal<Set<string>>(new Set());
 
   // owner/repo come from the PARENT route (/:owner/:repo)
   private readonly parentParams = parentParamMapSignal(this.route);
@@ -77,6 +78,13 @@ export class RunDetailPage {
     return run != null && isRunActive(run.status);
   });
 
+  readonly isStepLive = computed(() => {
+    const step = this.selectedStep();
+    if (!step) return false;
+    if (!this.isLive()) return false;
+    return !step.status || step.status === 'running';
+  });
+
   statusBadgeClass = workflowStatusBadgeClass;
   statusLabel = workflowStatusLabel;
   statusIconClass = workflowStatusIconClass;
@@ -85,12 +93,15 @@ export class RunDetailPage {
 
   private sseAbortController: AbortController | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
+  private refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private refreshAbortController: AbortController | null = null;
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => void this.loadRun());
     this.destroyRef.onDestroy(() => {
       this.stopStreaming();
       this.stopPolling();
+      this.cancelRefreshDebounce();
     });
   }
 
@@ -114,7 +125,16 @@ export class RunDetailPage {
   }
 
   selectJob(jobId: string): void {
-    this.selectedJobId.set(this.selectedJobId() === jobId ? null : jobId);
+    this.expandedJobIds.update((ids) => {
+      const next = new Set(ids);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
+    });
+    this.selectedJobId.set(jobId);
     const job = this.run()?.jobs.find((j) => j.id === jobId);
     const firstStep = job?.steps[0];
     this.selectedStepId.set(firstStep?.id ?? null);
@@ -157,8 +177,14 @@ export class RunDetailPage {
 
     const currentJob = this.selectedJobId();
     if (!currentJob || !jobs.some((j) => j.id === currentJob)) {
-      this.selectedJobId.set(jobs[0].id);
-      this.selectedStepId.set(jobs[0].steps[0]?.id ?? null);
+      const firstJob = jobs[0];
+      this.selectedJobId.set(firstJob.id);
+      this.selectedStepId.set(firstJob.steps[0]?.id ?? null);
+      this.expandedJobIds.update((ids) => {
+        const next = new Set(ids);
+        next.add(firstJob.id);
+        return next;
+      });
     }
   }
 
@@ -186,7 +212,7 @@ export class RunDetailPage {
         owner,
         repo,
         runId,
-        () => void this.refreshRun(),
+        () => this.scheduleRefresh(),
         () => this.stopStreaming(),
         ctrl.signal,
       )
@@ -222,15 +248,50 @@ export class RunDetailPage {
     const runId = this.runId();
     if (!owner || !repo || !runId) return;
 
+    this.refreshAbortController?.abort();
+    this.refreshAbortController = new AbortController();
+    const ctrl = this.refreshAbortController;
+
     try {
       const run = await this.runService.getRun(owner, repo, runId);
+      if (ctrl.signal.aborted) return;
       this.run.set(run);
+      this.ensureSelectionIfNeeded(run.jobs);
       if (!isRunActive(run.status)) {
         this.stopStreaming();
         this.stopPolling();
       }
     } catch {
       // keep last known state
+    }
+  }
+
+  private scheduleRefresh(): void {
+    if (this.refreshDebounceTimer) return;
+    this.refreshDebounceTimer = setTimeout(() => {
+      this.refreshDebounceTimer = null;
+      void this.refreshRun();
+    }, 200);
+  }
+
+  private cancelRefreshDebounce(): void {
+    if (this.refreshDebounceTimer) {
+      clearTimeout(this.refreshDebounceTimer);
+      this.refreshDebounceTimer = null;
+    }
+    this.refreshAbortController?.abort();
+    this.refreshAbortController = null;
+  }
+
+  private ensureSelectionIfNeeded(jobs: WorkflowJob[]): void {
+    const currentStepId = this.selectedStepId();
+    if (!currentStepId) {
+      this.ensureSelection(jobs);
+      return;
+    }
+    const stepExists = jobs.some((j) => j.steps.some((s) => s.id === currentStepId));
+    if (!stepExists) {
+      this.ensureSelection(jobs);
     }
   }
 }

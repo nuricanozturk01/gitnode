@@ -3,6 +3,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import { BranchService } from '../../../../../core/branch/services/branch.service';
 import type { DispatchInput } from '../../../../../domain/actions/models/workflow-detail.model';
 import type { BranchInfo } from '../../../../../domain/repository/models/branch-info.model';
+import { FormsModule } from '@angular/forms';
 
 export interface DispatchConfirmedEvent {
   ref: string;
@@ -13,7 +14,7 @@ export interface DispatchConfirmedEvent {
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-workflow-dispatch-modal',
   standalone: true,
-  imports: [LucideAngularModule],
+  imports: [LucideAngularModule, FormsModule],
   templateUrl: './workflow-dispatch-modal.component.html',
 })
 export class WorkflowDispatchModalComponent implements OnInit {

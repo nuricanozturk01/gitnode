@@ -144,6 +144,25 @@ export class ActionsSettingsComponent {
     }
   }
 
+  runnerStartCommand(token: RegistrationToken): string {
+    return `./originhub-runner start \\
+  --server-url ${this.serverUrl()} \\
+  --token ${token.token} \\
+  --name my-runner \\
+  --labels self-hosted,linux`;
+  }
+
+  async copyStartCommand(): Promise<void> {
+    const token = this.registrationToken();
+    if (!token) return;
+    try {
+      await copyTextToClipboard(this.runnerStartCommand(token));
+      this.toast.success('Start command copied');
+    } catch {
+      this.toast.error('Could not copy start command');
+    }
+  }
+
   async deleteRunner(runner: RunnerInfo): Promise<void> {
     if (!this.canWrite()) return;
     const confirmed = await this.confirmModal.confirm(

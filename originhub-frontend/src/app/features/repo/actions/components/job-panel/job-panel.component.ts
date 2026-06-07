@@ -20,6 +20,7 @@ import {
 export class JobPanelComponent {
   readonly jobs = input.required<WorkflowJob[]>();
   readonly selectedJobId = input<string | null>(null);
+  readonly expandedJobIds = input<Set<string>>(new Set());
 
   readonly jobSelected = output<string>();
   readonly stepSelected = output<string>();

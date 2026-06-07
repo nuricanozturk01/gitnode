@@ -117,4 +117,13 @@ export class PullRequestService {
   deleteComment(owner: string, repo: string, number: number, commentId: string): Promise<void> {
     return firstValueFrom(this.http.delete<void>(`${this.base(owner, repo)}/${number}/comments/${commentId}`));
   }
+
+  updatePullRequest(
+    owner: string,
+    repo: string,
+    number: number,
+    form: { title?: string; description?: string; isDraft?: boolean },
+  ): Promise<PullRequestDetail> {
+    return firstValueFrom(this.http.patch<PullRequestDetail>(`${this.base(owner, repo)}/${number}`, form));
+  }
 }

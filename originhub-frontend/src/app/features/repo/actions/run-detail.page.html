@@ -76,6 +76,7 @@
       <app-job-panel
         [jobs]="run()!.jobs"
         [selectedJobId]="selectedJobId()"
+        [expandedJobIds]="expandedJobIds()"
         (jobSelected)="selectJob($event)"
         (stepSelected)="selectStep($event)"
       ></app-job-panel>
@@ -89,7 +90,7 @@
       </div>
       <div class="p-3 sm:p-4">
         @if (selectedStep(); as step) {
-        <app-log-viewer [stepId]="step.id" [stepName]="stepName(step)" [live]="isLive()"></app-log-viewer>
+        <app-log-viewer [stepId]="step.id" [stepName]="stepName(step)" [live]="isStepLive()"></app-log-viewer>
         } @else {
         <div class="text-base-content/50 py-12 text-center text-sm">Select a job step to view logs.</div>
         }

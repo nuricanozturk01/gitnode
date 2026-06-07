@@ -89,11 +89,8 @@
     } @else {
     <div class="divide-base-300 divide-y">
       @for (run of runs(); track run.id) {
-      <a
-        [routerLink]="['/', owner(), repoName(), 'actions', 'runs', run.id]"
-        class="hover:bg-base-200/40 flex items-center justify-between gap-3 px-3 py-3 no-underline sm:px-4"
-      >
-        <div class="min-w-0">
+      <div class="hover:bg-base-200/40 group flex items-center gap-3 px-3 py-3 sm:px-4">
+        <a [routerLink]="['/', owner(), repoName(), 'actions', 'runs', run.id]" class="min-w-0 flex-1 no-underline">
           <div class="flex flex-wrap items-center gap-2">
             <lucide-icon
               [name]="statusIconName(run.status, run.conclusion)"
@@ -107,9 +104,26 @@
           <p class="text-base-content/50 mt-0.5 text-xs">
             {{ run.triggerEvent }} @if (run.triggerRef) { · {{ run.triggerRef }} } · {{ run.createdAt | relativeTime }}
           </p>
+        </a>
+        <div class="flex shrink-0 items-center gap-1">
+          <lucide-icon name="chevronRight" class="text-base-content/40 size-4"></lucide-icon>
+          @if (repoContext.canEdit()) {
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs text-error opacity-0 transition-opacity group-hover:opacity-100"
+            [disabled]="deletingRunId() === run.id"
+            (click)="deleteRun($event, run.id)"
+            title="Delete run"
+          >
+            @if (deletingRunId() === run.id) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
+            }
+          </button>
+          }
         </div>
-        <lucide-icon name="chevronRight" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
-      </a>
+      </div>
       }
     </div>
     }

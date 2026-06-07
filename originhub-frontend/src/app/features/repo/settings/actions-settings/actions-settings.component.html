@@ -80,14 +80,16 @@
               {{ token.token }}
             </code>
             <div class="mt-4">
-              <p class="settings-label mb-2">Start command</p>
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p class="settings-label mb-0">Start command</p>
+                <button type="button" class="btn btn-outline btn-sm mt-2 shrink-0 sm:mt-0" (click)="copyStartCommand()">
+                  <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+                  Copy command
+                </button>
+              </div>
               <pre
-                class="bg-base-100 border-base-300 overflow-x-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
-              ><code>./originhub-runner start \
-  --server-url {{ serverUrl() }} \
-  --token {{ token.token }} \
-  --name my-runner \
-  --labels self-hosted,linux</code></pre>
+                class="bg-base-100 border-base-300 mt-2 overflow-x-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+              ><code>{{ runnerStartCommand(token) }}</code></pre>
             </div>
           </div>
         }

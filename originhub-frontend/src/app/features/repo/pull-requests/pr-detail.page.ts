@@ -35,8 +35,18 @@ import type { FileDiff } from '../../../domain/commit/models/file-diff.model';
 import type { DiffLine } from '../../../domain/commit/models/diff-line.model';
 import type { CommitInfo } from '../../../domain/commit/models/commit-info.model';
 import { parseUrlTab, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
+import { WorkflowRunService } from '../../../core/actions/services/workflow-run.service';
+import type { WorkflowRun } from '../../../domain/actions/models/workflow-run.model';
+import {
+  resolveWorkflowDisplayStatus,
+  workflowStatusBadgeClass,
+  workflowStatusIconClass,
+  workflowStatusIconName,
+  workflowStatusIconSpinning,
+  workflowStatusLabel,
+} from '../../../shared/utils/workflow-status.utils';
 
-const PR_DETAIL_TABS = ['conversation', 'commits', 'files'] as const;
+const PR_DETAIL_TABS = ['conversation', 'commits', 'files', 'actions'] as const;
 type PrDetailTab = (typeof PR_DETAIL_TABS)[number];
 const DEFAULT_PR_DETAIL_TAB: PrDetailTab = 'conversation';
 
@@ -47,6 +57,7 @@ const DEFAULT_PR_DETAIL_TAB: PrDetailTab = 'conversation';
   imports: [RouterLink, LucideAngularModule, FormsModule, RelativeTimePipe, AvatarComponent],
   templateUrl: './pr-detail.page.html',
   styleUrl: './pull-requests.page.css',
+  host: { class: 'block' },
 })
 export class PrDetailPage {
   private readonly route = inject(ActivatedRoute);
@@ -56,11 +67,16 @@ export class PrDetailPage {
   private readonly userService = inject(UserService);
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
+  private readonly runService = inject(WorkflowRunService);
   readonly repoContext = inject(RepoContextService);
 
   readonly pr = signal<PullRequestDetail | null>(null);
   readonly currentUser = signal<{ avatarUrl: string | null; email: string; username: string } | null>(null);
   readonly comments = signal<PrCommentInfo[]>([]);
+  readonly commentsTotalPages = signal(1);
+  readonly commentsPage = signal(0);
+  readonly commentsLoadingMore = signal(false);
+  readonly COMMENTS_PAGE_SIZE = 5;
   readonly files = signal<FileDiff[]>([]);
   readonly commits = signal<CommitInfo[]>([]);
   readonly loading = signal(true);
@@ -70,6 +86,25 @@ export class PrDetailPage {
   readonly commitsLoaded = signal(false);
   readonly activeTab = signal<PrDetailTab>(DEFAULT_PR_DETAIL_TAB);
   readonly expandedFiles = signal<Set<string>>(new Set());
+
+  readonly editingHeader = signal(false);
+  readonly editTitle = signal('');
+  readonly editDescription = signal('');
+  readonly savingHeader = signal(false);
+
+  readonly runs = signal<WorkflowRun[]>([]);
+  readonly runsLoading = signal(false);
+  readonly runsLoaded = signal(false);
+
+  runStatusBadgeClass = workflowStatusBadgeClass;
+  runStatusLabel = workflowStatusLabel;
+  runStatusIconClass = workflowStatusIconClass;
+  runStatusIconName = workflowStatusIconName;
+  runStatusIconSpinning = workflowStatusIconSpinning;
+
+  runDisplayStatus(run: WorkflowRun): string {
+    return resolveWorkflowDisplayStatus(run.status, run.conclusion);
+  }
 
   readonly newCommentBody = signal('');
   readonly submittingComment = signal(false);
@@ -183,6 +218,7 @@ export class PrDetailPage {
       if (!owner || !repo || !num) return;
       if (tab === 'files' && !this.filesLoaded() && !this.filesLoading()) this.loadDiff();
       if (tab === 'commits' && !this.commitsLoaded() && !this.commitsLoading()) this.loadCommits();
+      if (tab === 'actions' && !this.runsLoaded() && !this.runsLoading()) this.loadRuns();
     });
   }
 
@@ -198,16 +234,21 @@ export class PrDetailPage {
     try {
       const [prData, commentsData] = await Promise.all([
         this.prService.getPullRequest(owner, repo, num),
-        this.prService.getComments(owner, repo, num),
+        this.prService.getComments(owner, repo, num, 0, this.COMMENTS_PAGE_SIZE),
       ]);
       this.pr.set(prData);
       this.comments.set(commentsData.content);
+      this.commentsPage.set(0);
+      this.commentsTotalPages.set(commentsData.totalPages);
       this.filesLoaded.set(false);
       this.commitsLoaded.set(false);
+      this.runsLoaded.set(false);
       this.loading.set(false);
     } catch {
       this.pr.set(null);
       this.comments.set([]);
+      this.commentsTotalPages.set(1);
+      this.commentsPage.set(0);
       this.loading.set(false);
     }
   }
@@ -246,6 +287,86 @@ export class PrDetailPage {
       this.commits.set([]);
       this.commitsLoading.set(false);
       this.commitsLoaded.set(true);
+    }
+  }
+
+  readonly canEditPr = computed(() => {
+    const p = this.pr();
+    if (!p) return false;
+    return this.repoContext.canEdit() || p.author.username === this.currentUsername();
+  });
+
+  readonly hasMoreComments = computed(() => this.commentsPage() < this.commentsTotalPages() - 1);
+
+  async loadMoreComments(): Promise<void> {
+    if (this.commentsLoadingMore() || !this.hasMoreComments()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    const num = this.number();
+    if (!owner || !repo || !num) return;
+    this.commentsLoadingMore.set(true);
+    try {
+      const nextPage = this.commentsPage() + 1;
+      const data = await this.prService.getComments(owner, repo, num, nextPage, this.COMMENTS_PAGE_SIZE);
+      this.comments.update((c) => [...c, ...data.content]);
+      this.commentsPage.set(nextPage);
+      this.commentsTotalPages.set(data.totalPages);
+    } catch {
+      // keep current
+    } finally {
+      this.commentsLoadingMore.set(false);
+    }
+  }
+
+  startEditHeader(): void {
+    const p = this.pr();
+    if (!p) return;
+    this.editTitle.set(p.title);
+    this.editDescription.set(p.description ?? '');
+    this.editingHeader.set(true);
+  }
+
+  cancelEditHeader(): void {
+    this.editingHeader.set(false);
+  }
+
+  async saveHeader(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const num = this.number();
+    if (!owner || !repo || !num || this.savingHeader()) return;
+    this.savingHeader.set(true);
+    try {
+      const updated = await this.prService.updatePullRequest(owner, repo, num, {
+        title: this.editTitle().trim(),
+        description: this.editDescription().trim() || undefined,
+      });
+      this.pr.set(updated);
+      this.editingHeader.set(false);
+      this.toast.success('Pull request updated');
+    } catch {
+      this.toast.error('Could not update pull request');
+    } finally {
+      this.savingHeader.set(false);
+    }
+  }
+
+  private async loadRuns(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const pr = this.pr();
+    if (!owner || !repo || !pr) return;
+    this.runsLoading.set(true);
+    try {
+      const triggerRef = `refs/heads/${pr.sourceBranch}`;
+      const page = await this.runService.listRuns(owner, repo, 0, 30, 'pull_request', triggerRef);
+      this.runs.set(page.content);
+      this.runsLoaded.set(true);
+    } catch {
+      this.runs.set([]);
+      this.runsLoaded.set(true);
+    } finally {
+      this.runsLoading.set(false);
     }
   }
 

@@ -54,7 +54,8 @@ out/
 
 # Since we use pnpm by default
 package-lock.json
-application-local.yml
+# Helm prod secrets overlay (local dev uses deploy/helm/originhub/local.yml in git)
+/deploy/helm/originhub/prod.yml
 
 # Vercel
 CLAUDE.md

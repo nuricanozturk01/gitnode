@@ -5,7 +5,8 @@
 # Server: ./deploy/scripts/bootstrap.sh  (kubectl context must point to your cluster)
 #
 # Optional:
-#   ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git  → register Argo CD Application
+#   ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git  → override auto-detected origin
+#   ORIGINHUB_GIT_REVISION=main                                   → override branch/tag
 #   ORIGINHUB_VALUE_FILE=local.yml|prod.yml
 #   KIND_HTTP_PORT=9080 KIND_HTTPS_PORT=9443  → force ingress host ports (when 80/443 busy)
 set -euo pipefail
@@ -16,8 +17,8 @@ NAMESPACE="${K8S_NAMESPACE:-originhub}"
 RELEASE="${K8S_RELEASE:-originhub}"
 VALUE_FILE="${ORIGINHUB_VALUE_FILE:-local.yml}"
 LOCAL="${LOCAL:-0}"
-GIT_REPO="${ORIGINHUB_GIT_REPO_URL:-}"
 HELM_TIMEOUT="${HELM_TIMEOUT:-10m}"
+ARGOCD_SYNC_TIMEOUT="${ARGOCD_SYNC_TIMEOUT:-15m}"
 CLUSTER="${KIND_CLUSTER_NAME:-originhub}"
 
 KIND_CONFIG=""
@@ -195,13 +196,6 @@ helm_install() {
         echo "    • make k8s-purge && make k8s-bootstrap LOCAL=1"
         echo "    • Longer wait: HELM_TIMEOUT=20m make k8s-bootstrap LOCAL=1"
         ;;
-      originhub)
-        echo "  Common fixes:"
-        echo "    • no match for platform → Apple Silicon: ORIGINHUB_LOCAL_BUILD=1 make k8s-bootstrap LOCAL=1"
-        echo "    • ImagePullBackOff → kubectl describe pod -n originhub -l app=originhub-backend"
-        echo "    • kubectl logs -n originhub -l app=originhub-backend --tail=50"
-        echo "    • make k8s-purge && HELM_TIMEOUT=20m make k8s-bootstrap LOCAL=1"
-        ;;
     esac
     exit 1
   fi
@@ -210,23 +204,93 @@ helm_install() {
 need kubectl
 need helm
 
-needs_local_image_build() {
-  [[ "$LOCAL" != "1" ]] && return 1
-  [[ "${ORIGINHUB_LOCAL_BUILD:-auto}" == "0" ]] && return 1
-  [[ "${ORIGINHUB_LOCAL_BUILD:-auto}" == "1" ]] && return 0
-  local arch
-  arch="$(uname -m)"
-  [[ "$arch" == "arm64" || "$arch" == "aarch64" ]]
+normalize_git_url() {
+  local url="$1"
+  if [[ "$url" =~ ^git@([^:]+):(.+)$ ]]; then
+    echo "https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  elif [[ "$url" =~ ^ssh://git@([^/]+)/(.+)$ ]]; then
+    echo "https://${BASH_REMATCH[1]}/${BASH_REMATCH[2]}"
+  else
+    echo "$url"
+  fi
 }
 
-build_local_originhub_image() {
-  need docker
-  local image="originhub-os:local"
-  echo "→ Building OriginHub image locally for $(uname -m) (kind node is linux/arm64; registry may be amd64-only)..."
-  echo "  docker build -t ${image} .  (first run ~10–20 min)"
-  docker build -t "$image" -f "${ROOT}/Dockerfile" "${ROOT}"
-  echo "→ Loading image into kind cluster '${CLUSTER}'..."
-  kind load docker-image "$image" --name "$CLUSTER"
+resolve_git_repo() {
+  if [[ -n "${ORIGINHUB_GIT_REPO_URL:-}" ]]; then
+    normalize_git_url "${ORIGINHUB_GIT_REPO_URL}"
+    return 0
+  fi
+  if git -C "$ROOT" remote get-url origin &>/dev/null; then
+    normalize_git_url "$(git -C "$ROOT" remote get-url origin)"
+    return 0
+  fi
+  return 1
+}
+
+resolve_git_revision() {
+  if [[ -n "${ORIGINHUB_GIT_REVISION:-}" ]]; then
+    echo "${ORIGINHUB_GIT_REVISION}"
+    return 0
+  fi
+  git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main"
+}
+
+apply_originhub_application() {
+  local app_file="${ROOT}/deploy/argocd/applications/originhub-prod.yml"
+  [[ "$VALUE_FILE" == "local.yml" ]] && app_file="${ROOT}/deploy/argocd/applications/originhub-local.yml"
+
+  local repo rev
+  repo="$(resolve_git_repo)" || {
+    echo ""
+    echo "  ✗ Cannot resolve Git repo URL for Argo CD Application."
+    echo "    Set ORIGINHUB_GIT_REPO_URL or run from a git clone with 'origin' remote."
+    exit 1
+  }
+  rev="$(resolve_git_revision)"
+
+  echo "→ Argo CD Application (GitOps)..."
+  echo "  repo:       ${repo}"
+  echo "  revision:   ${rev}"
+  echo "  chart:      deploy/helm/originhub"
+  echo "  values:     values.yml + ${VALUE_FILE}"
+  echo ""
+  sed -e "s|ORIGINHUB_GIT_REPO_URL|${repo}|g" \
+    -e "s|ORIGINHUB_GIT_REVISION|${rev}|g" \
+    "$app_file" | kubectl apply -f -
+}
+
+wait_for_originhub_application() {
+  echo "→ Waiting for Argo CD to sync originhub (timeout: ${ARGOCD_SYNC_TIMEOUT})..."
+  local start=$SECONDS
+  local deadline=$((start + $(parse_duration_minutes "${ARGOCD_SYNC_TIMEOUT}")))
+  while (( SECONDS < deadline )); do
+    local sync health
+    sync="$(kubectl get application originhub -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || true)"
+    health="$(kubectl get application originhub -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || true)"
+    echo "  ── originhub · $((SECONDS - start))s ── sync=${sync:-Pending} health=${health:-Pending}"
+    kubectl get pods -n "$NAMESPACE" -o wide 2>/dev/null || true
+    echo ""
+    if [[ "$sync" == "Synced" && "$health" == "Healthy" ]]; then
+      echo "  ✓ Argo CD Application originhub is Synced and Healthy."
+      return 0
+    fi
+    sleep 20
+  done
+  echo ""
+  echo "  ⚠ Argo CD sync timed out. Check UI → Applications → originhub"
+  kubectl get application originhub -n argocd -o yaml 2>/dev/null | tail -40 || true
+  return 1
+}
+
+parse_duration_minutes() {
+  local t="$1"
+  if [[ "$t" =~ ^([0-9]+)m$ ]]; then
+    echo $((BASH_REMATCH[1] * 60))
+  elif [[ "$t" =~ ^([0-9]+)s$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+  else
+    echo 900
+  fi
 }
 
 if [[ "$LOCAL" == "1" ]]; then
@@ -259,36 +323,15 @@ echo "→ Argo CD..."
 helm_install argocd argo/argo-cd argocd \
   -f "${ROOT}/deploy/argocd/values.yaml"
 
-echo "→ OriginHub backend (Helm)..."
-ORIGINHUB_HELM_EXTRA=()
-if needs_local_image_build; then
-  build_local_originhub_image
-  ORIGINHUB_HELM_EXTRA=(
-    --set imageTag=local
-    --set originhub.image.repository=originhub-os
-    --set originhub.image.pullPolicy=IfNotPresent
-  )
-  echo "  Using local image: originhub-os:local (loaded into kind)"
-  echo ""
-fi
-helm_install "$RELEASE" "$CHART" "$NAMESPACE" \
-  -f "${CHART}/values.yml" \
-  -f "${CHART}/${VALUE_FILE}" \
-  "${ORIGINHUB_HELM_EXTRA[@]}"
-
 echo "→ Argo CD AppProject..."
 kubectl apply -f "${ROOT}/deploy/argocd/project.yml"
 
-if [[ -n "$GIT_REPO" ]]; then
-  echo "→ Argo CD Application (GitOps)..."
-  APP_FILE="${ROOT}/deploy/argocd/application-prod.yml"
-  [[ "$VALUE_FILE" == "local.yml" ]] && APP_FILE="${ROOT}/deploy/argocd/application-local.yml"
-  sed "s|ORIGINHUB_GIT_REPO_URL|${GIT_REPO}|g" "$APP_FILE" | kubectl apply -f -
-else
-  echo "→ Skipping Argo CD Application (set ORIGINHUB_GIT_REPO_URL for GitOps sync)."
-fi
+apply_originhub_application
+wait_for_originhub_application || true
 
 ARGO_PASS="$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' 2>/dev/null | base64 -d || true)"
+GIT_REPO_DISPLAY="$(resolve_git_repo 2>/dev/null || echo unknown)"
+GIT_REV_DISPLAY="$(resolve_git_revision)"
 
 if [[ "$LOCAL" == "1" ]]; then
   kind export kubeconfig --name "$CLUSTER"
@@ -299,10 +342,11 @@ echo "════════════════════════�
 echo "  Bootstrap complete"
 echo "════════════════════════════════════════════════════════════"
 echo ""
-echo "  Add to /etc/hosts (local):"
+echo "  Add to /etc/hosts (required — URLs won't open in browser without this):"
 echo "    127.0.0.1  api.originhub.local  argocd.originhub.local  grafana.originhub.local"
 echo ""
 echo "  Argo CD UI:     http://argocd.originhub.local${URL_SUFFIX}"
+echo "  Application: originhub  (${GIT_REPO_DISPLAY} @ ${GIT_REV_DISPLAY})"
 echo "  User:        admin"
 if [[ -n "$ARGO_PASS" ]]; then
   echo "  Password:    ${ARGO_PASS}"
@@ -322,6 +366,8 @@ echo ""
 echo "  Domain config:  deploy/helm/originhub/${VALUE_FILE}"
 echo "    domain.apiHost      → backend ingress"
 echo "    domain.frontendUrl  → Vercel / Cloudflare Pages (CORS + OAuth)"
+echo ""
+echo "  GitOps: push deploy/ changes to ${GIT_REV_DISPLAY} on ${GIT_REPO_DISPLAY} for Argo CD to pick them up."
 echo ""
 echo "  Teardown:       make k8s-purge"
 echo "  kubectl:        make k8s-kubeconfig  (refresh after kind recreate)"

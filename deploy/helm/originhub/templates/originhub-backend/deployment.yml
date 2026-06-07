@@ -129,22 +129,27 @@ spec:
                   name: originhub-backend-secret
                   key: ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD
             {{- end }}
+          startupProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            periodSeconds: 10
+            failureThreshold: 30
+            timeoutSeconds: 10
           livenessProbe:
             httpGet:
               port: 8080
               path: /actuator/health
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            periodSeconds: 15
             failureThreshold: 5
-            timeoutSeconds: 5
+            timeoutSeconds: 10
           readinessProbe:
             httpGet:
               port: 8080
               path: /actuator/health
-            initialDelaySeconds: 30
-            periodSeconds: 5
-            failureThreshold: 5
-            timeoutSeconds: 5
+            periodSeconds: 10
+            failureThreshold: 6
+            timeoutSeconds: 10
           resources:
             limits:
               cpu: 2000m

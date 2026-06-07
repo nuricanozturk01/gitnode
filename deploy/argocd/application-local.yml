@@ -14,7 +14,7 @@ spec:
     helm:
       valueFiles:
         - values.yml
-        - prod.yml
+        - local.yml
   destination:
     server: https://kubernetes.default.svc
     namespace: originhub

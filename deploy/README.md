@@ -119,26 +119,47 @@ make k8s-bootstrap              # no LOCAL=1
 
 ### Local (kind)
 
-Requires [Prerequisites](#prerequisites) (`kind`, Docker, `kubectl`, `helm`). First run ~10–15 minutes.
+Requires [Prerequisites](#prerequisites) (`kind`, Docker, `kubectl`, `helm`). First run ~10–20 minutes (builds `originhub-os:local` + `originhub-admin-panel:local`).
 
 ```bash
 make k8s-bootstrap LOCAL=1
 ```
 
-Installs: kind cluster · cert-manager · ingress-nginx · **Argo CD** · OriginHub Helm chart.
+Installs: kind cluster · cert-manager · ingress-nginx · **Argo CD** · OriginHub (GitOps).
 
-**Apple Silicon (M1/M2/M3):** kind nodes are `linux/arm64`. Registry image is multi-arch (native amd64 + arm64 builds in CI, no QEMU). Until a fresh deploy is pushed, bootstrap may still **build locally** on arm64 Macs (`originhub-os:local`).
+**UI:** Main app (SPA + API) at `http://api.originhub.local` — backend `os` profile embeds the frontend; bootstrap bakes `API_URL=http://api.originhub.local` into the image. **Admin panel** at `http://admin.originhub.local` (enabled by default for `LOCAL=1`).
+
+**Apple Silicon (M1/M2/M3):** Local bootstrap builds arm64 images on your machine — no registry pull required.
+
+### Local component flags (Makefile → Argo CD Helm parameters)
+
+| Flag | Default (`LOCAL=1`) | Effect |
+|------|---------------------|--------|
+| `K8S_ADMIN_API=1` | on | Backend admin API (`originhub.admin.enabled`) |
+| `K8S_ADMIN_PANEL=1` | on | Build + deploy admin panel (`admin.originhub.local`) |
+| `K8S_FRONTEND=1` | off | Extra ingress `app.originhub.local` (SPA already on API host) |
+| `K8S_GRAFANA=1` | on | Grafana deployment + ingress |
+| `K8S_PROMETHEUS=1` | on | Prometheus deployment (cluster-internal) |
+| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI at `prometheus.originhub.local` |
+| `ORIGINHUB_LOCAL_BUILD=0` | on | Skip local OS image build (uses registry) |
+
+Example — Prometheus UI + separate frontend ingress:
+
+```bash
+K8S_FRONTEND=1 K8S_PROMETHEUS_INGRESS=1 make k8s-bootstrap LOCAL=1
+```
 
 Add to `/etc/hosts` (macOS/Linux: `/etc/hosts`, Windows: `C:\Windows\System32\drivers\etc\hosts`):
 
 ```
-127.0.0.1  api.originhub.local  argocd.originhub.local  grafana.originhub.local
+127.0.0.1  api.originhub.local  argocd.originhub.local  grafana.originhub.local  admin.originhub.local
 ```
 
 | Service | URL |
 |---------|-----|
 | Argo CD UI | http://argocd.originhub.local (admin / see below) |
-| OriginHub API | http://api.originhub.local |
+| OriginHub App (SPA + API) | http://api.originhub.local |
+| Admin panel | http://admin.originhub.local (`admin` / `Admin123`) |
 | Grafana | http://grafana.originhub.local (admin / admin) |
 | Git SSH | `git@127.0.0.1:30222` (NodePort) |
 
@@ -208,11 +229,10 @@ cp deploy/helm/originhub/prod.yml.example deploy/helm/originhub/prod.yml
 
 ```bash
 make k8s-bootstrap \
-  ORIGINHUB_VALUE_FILE=prod.yml \
-  ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git
+  ORIGINHUB_VALUE_FILE=prod.yml
 ```
 
-`ORIGINHUB_GIT_REPO_URL` registers an Argo CD **Application** for GitOps sync.
+Git repo URL is auto-detected from `origin`. Override: `ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git`
 
 ## Full teardown
 
@@ -321,7 +341,10 @@ deploy/
 │   ├── local.yml             Local domain + dev secrets
 │   ├── prod.yml.example      Production template
 │   └── templates/
-├── argocd/                   Argo CD config + Application manifests
+├── argocd/                   Argo CD config
+│   ├── applications/         originhub-local.yml · originhub-prod.yml
+│   ├── project.yml
+│   └── values.yaml           Argo CD Helm values (ingress host)
 ├── kind/kind-config.yaml
 └── scripts/
     ├── bootstrap.sh      One-shot installer
@@ -330,11 +353,18 @@ deploy/
 
 ## Argo CD
 
-After bootstrap, open **Argo CD UI** to watch sync status, diff, rollback, and health.
+Bootstrap always registers:
 
-- AppProject: `originhub`
-- Application: `originhub` (when `ORIGINHUB_GIT_REPO_URL` is set)
-- Values: `deploy/argocd/values.yaml` (customize domain for Argo CD ingress)
+- **AppProject:** `originhub` (`deploy/argocd/project.yml`)
+- **Application:** `originhub` (`deploy/argocd/applications/originhub-local.yml` or `originhub-prod.yml`)
+
+Git repo URL is auto-detected from `git remote get-url origin` (SSH → HTTPS). Override with `ORIGINHUB_GIT_REPO_URL`. Branch defaults to current branch (`ORIGINHUB_GIT_REVISION` to override).
+
+OriginHub stack is deployed **by Argo CD** from `deploy/helm/originhub` — not direct Helm in bootstrap. Push `deploy/` changes to Git for sync.
+
+Open **Argo CD UI** to watch sync status, diff, rollback, and health.
+
+- Values: `deploy/argocd/values.yaml` (Argo CD ingress host)
 
 ## Secrets (base64)
 

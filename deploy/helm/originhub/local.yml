@@ -38,7 +38,8 @@ persistence:
 
 common:
   secrets:
-    ORIGINHUB_JWT_SECRET: bG9jYWwtZGV2LWp3dC1zZWNyZXQtbWluaW11bS0zMi1jaGFyYWN0ZXJzLWxvbmM=
+    # Base64(JWT signing key) — JwtUtils decodes ORIGINHUB_JWT_SECRET again at runtime
+    ORIGINHUB_JWT_SECRET: Ykc5allXd3RaR1YyTFdwM2RDMXpaV055WlhRdGEyVjVMVE15WW5sMFpYTWhJUT09
 
 originhub:
   image:
@@ -47,7 +48,9 @@ originhub:
   ssh:
     serviceType: NodePort
     nodePort: 30222
-  secrets: {}
+  secrets:
+    # Admin123 — platform admin for http://admin.originhub.local (username: admin)
+    ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD: QWRtaW4xMjM=
 
 postgres:
   secrets:

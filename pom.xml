@@ -5,7 +5,7 @@
 
   <groupId>com.nuricanozturk</groupId>
   <artifactId>originhub-parent</artifactId>
-  <version>1.0.9-SNAPSHOT</version>
+  <version>1.0.9</version>
   <packaging>pom</packaging>
 
   <properties>
@@ -39,7 +39,7 @@
   <scm>
     <connection>scm:git:https://github.com/nuricanozturk01/originhub.git</connection>
     <developerConnection>scm:git:https://github.com/nuricanozturk01/originhub.git</developerConnection>
-    <tag>HEAD</tag>
+    <tag>v1.0.9</tag>
   </scm>
 
   <dependencyManagement>

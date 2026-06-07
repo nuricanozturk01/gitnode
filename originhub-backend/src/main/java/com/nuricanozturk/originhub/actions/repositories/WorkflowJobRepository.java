@@ -34,4 +34,6 @@ public interface WorkflowJobRepository extends JpaRepository<WorkflowJob, UUID> 
   List<WorkflowJob> findAllQueued();
 
   List<WorkflowJob> findAllByRunnerIdAndStatus(UUID runnerId, WorkflowJobStatus status);
+
+  long countByRunnerIdAndStatus(UUID runnerId, WorkflowJobStatus status);
 }

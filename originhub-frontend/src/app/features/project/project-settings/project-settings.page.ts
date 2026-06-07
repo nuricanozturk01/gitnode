@@ -1,4 +1,6 @@
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Location } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ProjectService } from '../../../core/project/services/project.service';
@@ -11,6 +13,11 @@ import type { WebhookInfo } from '../../../domain/webhook/webhook.model';
 import { PROJECT_WEBHOOK_EVENT_GROUPS } from '../../../domain/webhook/webhook.model';
 import type { ProjectRepoInfo } from '../../../domain/project/models/project-repo-info.model';
 import type { RepoInfo } from '../../../domain/repository/models/repo-info.model';
+import { parseUrlTab, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
+
+type ProjectSettingsTab = 'general' | 'webhooks' | 'repos';
+const PROJECT_SETTINGS_TABS = ['general', 'webhooks', 'repos'] as const satisfies readonly ProjectSettingsTab[];
+const DEFAULT_PROJECT_SETTINGS_TAB: ProjectSettingsTab = 'general';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -24,6 +31,7 @@ export class ProjectSettingsPage implements OnInit {
 
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly projectService = inject(ProjectService);
   private readonly projectWebhookService = inject(ProjectWebhookService);
   private readonly repoService = inject(RepoService);
@@ -31,7 +39,7 @@ export class ProjectSettingsPage implements OnInit {
   private readonly toastService = inject(ToastService);
   private readonly confirmModal = inject(ConfirmModalService);
 
-  readonly activeTab = signal<'general' | 'webhooks' | 'repos'>('general');
+  readonly activeTab = signal<ProjectSettingsTab>(DEFAULT_PROJECT_SETTINGS_TAB);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -82,6 +90,10 @@ export class ProjectSettingsPage implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
+      this.applyTab(parseUrlTab(fragment, PROJECT_SETTINGS_TABS, DEFAULT_PROJECT_SETTINGS_TAB));
+    });
+
     this.loading.set(true);
     try {
       const p = await this.projectService.get(this.owner, this.projectCode);
@@ -96,7 +108,13 @@ export class ProjectSettingsPage implements OnInit {
     }
   }
 
-  setTab(t: 'general' | 'webhooks' | 'repos'): void {
+  setTab(t: ProjectSettingsTab): void {
+    this.applyTab(t);
+    replaceUrlFragment(this.location, t === DEFAULT_PROJECT_SETTINGS_TAB ? null : t);
+  }
+
+  private applyTab(t: ProjectSettingsTab): void {
+    if (this.activeTab() === t) return;
     this.activeTab.set(t);
     if (t === 'webhooks') void this.loadWebhooks();
     if (t === 'repos') void this.loadRepos();

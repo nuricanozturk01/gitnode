@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -68,6 +69,20 @@ public class SseEmitterRegistry {
     for (final var emitter : list) {
       emitter.complete();
     }
+  }
+
+  @Scheduled(fixedDelay = 30_000)
+  public void sendHeartbeat() {
+    this.emitters.forEach(
+        (stepId, list) ->
+            list.forEach(
+                emitter -> {
+                  try {
+                    emitter.send(SseEmitter.event().comment("keep-alive"));
+                  } catch (final IOException ex) {
+                    this.remove(stepId, emitter);
+                  }
+                }));
   }
 
   private void remove(final UUID stepId, final SseEmitter emitter) {

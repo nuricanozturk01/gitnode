@@ -16,14 +16,26 @@
 package com.nuricanozturk.originhub.actions.repositories;
 
 import com.nuricanozturk.originhub.actions.entities.WorkflowArtifact;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface WorkflowArtifactRepository extends JpaRepository<WorkflowArtifact, UUID> {
 
-  List<WorkflowArtifact> findAllByRunId(UUID runId);
+  Page<WorkflowArtifact> findAllByRunIdOrderByCreatedAtDesc(UUID runId, Pageable pageable);
 
   Optional<WorkflowArtifact> findByRunIdAndName(UUID runId, String name);
+
+  List<WorkflowArtifact> findAllByExpiresAtBefore(Instant threshold, Pageable pageable);
+
+  @Modifying
+  @Query("DELETE FROM WorkflowArtifact a WHERE a.expiresAt < :threshold")
+  int deleteExpiredArtifacts(@Param("threshold") Instant threshold);
 }

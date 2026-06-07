@@ -15,6 +15,8 @@
  */
 package com.nuricanozturk.originhub.actions.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -25,6 +27,7 @@ public record WorkflowDispatchModel(@Nullable Map<String, DispatchInputModel> in
   public record DispatchInputModel(
       @Nullable String description,
       @Nullable String type,
-      @Nullable String defaultValue,
+      @JsonProperty("default") @Nullable String defaultValue,
+      @Nullable List<String> options,
       boolean required) {}
 }

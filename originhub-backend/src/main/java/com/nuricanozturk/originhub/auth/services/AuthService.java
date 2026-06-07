@@ -19,6 +19,7 @@ import com.nuricanozturk.originhub.auth.dtos.LoginForm;
 import com.nuricanozturk.originhub.auth.dtos.RecoverPasswordForm;
 import com.nuricanozturk.originhub.auth.dtos.RecoveryCodeRequestForm;
 import com.nuricanozturk.originhub.auth.dtos.RegistrationForm;
+import com.nuricanozturk.originhub.shared.audit.services.AuditLogService;
 import com.nuricanozturk.originhub.shared.auth.dtos.LoginInfo;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.auth.services.TenantAuthGuard;
@@ -26,6 +27,7 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllo
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.BadRequestException;
 import com.nuricanozturk.originhub.shared.tenant.entities.Tenant;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
@@ -34,8 +36,12 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Service
 @Transactional(readOnly = true)
@@ -45,9 +51,16 @@ public class AuthService {
 
   private static final int RECOVERY_CODE_LENGTH = 150;
   private static final int SALT_LENGTH = 16;
+  private static final String AUTH_LOGIN_SUCCESS = "AUTH_LOGIN_SUCCESS";
+  private static final String AUTH_LOGIN_FAILED = "AUTH_LOGIN_FAILED";
+  private static final String ENTITY_TYPE_AUTH = "auth";
 
   private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
+  private final AuditLogService auditLogService;
+
+  @Value("${originhub.audit.enabled:true}")
+  private boolean auditEnabled;
 
   @Transactional
   public boolean getPasswordRecoveryCode(final RecoveryCodeRequestForm form) {
@@ -85,15 +98,48 @@ public class AuthService {
   @Transactional
   public LoginInfo login(final LoginForm form) {
 
-    final var tenant =
-        this.tenantRepository
-            .findByUsernameOrEmail(form.getUsernameOrEmail().toLowerCase(Locale.getDefault()))
-            .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
+    final var usernameOrEmail = form.getUsernameOrEmail().toLowerCase(Locale.getDefault());
 
-    this.checkPassword(tenant, form);
-    TenantAuthGuard.requireEnabled(tenant);
+    try {
+      final var tenant =
+          this.tenantRepository
+              .findByUsernameOrEmail(usernameOrEmail)
+              .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
 
-    return this.createLoginInfo(tenant);
+      this.checkPassword(tenant, form);
+      TenantAuthGuard.requireEnabled(tenant);
+
+      final var loginInfo = this.createLoginInfo(tenant);
+      this.auditLogin(AUTH_LOGIN_SUCCESS, tenant.getUsername(), null);
+      return loginInfo;
+
+    } catch (final AccessNotAllowedException ex) {
+      this.auditLogin(AUTH_LOGIN_FAILED, usernameOrEmail, ex.getMessage());
+      throw ex;
+    }
+  }
+
+  private void auditLogin(final String action, final String actor, final @Nullable String reason) {
+
+    if (!this.auditEnabled) {
+      return;
+    }
+    final var ip = this.resolveIpAddress();
+    final var details = reason != null ? "reason=" + reason : null;
+    this.auditLogService.log(actor, action, ENTITY_TYPE_AUTH, null, details, ip);
+  }
+
+  private @Nullable String resolveIpAddress() {
+
+    final var attrs = RequestContextHolder.getRequestAttributes();
+    if (!(attrs instanceof ServletRequestAttributes servletAttrs)) {
+      return null;
+    }
+    final HttpServletRequest request = servletAttrs.getRequest();
+    final var forwarded = request.getHeader("X-Forwarded-For");
+    return (forwarded != null && !forwarded.isBlank())
+        ? forwarded.split(",")[0].trim()
+        : request.getRemoteAddr();
   }
 
   @Transactional

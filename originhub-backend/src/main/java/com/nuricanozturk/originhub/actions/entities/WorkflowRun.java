@@ -82,6 +82,10 @@ public class WorkflowRun {
   @Nullable
   private String conclusion;
 
+  @Column(name = "concurrency_group", length = 256)
+  @Nullable
+  private String concurrencyGroup;
+
   @JdbcTypeCode(SqlTypes.JSON)
   @Column(name = "inputs", columnDefinition = "jsonb")
   @Nullable

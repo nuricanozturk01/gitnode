@@ -25,11 +25,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.jspecify.annotations.Nullable;
 
 @Getter
@@ -68,6 +71,11 @@ public class WorkflowJob {
   @Column(name = "needs", columnDefinition = "text[]")
   @Nullable
   private List<String> needs;
+
+  @Column(name = "matrix_values", columnDefinition = "jsonb")
+  @Nullable
+  @JdbcTypeCode(SqlTypes.JSON)
+  private Map<String, String> matrixValues;
 
   @Column(name = "started_at")
   @Nullable

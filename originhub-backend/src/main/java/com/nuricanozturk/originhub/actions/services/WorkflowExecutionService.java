@@ -27,6 +27,7 @@ import com.nuricanozturk.originhub.actions.repositories.WorkflowJobRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowLogRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowRunRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowStepRepository;
+import com.nuricanozturk.originhub.actions.websocket.RunStatusSseRegistry;
 import com.nuricanozturk.originhub.actions.websocket.SseEmitterRegistry;
 import com.nuricanozturk.originhub.events.actions.WorkflowJobCompletedEvent;
 import com.nuricanozturk.originhub.events.actions.WorkflowJobQueuedEvent;
@@ -64,6 +65,7 @@ public class WorkflowExecutionService {
   private final RunnerRepository runnerRepository;
   private final ApplicationEventPublisher eventPublisher;
   private final SseEmitterRegistry sseEmitterRegistry;
+  private final RunStatusSseRegistry runStatusSseRegistry;
 
   @Transactional
   public void handleJobClaimed(final UUID jobId, final UUID runnerId) {
@@ -83,6 +85,7 @@ public class WorkflowExecutionService {
 
     this.eventPublisher.publishEvent(
         new WorkflowJobStartedEvent(jobId, job.getRunId(), run.getRepoId(), job.getName()));
+    this.runStatusSseRegistry.notify(job.getRunId());
 
     log.info("Job claimed: jobId={}, runnerId={}", jobId, runnerId);
   }
@@ -128,57 +131,155 @@ public class WorkflowExecutionService {
         new WorkflowJobCompletedEvent(
             jobId, job.getRunId(), run.getRepoId(), job.getName(), conclusion));
 
-    this.advanceWaitingJobs(job.getRunId(), run.getRepoId());
-    this.maybeCompleteRun(run);
+    this.runStatusSseRegistry.notify(job.getRunId());
+    final var allJobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
+    this.advanceWaitingJobs(job.getRunId(), run.getRepoId(), allJobs);
+    this.maybeCompleteRun(run, allJobs);
 
     log.info("Job completed: jobId={}, conclusion={}", jobId, conclusion);
+  }
+
+  @Transactional
+  public void cancelRun(final UUID runId) {
+
+    final var run = this.requireRun(runId);
+
+    if (run.getStatus() == WorkflowRunStatus.SUCCESS
+        || run.getStatus() == WorkflowRunStatus.FAILURE
+        || run.getStatus() == WorkflowRunStatus.CANCELLED) {
+      return;
+    }
+
+    final var jobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId);
+    for (final var job : jobs) {
+      if (!TERMINAL_STATUSES.contains(job.getStatus())) {
+        job.setStatus(WorkflowJobStatus.CANCELLED);
+        job.setConclusion("cancelled");
+        job.setCompletedAt(Instant.now());
+        this.jobRepository.save(job);
+      }
+    }
+
+    run.setStatus(WorkflowRunStatus.CANCELLED);
+    run.setConclusion("cancelled");
+    run.setCompletedAt(Instant.now());
+    this.runRepository.save(run);
+
+    this.eventPublisher.publishEvent(
+        new WorkflowRunCompletedEvent(
+            run.getId(), run.getRepoId(), run.getWorkflowName(), "cancelled"));
+    this.runStatusSseRegistry.complete(run.getId());
+
+    log.info("Run cancelled: runId={}", runId);
+  }
+
+  @Transactional
+  public void handleRunnerDisconnected(final UUID runnerId) {
+
+    final var jobs =
+        this.jobRepository.findAllByRunnerIdAndStatus(runnerId, WorkflowJobStatus.IN_PROGRESS);
+
+    for (final var job : jobs) {
+      job.setStatus(WorkflowJobStatus.FAILURE);
+      job.setConclusion("failure");
+      job.setCompletedAt(Instant.now());
+      this.jobRepository.save(job);
+
+      this.stepRepository.findAllByJobIdOrderByStepNumberAsc(job.getId()).stream()
+          .filter(s -> "running".equals(s.getStatus()))
+          .forEach(s -> this.sseEmitterRegistry.complete(s.getId()));
+
+      this.runRepository
+          .findById(job.getRunId())
+          .ifPresent(
+              run -> {
+                this.eventPublisher.publishEvent(
+                    new WorkflowJobCompletedEvent(
+                        job.getId(), job.getRunId(), run.getRepoId(), job.getName(), "failure"));
+                final var runJobs =
+                    this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
+                this.advanceWaitingJobs(job.getRunId(), run.getRepoId(), runJobs);
+                this.maybeCompleteRun(run, runJobs);
+              });
+
+      log.warn("Job failed due to runner disconnect: jobId={}, runnerId={}", job.getId(), runnerId);
+    }
   }
 
   @Transactional
   public void ingestLog(
       final UUID stepId, final int lineNumber, final String content, final String level) {
 
-    final var log_ = new WorkflowLog();
-    log_.setStepId(stepId);
-    log_.setLineNumber(lineNumber);
-    log_.setContent(content);
-    log_.setLevel(level != null && !level.isBlank() ? level : "info");
-    this.logRepository.save(log_);
+    final var logRecord = new WorkflowLog();
+    logRecord.setStepId(stepId);
+    logRecord.setLineNumber(lineNumber);
+    logRecord.setContent(content);
+    logRecord.setLevel(level != null && !level.isBlank() ? level : "info");
+    this.logRepository.save(logRecord);
 
     this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, level));
   }
 
-  private void advanceWaitingJobs(final UUID runId, final UUID repoId) {
+  private void advanceWaitingJobs(
+      final UUID runId, final UUID repoId, final java.util.List<WorkflowJob> allJobs) {
 
-    final var allJobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId);
-    final var completedNames =
+    final var successNames =
         allJobs.stream()
-            .filter(j -> TERMINAL_STATUSES.contains(j.getStatus()))
+            .filter(j -> j.getStatus() == WorkflowJobStatus.SUCCESS)
+            .map(WorkflowJob::getName)
+            .collect(Collectors.toSet());
+
+    final var failedNames =
+        allJobs.stream()
+            .filter(
+                j ->
+                    j.getStatus() == WorkflowJobStatus.FAILURE
+                        || j.getStatus() == WorkflowJobStatus.CANCELLED)
             .map(WorkflowJob::getName)
             .collect(Collectors.toSet());
 
     for (final var waiting : allJobs) {
-      if (waiting.getStatus() != WorkflowJobStatus.WAITING) {
-        continue;
-      }
-      final var needs = waiting.getNeeds();
-      if (needs == null || needs.isEmpty()) {
-        continue;
-      }
-      if (completedNames.containsAll(needs)) {
-        waiting.setStatus(WorkflowJobStatus.QUEUED);
-        this.jobRepository.save(waiting);
-        this.eventPublisher.publishEvent(
-            new WorkflowJobQueuedEvent(
-                waiting.getId(), runId, repoId, waiting.getName(), waiting.getRunnerLabels()));
-        log.info("Job advanced to QUEUED after needs resolved: jobId={}", waiting.getId());
-      }
+      this.advanceJobIfReady(waiting, successNames, failedNames, runId, repoId);
     }
   }
 
-  private void maybeCompleteRun(final WorkflowRun run) {
+  private void advanceJobIfReady(
+      final WorkflowJob waiting,
+      final Set<String> successNames,
+      final Set<String> failedNames,
+      final UUID runId,
+      final UUID repoId) {
 
-    final var jobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(run.getId());
+    if (waiting.getStatus() != WorkflowJobStatus.WAITING) {
+      return;
+    }
+    final var needs = waiting.getNeeds();
+    if (needs == null || needs.isEmpty()) {
+      return;
+    }
+
+    final boolean anyNeedFailed = needs.stream().anyMatch(failedNames::contains);
+    if (anyNeedFailed) {
+      waiting.setStatus(WorkflowJobStatus.SKIPPED);
+      waiting.setConclusion("skipped");
+      waiting.setCompletedAt(Instant.now());
+      this.jobRepository.save(waiting);
+      log.info("Job skipped due to failed dependency: jobId={}", waiting.getId());
+      return;
+    }
+
+    if (successNames.containsAll(needs)) {
+      waiting.setStatus(WorkflowJobStatus.QUEUED);
+      this.jobRepository.save(waiting);
+      this.eventPublisher.publishEvent(
+          new WorkflowJobQueuedEvent(
+              waiting.getId(), runId, repoId, waiting.getName(), waiting.getRunnerLabels()));
+      log.info("Job advanced to QUEUED after needs resolved: jobId={}", waiting.getId());
+    }
+  }
+
+  private void maybeCompleteRun(final WorkflowRun run, final java.util.List<WorkflowJob> jobs) {
+
     final boolean allDone = jobs.stream().allMatch(j -> TERMINAL_STATUSES.contains(j.getStatus()));
 
     if (!allDone) {
@@ -197,6 +298,7 @@ public class WorkflowExecutionService {
     this.eventPublisher.publishEvent(
         new WorkflowRunCompletedEvent(
             run.getId(), run.getRepoId(), run.getWorkflowName(), conclusion));
+    this.runStatusSseRegistry.complete(run.getId());
 
     log.info("Run completed: runId={}, conclusion={}", run.getId(), conclusion);
   }
@@ -208,9 +310,8 @@ public class WorkflowExecutionService {
         .ifPresent(
             runner -> {
               final long inProgress =
-                  this.jobRepository
-                      .findAllByRunnerIdAndStatus(runnerId, WorkflowJobStatus.IN_PROGRESS)
-                      .size();
+                  this.jobRepository.countByRunnerIdAndStatus(
+                      runnerId, WorkflowJobStatus.IN_PROGRESS);
               if (inProgress == 0) {
                 runner.setStatus(RunnerStatus.ONLINE);
                 this.runnerRepository.save(runner);

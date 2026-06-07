@@ -96,6 +96,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   }
 
   @Override
+  protected boolean shouldNotFilter(final HttpServletRequest request) {
+    return request.getRequestURI().startsWith("/ws/");
+  }
+
+  @Override
   protected boolean shouldNotFilterAsyncDispatch() {
     return false;
   }

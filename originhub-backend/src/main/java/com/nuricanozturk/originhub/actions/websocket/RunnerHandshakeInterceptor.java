@@ -46,7 +46,7 @@ public class RunnerHandshakeInterceptor implements HandshakeInterceptor {
       final WebSocketHandler wsHandler,
       final Map<String, Object> attributes) {
 
-    final var token = extractBearerToken(request);
+    final var token = this.extractBearerToken(request);
 
     if (token == null) {
       log.debug("WebSocket connection rejected: missing Authorization header");
@@ -75,9 +75,10 @@ public class RunnerHandshakeInterceptor implements HandshakeInterceptor {
       final @Nullable Exception exception) {}
 
   private @Nullable String extractBearerToken(final ServerHttpRequest request) {
+    final var bearer = "Bearer ";
     final var auth = request.getHeaders().getFirst("Authorization");
-    if (auth != null && auth.startsWith("Bearer ")) {
-      return auth.substring(7);
+    if (auth != null && auth.startsWith(bearer)) {
+      return auth.substring(bearer.length());
     }
     return null;
   }

@@ -117,7 +117,7 @@ public class OriginHubSshServer {
 
         session.setAttribute(TENANT_KEY, tenant);
 
-        log.info("SSH auth success: username={}, tenant={}", username, tenant.getUsername());
+        log.debug("SSH auth success: username={}, tenant={}", username, tenant.getUsername());
         return true;
       } catch (final Exception ex) {
         log.debug("SSH auth failed: username={}, reason={}", username, ex.getMessage());

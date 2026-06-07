@@ -57,6 +57,10 @@ public class RunnerRegistrationToken {
   @Column(name = "used", nullable = false)
   private boolean used = false;
 
+  @Column(name = "runner_id")
+  @Nullable
+  private UUID runnerId;
+
   @CreationTimestamp
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;

@@ -24,7 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +32,10 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,6 +46,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @NullMarked
 public class ArtifactStoreService {
+
+  private static final int CLEANUP_BATCH_SIZE = 100;
 
   @Value("${originhub.actions.artifacts.local-path}")
   private String artifactsBasePath;
@@ -57,14 +62,14 @@ public class ArtifactStoreService {
       final MultipartFile file,
       final int retentionDays) {
 
-    final Path dir = Path.of(artifactsBasePath, "runs", runId.toString());
+    final Path dir = Path.of(this.artifactsBasePath, "runs", runId.toString());
     try {
       Files.createDirectories(dir);
     } catch (final IOException ex) {
       throw new ErrorOccurredException("Failed to create artifact directory: " + ex.getMessage());
     }
 
-    final String filename = sanitizeName(name) + ".tar.gz";
+    final String filename = this.sanitizeName(name) + ".tar.gz";
     final Path target = dir.resolve(filename);
 
     try {
@@ -76,7 +81,7 @@ public class ArtifactStoreService {
     final Instant expiresAt =
         retentionDays > 0 ? Instant.now().plus(retentionDays, ChronoUnit.DAYS) : null;
 
-    final var existing = artifactRepository.findByRunIdAndName(runId, name);
+    final var existing = this.artifactRepository.findByRunIdAndName(runId, name);
     final WorkflowArtifact artifact = existing.orElseGet(WorkflowArtifact::new);
     artifact.setRunId(runId);
     artifact.setJobId(jobId);
@@ -86,7 +91,7 @@ public class ArtifactStoreService {
     artifact.setContentType("application/gzip");
     artifact.setExpiresAt(expiresAt);
 
-    final var saved = artifactRepository.save(artifact);
+    final var saved = this.artifactRepository.save(artifact);
     log.info("Artifact stored: run={} name={} size={}", runId, name, saved.getSizeBytes());
     return saved;
   }
@@ -94,7 +99,7 @@ public class ArtifactStoreService {
   @Transactional(readOnly = true)
   public Resource download(final UUID runId, final String name) {
     final var artifact =
-        artifactRepository
+        this.artifactRepository
             .findByRunIdAndName(runId, name)
             .orElseThrow(
                 () ->
@@ -109,8 +114,41 @@ public class ArtifactStoreService {
   }
 
   @Transactional(readOnly = true)
-  public List<WorkflowArtifact> listByRun(final UUID runId) {
-    return artifactRepository.findAllByRunId(runId);
+  public Page<WorkflowArtifact> listByRun(final UUID runId, final Pageable pageable) {
+    return this.artifactRepository.findAllByRunIdOrderByCreatedAtDesc(runId, pageable);
+  }
+
+  @Scheduled(cron = "0 0 2 * * *")
+  @Transactional
+  public void cleanupExpiredArtifacts() {
+    final var now = Instant.now();
+    final var batchSize = PageRequest.of(0, CLEANUP_BATCH_SIZE);
+    int deleted = 0;
+
+    while (true) {
+      final var batch = this.artifactRepository.findAllByExpiresAtBefore(now, batchSize);
+      if (batch.isEmpty()) {
+        break;
+      }
+      for (var artifact : batch) {
+        try {
+          Files.deleteIfExists(Path.of(artifact.getFilePath()));
+        } catch (IOException ex) {
+          log.warn(
+              "Failed to delete artifact file {}: {}", artifact.getFilePath(), ex.getMessage());
+        }
+      }
+      final var ids = batch.stream().map(WorkflowArtifact::getId).toList();
+      this.artifactRepository.deleteAllById(ids);
+      deleted += batch.size();
+      if (batch.size() < CLEANUP_BATCH_SIZE) {
+        break;
+      }
+    }
+
+    if (deleted > 0) {
+      log.info("Artifact retention: deleted {} expired artifacts", deleted);
+    }
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

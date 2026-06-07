@@ -19,6 +19,7 @@ import com.nuricanozturk.originhub.actions.entities.WorkflowCache;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,4 +36,11 @@ public interface WorkflowCacheRepository extends JpaRepository<WorkflowCache, UU
           + " ORDER BY c.accessedAt DESC")
   List<WorkflowCache> findByRepoIdAndCacheKeyStartingWith(
       @Param("repoId") UUID repoId, @Param("prefix") String prefix);
+
+  /** Returns a batch of least-recently-accessed cache entries for LRU eviction. */
+  List<WorkflowCache> findAllByOrderByAccessedAtAsc(Pageable pageable);
+
+  /** Returns the total size in bytes of all cache entries. */
+  @Query("SELECT COALESCE(SUM(c.sizeBytes), 0) FROM WorkflowCache c")
+  long sumTotalSizeBytes();
 }

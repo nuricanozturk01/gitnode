@@ -29,5 +29,7 @@ public interface WorkflowDefinitionRepository extends JpaRepository<WorkflowDefi
 
   List<WorkflowDefinition> findAllByRepoIdAndEnabledTrue(UUID repoId);
 
+  List<WorkflowDefinition> findAllByRepoIdOrderByFilePathAsc(UUID repoId);
+
   Optional<WorkflowDefinition> findByRepoIdAndFilePath(UUID repoId, String filePath);
 }

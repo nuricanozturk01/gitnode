@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.nuricanozturk.originhub.actions.dtos.request.RunnerRegistrationRequest;
+import com.nuricanozturk.originhub.actions.entities.ExecutorType;
 import com.nuricanozturk.originhub.actions.entities.Runner;
 import com.nuricanozturk.originhub.actions.entities.RunnerRegistrationToken;
 import com.nuricanozturk.originhub.actions.entities.RunnerStatus;
@@ -33,6 +34,7 @@ import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundE
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -206,6 +208,27 @@ class RunnerRegistryServiceTest {
             ? Instant.now().minus(1, ChronoUnit.HOURS)
             : Instant.now().plus(1, ChronoUnit.HOURS));
     return t;
+  }
+
+  @Test
+  @DisplayName("listByRepo serializes runner status with ASCII lowercase under Turkish locale")
+  void listByRepo_statusUsesRootLocale() {
+    Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+
+    final var runner = new Runner();
+    runner.setId(RUNNER_ID);
+    runner.setRepoId(REPO_ID);
+    runner.setName("my-runner");
+    runner.setStatus(RunnerStatus.ONLINE);
+    runner.setExecutorType(ExecutorType.SHELL);
+    runner.setCreatedAt(Instant.now());
+    when(runnerRepository.findAllByRepoId(REPO_ID)).thenReturn(List.of(runner));
+
+    final var result = service.listByRepo(REPO_ID);
+
+    assertThat(result).hasSize(1);
+    assertThat(result.getFirst().status()).isEqualTo("online");
+    assertThat(result.getFirst().executorType()).isEqualTo("shell");
   }
 
   private static RunnerRegistrationRequest regRequest(final String token) {

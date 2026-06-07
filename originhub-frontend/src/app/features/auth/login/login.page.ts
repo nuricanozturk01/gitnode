@@ -17,11 +17,11 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/services/auth.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { authErrorMessage, authQueryErrorMessage } from '../../../shared/utils/api-error.utils';
 
 type LoginMode = 'standard' | 'ldap' | 'saml';
 
@@ -65,11 +65,10 @@ export class LoginPage implements OnInit {
       this.loginMode.set(mode);
     }
 
-    const loginError = this.route.snapshot.queryParamMap.get('error');
-    if (loginError === 'userDisabled') {
-      const msg = 'This account has been disabled.';
-      this.error.set(msg);
-      this.toast.error(msg);
+    const loginError = authQueryErrorMessage(this.route.snapshot.queryParamMap.get('error'));
+    if (loginError) {
+      this.error.set(loginError);
+      this.toast.error(loginError);
       return;
     }
 
@@ -101,7 +100,7 @@ export class LoginPage implements OnInit {
       this.toast.success('Login successful');
       this.router.navigate(['/dashboard']);
     } catch (e) {
-      const msg = this.extractErrorMessage(e, 'Login failed');
+      const msg = authErrorMessage(e, 'standard', 'Login failed');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {
@@ -124,7 +123,7 @@ export class LoginPage implements OnInit {
       this.toast.success('Login successful');
       this.router.navigate(['/dashboard']);
     } catch (e) {
-      const msg = this.extractErrorMessage(e, 'LDAP authentication failed');
+      const msg = authErrorMessage(e, 'ldap', 'LDAP authentication failed');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {
@@ -161,7 +160,7 @@ export class LoginPage implements OnInit {
       const discovery = await this.authService.discoverSaml(workEmail.trim());
       window.location.href = `${environment.apiUrl}${discovery.redirectUrl}`;
     } catch (e) {
-      const msg = this.extractErrorMessage(e, 'No SSO configuration found for this email domain');
+      const msg = authErrorMessage(e, 'saml', 'SSO sign-in failed');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {
@@ -187,24 +186,5 @@ export class LoginPage implements OnInit {
       return;
     }
     void this.onSamlSubmit();
-  }
-
-  private extractErrorMessage(e: unknown, fallback: string): string {
-    if (e instanceof HttpErrorResponse) {
-      if (typeof e.error === 'string' && e.error) {
-        if (e.error === 'userDisabled') {
-          return 'This account has been disabled.';
-        }
-        if (e.error === 'wrongPassword') {
-          return 'Invalid LDAP username or password.';
-        }
-        if (e.error === 'ldapUserSearchBaseInvalid') {
-          return 'LDAP user search base is misconfigured. Contact your administrator.';
-        }
-        return e.error;
-      }
-      return e.error?.message ?? e.statusText ?? fallback;
-    }
-    return (e as Error).message ?? fallback;
   }
 }

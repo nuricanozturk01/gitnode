@@ -49,6 +49,7 @@ public class AdminAuditLogService {
       final @Nullable String action,
       final @Nullable String entityType,
       final @Nullable String entityId,
+      final @Nullable String ipAddress,
       final @Nullable Instant from,
       final @Nullable Instant to) {
 
@@ -59,6 +60,7 @@ public class AdminAuditLogService {
             blankToNull(action),
             blankToNull(entityType),
             blankToNull(entityId),
+            blankToNull(ipAddress),
             from,
             to),
         pageable);
@@ -70,7 +72,7 @@ public class AdminAuditLogService {
 
     final var cappedHours = Math.min(lastHours, MAX_LAST_HOURS);
     final var since = Instant.now().minus(cappedHours, ChronoUnit.HOURS);
-    return this.search(pageable, null, actor, null, null, null, since, null);
+    return this.search(pageable, null, actor, null, null, null, null, since, null);
   }
 
   @Transactional(readOnly = true)

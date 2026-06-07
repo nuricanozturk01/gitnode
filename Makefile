@@ -7,6 +7,8 @@ REDIS_NAME     := originhub-redis
 PROMETHEUS_NAME:= originhub-prometheus
 GRAFANA_NAME   := originhub-grafana
 APP_NAME       := originhub
+RUNNER_NAME    := originhub-runner
+RUNNER_DIR     := originhub-runner
 LDAP_NAME      := originhub-ldap
 LDAP_IMAGE     := ghcr.io/rroemhild/docker-test-openldap:master
 LDAP_PORT      := 389
@@ -43,6 +45,7 @@ N ?= 1
   infra infra-down infra-stop infra-start \
   app app-stop app-scale app-scale-stop \
   proxy proxy-stop up-ha \
+  runner-build runner-build-all \
   ldap-up ldap-down \
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
@@ -215,6 +218,16 @@ logs-prometheus:
 logs-grafana:
 	docker logs -f $(GRAFANA_NAME)
 
+# ── Runner (Go agent) ─────────────────────────────────────────────────────────
+
+runner-build:
+	$(MAKE) -C $(RUNNER_DIR) build
+	@echo "Runner binary → $(RUNNER_DIR)/dist/$(RUNNER_NAME)"
+
+runner-build-all:
+	$(MAKE) -C $(RUNNER_DIR) build-all
+	@echo "Runner binaries → $(RUNNER_DIR)/dist/"
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 
 build:
@@ -284,6 +297,9 @@ help:
 	@echo "  make build             → Rebuild images (no cache)"
 	@echo "  make ps                → Show running containers"
 	@echo "  make purge             → down + delete volumes ⚠"
+	@echo "  make runner-build      → Build runner binary for local arch ($(RUNNER_DIR)/dist/)"
+	@echo "  make runner-build-all  → Build runner for Linux amd64/arm64, macOS arm64, Windows amd64"
+	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make ldap-up           → Start Docker OpenLDAP for LDAP E2E (port $(LDAP_PORT):10389)"
 	@echo "  make ldap-down         → Stop & remove LDAP test container"
 	@echo "  make saml-keygen       → Generate SP signing key pair (~/.originhub/saml/)"

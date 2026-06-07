@@ -67,6 +67,19 @@
       <lucide-icon name="users" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
       Collaborators
     </button>
+    <button
+      type="button"
+      role="tab"
+      id="repo-settings-tab-actions"
+      class="tab flex-1 gap-2 rounded-md sm:flex-none"
+      [class.tab-active]="activeTab() === 'actions'"
+      [attr.aria-selected]="activeTab() === 'actions'"
+      aria-controls="repo-settings-panel-actions"
+      (click)="setTab('actions')"
+    >
+      <lucide-icon name="workflow" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+      Actions
+    </button>
     @if (isRepoOwner()) {
     <button
       type="button"
@@ -795,6 +808,15 @@
         } }
       </div>
     </section>
+  </div>
+  } @if (activeTab() === 'actions') {
+  <div
+    id="repo-settings-panel-actions"
+    role="tabpanel"
+    aria-labelledby="repo-settings-tab-actions"
+    class="repo-settings-panels"
+  >
+    <app-actions-settings [owner]="owner()" [repoName]="repoName()" [canWrite]="canWriteSettings()" />
   </div>
   } @if (activeTab() === 'danger' && isRepoOwner()) {
   <div

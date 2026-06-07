@@ -70,16 +70,7 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
       final var type = root.path("type").asText();
       final var data = root.path("data");
 
-      switch (type) {
-        case "REGISTER" -> log.debug("REGISTER acknowledged for runner {}", runnerId);
-        case "HEARTBEAT" -> this.handleHeartbeat(runnerId);
-        case "JOB_CLAIMED" -> this.handleJobClaimed(data, runnerId);
-        case "STEP_STARTED" -> this.handleStepStarted(data);
-        case "LOG" -> this.handleLog(data);
-        case "STEP_COMPLETED" -> this.handleStepCompleted(data);
-        case "JOB_COMPLETED" -> this.handleJobCompleted(data);
-        default -> log.warn("Unknown WS message type '{}' from runner {}", type, runnerId);
-      }
+      this.dispatchMessage(type, data, runnerId);
     } catch (final Exception ex) {
       log.error("Error processing WS message from runner {}", runnerId, ex);
     }
@@ -94,6 +85,7 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
     }
 
     this.sessionRegistry.remove(runnerId);
+    this.executionService.handleRunnerDisconnected(runnerId);
     this.markRunnerOffline(runnerId);
 
     log.info("Runner disconnected: runnerId={}, status={}", runnerId, status);
@@ -102,6 +94,31 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
   @Override
   public boolean supportsPartialMessages() {
     return false;
+  }
+
+  // ── dispatch ──────────────────────────────────────────────────────────────
+
+  private void dispatchMessage(
+      final String type, final JsonNode data, final @Nullable UUID runnerId) {
+
+    switch (type) {
+      case "REGISTER" -> log.debug("REGISTER acknowledged for runner {}", runnerId);
+      case "HEARTBEAT" -> this.handleHeartbeat(runnerId);
+      case "JOB_CLAIMED" -> this.handleJobClaimed(data, runnerId);
+      case "JOB_COMPLETED" -> this.handleJobCompleted(data);
+      default -> this.dispatchStepEvent(type, data, runnerId);
+    }
+  }
+
+  private void dispatchStepEvent(
+      final String type, final JsonNode data, final @Nullable UUID runnerId) {
+
+    switch (type) {
+      case "STEP_STARTED" -> this.handleStepStarted(data);
+      case "LOG" -> this.handleLog(data);
+      case "STEP_COMPLETED" -> this.handleStepCompleted(data);
+      default -> log.warn("Unknown WS message type '{}' from runner {}", type, runnerId);
+    }
   }
 
   // ── inbound handlers ──────────────────────────────────────────────────────

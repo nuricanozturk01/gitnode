@@ -16,6 +16,7 @@
 package com.nuricanozturk.originhub.actions.websocket;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.nuricanozturk.originhub.actions.dtos.JobCancelledData;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -28,12 +29,14 @@ public record ServerMessage(String type, @Nullable Object data) {
   }
 
   public static ServerMessage jobAssigned(final Object jobPayload) {
-    return new ServerMessage("JOB_ASSIGNED", jobPayload);
+
+    return new ServerMessage("JOB_ASSIGNED", new JobAssignedData(jobPayload));
   }
+
+  public record JobAssignedData(Object job) {}
 
   public static ServerMessage jobCancelled(final String jobId) {
+
     return new ServerMessage("JOB_CANCELLED", new JobCancelledData(jobId));
   }
-
-  public record JobCancelledData(String jobId) {}
 }

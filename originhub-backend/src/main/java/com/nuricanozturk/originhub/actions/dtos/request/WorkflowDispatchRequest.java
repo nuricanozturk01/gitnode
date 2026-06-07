@@ -19,4 +19,5 @@ import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
-public record WorkflowDispatchRequest(@NotBlank String ref, @Nullable Map<String, String> inputs) {}
+public record WorkflowDispatchRequest(
+    @NotBlank String filePath, @NotBlank String ref, @Nullable Map<String, String> inputs) {}

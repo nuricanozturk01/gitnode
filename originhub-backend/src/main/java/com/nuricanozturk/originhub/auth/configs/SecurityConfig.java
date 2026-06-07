@@ -132,6 +132,18 @@ public class SecurityConfig {
     auth.requestMatchers(HttpMethod.GET, "/api/repos/**").permitAll();
     auth.requestMatchers(HttpMethod.GET, "/api/projects/**").permitAll();
 
+    auth.requestMatchers("/ws/**").permitAll();
+
+    auth.requestMatchers(HttpMethod.POST, "/api/actions/runners/register").permitAll();
+    auth.requestMatchers(HttpMethod.POST, "/api/actions/runners/*/heartbeat").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/actions/jobs/next").permitAll();
+    auth.requestMatchers(HttpMethod.POST, "/api/actions/jobs/*/claim").permitAll();
+    auth.requestMatchers(HttpMethod.POST, "/api/actions/steps/*/logs").permitAll();
+    auth.requestMatchers(HttpMethod.POST, "/api/actions/artifacts/upload").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/actions/artifacts/**").permitAll();
+    auth.requestMatchers(HttpMethod.GET, "/api/actions/cache").permitAll();
+    auth.requestMatchers(HttpMethod.POST, "/api/actions/cache").permitAll();
+
     auth.requestMatchers("/api/**").authenticated();
     auth.anyRequest().permitAll();
   }

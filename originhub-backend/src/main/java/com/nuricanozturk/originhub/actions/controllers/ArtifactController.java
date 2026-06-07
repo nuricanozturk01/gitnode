@@ -27,6 +27,8 @@ import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -89,17 +91,25 @@ public class ArtifactController {
         .body(resource);
   }
 
+  record PageResponse<T>(List<T> content, long totalElements, int totalPages, int page, int size) {}
+
   @GetMapping("/api/repos/{owner}/{repo}/actions/runs/{runId}/artifacts")
-  public ResponseEntity<List<ArtifactResponse>> listByRun(
+  public ResponseEntity<PageResponse<ArtifactResponse>> listByRun(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @PathVariable final UUID runId) {
+      @PathVariable final UUID runId,
+      @PageableDefault(size = 20) final Pageable pageable) {
 
     this.jwtUtils.extractUserId(authHeader);
-    final var artifacts =
-        this.artifactStoreService.listByRun(runId).stream().map(this::toResponse).toList();
-    return ResponseEntity.ok(artifacts);
+    final var page = this.artifactStoreService.listByRun(runId, pageable).map(this::toResponse);
+    return ResponseEntity.ok(
+        new PageResponse<>(
+            page.getContent(),
+            page.getTotalElements(),
+            page.getTotalPages(),
+            page.getNumber(),
+            page.getSize()));
   }
 
   // ── Cache ─────────────────────────────────────────────────────────────────

@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import com.nuricanozturk.originhub.actions.entities.WorkflowJobStatus;
 import com.nuricanozturk.originhub.actions.model.JobModel;
+import com.nuricanozturk.originhub.actions.model.MatrixStrategy;
 import com.nuricanozturk.originhub.actions.model.OnTriggerModel;
 import com.nuricanozturk.originhub.actions.model.PushTriggerModel;
 import com.nuricanozturk.originhub.actions.model.WorkflowModel;
@@ -38,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -48,6 +50,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -61,6 +64,9 @@ class WorkflowTriggerServiceTest {
   @Mock private WorkflowJobRepository jobRepository;
   @Mock private RepoRepository repoRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
+
+  @Spy private MatrixExpander matrixExpander = new MatrixExpander();
+  @Spy private ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
   @InjectMocks private WorkflowTriggerService triggerService;
 
@@ -97,7 +103,7 @@ class WorkflowTriggerServiceTest {
     @Test
     @DisplayName("hasPushTrigger: null on trigger → false")
     void hasPushTrigger_noTrigger() {
-      final var model = new WorkflowModel("CI", null, null, null);
+      final var model = new WorkflowModel("CI", null, null, null, null);
       assertThat(triggerService.hasPushTrigger(model, "main")).isFalse();
     }
 
@@ -105,7 +111,8 @@ class WorkflowTriggerServiceTest {
     @DisplayName("hasPushTrigger: empty branches → matches any branch")
     void hasPushTrigger_emptyBranches_matchesAll() {
       final var push = new PushTriggerModel(null, null, null, null, null);
-      final var model = new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null);
+      final var model =
+          new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null, null);
       assertThat(triggerService.hasPushTrigger(model, "any-branch")).isTrue();
     }
 
@@ -113,7 +120,8 @@ class WorkflowTriggerServiceTest {
     @DisplayName("hasPushTrigger: branches-ignore excludes matching branch")
     void hasPushTrigger_branchesIgnore_excludes() {
       final var push = new PushTriggerModel(null, List.of("dependabot/**"), null, null, null);
-      final var model = new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null);
+      final var model =
+          new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null, null);
       assertThat(triggerService.hasPushTrigger(model, "dependabot/npm/lodash")).isFalse();
     }
 
@@ -121,7 +129,8 @@ class WorkflowTriggerServiceTest {
     @DisplayName("hasPushTrigger: branch not in branches list → false")
     void hasPushTrigger_branchNotInList() {
       final var push = new PushTriggerModel(List.of("main"), null, null, null, null);
-      final var model = new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null);
+      final var model =
+          new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null, null);
       assertThat(triggerService.hasPushTrigger(model, "feature/x")).isFalse();
     }
   }
@@ -224,7 +233,81 @@ class WorkflowTriggerServiceTest {
     }
   }
 
+  // ── matrix expansion and if: evaluation ──────────────────────────────────
+
+  @Nested
+  @DisplayName("MatrixJobTests")
+  class MatrixJobTests {
+
+    @BeforeEach
+    void stubRepo() {
+      final var tenant = new Tenant();
+      tenant.setUsername(OWNER);
+      final var repo = new Repo();
+      repo.setId(REPO_ID);
+      repo.setName(REPO_NAME);
+      repo.setOwner(tenant);
+      when(repoRepository.findByIdWithOwner(REPO_ID)).thenReturn(Optional.of(repo));
+      when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
+          .thenReturn(Optional.empty());
+      stubDefinitionSave();
+      stubRunSave();
+      stubJobSave();
+      when(runRepository.nextRunNumber(REPO_ID)).thenReturn(1);
+    }
+
+    @Test
+    @DisplayName("two-dimension matrix creates 4 jobs (cartesian product)")
+    void twoDimensionMatrix_createsFourJobs() {
+      final var matrix =
+          new MatrixStrategy(
+              Map.of("os", List.of("ubuntu", "windows"), "node", List.of("18", "20")), null, null);
+      final var job = matrixJob(matrix, null);
+      final var push = new PushTriggerModel(null, null, null, null, null);
+      final var workflow = workflowWith(push, Map.of("build", job));
+
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/main"))
+          .thenReturn(List.of(parsed(workflow)));
+
+      triggerService.triggerOnPush(REPO_ID, "main", OWNER, null);
+
+      verify(jobRepository, org.mockito.Mockito.times(4))
+          .save(any(com.nuricanozturk.originhub.actions.entities.WorkflowJob.class));
+    }
+
+    @Test
+    @DisplayName("if: condition false → job created as SKIPPED, no queued event")
+    void ifConditionFalse_jobSkipped() {
+      final var job = matrixJob(null, "github.ref == 'refs/heads/main'");
+      final var push = new PushTriggerModel(null, null, null, null, null);
+      final var workflow = workflowWith(push, Map.of("build", job));
+
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/develop"))
+          .thenReturn(List.of(parsed(workflow)));
+
+      triggerService.triggerOnPush(REPO_ID, "develop", OWNER, null);
+
+      final var jobCaptor =
+          ArgumentCaptor.forClass(com.nuricanozturk.originhub.actions.entities.WorkflowJob.class);
+      verify(jobRepository).save(jobCaptor.capture());
+      assertThat(jobCaptor.getValue().getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+      verify(eventPublisher, never())
+          .publishEvent(
+              any(com.nuricanozturk.originhub.events.actions.WorkflowJobQueuedEvent.class));
+    }
+  }
+
   // ── helpers ───────────────────────────────────────────────────────────────
+
+  private static JobModel matrixJob(
+      final @Nullable MatrixStrategy matrix, final @Nullable String condition) {
+    final var strategy =
+        matrix == null
+            ? null
+            : new com.nuricanozturk.originhub.actions.model.StrategyModel(matrix, null, null);
+    return new JobModel(
+        "build", List.of("self-hosted"), null, null, condition, null, strategy, null, List.of());
+  }
 
   private void stubDefinitionSave() {
     when(definitionRepository.save(any()))
@@ -262,11 +345,12 @@ class WorkflowTriggerServiceTest {
 
   private static WorkflowModel workflowWith(
       final PushTriggerModel push, final Map<String, JobModel> jobs) {
-    return new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, jobs);
+    return new WorkflowModel("CI", new OnTriggerModel(push, null, null), null, null, jobs);
   }
 
   private static JobModel jobWithNeeds(final List<String> needs) {
-    return new JobModel("build", List.of("self-hosted"), null, needs, null, null, List.of());
+    return new JobModel(
+        "build", List.of("self-hosted"), null, needs, null, null, null, null, List.of());
   }
 
   private static ParsedWorkflow parsed(final WorkflowModel model) {

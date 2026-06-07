@@ -48,7 +48,7 @@ public class ExpressionEvaluator {
     final StringBuilder sb = new StringBuilder();
     while (m.find()) {
       final String expr = m.group(1).trim();
-      final String resolved = resolveExpr(expr, ctx);
+      final String resolved = this.resolveExpr(expr, ctx);
       m.appendReplacement(sb, Matcher.quoteReplacement(resolved != null ? resolved : m.group(0)));
     }
     m.appendTail(sb);
@@ -68,7 +68,7 @@ public class ExpressionEvaluator {
   public boolean evaluateCondition(
       final String condition, final Map<String, String> ctx, final String jobStatus) {
 
-    final String interpolated = evaluate(condition.trim(), ctx);
+    final String interpolated = this.evaluate(condition.trim(), ctx);
 
     if ("always()".equalsIgnoreCase(interpolated)) {
       return true;
@@ -83,13 +83,17 @@ public class ExpressionEvaluator {
       return "cancelled".equalsIgnoreCase(jobStatus);
     }
 
+    return this.evaluateComparison(interpolated);
+  }
+
+  private boolean evaluateComparison(final String interpolated) {
     if (interpolated.contains("==")) {
       final String[] parts = interpolated.split("==", 2);
-      return normalize(parts[0]).equals(normalize(parts[1]));
+      return this.normalize(parts[0]).equals(this.normalize(parts[1]));
     }
     if (interpolated.contains("!=")) {
       final String[] parts = interpolated.split("!=", 2);
-      return !normalize(parts[0]).equals(normalize(parts[1]));
+      return !this.normalize(parts[0]).equals(this.normalize(parts[1]));
     }
 
     // Treat non-empty, non-"false" string as truthy
@@ -105,9 +109,19 @@ public class ExpressionEvaluator {
       return ctx.get(expr);
     }
 
+    // inputs.* — resolve to empty string if not provided (avoids bash bad substitution)
+    if (expr.startsWith("inputs.")) {
+      return ctx.getOrDefault(expr, "");
+    }
+
+    // matrix.* — resolve to empty string when dimension not in context
+    if (expr.startsWith("matrix.")) {
+      return ctx.getOrDefault(expr, "");
+    }
+
     // steps.<id>.outputs.<name>
     if (expr.startsWith("steps.") && expr.contains(".outputs.")) {
-      return ctx.get(expr);
+      return ctx.getOrDefault(expr, "");
     }
 
     // Fallback: unresolved → keep original placeholder

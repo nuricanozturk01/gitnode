@@ -32,9 +32,11 @@ import com.nuricanozturk.originhub.events.actions.WorkflowJobQueuedEvent;
 import com.nuricanozturk.originhub.events.actions.WorkflowRunQueuedEvent;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -56,6 +58,8 @@ public class WorkflowTriggerService {
   private final WorkflowJobRepository jobRepository;
   private final RepoRepository repoRepository;
   private final ApplicationEventPublisher eventPublisher;
+  private final MatrixExpander matrixExpander;
+  private final ExpressionEvaluator expressionEvaluator;
 
   @Transactional
   public void triggerOnPush(
@@ -187,6 +191,8 @@ public class WorkflowTriggerService {
     run.setStatus(WorkflowRunStatus.QUEUED);
     run.setInputs(inputs);
 
+    this.applyConcurrency(repoId, parsed.model(), run, triggerRef, triggerEvent);
+
     final var savedRun = this.runRepository.save(run);
 
     this.createJobs(savedRun, parsed.model());
@@ -208,30 +214,134 @@ public class WorkflowTriggerService {
       return;
     }
 
+    final var context = this.buildGithubContext(run);
+
     for (final Map.Entry<String, JobModel> entry : model.jobs().entrySet()) {
       final var jobKey = entry.getKey();
       final var jobDef = entry.getValue();
+      final var baseName = jobDef.name() != null ? jobDef.name() : jobKey;
+      final var combinations = this.matrixExpander.expand(jobDef);
 
-      final var job = new WorkflowJob();
-      job.setRunId(run.getId());
-      job.setName(jobDef.name() != null ? jobDef.name() : jobKey);
-      job.setRunnerLabels(this.resolveLabels(jobDef));
-      job.setNeeds(jobDef.needs());
-
-      final boolean hasUnmetNeeds = jobDef.needs() != null && !jobDef.needs().isEmpty();
-      job.setStatus(hasUnmetNeeds ? WorkflowJobStatus.WAITING : WorkflowJobStatus.QUEUED);
-
-      final var savedJob = this.jobRepository.save(job);
-
-      if (!hasUnmetNeeds) {
-        this.eventPublisher.publishEvent(
-            new WorkflowJobQueuedEvent(
-                savedJob.getId(),
-                run.getId(),
-                run.getRepoId(),
-                savedJob.getName(),
-                savedJob.getRunnerLabels()));
+      for (final var matrixValues : combinations) {
+        this.createSingleJob(run, jobDef, baseName, matrixValues, context);
       }
+    }
+  }
+
+  private void createSingleJob(
+      final WorkflowRun run,
+      final JobModel jobDef,
+      final String baseName,
+      final Map<String, String> matrixValues,
+      final Map<String, String> context) {
+
+    final var job = new WorkflowJob();
+    job.setRunId(run.getId());
+    job.setName(this.suffixMatrixName(baseName, matrixValues));
+    job.setRunnerLabels(this.resolveLabels(jobDef));
+    job.setNeeds(jobDef.needs());
+    job.setMatrixValues(matrixValues.isEmpty() ? null : matrixValues);
+
+    if (jobDef.condition() != null
+        && !this.expressionEvaluator.evaluateCondition(jobDef.condition(), context, "success")) {
+      job.setStatus(WorkflowJobStatus.SKIPPED);
+      job.setConclusion("skipped");
+      this.jobRepository.save(job);
+      return;
+    }
+
+    final boolean hasUnmetNeeds = jobDef.needs() != null && !jobDef.needs().isEmpty();
+    job.setStatus(hasUnmetNeeds ? WorkflowJobStatus.WAITING : WorkflowJobStatus.QUEUED);
+
+    final var savedJob = this.jobRepository.save(job);
+
+    if (!hasUnmetNeeds) {
+      this.eventPublisher.publishEvent(
+          new WorkflowJobQueuedEvent(
+              savedJob.getId(),
+              run.getId(),
+              run.getRepoId(),
+              savedJob.getName(),
+              savedJob.getRunnerLabels()));
+    }
+  }
+
+  private String suffixMatrixName(final String baseName, final Map<String, String> matrixValues) {
+
+    if (matrixValues.isEmpty()) {
+      return baseName;
+    }
+
+    final var suffix = String.join(", ", matrixValues.values());
+    return baseName + " (" + suffix + ")";
+  }
+
+  private Map<String, String> buildGithubContext(final WorkflowRun run) {
+
+    final var ctx = new HashMap<String, String>();
+    if (run.getTriggerRef() != null) {
+      ctx.put("github.ref", run.getTriggerRef());
+    }
+    ctx.put("github.event_name", run.getTriggerEvent());
+    if (run.getTriggerSha() != null) {
+      ctx.put("github.sha", run.getTriggerSha());
+    }
+    return ctx;
+  }
+
+  private void applyConcurrency(
+      final UUID repoId,
+      final WorkflowModel model,
+      final WorkflowRun run,
+      final @Nullable String triggerRef,
+      final String triggerEvent) {
+
+    final var concurrency = model.concurrency();
+    if (concurrency == null || concurrency.group() == null) {
+      return;
+    }
+
+    final var ctx = new HashMap<String, String>();
+    if (triggerRef != null) {
+      ctx.put("github.ref", triggerRef);
+    }
+    ctx.put("github.event_name", triggerEvent);
+
+    final var group = this.expressionEvaluator.evaluate(concurrency.group(), ctx);
+    run.setConcurrencyGroup(group);
+
+    if (!concurrency.cancelInProgress()) {
+      return;
+    }
+
+    final var active =
+        this.runRepository.findByRepoIdAndConcurrencyGroupAndStatusIn(
+            repoId, group, List.of(WorkflowRunStatus.QUEUED, WorkflowRunStatus.IN_PROGRESS));
+
+    for (final var existing : active) {
+      existing.setStatus(WorkflowRunStatus.CANCELLED);
+      existing.setConclusion("cancelled");
+    }
+
+    if (!active.isEmpty()) {
+      this.runRepository.saveAll(active);
+      this.cancelJobsForRuns(active.stream().map(WorkflowRun::getId).collect(Collectors.toSet()));
+    }
+  }
+
+  private void cancelJobsForRuns(final java.util.Set<UUID> runIds) {
+
+    for (final var runId : runIds) {
+      final var jobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId);
+      for (final var job : jobs) {
+        if (job.getStatus() == WorkflowJobStatus.QUEUED
+            || job.getStatus() == WorkflowJobStatus.WAITING
+            || job.getStatus() == WorkflowJobStatus.IN_PROGRESS) {
+          job.setStatus(WorkflowJobStatus.CANCELLED);
+          job.setConclusion("cancelled");
+        }
+      }
+      this.jobRepository.saveAll(jobs);
     }
   }
 

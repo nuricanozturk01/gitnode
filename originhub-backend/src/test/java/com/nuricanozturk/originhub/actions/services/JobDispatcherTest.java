@@ -65,8 +65,11 @@ class JobDispatcherTest {
   private static final UUID JOB_ID = UUID.randomUUID();
   private static final UUID RUN_ID = UUID.randomUUID();
 
+  @Mock private com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository repoRepository;
+
   @BeforeEach
   void setUp() {
+    final var expressionEvaluator = new ExpressionEvaluator();
     this.dispatcher =
         new JobDispatcher(
             this.jobRepository,
@@ -75,7 +78,9 @@ class JobDispatcherTest {
             this.stepRepository,
             this.runnerRepository,
             this.sessionRegistry,
-            this.parserService);
+            this.parserService,
+            this.repoRepository,
+            expressionEvaluator);
     ReflectionTestUtils.setField(this.dispatcher, "heartbeatTimeoutSeconds", 60);
   }
 

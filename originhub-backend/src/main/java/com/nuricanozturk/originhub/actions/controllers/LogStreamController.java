@@ -42,6 +42,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @NullMarked
 public class LogStreamController {
 
+  private static final String BEARER = "Bearer ";
   private final WorkflowExecutionService executionService;
   private final WorkflowLogRepository logRepository;
   private final SseEmitterRegistry sseEmitterRegistry;
@@ -54,7 +55,7 @@ public class LogStreamController {
       @PathVariable final UUID stepId,
       @Valid @RequestBody final StepLogRequest request) {
 
-    this.runnerTokenService.validate(authHeader.substring(7));
+    this.runnerTokenService.validate(authHeader.substring(BEARER.length()));
 
     this.executionService.ingestLog(
         stepId, request.lineNumber(), request.content(), request.level());

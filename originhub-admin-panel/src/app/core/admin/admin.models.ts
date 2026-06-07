@@ -176,6 +176,7 @@ export interface AuditLogQuery {
   action?: string;
   entityType?: string;
   entityId?: string;
+  ipAddress?: string;
   from?: string;
   to?: string;
 }

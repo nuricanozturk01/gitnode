@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.actions.dtos.response;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -29,6 +30,8 @@ public record WorkflowJobResponse(
     @Nullable String conclusion,
     List<String> runnerLabels,
     @Nullable List<String> needs,
+    @Nullable Map<String, String> matrixValues,
     @Nullable Instant startedAt,
     @Nullable Instant completedAt,
-    Instant createdAt) {}
+    Instant createdAt,
+    List<WorkflowStepResponse> steps) {}

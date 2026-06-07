@@ -15,6 +15,8 @@
 ///
 
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -33,18 +35,32 @@ import type {
   CollaboratorPermission,
 } from '../../../domain/collaborator/collaborator.model';
 import { ALL_PERMISSIONS } from '../../../domain/collaborator/collaborator.model';
+import { ActionsSettingsComponent } from './actions-settings/actions-settings.component';
+import { parseUrlTabPrefix, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
+
+type RepoSettingsTab = 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'actions' | 'danger';
+const REPO_SETTINGS_TABS = [
+  'general',
+  'pullRequests',
+  'webhooks',
+  'collaborators',
+  'actions',
+  'danger',
+] as const satisfies readonly RepoSettingsTab[];
+const DEFAULT_REPO_SETTINGS_TAB: RepoSettingsTab = 'general';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-settings',
   standalone: true,
-  imports: [LucideAngularModule, FormsModule],
+  imports: [LucideAngularModule, FormsModule, ActionsSettingsComponent],
   templateUrl: './repo-settings.page.html',
   styleUrl: './repo-settings.page.css',
 })
 export class RepoSettingsPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly repoService = inject(RepoService);
   private readonly repoContext = inject(RepoContextService);
   private readonly confirmModal = inject(ConfirmModalService);
@@ -52,7 +68,7 @@ export class RepoSettingsPage {
   private readonly webhookService = inject(WebhookService);
   private readonly collaboratorService = inject(CollaboratorService);
 
-  readonly activeTab = signal<'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'danger'>('general');
+  readonly activeTab = signal<RepoSettingsTab>(DEFAULT_REPO_SETTINGS_TAB);
 
   readonly generalName = signal('');
   readonly generalDescription = signal('');
@@ -119,6 +135,10 @@ export class RepoSettingsPage {
   readonly isRepoOwner = this.repoContext.canEdit;
 
   constructor() {
+    this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
+      this.applyTab(parseUrlTabPrefix(fragment, REPO_SETTINGS_TABS, DEFAULT_REPO_SETTINGS_TAB));
+    });
+
     effect(() => {
       const r = this.repo();
       const tab = this.activeTab();
@@ -180,7 +200,13 @@ export class RepoSettingsPage {
     }
   }
 
-  setTab(t: 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'danger'): void {
+  setTab(t: RepoSettingsTab): void {
+    this.applyTab(t);
+    replaceUrlFragment(this.location, t === DEFAULT_REPO_SETTINGS_TAB ? null : t);
+  }
+
+  private applyTab(t: RepoSettingsTab): void {
+    if (this.activeTab() === t) return;
     this.activeTab.set(t);
     const r = this.repo();
     if (!r) return;

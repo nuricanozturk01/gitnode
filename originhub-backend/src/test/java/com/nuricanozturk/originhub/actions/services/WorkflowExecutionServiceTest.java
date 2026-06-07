@@ -34,6 +34,7 @@ import com.nuricanozturk.originhub.actions.repositories.WorkflowJobRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowLogRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowRunRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowStepRepository;
+import com.nuricanozturk.originhub.actions.websocket.RunStatusSseRegistry;
 import com.nuricanozturk.originhub.actions.websocket.SseEmitterRegistry;
 import com.nuricanozturk.originhub.events.actions.WorkflowJobStartedEvent;
 import java.util.List;
@@ -58,6 +59,7 @@ class WorkflowExecutionServiceTest {
   @Mock private RunnerRepository runnerRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private SseEmitterRegistry sseEmitterRegistry;
+  @Mock private RunStatusSseRegistry runStatusSseRegistry;
 
   @InjectMocks private WorkflowExecutionService service;
 
@@ -190,6 +192,128 @@ class WorkflowExecutionServiceTest {
     this.service.handleJobCompleted(JOB_ID, "success");
 
     assertThat(waitingJob.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
+  @Test
+  @DisplayName("handleJobCompleted marks WAITING jobs SKIPPED when a needed job fails")
+  void handleJobCompleted_skipsWaitingJobsWhenNeedFails() {
+    final var failedJob = buildJob(WorkflowJobStatus.IN_PROGRESS);
+    failedJob.setName("test");
+
+    final var waitingJob = buildJob(WorkflowJobStatus.WAITING);
+    waitingJob.setId(UUID.randomUUID());
+    waitingJob.setName("deploy");
+    waitingJob.setNeeds(List.of("test"));
+
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+
+    when(this.jobRepository.findById(JOB_ID)).thenReturn(Optional.of(failedJob));
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID))
+        .thenReturn(List.of(failedJob, waitingJob));
+
+    this.service.handleJobCompleted(JOB_ID, "failure");
+
+    assertThat(waitingJob.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+    assertThat(waitingJob.getConclusion()).isEqualTo("skipped");
+  }
+
+  @Test
+  @DisplayName("handleJobCompleted marks run FAILURE and SKIPPED downstream jobs complete run")
+  void handleJobCompleted_runCompletesWhenAllJobsTerminal() {
+    final var failedJob = buildJob(WorkflowJobStatus.IN_PROGRESS);
+    failedJob.setName("test");
+
+    final var skippedJob = buildJob(WorkflowJobStatus.WAITING);
+    skippedJob.setId(UUID.randomUUID());
+    skippedJob.setName("deploy");
+    skippedJob.setNeeds(List.of("test"));
+
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+
+    when(this.jobRepository.findById(JOB_ID)).thenReturn(Optional.of(failedJob));
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.runRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID))
+        .thenReturn(List.of(failedJob, skippedJob));
+
+    this.service.handleJobCompleted(JOB_ID, "failure");
+
+    assertThat(run.getStatus()).isEqualTo(WorkflowRunStatus.FAILURE);
+    assertThat(skippedJob.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+  }
+
+  @Test
+  @DisplayName("handleRunnerDisconnected marks all IN_PROGRESS jobs as FAILURE")
+  void handleRunnerDisconnected_marksJobsAsFailed() {
+    final var job = buildJob(WorkflowJobStatus.IN_PROGRESS);
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+    final var step = buildStep();
+    step.setStatus("running");
+
+    when(this.jobRepository.findAllByRunnerIdAndStatus(RUNNER_ID, WorkflowJobStatus.IN_PROGRESS))
+        .thenReturn(List.of(job));
+    when(this.stepRepository.findAllByJobIdOrderByStepNumberAsc(JOB_ID)).thenReturn(List.of(step));
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.runRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(List.of(job));
+
+    this.service.handleRunnerDisconnected(RUNNER_ID);
+
+    assertThat(job.getStatus()).isEqualTo(WorkflowJobStatus.FAILURE);
+    assertThat(job.getConclusion()).isEqualTo("failure");
+    assertThat(job.getCompletedAt()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("handleRunnerDisconnected closes SSE emitters for running steps")
+  void handleRunnerDisconnected_closesRunningStepSseEmitters() {
+    final var job = buildJob(WorkflowJobStatus.IN_PROGRESS);
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+
+    final var runningStep = buildStep();
+    runningStep.setStatus("running");
+
+    final var completedStep = buildStep();
+    completedStep.setId(UUID.randomUUID());
+    completedStep.setStatus("completed");
+
+    when(this.jobRepository.findAllByRunnerIdAndStatus(RUNNER_ID, WorkflowJobStatus.IN_PROGRESS))
+        .thenReturn(List.of(job));
+    when(this.stepRepository.findAllByJobIdOrderByStepNumberAsc(JOB_ID))
+        .thenReturn(List.of(runningStep, completedStep));
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.runRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(List.of(job));
+
+    this.service.handleRunnerDisconnected(RUNNER_ID);
+
+    verify(this.sseEmitterRegistry).complete(STEP_ID);
+    verify(this.sseEmitterRegistry, org.mockito.Mockito.never()).complete(completedStep.getId());
+  }
+
+  @Test
+  @DisplayName("handleRunnerDisconnected completes the run when all jobs reach terminal state")
+  void handleRunnerDisconnected_completesRun() {
+    final var job = buildJob(WorkflowJobStatus.IN_PROGRESS);
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+
+    when(this.jobRepository.findAllByRunnerIdAndStatus(RUNNER_ID, WorkflowJobStatus.IN_PROGRESS))
+        .thenReturn(List.of(job));
+    when(this.stepRepository.findAllByJobIdOrderByStepNumberAsc(JOB_ID)).thenReturn(List.of());
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.runRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(List.of(job));
+
+    this.service.handleRunnerDisconnected(RUNNER_ID);
+
+    assertThat(run.getStatus()).isEqualTo(WorkflowRunStatus.FAILURE);
+    assertThat(run.getConclusion()).isEqualTo("failure");
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

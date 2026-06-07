@@ -15,19 +15,33 @@
 ///
 
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
-import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
-import { RouterLink } from '@angular/router';
+import { Location } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 import { SshKeyService } from '../../core/ssh/services/ssh-key.service';
 import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../core/toast/toast.service';
+import { profileErrorMessage } from '../../shared/utils/api-error.utils';
 import { UserService } from '../../core/user/services/user.service';
 import { TokenService } from '../../core/auth/services/token.service';
 import { UserWebhookService } from '../../core/webhook/user-webhook.service';
 import type { SshKeyInfo } from '../../domain/ssh/models/ssh-key-info.model';
 import type { WebhookInfo } from '../../domain/webhook/webhook.model';
 import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
+import { parseUrlTab, replaceUrlFragment } from '../../shared/utils/url-tab.utils';
+
+type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'danger';
+const USER_SETTINGS_TABS = [
+  'profile',
+  'security',
+  'ssh',
+  'webhooks',
+  'danger',
+] as const satisfies readonly UserSettingsTab[];
+const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,6 +52,8 @@ import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
   styleUrl: './user-settings.page.css',
 })
 export class UserSettingsPage {
+  private readonly route = inject(ActivatedRoute);
+  private readonly urlLocation = inject(Location);
   private readonly sshKeyService = inject(SshKeyService);
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
@@ -45,7 +61,7 @@ export class UserSettingsPage {
   private readonly userWebhookService = inject(UserWebhookService);
   readonly tokenService = inject(TokenService);
 
-  readonly activeTab = signal<'profile' | 'security' | 'ssh' | 'webhooks' | 'danger'>('profile');
+  readonly activeTab = signal<UserSettingsTab>(DEFAULT_USER_SETTINGS_TAB);
 
   readonly username = signal('');
   readonly savingUsername = signal(false);
@@ -100,6 +116,10 @@ export class UserSettingsPage {
   }
 
   constructor() {
+    this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
+      this.applyTab(parseUrlTab(fragment, USER_SETTINGS_TABS, DEFAULT_USER_SETTINGS_TAB));
+    });
+
     const u = this.tokenService.getUsername();
     if (u) this.username.set(u);
     this.loadProfile();
@@ -119,7 +139,13 @@ export class UserSettingsPage {
     }
   }
 
-  setTab(t: 'profile' | 'security' | 'ssh' | 'webhooks' | 'danger'): void {
+  setTab(t: UserSettingsTab): void {
+    this.applyTab(t);
+    replaceUrlFragment(this.urlLocation, t === DEFAULT_USER_SETTINGS_TAB ? null : t);
+  }
+
+  private applyTab(t: UserSettingsTab): void {
+    if (this.activeTab() === t) return;
     this.activeTab.set(t);
     if (t === 'ssh') this.loadSshKeys();
     if (t === 'webhooks') void this.loadWebhooks();
@@ -205,7 +231,7 @@ export class UserSettingsPage {
       this.currentPassword.set('');
       this.newPassword.set('');
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to update password';
+      const msg = profileErrorMessage(err, 'Failed to update password');
       this.passwordError.set(msg);
       this.toast.error(msg);
     } finally {

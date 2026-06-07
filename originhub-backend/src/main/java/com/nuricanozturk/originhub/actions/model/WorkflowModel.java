@@ -30,4 +30,5 @@ public record WorkflowModel(
      */
     @JsonProperty("on") @JsonAlias("true") @Nullable OnTriggerModel on,
     @Nullable Map<String, String> env,
+    @Nullable ConcurrencyModel concurrency,
     @Nullable Map<String, JobModel> jobs) {}

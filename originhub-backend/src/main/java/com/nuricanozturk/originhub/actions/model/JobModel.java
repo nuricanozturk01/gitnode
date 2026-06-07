@@ -29,7 +29,9 @@ public record JobModel(
     @JsonProperty("runs-on") @JsonDeserialize(using = StringOrListDeserializer.class)
         @Nullable List<String> runsOn,
     @JsonProperty("timeout-minutes") @Nullable Integer timeoutMinutes,
-    @Nullable List<String> needs,
+    @JsonDeserialize(using = StringOrListDeserializer.class) @Nullable List<String> needs,
     @JsonProperty("if") @Nullable String condition,
     @Nullable Map<String, String> env,
+    @Nullable StrategyModel strategy,
+    @Nullable Map<String, ServiceModel> services,
     @Nullable List<StepModel> steps) {}

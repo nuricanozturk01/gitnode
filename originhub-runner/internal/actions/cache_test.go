@@ -2,6 +2,7 @@ package actions
 
 import (
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -52,7 +53,7 @@ func TestTarGzUnTarGz_RoundTrip(t *testing.T) {
 	}
 
 	dest := t.TempDir()
-	if err := unTarGz(bytes.NewReader(buf.Bytes()), dest); err != nil && err != io.EOF {
+	if err := unTarGz(bytes.NewReader(buf.Bytes()), dest); err != nil && !errors.Is(err, io.EOF) {
 		t.Fatalf("unTarGz: %v", err)
 	}
 }

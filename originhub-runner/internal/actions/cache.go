@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -52,7 +53,7 @@ func (a *CacheAction) Execute(
 
 	streamer.Emit(fmt.Sprintf("Restoring cache for key: %s", key), "info")
 
-	hit, err := a.restore(ctx, repoID, key, restoreKeys, cachePath, workDir, streamer)
+	hit, err := a.restore(ctx, repoID, key, restoreKeys, cachePath, workDir)
 	if err != nil {
 		streamer.Emit(fmt.Sprintf("Cache restore warning: %v", err), "warn")
 	}
@@ -117,7 +118,6 @@ func (a *CacheAction) restore(
 	repoID, key string,
 	restoreKeys []string,
 	cachePath, workDir string,
-	streamer *runnerlog.Streamer,
 ) (bool, error) {
 
 	endpoint, err := url.JoinPath(a.serverURL, "/api/actions/cache")
@@ -153,7 +153,7 @@ func (a *CacheAction) restore(
 	}
 
 	target := filepath.Join(workDir, cachePath)
-	if err := os.MkdirAll(target, 0o755); err != nil {
+	if err := os.MkdirAll(target, 0o750); err != nil {
 		return false, err
 	}
 	if err := unTarGz(resp.Body, target); err != nil {
@@ -165,31 +165,48 @@ func (a *CacheAction) restore(
 // ── tar helpers ───────────────────────────────────────────────────────────────
 
 func tarGz(src string, w io.Writer) error {
+	root, err := os.OpenRoot(src)
+	if err != nil {
+		return err
+	}
+	defer root.Close() //nolint:errcheck
+
 	gw := gzip.NewWriter(w)
 	tw := tar.NewWriter(gw)
 
-	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	err = filepath.WalkDir(src, func(path string, info os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
 		}
-		hdr, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return err
+		fi, statErr := info.Info()
+		if statErr != nil {
+			return statErr
 		}
-		hdr.Name = strings.TrimPrefix(path, src)
-		if err := tw.WriteHeader(hdr); err != nil {
-			return err
+		hdr, headerErr := tar.FileInfoHeader(fi, "")
+		if headerErr != nil {
+			return headerErr
 		}
-		if info.IsDir() {
+		rel, relErr := filepath.Rel(src, path)
+		if relErr != nil {
+			return relErr
+		}
+		hdr.Name = rel
+		if writeErr := tw.WriteHeader(hdr); writeErr != nil {
+			return writeErr
+		}
+		if fi.IsDir() {
 			return nil
 		}
-		f, err := os.Open(path)
-		if err != nil {
-			return err
+		f, openErr := root.Open(rel)
+		if openErr != nil {
+			return openErr
 		}
-		defer f.Close() //nolint:errcheck
-		_, err = io.Copy(tw, f)
-		return err
+		_, copyErr := io.Copy(tw, f)
+		closeErr := f.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		return closeErr
 	})
 	if err != nil {
 		return err
@@ -209,7 +226,7 @@ func unTarGz(r io.Reader, dest string) error {
 	tr := tar.NewReader(gr)
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return nil
 		}
 		if err != nil {
@@ -217,8 +234,8 @@ func unTarGz(r io.Reader, dest string) error {
 		}
 		target := filepath.Join(dest, hdr.Name) //nolint:gosec
 		if hdr.Typeflag == tar.TypeDir {
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
+			if mkdirErr := os.MkdirAll(target, 0o750); mkdirErr != nil {
+				return mkdirErr
 			}
 			continue
 		}
@@ -226,11 +243,14 @@ func unTarGz(r io.Reader, dest string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := io.Copy(f, tr); err != nil { //nolint:gosec
-			f.Close() //nolint:errcheck
-			return err
+		_, copyErr := io.Copy(f, tr) //nolint:gosec
+		closeErr := f.Close()
+		if copyErr != nil {
+			return copyErr
 		}
-		f.Close() //nolint:errcheck
+		if closeErr != nil {
+			return closeErr
+		}
 	}
 }
 

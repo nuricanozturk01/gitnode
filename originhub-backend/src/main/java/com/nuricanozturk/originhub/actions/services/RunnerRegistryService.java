@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.actions.services;
 
+import com.nuricanozturk.originhub.actions.ActionsEnumNames;
 import com.nuricanozturk.originhub.actions.dtos.request.RunnerRegistrationRequest;
 import com.nuricanozturk.originhub.actions.dtos.response.RegistrationTokenResponse;
 import com.nuricanozturk.originhub.actions.dtos.response.RunnerRegistrationResponse;
@@ -85,16 +86,15 @@ public class RunnerRegistryService {
             .findByTokenHash(hash)
             .orElseThrow(() -> new ErrorOccurredException("Invalid registration token"));
 
-    if (regToken.isUsed()) {
-      throw new ErrorOccurredException("Registration token already used");
-    }
-
     if (regToken.getExpiresAt().isBefore(Instant.now())) {
       throw new ErrorOccurredException("Registration token expired");
     }
 
+    if (regToken.isUsed()) {
+      return this.reRegister(regToken, request);
+    }
+
     regToken.setUsed(true);
-    this.registrationTokenRepository.save(regToken);
 
     final var runnerTokenHash = DigestUtils.sha256Hex(UUID.randomUUID().toString());
 
@@ -113,6 +113,9 @@ public class RunnerRegistryService {
     runner.setCreatedBy(regToken.getCreatedBy());
 
     final var saved = this.runnerRepository.save(runner);
+    regToken.setRunnerId(saved.getId());
+    this.registrationTokenRepository.save(regToken);
+
     final var jwt = this.runnerTokenService.generateRunnerToken(saved.getId());
 
     log.info("Runner registered: id={}, name={}", saved.getId(), saved.getName());
@@ -169,13 +172,44 @@ public class RunnerRegistryService {
         r.getId(),
         r.getName(),
         r.getLabels(),
-        r.getStatus().name().toLowerCase(),
-        r.getExecutorType().name().toLowerCase(),
+        ActionsEnumNames.lowerCase(r.getStatus()),
+        ActionsEnumNames.lowerCase(r.getExecutorType()),
         r.getOs(),
         r.getArch(),
         r.getVersion(),
         r.getLastHeartbeat(),
         r.getCreatedAt());
+  }
+
+  private RunnerRegistrationResponse reRegister(
+      final RunnerRegistrationToken regToken, final RunnerRegistrationRequest request) {
+
+    final var runnerId = regToken.getRunnerId();
+    if (runnerId == null) {
+      throw new ErrorOccurredException("Registration token already used");
+    }
+
+    final var runner =
+        this.runnerRepository
+            .findById(runnerId)
+            .orElseThrow(() -> new ItemNotFoundException("Runner not found"));
+
+    runner.setLabels(request.labels());
+    runner.setOs(request.os());
+    runner.setArch(request.arch());
+    runner.setVersion(request.version());
+    runner.setExecutorType(
+        ExecutorType.valueOf(request.executorType().toUpperCase(java.util.Locale.ROOT)));
+    runner.setStatus(RunnerStatus.ONLINE);
+    runner.setLastHeartbeat(Instant.now());
+    runner.setTokenHash(DigestUtils.sha256Hex(UUID.randomUUID().toString()));
+
+    final var saved = this.runnerRepository.save(runner);
+    final var jwt = this.runnerTokenService.generateRunnerToken(saved.getId());
+
+    log.info("Runner re-registered: id={}, name={}", saved.getId(), saved.getName());
+
+    return new RunnerRegistrationResponse(saved.getId(), jwt, saved.getLabels());
   }
 
   private String generateSecureToken() {

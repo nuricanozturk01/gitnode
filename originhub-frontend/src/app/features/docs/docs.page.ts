@@ -51,6 +51,123 @@ export class DocsPage implements OnDestroy {
 cd repo-name
 git push origin main`;
 
+  // Actions docs snippets
+  readonly actionsWorkflowPath = '.originhub/workflows/ci.yaml';
+
+  readonly actionsMinimalYaml = `name: CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Run tests
+        run: echo "Hello from OriginHub Actions"`;
+
+  readonly actionsFullYaml = `name: Build and Test
+
+on:
+  push:
+    branches: [main, develop]
+    paths-ignore: ['**.md']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment target
+        type: string
+        default: staging
+        required: false
+
+env:
+  NODE_ENV: production
+
+concurrency:
+  group: ci-\${{ env.ORIGINHUB_REF }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (\${{ matrix.node }})
+    runs-on: [self-hosted, linux]
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        node: ['20', '22']
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions/setup-node@v1
+        with:
+          node-version: \${{ matrix.node }}
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        run: npm test
+      - uses: actions/upload-artifact@v1
+        with:
+          name: test-results
+          path: coverage/
+
+  deploy:
+    needs: [test]
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Deploy
+        env:
+          API_KEY: \${{ secrets.DEPLOY_KEY }}
+        run: ./scripts/deploy.sh \${{ inputs.environment }}`;
+
+  readonly actionsDispatchYaml = `on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+        required: true
+      tag:
+        description: Docker image tag (e.g. v1.2.3)
+        type: string
+        required: true
+      dry_run:
+        description: Skip actual deployment steps
+        type: boolean
+        default: false`;
+
+  readonly actionsCacheYaml = `- uses: actions/cache@v1
+  with:
+    key: npm-\${{ hashFiles('package-lock.json') }}
+    path: node_modules`;
+
+  readonly actionsArtifactYaml = `# Upload
+- uses: actions/upload-artifact@v1
+  with:
+    name: dist-bundle
+    path: dist/
+
+# Download in a later job
+- uses: actions/download-artifact@v1
+  with:
+    name: dist-bundle
+    path: dist/`;
+
+  readonly actionsRunnerCmd = `./originhub-runner start \\
+  --server-url http://localhost:8080 \\
+  --token <registration-token> \\
+  --name my-runner \\
+  --labels self-hosted,linux \\
+  --executor shell`;
+
   ngOnDestroy(): void {
     if (this.copiedTimer !== null) {
       clearTimeout(this.copiedTimer);

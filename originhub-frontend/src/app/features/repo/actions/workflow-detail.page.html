@@ -1,0 +1,128 @@
+@if (loading()) {
+<div class="flex justify-center py-20">
+  <span class="loading loading-spinner loading-lg text-primary"></span>
+</div>
+} @else if (!workflow()) {
+<div class="repo-panel text-base-content/60 flex flex-col items-center gap-3 px-4 py-16 text-center">
+  <lucide-icon name="alertTriangle" class="size-10"></lucide-icon>
+  <p class="text-base-content font-semibold">Workflow not found</p>
+  <a [routerLink]="['/', owner(), repoName(), 'actions']" class="btn btn-primary btn-sm mt-2">Back to Actions</a>
+</div>
+} @else {
+<div class="space-y-4">
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-3 py-3 sm:px-4">
+      <a
+        [routerLink]="['/', owner(), repoName(), 'actions']"
+        class="text-base-content/50 hover:text-primary mb-2 inline-flex items-center gap-1 text-xs no-underline"
+      >
+        <lucide-icon name="arrowLeft" class="size-3"></lucide-icon>
+        Actions
+      </a>
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-base-content text-lg font-semibold">{{ workflow()!.name }}</h2>
+            @if (!workflow()!.enabled) {
+            <span class="badge-pill badge-pill--neutral">Disabled</span>
+            } @if (workflow()!.lastRunStatus) {
+            <lucide-icon
+              [name]="statusIconName(workflow()!.lastRunStatus)"
+              class="size-4 shrink-0"
+              [class]="statusIconClass(workflow()!.lastRunStatus)"
+              [class.animate-spin]="statusIconSpinning(workflow()!.lastRunStatus)"
+            ></lucide-icon>
+            <span [class]="statusBadgeClass(workflow()!.lastRunStatus)">
+              {{ statusLabel(workflow()!.lastRunStatus) }}
+            </span>
+            }
+          </div>
+          <p class="text-base-content/55 mt-1 flex flex-wrap items-center gap-2 text-sm">
+            @if (blobLink(); as link) {
+            <a [routerLink]="link" class="text-primary font-mono text-xs hover:underline">
+              {{ workflow()!.filePath }}
+            </a>
+            } @else {
+            <span class="font-mono text-xs">{{ workflow()!.filePath }}</span>
+            }
+            <span class="text-base-content/40">·</span>
+            <span>{{ workflow()!.defaultBranch }}</span>
+          </p>
+        </div>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          @if (workflow()!.dispatchable && repoContext.canEdit()) {
+          <button
+            type="button"
+            class="btn btn-primary btn-sm gap-1.5"
+            [disabled]="dispatching()"
+            (click)="dispatchWorkflow()"
+          >
+            @if (dispatching()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="play" class="size-3.5"></lucide-icon>
+            } Run workflow
+          </button>
+          } @if (blobLink(); as link) {
+          <a [routerLink]="link" class="btn btn-outline btn-sm gap-1.5">
+            <lucide-icon name="fileCode2" class="size-3.5"></lucide-icon>
+            View in repository
+          </a>
+          }
+        </div>
+      </div>
+    </div>
+
+    <app-source-code-viewer
+      [content]="workflow()!.content"
+      language="yaml"
+      [fileName]="fileName()"
+    ></app-source-code-viewer>
+  </section>
+
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-3 py-3 sm:px-4">
+      <h3 class="text-base-content text-sm font-semibold">Workflow runs</h3>
+    </div>
+    @if (runs().length === 0) {
+    <div class="text-base-content/55 px-4 py-10 text-center text-sm">No runs for this workflow yet.</div>
+    } @else {
+    <div class="divide-base-300 divide-y">
+      @for (run of runs(); track run.id) {
+      <a
+        [routerLink]="['/', owner(), repoName(), 'actions', 'runs', run.id]"
+        class="hover:bg-base-200/40 flex items-center justify-between gap-3 px-3 py-3 no-underline sm:px-4"
+      >
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <lucide-icon
+              [name]="statusIconName(run.status, run.conclusion)"
+              class="size-4 shrink-0"
+              [class]="statusIconClass(runDisplayStatus(run))"
+              [class.animate-spin]="statusIconSpinning(run.status, run.conclusion)"
+            ></lucide-icon>
+            <span class="text-base-content font-medium">Run #{{ run.runNumber }}</span>
+            <span [class]="statusBadgeClass(runDisplayStatus(run))"> {{ statusLabel(runDisplayStatus(run)) }} </span>
+          </div>
+          <p class="text-base-content/50 mt-0.5 text-xs">
+            {{ run.triggerEvent }} @if (run.triggerRef) { · {{ run.triggerRef }} } · {{ run.createdAt | relativeTime }}
+          </p>
+        </div>
+        <lucide-icon name="chevronRight" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
+      </a>
+      }
+    </div>
+    }
+  </section>
+</div>
+
+@if (showDispatchModal() && workflow()) {
+<app-workflow-dispatch-modal
+  [owner]="owner()"
+  [repo]="repoName()"
+  [defaultBranch]="workflow()!.defaultBranch"
+  [dispatchInputs]="workflow()!.dispatchInputs ?? []"
+  (confirmed)="onDispatchConfirmed($event)"
+  (closed)="closeDispatchModal()"
+></app-workflow-dispatch-modal>
+} }

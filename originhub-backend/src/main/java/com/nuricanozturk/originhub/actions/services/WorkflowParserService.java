@@ -118,7 +118,7 @@ public class WorkflowParserService {
 
     final var loader = repo.open(objectId);
 
-    return new String(loader.getBytes(), StandardCharsets.UTF_8);
+    return loader == null ? null : new String(loader.getBytes(), StandardCharsets.UTF_8);
   }
 
   public @Nullable WorkflowModel parseFromContent(final String yamlContent) {

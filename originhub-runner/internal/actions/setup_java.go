@@ -37,7 +37,7 @@ func (a *SetupJavaAction) Execute(
 
 	streamer.Emit(fmt.Sprintf("Setting up Java %s (%s)", javaVersion, distribution), "info")
 
-	sdkManID := distributionToSdkManId(distribution, javaVersion, runtime.GOARCH)
+	sdkManID := distributionToSdkManID(distribution, javaVersion, runtime.GOARCH)
 	script := fmt.Sprintf(
 		`if command -v sdk >/dev/null 2>&1; then
 			sdk install java %s || true && sdk use java %s
@@ -60,7 +60,7 @@ func (a *SetupJavaAction) Execute(
 	return map[string]string{}, nil
 }
 
-func distributionToSdkManId(distribution, version, _ string) string {
+func distributionToSdkManID(distribution, version, _ string) string {
 	switch distribution {
 	case "corretto":
 		return version + ".0-amzn"

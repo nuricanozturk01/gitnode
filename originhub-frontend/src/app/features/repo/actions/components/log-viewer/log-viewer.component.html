@@ -1,0 +1,34 @@
+<div class="log-viewer">
+  <div class="log-viewer__toolbar">
+    <span class="log-viewer__title">{{ stepName() }}</span>
+    <div class="flex items-center gap-2">
+      @if (streaming()) {
+        <span class="flex items-center gap-1 text-xs text-[#3fb950]">
+          <lucide-icon name="loader2" class="size-3 animate-spin"></lucide-icon>
+          Live
+        </span>
+      }
+      <button type="button" class="btn btn-ghost btn-xs h-7 min-h-0 text-[#c9d1d9]" (click)="toggleAutoScroll()">
+        {{ autoScroll() ? 'Auto-scroll on' : 'Auto-scroll off' }}
+      </button>
+      <button type="button" class="btn btn-ghost btn-xs h-7 min-h-0 text-[#c9d1d9]" (click)="scrollToEnd()">
+        Jump to end
+      </button>
+    </div>
+  </div>
+
+  <div #scrollContainer class="log-viewer__scroll">
+    @if (lines().length === 0 && !streaming()) {
+      <div class="log-viewer__empty">No log output for this step.</div>
+    } @else {
+      <div class="log-viewer__content">
+        @for (line of lines(); track line.lineNumber) {
+          <div class="log-viewer__line" [class.log-viewer__line--error]="isErrorLine(line)">
+            <span class="log-viewer__line-num">{{ line.lineNumber }}</span>
+            <span class="log-viewer__line-text" [innerHTML]="lineHtml(line.content)"></span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

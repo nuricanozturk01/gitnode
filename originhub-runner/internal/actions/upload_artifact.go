@@ -91,10 +91,12 @@ func (a *UploadArtifactAction) upload(
 	if err != nil {
 		return err
 	}
-	if _, err := io.Copy(part, body); err != nil {
-		return err
+	if _, copyErr := io.Copy(part, body); copyErr != nil {
+		return copyErr
 	}
-	mw.Close() //nolint:errcheck
+	if closeErr := mw.Close(); closeErr != nil {
+		return closeErr
+	}
 
 	endpoint, err := url.JoinPath(a.serverURL, "/api/actions/artifacts/upload")
 	if err != nil {

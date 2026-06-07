@@ -1,5 +1,3 @@
-// Package shell provides a lightweight os/exec wrapper shared by action handlers
-// and the executor without creating circular imports.
 package shell
 
 import (
@@ -14,8 +12,8 @@ import (
 	runnerlog "github.com/nuricanozturk/originhub-runner/internal/log"
 )
 
-// Run executes a shell command in workDir, streaming stdout/stderr to streamer.
-// Returns "success" or "failure" and any exec error.
+const DefaultBytes = 4096
+
 func Run(
 	ctx context.Context,
 	command, workDir string,
@@ -43,7 +41,7 @@ func Run(
 	}
 
 	go func() {
-		buf := make([]byte, 4096)
+		buf := make([]byte, DefaultBytes)
 		for {
 			n, err := pr.Read(buf)
 			if n > 0 {
@@ -61,10 +59,13 @@ func Run(
 	}()
 
 	runErr := cmd.Wait()
-	pw.Close() //nolint:errcheck
+	if closeErr := pw.Close(); closeErr != nil && runErr == nil {
+		return "failure", fmt.Errorf("shell: close pipe: %w", closeErr)
+	}
 
 	if runErr != nil {
 		return "failure", nil
 	}
+
 	return "success", nil
 }

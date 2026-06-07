@@ -20,10 +20,11 @@ import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 public record WorkflowSummaryResponse(
-    UUID id,
+    @Nullable UUID id,
     String name,
     String filePath,
     boolean enabled,
+    boolean dispatchable,
     @Nullable String lastRunStatus,
-    Instant createdAt,
-    Instant updatedAt) {}
+    @Nullable Instant createdAt,
+    @Nullable Instant updatedAt) {}

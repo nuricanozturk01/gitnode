@@ -147,8 +147,13 @@ export class BlobPage implements OnDestroy {
       return;
     }
     const parts = match[1].split('/').filter(Boolean);
-    this.branch.set(parts[0] ?? 'main');
-    this.path.set(parts.slice(1).join('/'));
+    this.branch.set(decodeURIComponent(parts[0] ?? 'main'));
+    this.path.set(
+      parts
+        .slice(1)
+        .map((segment) => decodeURIComponent(segment))
+        .join('/'),
+    );
     this.loadBlob();
   }
 

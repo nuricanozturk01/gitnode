@@ -47,7 +47,7 @@ func (a *DownloadArtifactAction) Execute(
 
 	streamer.Emit(fmt.Sprintf("Downloading artifact %q to %s", name, destPath), "info")
 
-	if err := os.MkdirAll(destPath, 0o755); err != nil {
+	if err := os.MkdirAll(destPath, 0o750); err != nil {
 		return nil, fmt.Errorf("download-artifact: create dest dir: %w", err)
 	}
 

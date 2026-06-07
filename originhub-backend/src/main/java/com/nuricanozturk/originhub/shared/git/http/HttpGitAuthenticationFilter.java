@@ -28,18 +28,29 @@ import java.io.IOException;
 import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @Slf4j
-@RequiredArgsConstructor
 @NullMarked
 public class HttpGitAuthenticationFilter implements Filter {
 
+  private static final String RUNNER_USERNAME = "x-token";
+
   private final TenantRepository tenantRepository;
   private final RepoRepository repoRepository;
+  @Nullable private final RunnerTokenPort runnerTokenPort;
+
+  public HttpGitAuthenticationFilter(
+      final TenantRepository tenantRepository,
+      final RepoRepository repoRepository,
+      final @Nullable RunnerTokenPort runnerTokenPort) {
+    this.tenantRepository = tenantRepository;
+    this.repoRepository = repoRepository;
+    this.runnerTokenPort = runnerTokenPort;
+  }
 
   @Override
   public void doFilter(
@@ -106,18 +117,25 @@ public class HttpGitAuthenticationFilter implements Filter {
     return Optional.of(new String[] {owner, repo});
   }
 
+  private static String[] decodeCredentials(final String authHeader) {
+    final var base64 = authHeader.substring("Basic ".length());
+    final var decoded = new String(Base64.getDecoder().decode(base64));
+    final var parts = decoded.split(":", 2);
+    if (parts.length != 2) {
+      throw new IllegalArgumentException("Invalid Basic auth format");
+    }
+    return new String[] {parts[0].toLowerCase(Locale.getDefault()), parts[1]};
+  }
+
   private String authenticate(final String authHeader) {
     try {
-      final var base64 = authHeader.substring("Basic ".length());
-      final var decoded = new String(Base64.getDecoder().decode(base64));
-      final var parts = decoded.split(":", 2);
+      final var credentials = decodeCredentials(authHeader);
+      final var username = credentials[0];
+      final var password = credentials[1];
 
-      if (parts.length != 2) {
-        throw new IllegalArgumentException("Invalid Basic auth format");
+      if (RUNNER_USERNAME.equals(username)) {
+        return this.authenticateRunner(password);
       }
-
-      final var username = parts[0].toLowerCase(Locale.getDefault());
-      final var password = parts[1];
 
       final var tenant =
           this.tenantRepository
@@ -141,6 +159,17 @@ public class HttpGitAuthenticationFilter implements Filter {
     } catch (final Exception ex) {
       throw new IllegalArgumentException("Auth failed: " + ex.getMessage(), ex);
     }
+  }
+
+  private String authenticateRunner(final String token) {
+    if (this.runnerTokenPort == null) {
+      throw new IllegalArgumentException("Runner authentication not available");
+    }
+    if (!this.runnerTokenPort.isValid(token)) {
+      throw new IllegalArgumentException("Invalid runner token");
+    }
+    log.info("HTTP Git auth success: runner");
+    return RUNNER_USERNAME;
   }
 
   private void sendUnauthorized(final HttpServletResponse response, final String message)

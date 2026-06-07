@@ -36,6 +36,8 @@ func NewRegistry(serverURL, runnerToken string) *Registry {
 	r.register(NewSetupNodeAction())
 	r.register(NewSetupPnpmAction())
 	r.register(NewSetupJavaAction())
+	r.register(NewSetupPythonAction())
+	r.register(NewSetupGoAction())
 	r.register(NewDockerLoginAction())
 	r.register(NewCacheAction(serverURL, runnerToken))
 	r.register(NewUploadArtifactAction(serverURL, runnerToken))

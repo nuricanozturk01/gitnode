@@ -47,6 +47,7 @@ public class SecretVaultService {
   private static final String ALGORITHM = "AES/GCM/NoPadding";
   private static final int GCM_IV_LENGTH = 12;
   private static final int GCM_TAG_LENGTH_BITS = 128;
+  private static final int AES_KEY_LENGTH = 32;
 
   @Value("${originhub.actions.secrets.encryption-key:}")
   private String encryptionKeyBase64;
@@ -58,53 +59,55 @@ public class SecretVaultService {
 
   @PostConstruct
   void init() {
-    if (encryptionKeyBase64 == null || encryptionKeyBase64.isBlank()) {
-      aesKey = null;
+    if (this.encryptionKeyBase64 == null || this.encryptionKeyBase64.isBlank()) {
+      this.aesKey = null;
       log.warn(
           "originhub.actions.secrets.encryption-key not set — secrets vault is disabled."
               + " Set ACTIONS_ENCRYPTION_KEY to a 32-byte base64 value.");
       return;
     }
-    final byte[] keyBytes = Base64.getDecoder().decode(encryptionKeyBase64);
-    if (keyBytes.length != 32) {
+    final byte[] keyBytes = Base64.getDecoder().decode(this.encryptionKeyBase64);
+    if (keyBytes.length != AES_KEY_LENGTH) {
       throw new IllegalStateException(
           "actions.secrets.encryption-key must be 32 bytes (256-bit AES) base64-encoded");
     }
-    aesKey = new SecretKeySpec(keyBytes, "AES");
+    this.aesKey = new SecretKeySpec(keyBytes, "AES");
   }
 
   @Transactional
   public void createOrUpdate(final UUID repoId, final String name, final String plaintext) {
-    requireKey();
+    this.requireKey();
     final byte[] iv = new byte[GCM_IV_LENGTH];
-    secureRandom.nextBytes(iv);
+    this.secureRandom.nextBytes(iv);
 
-    final String encryptedValue = encrypt(plaintext, iv);
+    final String encryptedValue = this.encrypt(plaintext, iv);
     final String ivBase64 = Base64.getEncoder().encodeToString(iv);
 
-    final var existing = secretRepository.findByRepoIdAndName(repoId, name);
+    final var existing = this.secretRepository.findByRepoIdAndName(repoId, name);
     final WorkflowSecret entity = existing.orElseGet(WorkflowSecret::new);
     entity.setRepoId(repoId);
     entity.setName(name);
     entity.setEncryptedValue(encryptedValue);
     entity.setIv(ivBase64);
-    secretRepository.save(entity);
+    this.secretRepository.save(entity);
     log.info("Secret saved: repo={} name={}", repoId, name);
   }
 
   @Transactional
   public void delete(final UUID repoId, final String name) {
     final var secret =
-        secretRepository
+        this.secretRepository
             .findByRepoIdAndName(repoId, name)
             .orElseThrow(() -> new ItemNotFoundException("Secret not found: " + name));
-    secretRepository.delete(secret);
+    this.secretRepository.delete(secret);
     log.info("Secret deleted: repo={} name={}", repoId, name);
   }
 
   @Transactional(readOnly = true)
   public List<String> listNames(final UUID repoId) {
-    return secretRepository.findAllByRepoId(repoId).stream().map(WorkflowSecret::getName).toList();
+    return this.secretRepository.findAllByRepoId(repoId).stream()
+        .map(WorkflowSecret::getName)
+        .toList();
   }
 
   /**
@@ -113,13 +116,13 @@ public class SecretVaultService {
    */
   @Transactional(readOnly = true)
   public Map<String, String> resolveSecrets(final UUID repoId) {
-    if (aesKey == null) {
+    if (this.aesKey == null) {
       return Map.of();
     }
-    return secretRepository.findAllByRepoId(repoId).stream()
+    return this.secretRepository.findAllByRepoId(repoId).stream()
         .collect(
             Collectors.toMap(
-                WorkflowSecret::getName, s -> decrypt(s.getEncryptedValue(), s.getIv())));
+                WorkflowSecret::getName, s -> this.decrypt(s.getEncryptedValue(), s.getIv())));
   }
 
   // ── crypto helpers ────────────────────────────────────────────────────────
@@ -127,7 +130,7 @@ public class SecretVaultService {
   private String encrypt(final String plaintext, final byte[] iv) {
     try {
       final Cipher cipher = Cipher.getInstance(ALGORITHM);
-      cipher.init(Cipher.ENCRYPT_MODE, aesKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+      cipher.init(Cipher.ENCRYPT_MODE, this.aesKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
       final byte[] ciphertext =
           cipher.doFinal(plaintext.getBytes(java.nio.charset.StandardCharsets.UTF_8));
       return Base64.getEncoder().encodeToString(ciphertext);
@@ -141,7 +144,7 @@ public class SecretVaultService {
       final byte[] iv = Base64.getDecoder().decode(ivBase64);
       final byte[] ciphertext = Base64.getDecoder().decode(encryptedBase64);
       final Cipher cipher = Cipher.getInstance(ALGORITHM);
-      cipher.init(Cipher.DECRYPT_MODE, aesKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
+      cipher.init(Cipher.DECRYPT_MODE, this.aesKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
       return new String(cipher.doFinal(ciphertext), java.nio.charset.StandardCharsets.UTF_8);
     } catch (final Exception ex) {
       throw new ErrorOccurredException("Secret decryption failed: " + ex.getMessage());
@@ -149,7 +152,7 @@ public class SecretVaultService {
   }
 
   private void requireKey() {
-    if (aesKey == null) {
+    if (this.aesKey == null) {
       throw new ErrorOccurredException(
           "Secrets vault not configured — set originhub.actions.secrets.encryption-key");
     }

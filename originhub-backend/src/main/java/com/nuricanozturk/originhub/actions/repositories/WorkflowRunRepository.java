@@ -16,8 +16,10 @@
 package com.nuricanozturk.originhub.actions.repositories;
 
 import com.nuricanozturk.originhub.actions.entities.WorkflowRun;
+import com.nuricanozturk.originhub.actions.entities.WorkflowRunStatus;
 import jakarta.persistence.LockModeType;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
@@ -34,8 +36,18 @@ public interface WorkflowRunRepository extends JpaRepository<WorkflowRun, UUID> 
 
   Page<WorkflowRun> findAllByRepoIdOrderByCreatedAtDesc(UUID repoId, Pageable pageable);
 
-  List<WorkflowRun> findAllByRepoIdAndWorkflowDefIdOrderByCreatedAtDesc(
+  Optional<WorkflowRun> findFirstByRepoIdAndWorkflowDefIdOrderByCreatedAtDesc(
       UUID repoId, UUID workflowDefId);
+
+  @Query(
+      "SELECT r FROM WorkflowRun r WHERE r.repoId = :repoId AND r.workflowDefId IN :defIds"
+          + " AND r.createdAt = (SELECT MAX(r2.createdAt) FROM WorkflowRun r2"
+          + " WHERE r2.workflowDefId = r.workflowDefId AND r2.repoId = :repoId)")
+  List<WorkflowRun> findLatestRunPerDef(
+      @Param("repoId") UUID repoId, @Param("defIds") List<UUID> defIds);
+
+  List<WorkflowRun> findByRepoIdAndConcurrencyGroupAndStatusIn(
+      UUID repoId, String group, List<WorkflowRunStatus> statuses);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT COALESCE(MAX(r.runNumber), 0) + 1 FROM WorkflowRun r WHERE r.repoId = :repoId")

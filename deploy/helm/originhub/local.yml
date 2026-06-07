@@ -8,6 +8,20 @@ domain:
   frontendUrl: http://localhost:4200
   grafanaHost: grafana.originhub.local
 
+frontend:
+  enabled: false
+  host: app.originhub.local
+
+adminPanel:
+  enabled: false
+  host: admin.originhub.local
+
+monitoring:
+  prometheus:
+    ingress:
+      enabled: false
+      host: prometheus.originhub.local
+
 persistence:
   repos:
     size: 5Gi

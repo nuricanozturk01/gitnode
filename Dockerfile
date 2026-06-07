@@ -58,7 +58,6 @@ EXPOSE 8080 2222
 ENTRYPOINT ["java", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-XX:+UseZGC", \
-  "-XX:+ZGenerational", \
   "-XX:MaxRAMPercentage=75", \
   "-XX:+OptimizeStringConcat", \
   "-XX:+UseStringDeduplication", \

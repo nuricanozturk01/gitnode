@@ -41,7 +41,7 @@ spec:
             - name: SPRING_PROFILES_ACTIVE
               value: os
             - name: JAVA_TOOL_OPTIONS
-              value: "-Xms512m -Xmx1536m -XX:+UseG1GC -XX:+UseStringDeduplication"
+              value: {{ .Values.originhub.javaToolOptions | quote }}
             - name: SERVER_FORWARD_HEADERS_STRATEGY
               value: native
             - name: ORIGINHUB_JWT_SECRET
@@ -59,8 +59,6 @@ spec:
               value: {{ .Values.originhub.admin.enabled | quote }}
             - name: ORIGINHUB_OBSERVABILITY_ENABLED
               value: "true"
-            - name: SPRING_DATASOURCE_URL
-              value: jdbc:postgresql://originhub-postgres.{{ include "originhub.namespace" . }}.svc.cluster.local:5432/$(DB_DATABASE)
             - name: DB_DATABASE
               valueFrom:
                 secretKeyRef:
@@ -76,6 +74,8 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: DB_PASSWORD
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://originhub-postgres.{{ include "originhub.namespace" . }}.svc.cluster.local:5432/$(DB_DATABASE)
             - name: SPRING_DATA_REDIS_HOST
               value: originhub-redis.{{ include "originhub.namespace" . }}.svc.cluster.local
             - name: SPRING_DATA_REDIS_PORT

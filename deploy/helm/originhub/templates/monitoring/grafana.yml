@@ -1,4 +1,4 @@
-{{- if .Values.monitoring.enabled }}
+{{- if and .Values.monitoring.enabled .Values.monitoring.grafana.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,7 +7,7 @@ metadata:
   labels:
     app: originhub-grafana
 data:
-  prometheus.yml: |
+  datasources.yaml: |
     apiVersion: 1
     datasources:
       - name: Prometheus
@@ -87,6 +87,8 @@ spec:
             {{- end }}
             - name: GF_SERVER_ROOT_URL
               value: {{ if .Values.domain.grafanaHost }}{{ printf "%s://%s/" (include "originhub.scheme" .) .Values.domain.grafanaHost | quote }}{{ else }}""{{ end }}
+            - name: GF_SERVER_DOMAIN
+              value: {{ .Values.domain.grafanaHost | default "" | quote }}
           volumeMounts:
             - name: datasources
               mountPath: /etc/grafana/provisioning/datasources

@@ -39,6 +39,8 @@ originhub:
   image:
     repository: repo.repsy.io/nuricanozturk/originhub/originhub-os
     pullPolicy: Always
+  # Heap only — image ENTRYPOINT uses ZGC; do not set -XX:+UseG1GC here (JVM crash)
+  javaToolOptions: "-Xms512m -Xmx1536m"
   imagePullSecrets: []
   secrets:
     OAUTH2_GOOGLE_CLIENT_ID:
@@ -59,12 +61,30 @@ postgres:
 redis:
   image: redis:7-alpine
 
+# Optional UI (local K8s flags: K8S_FRONTEND, K8S_ADMIN_PANEL)
+frontend:
+  enabled: false
+  host: app.originhub.local
+
+adminPanel:
+  enabled: false
+  host: admin.originhub.local
+  image:
+    repository: originhub-admin-panel
+    tag: local
+    pullPolicy: IfNotPresent
+
 monitoring:
   enabled: true
   prometheus:
+    enabled: true
     image: prom/prometheus:v3.4.0
     retention: 7d
+    ingress:
+      enabled: false
+      host: prometheus.originhub.local
   grafana:
+    enabled: true
     image: grafana/grafana:12.0.1
     adminUser: admin
     adminPassword: admin

@@ -1,12 +1,10 @@
-{{- if and .Values.monitoring.enabled .Values.monitoring.grafana.enabled .Values.monitoring.grafana.ingress.enabled .Values.domain.grafanaHost }}
+{{- if and .Values.monitoring.enabled .Values.monitoring.prometheus.enabled .Values.monitoring.prometheus.ingress.enabled .Values.monitoring.prometheus.ingress.host }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: originhub-grafana
+  name: originhub-prometheus
   namespace: {{ include "originhub.namespace" . }}
   annotations:
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
     {{- if .Values.ingress.tls.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.certManager.clusterIssuer | quote }}
@@ -14,20 +12,20 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className | quote }}
   rules:
-    - host: {{ .Values.domain.grafanaHost | quote }}
+    - host: {{ .Values.monitoring.prometheus.ingress.host | quote }}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: originhub-grafana
+                name: originhub-prometheus
                 port:
-                  number: 3000
+                  number: 9090
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.domain.grafanaHost | quote }}
-      secretName: originhub-grafana-tls-cert
+        - {{ .Values.monitoring.prometheus.ingress.host | quote }}
+      secretName: originhub-prometheus-tls-cert
   {{- end }}
 {{- end }}

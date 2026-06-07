@@ -2,10 +2,12 @@ package actions
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	gogithttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 
 	jobctx "github.com/nuricanozturk/originhub-runner/internal/context"
@@ -57,16 +59,47 @@ func (a *CheckoutAction) Execute(
 		return nil, fmt.Errorf("checkout: build URL: %w", err)
 	}
 
+	auth := &gogithttp.BasicAuth{Username: "x-token", Password: a.runnerToken}
+
 	streamer.Emit(fmt.Sprintf("Cloning %s/%s ref=%s (depth=%d)", owner, repo, ref, depth), "info")
 
 	cloneOpts := &git.CloneOptions{
 		URL:   repoURL,
-		Auth:  &gogithttp.BasicAuth{Username: "x-token", Password: a.runnerToken},
+		Auth:  auth,
 		Depth: depth,
 	}
 
-	if _, err := git.PlainCloneContext(ctx, workDir, false, cloneOpts); err != nil {
-		return nil, fmt.Errorf("checkout: clone: %w", err)
+	gitRepo, cloneErr := git.PlainCloneContext(ctx, workDir, false, cloneOpts)
+	if errors.Is(cloneErr, git.ErrRepositoryAlreadyExists) {
+		streamer.Emit("Repository already exists, fetching latest", "info")
+		var openErr error
+		gitRepo, openErr = git.PlainOpen(workDir)
+		if openErr != nil {
+			return nil, fmt.Errorf("checkout: open existing repo: %w", openErr)
+		}
+		fetchErr := gitRepo.FetchContext(ctx, &git.FetchOptions{
+			Auth:  auth,
+			Force: true,
+		})
+		if fetchErr != nil && !errors.Is(fetchErr, git.NoErrAlreadyUpToDate) {
+			return nil, fmt.Errorf("checkout: fetch: %w", fetchErr)
+		}
+	} else if cloneErr != nil {
+		return nil, fmt.Errorf("checkout: clone: %w", cloneErr)
+	}
+
+	if ref != "" {
+		wt, wtErr := gitRepo.Worktree()
+		if wtErr != nil {
+			return nil, fmt.Errorf("checkout: worktree: %w", wtErr)
+		}
+		checkoutErr := wt.Checkout(&git.CheckoutOptions{
+			Hash:  plumbing.NewHash(ref),
+			Force: true,
+		})
+		if checkoutErr != nil {
+			return nil, fmt.Errorf("checkout: checkout ref %s: %w", ref, checkoutErr)
+		}
 	}
 
 	streamer.Emit("Checkout complete", "info")

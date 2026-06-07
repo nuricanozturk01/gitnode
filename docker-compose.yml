@@ -77,6 +77,31 @@ services:
       prometheus:
         condition: service_started
 
+  # ── CI/CD Runner (optional) ──────────────────────────────────────────────────
+  # Prerequisites:
+  #   1. Build the runner: make runner-build
+  #   2. Register it once to generate the config file:
+  #        ./originhub-runner/dist/originhub-runner start \
+  #          --server-url http://localhost:8080 --token <registration-token> \
+  #          --name docker-runner --labels self-hosted,linux,docker \
+  #          --executor docker --config ~/.originhub-runner/config.yml
+  #   3. Start via Compose: docker compose --profile runner up -d runner
+  runner:
+    container_name: originhub-runner
+    build:
+      context: ./originhub-runner
+      dockerfile: Dockerfile
+    profiles:
+      - runner
+    command: ["./originhub-runner", "start", "--config", "/root/.originhub-runner/config.yml"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-work:/tmp/originhub-runner
+      - ~/.originhub-runner:/root/.originhub-runner
+    networks:
+      - originhub
+    restart: unless-stopped
+
 networks:
   originhub:
     name: originhub
@@ -87,3 +112,5 @@ volumes:
     name: originhub-postgres-logs
   originhub-repos:
     name: originhub-repos
+  runner-work:
+    name: originhub-runner-work

@@ -161,6 +161,16 @@
               }
             </a>
             <a
+              [routerLink]="['/', owner(), repoName(), 'actions']"
+              routerLinkActive="tab-active"
+              [routerLinkActiveOptions]="{ paths: 'subset', matrixParams: 'ignored' }"
+              ariaCurrentWhenActive="page"
+              class="tab gap-1.5 rounded-md"
+            >
+              <lucide-icon name="workflow" class="size-3.5 shrink-0"></lucide-icon>
+              Actions
+            </a>
+            <a
               [routerLink]="['/', owner(), repoName(), 'snippets']"
               routerLinkActive="tab-active"
               ariaCurrentWhenActive="page"

@@ -211,6 +211,18 @@ export const routes: Routes = [
         loadComponent: () => import('./features/repo/releases/release-detail.page').then((m) => m.ReleaseDetailPage),
       },
       {
+        path: 'actions',
+        loadComponent: () => import('./features/repo/actions/actions.page').then((m) => m.ActionsPage),
+      },
+      {
+        path: 'actions/workflow',
+        loadComponent: () => import('./features/repo/actions/workflow-detail.page').then((m) => m.WorkflowDetailPage),
+      },
+      {
+        path: 'actions/runs/:runId',
+        loadComponent: () => import('./features/repo/actions/run-detail.page').then((m) => m.RunDetailPage),
+      },
+      {
         path: 'settings',
         loadComponent: () => import('./features/repo/settings/repo-settings.page').then((m) => m.RepoSettingsPage),
         canActivate: [repoSettingsGuard],

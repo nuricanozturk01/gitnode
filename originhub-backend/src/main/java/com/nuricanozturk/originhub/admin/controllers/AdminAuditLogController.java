@@ -54,6 +54,7 @@ public class AdminAuditLogController {
       @RequestParam(required = false) final String action,
       @RequestParam(required = false) final String entityType,
       @RequestParam(required = false) final String entityId,
+      @RequestParam(required = false) final String ipAddress,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
           final Instant from,
       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
@@ -64,7 +65,7 @@ public class AdminAuditLogController {
     return ResponseEntity.ok(
         PageResponse.from(
             this.adminAuditLogService.search(
-                pageable, q, actor, action, entityType, entityId, from, to)));
+                pageable, q, actor, action, entityType, entityId, ipAddress, from, to)));
   }
 
   @GetMapping("/filters")
@@ -85,7 +86,7 @@ public class AdminAuditLogController {
     return ResponseEntity.ok(
         PageResponse.from(
             this.adminAuditLogService.search(
-                pageable, null, username, null, null, null, null, null)));
+                pageable, null, username, null, null, null, null, null, null)));
   }
 
   @GetMapping("/recent")

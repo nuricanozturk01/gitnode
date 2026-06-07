@@ -15,6 +15,7 @@
  */
 package com.nuricanozturk.originhub.webhook.services;
 
+import com.nuricanozturk.originhub.events.actions.WorkflowRunCompletedEvent;
 import com.nuricanozturk.originhub.events.branch.BranchCreatedEvent;
 import com.nuricanozturk.originhub.events.branch.BranchDeletedEvent;
 import com.nuricanozturk.originhub.events.issue.IssueCommentedEvent;
@@ -295,6 +296,19 @@ public class WebhookDispatcher {
       data.put("repoId", repoId);
     }
     this.dispatchToUserWebhooks(ownerUsername, type, data);
+  }
+
+  // ── Actions events ─────────────────────────────────────────────────────
+
+  @ApplicationModuleListener
+  void onWorkflowRunCompleted(final WorkflowRunCompletedEvent event) {
+    this.dispatch(
+        event.repoId(),
+        WebhookEventType.WORKFLOW_RUN_COMPLETED,
+        Map.of(
+            "runId", event.runId(),
+            "workflowName", event.workflowName(),
+            "conclusion", event.conclusion()));
   }
 
   // ── Core dispatch logic ────────────────────────────────────────────────

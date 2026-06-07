@@ -37,6 +37,7 @@ export class AuditLogsListPage implements OnInit {
   readonly action = signal('');
   readonly entityType = signal('');
   readonly entityId = signal('');
+  readonly ipAddress = signal('');
   readonly period = signal<AuditPeriodPreset>('all');
   readonly from = signal('');
   readonly to = signal('');
@@ -62,6 +63,7 @@ export class AuditLogsListPage implements OnInit {
     if (this.action()) chips.push('action');
     if (this.entityType()) chips.push('entityType');
     if (this.entityId().trim()) chips.push('entityId');
+    if (this.ipAddress().trim()) chips.push('ipAddress');
     if (this.period() !== 'all') chips.push('period');
     if (this.from().trim()) chips.push('from');
     if (this.to().trim()) chips.push('to');
@@ -196,6 +198,11 @@ export class AuditLogsListPage implements OnInit {
     this.scheduleReload(300);
   }
 
+  onIpAddressInput(event: Event): void {
+    this.ipAddress.set((event.target as HTMLInputElement).value);
+    this.scheduleReload(300);
+  }
+
   onActionChange(event: Event): void {
     this.action.set((event.target as HTMLSelectElement).value);
     this.page.set(0);
@@ -242,6 +249,7 @@ export class AuditLogsListPage implements OnInit {
     this.action.set('');
     this.entityType.set('');
     this.entityId.set('');
+    this.ipAddress.set('');
     this.period.set('all');
     this.from.set('');
     this.to.set('');
@@ -256,6 +264,7 @@ export class AuditLogsListPage implements OnInit {
     if (
       normalized.includes('DELETE') ||
       normalized.includes('REMOVED') ||
+      normalized.includes('FAILED') ||
       (normalized.includes('DISABLED') && !normalized.includes('ENABLED'))
     ) {
       return 'badge-pill badge-pill--error audit-action';
@@ -264,6 +273,7 @@ export class AuditLogsListPage implements OnInit {
     if (
       normalized.includes('CREATE') ||
       normalized.includes('CREATED') ||
+      normalized.includes('SUCCESS') ||
       normalized.includes('ENABLED') ||
       normalized.includes('INVITED')
     ) {
@@ -407,6 +417,7 @@ export class AuditLogsListPage implements OnInit {
         action: this.action() || undefined,
         entityType: this.entityType() || undefined,
         entityId: this.entityId().trim() || undefined,
+        ipAddress: this.ipAddress().trim() || undefined,
         from: this.resolveFrom(),
         to: this.resolveTo(),
       });

@@ -41,8 +41,11 @@ import {
   matchesTopicFilter,
   type RepoListSort,
 } from '../../shared/utils/repo-list.utils';
+import { parseUrlTab, replaceUrlFragment } from '../../shared/utils/url-tab.utils';
 
-type ProfileTab = 'overview' | 'repositories' | 'projects' | 'snippets';
+const PROFILE_TABS = ['overview', 'repositories', 'projects', 'snippets'] as const;
+type ProfileTab = (typeof PROFILE_TABS)[number];
+const DEFAULT_PROFILE_TAB: ProfileTab = 'overview';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -77,7 +80,7 @@ export class UserProfilePage {
   readonly profileWebsite = signal<string | null>(null);
   readonly profileLocation = signal<string | null>(null);
   readonly profileReadme = signal<string | null>(null);
-  readonly activeTab = signal<ProfileTab>('overview');
+  readonly activeTab = signal<ProfileTab>(DEFAULT_PROFILE_TAB);
   readonly repoQuery = signal('');
   readonly sortBy = signal<RepoListSort>('updated');
   readonly selectedTopics = signal<string[]>([]);
@@ -125,15 +128,14 @@ export class UserProfilePage {
 
   constructor() {
     this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
-      this.activeTab.set(this.fragmentToTab(fragment));
+      this.activeTab.set(parseUrlTab(fragment, PROFILE_TABS, DEFAULT_PROFILE_TAB));
     });
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => void this.loadData());
   }
 
   setTab(tab: ProfileTab): void {
     this.activeTab.set(tab);
-    const path = this.location.path(false).split('#')[0];
-    this.location.replaceState(path + '#' + tab);
+    replaceUrlFragment(this.location, tab === DEFAULT_PROFILE_TAB ? null : tab);
   }
 
   setSort(mode: RepoListSort): void {
@@ -205,13 +207,6 @@ export class UserProfilePage {
     } catch {
       this.snippets.set([]);
     }
-  }
-
-  private fragmentToTab(fragment: string | null): ProfileTab {
-    if (fragment === 'repositories') return 'repositories';
-    if (fragment === 'projects') return 'projects';
-    if (fragment === 'snippets') return 'snippets';
-    return 'overview';
   }
 
   private async loadData(): Promise<void> {

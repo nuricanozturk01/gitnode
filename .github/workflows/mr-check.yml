@@ -14,11 +14,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Install editorconfig-checker
-        uses: editorconfig-checker/action-editorconfig-checker@v2
-        with:
-          version: v3.0.3
+        run: npm install -g editorconfig-checker
 
-      - run: editorconfig-checker -exclude 'Makefile'
+      - name: Run editorconfig-checker
+        run: editorconfig-checker -exclude 'Makefile'
 
   originhub-backend-checks:
     name: OriginHub Backend Checks
@@ -38,6 +37,33 @@ jobs:
 
       - name: Build and Verify
         run: mvn -B -ntp verify
+
+  originhub-runner-checks:
+    name: OriginHub Runner Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./originhub-runner
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: originhub-runner/go.sum
+
+      - name: Format check
+        run: make fmt-check
+
+      - name: Test
+        run: make test
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
 
   originhub-frontend-checks:
     name: OriginHub Checks (${{ matrix.project }})

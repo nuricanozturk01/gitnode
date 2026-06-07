@@ -1,0 +1,29 @@
+<div class="overflow-hidden" [attr.data-code-syntax]="syntaxTheme()">
+  <div class="border-base-300 bg-base-100 flex items-center justify-between gap-2 border-b px-3 py-2 sm:px-4">
+    <span class="mono text-base-content text-sm">{{ fileName() || 'Workflow file' }}</span>
+    <div class="flex items-center gap-2">
+      <span class="text-base-content/60 text-xs">{{ lineCount() }} lines</span>
+      <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="copyContent()">
+        @if (copied()) {
+          <lucide-icon name="checkCircle" class="text-success size-3"></lucide-icon>
+          Copied!
+        } @else {
+          <lucide-icon name="copy" class="size-3"></lucide-icon>
+          Copy
+        }
+      </button>
+    </div>
+  </div>
+  <div class="bg-base-100 overflow-x-auto py-3">
+    <table class="code-viewer__table">
+      <tbody>
+        @for (line of highlightedLines(); track $index) {
+          <tr>
+            <td class="code-viewer__gutter">{{ $index + 1 }}</td>
+            <td class="code-viewer__code"><span class="hljs" [innerHTML]="line"></span></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

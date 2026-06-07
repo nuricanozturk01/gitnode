@@ -51,49 +51,113 @@
       aria-label="On this page"
     >
       <h2 class="text-base-content/50 mb-3 px-1 text-[11px] font-bold tracking-wider uppercase">On this page</h2>
-      <nav>
-        <ul class="space-y-0.5">
-          <li>
-            <button
-              type="button"
-              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
-              (click)="scrollToSection('local-setup')"
-            >
-              <span class="text-primary/80 mr-2 font-mono text-xs">01</span>
-              SSH keys
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
-              (click)="scrollToSection('http-git')"
-            >
-              <span class="text-primary/80 mr-2 font-mono text-xs">02</span>
-              HTTP / HTTPS Git
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
-              (click)="scrollToSection('ssh-config')"
-            >
-              <span class="text-primary/80 mr-2 font-mono text-xs">03</span>
-              SSH config
-            </button>
-          </li>
-          <li>
-            <button
-              type="button"
-              class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
-              (click)="scrollToSection('clone-push')"
-            >
-              <span class="text-primary/80 mr-2 font-mono text-xs">04</span>
-              Clone &amp; push
-            </button>
-          </li>
-        </ul>
+      <nav class="space-y-3">
+        <!-- Git transport group -->
+        <div>
+          <p class="text-base-content/40 mb-1 px-3 text-[10px] font-bold tracking-widest uppercase">Git</p>
+          <ul class="space-y-0.5">
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('local-setup')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">01</span>SSH keys
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('http-git')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">02</span>HTTP / HTTPS
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('ssh-config')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">03</span>SSH config
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('clone-push')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">04</span>Clone &amp; push
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Actions group — visually distinct -->
+        <div class="border-base-300/60 border-t pt-3">
+          <div class="mb-1.5 flex items-center gap-1.5 px-3">
+            <lucide-icon name="workflow" class="text-primary size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+            <p class="text-primary text-[10px] font-bold tracking-widest uppercase">Actions (CI/CD)</p>
+          </div>
+          <ul class="space-y-0.5">
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('actions-overview')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">05</span>Overview
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('actions-quickstart')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">06</span>Quick start
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('actions-yaml')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">07</span>YAML reference
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('actions-dispatch')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">08</span>Manual dispatch
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('actions-builtin')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">09</span>Built-in actions
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="docs-toc-link w-full rounded-lg px-3 py-2 text-left text-sm font-medium"
+                (click)="scrollToSection('actions-runner')"
+              >
+                <span class="text-primary/80 mr-2 font-mono text-xs">10</span>Runners
+              </button>
+            </li>
+          </ul>
+        </div>
       </nav>
       <a
         routerLink="/settings"
@@ -379,6 +443,932 @@
               </tr>
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <!-- Actions divider -->
+      <div class="flex items-center gap-4">
+        <div class="border-base-300/60 flex-1 border-t"></div>
+        <div class="border-primary/30 bg-primary/5 flex items-center gap-2 rounded-full border px-4 py-1.5">
+          <lucide-icon name="workflow" class="text-primary size-4 shrink-0" aria-hidden="true"></lucide-icon>
+          <span class="text-primary text-xs font-semibold tracking-wide uppercase">Actions — CI/CD</span>
+        </div>
+        <div class="border-base-300/60 flex-1 border-t"></div>
+      </div>
+
+      <!-- 5 Actions overview -->
+      <section
+        id="actions-overview"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >5</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">Actions — Overview</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              OriginHub Actions is a CI/CD engine built into OriginHub. Define workflows in
+              <code class="docs-inline-code">{{ actionsWorkflowPath }}</code> files and they run automatically when you
+              push code, open a pull request, or trigger them manually from the UI. No external services needed —
+              everything runs on runners you control.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-6">
+          <!-- Differences from GitHub Actions -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">Key differences from GitHub Actions</h3>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Feature</th>
+                    <th scope="col">GitHub Actions</th>
+                    <th scope="col">OriginHub Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Workflow location</td>
+                    <td><code class="docs-table-code">.github/workflows/</code></td>
+                    <td><code class="docs-table-code">.originhub/workflows/</code></td>
+                  </tr>
+                  <tr>
+                    <td>Action marketplace</td>
+                    <td>Any action from marketplace</td>
+                    <td>Built-in actions only (no marketplace)</td>
+                  </tr>
+                  <tr>
+                    <td>Runners</td>
+                    <td>GitHub-hosted or self-hosted</td>
+                    <td>Self-hosted only (register your own)</td>
+                  </tr>
+                  <tr>
+                    <td>Composite / reusable workflows</td>
+                    <td>Supported</td>
+                    <td>Not supported</td>
+                  </tr>
+                  <tr>
+                    <td>Context expressions</td>
+                    <td><code class="docs-table-code">${{'${{ github.sha }}'}}</code></td>
+                    <td><code class="docs-table-code">ORIGINHUB_SHA</code> env var</td>
+                  </tr>
+                  <tr>
+                    <td>Secrets syntax</td>
+                    <td><code class="docs-table-code">${{'${{ secrets.NAME }}'}}</code></td>
+                    <td><code class="docs-table-code">${{'${{ secrets.NAME }}'}}</code> (same)</td>
+                  </tr>
+                  <tr>
+                    <td>Matrix strategy</td>
+                    <td>Supported</td>
+                    <td>Supported</td>
+                  </tr>
+                  <tr>
+                    <td>Concurrency</td>
+                    <td>Supported</td>
+                    <td>Supported</td>
+                  </tr>
+                  <tr>
+                    <td>Artifacts</td>
+                    <td>Stored by GitHub</td>
+                    <td>Stored in OriginHub backend</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Auto-injected env vars -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">Auto-injected environment variables</h3>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Every job automatically receives these variables. Use them in
+              <code class="docs-inline-code">run:</code> scripts or step
+              <code class="docs-inline-code">env:</code> blocks.
+            </p>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Variable</th>
+                    <th scope="col">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">ORIGINHUB_OWNER</code></td>
+                    <td>Repository owner username</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">ORIGINHUB_REPO</code></td>
+                    <td>Repository name</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">ORIGINHUB_SHA</code></td>
+                    <td>Full commit SHA that triggered the run</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">ORIGINHUB_REF</code></td>
+                    <td>Branch or tag ref (e.g. <code class="docs-table-code">refs/heads/main</code>)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">ORIGINHUB_REPO_ID</code></td>
+                    <td>Repository UUID (used by cache and artifact actions)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Minimal example -->
+          <div>
+            <h3 class="text-base-content mb-2 text-base font-semibold">Minimal workflow</h3>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('actions-minimal', actionsMinimalYaml)"
+              >
+                @if (copiedId() === 'actions-minimal') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsMinimalYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 6 Quick start -->
+      <section
+        id="actions-quickstart"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >6</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">Quick start</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              Get your first workflow running in three steps. No prior CI/CD experience required.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-6">
+          <!-- Step 1 -->
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 1 — Register a runner</h3>
+            <p class="text-base-content/65 mb-3 text-sm leading-relaxed">
+              Go to your repository's <strong class="text-base-content/80">Settings → Actions → Runners</strong>
+              and generate a registration token. Then start the runner on any machine you control:
+            </p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('qs-runner', actionsRunnerCmd)"
+              >
+                @if (copiedId() === 'qs-runner') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsRunnerCmd }}</code></pre>
+              </div>
+            </div>
+            <p class="text-base-content/55 mt-2 text-xs">
+              The runner registers itself and waits for jobs. Keep it running — it stays connected via WebSocket.
+            </p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 2 — Create a workflow file</h3>
+            <p class="text-base-content/65 mb-3 text-sm leading-relaxed">
+              In your repository, create <code class="docs-inline-code">{{ actionsWorkflowPath }}</code> (the directory
+              must be named <code class="docs-inline-code">.originhub/workflows/</code>):
+            </p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('qs-workflow', actionsMinimalYaml)"
+              >
+                @if (copiedId() === 'qs-workflow') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsMinimalYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="docs-step">
+            <h3 class="text-base-content mb-2 text-base font-semibold">Step 3 — Push and watch</h3>
+            <p class="text-base-content/65 text-sm leading-relaxed">
+              Commit the file and push to <code class="docs-inline-code">main</code>. Open your repository in OriginHub,
+              navigate to <strong class="text-base-content/80">Actions → All runs</strong>, and you should see the run
+              appear within seconds. Click a run to follow step-by-step logs in real time.
+            </p>
+          </div>
+
+          <!-- callout: what the runner needs -->
+          <div class="border-primary/20 bg-primary/5 rounded-xl border-l-4 px-4 py-3 text-sm leading-relaxed">
+            <strong class="text-base-content font-medium">What the runner needs installed:</strong>
+            <span class="text-base-content/70">
+              The <code class="docs-inline-code">actions/checkout@v1</code> step clones your repo via authenticated HTTP
+              — no manual Git credential setup required. For language setup actions (<code class="docs-inline-code"
+                >actions/setup-node@v1</code
+              >, etc.) the corresponding runtime manager (<code class="docs-inline-code">fnm</code>,
+              <code class="docs-inline-code">sdkman</code>, …) must be available on the runner machine.
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 7 YAML reference -->
+      <section
+        id="actions-yaml"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >7</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">YAML reference</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              All supported top-level keys and their semantics. The format is intentionally close to GitHub Actions so
+              migration is straightforward. Only the keys listed here are processed — unknown keys are ignored.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-8">
+          <!-- Triggers -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">
+              Triggers (<code class="docs-inline-code">on:</code>)
+            </h3>
+            <div class="docs-table-wrap border-base-300/80 mb-4 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Trigger</th>
+                    <th scope="col">Fires when</th>
+                    <th scope="col">Filter keys</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">push</code></td>
+                    <td>Commit pushed to any matching branch/tag</td>
+                    <td>
+                      <code class="docs-table-code">branches</code>,
+                      <code class="docs-table-code">branches-ignore</code>, <code class="docs-table-code">tags</code>,
+                      <code class="docs-table-code">paths</code>, <code class="docs-table-code">paths-ignore</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">pull_request</code></td>
+                    <td>PR opened, updated, or reopened</td>
+                    <td>
+                      <code class="docs-table-code">branches</code>,
+                      <code class="docs-table-code">branches-ignore</code>, <code class="docs-table-code">paths</code>,
+                      <code class="docs-table-code">paths-ignore</code>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">workflow_dispatch</code></td>
+                    <td>Manual trigger from the Actions UI</td>
+                    <td><code class="docs-table-code">inputs</code> (optional form fields)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="text-base-content/60 mb-2 text-sm">Example: manual dispatch with inputs</p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('actions-dispatch', actionsDispatchYaml)"
+              >
+                @if (copiedId() === 'actions-dispatch') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsDispatchYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Job keys -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">Job keys</h3>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Key</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">name</code></td>
+                    <td>string</td>
+                    <td>Display name shown in the UI</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">runs-on</code></td>
+                    <td>string or list</td>
+                    <td>Runner label(s) to target (must match a registered runner)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">needs</code></td>
+                    <td>string or list</td>
+                    <td>Jobs that must succeed before this one starts</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">if</code></td>
+                    <td>expression</td>
+                    <td>Condition to skip the job</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">timeout-minutes</code></td>
+                    <td>number</td>
+                    <td>Job-level timeout (default: 30 min)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">env</code></td>
+                    <td>map</td>
+                    <td>Job-scoped environment variables</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">strategy.matrix</code></td>
+                    <td>map</td>
+                    <td>Expand job into multiple parallel runs</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">strategy.fail-fast</code></td>
+                    <td>boolean</td>
+                    <td>Cancel remaining matrix jobs on first failure (default: true)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">strategy.max-parallel</code></td>
+                    <td>number</td>
+                    <td>Limit concurrent matrix jobs</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">services</code></td>
+                    <td>map</td>
+                    <td>Sidecar containers (image, env, ports)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">steps</code></td>
+                    <td>list</td>
+                    <td>Ordered list of steps (required)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Step keys -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">Step keys</h3>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Key</th>
+                    <th scope="col">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">id</code></td>
+                    <td>Step identifier for referencing in later steps</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">name</code></td>
+                    <td>Display name shown in the log viewer</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">uses</code></td>
+                    <td>Built-in action reference (e.g. <code class="docs-table-code">actions/checkout@v1</code>)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">run</code></td>
+                    <td>
+                      Shell commands to execute (multi-line supported with <code class="docs-table-code">|</code>)
+                    </td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">if</code></td>
+                    <td>Condition expression — step is skipped when false</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">with</code></td>
+                    <td>Input map for built-in actions</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">env</code></td>
+                    <td>Step-scoped env vars (override job-level vars)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Full example -->
+          <div>
+            <h3 class="text-base-content mb-2 text-base font-semibold">Full workflow example</h3>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Push + PR + manual dispatch, matrix strategy, concurrency, artifacts, secrets.
+            </p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('actions-full', actionsFullYaml)"
+              >
+                @if (copiedId() === 'actions-full') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre
+                  class="m-0 overflow-x-auto p-4 pr-12 text-sm leading-relaxed"
+                ><code>{{ actionsFullYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 Manual dispatch -->
+      <section
+        id="actions-dispatch"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >8</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">Manual dispatch</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              Trigger a workflow on demand from the UI without pushing code. Add
+              <code class="docs-inline-code">workflow_dispatch:</code> to your trigger list and optionally define input
+              fields that appear in the "Run workflow" dialog.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-6">
+          <!-- How to trigger -->
+          <div>
+            <h3 class="text-base-content mb-2 text-base font-semibold">How to trigger from the UI</h3>
+            <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+              <li>
+                Open your repository and navigate to <strong class="text-base-content/80">Actions → Workflows</strong>.
+              </li>
+              <li>
+                Find the workflow and click the <strong class="text-base-content/80">Run workflow</strong> button.
+              </li>
+              <li>A dialog appears where you choose the target branch and fill in any declared inputs.</li>
+              <li>
+                Click <strong class="text-base-content/80">Run workflow</strong> — the run appears in
+                <em>All runs</em> immediately.
+              </li>
+            </ol>
+          </div>
+
+          <!-- Input types -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">Supported input types</h3>
+            <div class="docs-table-wrap border-base-300/80 mb-4 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Type</th>
+                    <th scope="col">UI control</th>
+                    <th scope="col">YAML value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">string</code> (default)</td>
+                    <td>Text field</td>
+                    <td>Any string</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">choice</code></td>
+                    <td>Dropdown — options from <code class="docs-table-code">options:</code> list</td>
+                    <td>One of the declared options</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">boolean</code></td>
+                    <td>Toggle switch</td>
+                    <td><code class="docs-table-code">"true"</code> or <code class="docs-table-code">"false"</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="text-base-content/60 mb-2 text-sm">Example — all three input types in one workflow:</p>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('actions-dispatch-ex', actionsDispatchYaml)"
+              >
+                @if (copiedId() === 'actions-dispatch-ex') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsDispatchYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accessing inputs in steps -->
+          <div>
+            <h3 class="text-base-content mb-2 text-base font-semibold">Accessing inputs in steps</h3>
+            <p class="text-base-content/65 text-sm leading-relaxed">
+              Use <code class="docs-inline-code">${{'${{ inputs.name }}'}}</code> anywhere in a step's
+              <code class="docs-inline-code">run:</code>, <code class="docs-inline-code">with:</code>, or
+              <code class="docs-inline-code">env:</code> block. OriginHub resolves these expressions before sending the
+              job to the runner — the raw <code class="docs-inline-code">${{'${{ }}'}}</code>
+              syntax never reaches the shell. Inputs not provided by the user resolve to their
+              <code class="docs-inline-code">default:</code> or an empty string.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 9 Built-in actions -->
+      <section
+        id="actions-builtin"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >9</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">Built-in actions</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              OriginHub ships a set of built-in actions. There is no external marketplace — every
+              <code class="docs-inline-code">uses:</code> reference must match one of these.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-6">
+          <!-- Checkout -->
+          <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+              <code class="docs-inline-code font-semibold">actions/checkout@v1</code>
+              <span class="badge-pill badge-pill--primary">required first step</span>
+            </div>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Clones the repository into the job workspace using the authenticated runner token. Reads
+              <code class="docs-inline-code">ORIGINHUB_OWNER</code> and
+              <code class="docs-inline-code">ORIGINHUB_REPO</code> from the injected env vars automatically — no
+              configuration needed.
+            </p>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th>Input</th>
+                    <th>Default</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">ref</code></td>
+                    <td><code class="docs-table-code">ORIGINHUB_SHA</code></td>
+                    <td>Ref to checkout (branch, tag, SHA)</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">depth</code></td>
+                    <td><code class="docs-table-code">1</code></td>
+                    <td>
+                      Clone depth. Set to <code class="docs-table-code">0</code> or
+                      <code class="docs-table-code">full</code> for full history
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Setup actions -->
+          <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+            <h3 class="text-base-content mb-3 font-semibold">Runtime setup actions</h3>
+            <p class="text-base-content/65 mb-3 text-sm">
+              All setup actions install the requested runtime version using the tool manager already present on the
+              runner (<code class="docs-inline-code">fnm</code> / <code class="docs-inline-code">nvm</code> for Node,
+              <code class="docs-inline-code">SDKMAN</code> for Java and Go,
+              <code class="docs-inline-code">pyenv</code> for Python).
+            </p>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Key input</th>
+                    <th>Default</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">actions/setup-node@v1</code></td>
+                    <td><code class="docs-table-code">node-version</code></td>
+                    <td><code class="docs-table-code">lts</code></td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">actions/setup-pnpm@v1</code></td>
+                    <td><code class="docs-table-code">version</code></td>
+                    <td>latest</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">actions/setup-java@v1</code></td>
+                    <td>
+                      <code class="docs-table-code">java-version</code>,
+                      <code class="docs-table-code">distribution</code>
+                    </td>
+                    <td><code class="docs-table-code">21</code>, <code class="docs-table-code">temurin</code></td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">actions/setup-python@v1</code></td>
+                    <td><code class="docs-table-code">python-version</code></td>
+                    <td><code class="docs-table-code">3</code></td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">actions/setup-go@v1</code></td>
+                    <td><code class="docs-table-code">go-version</code></td>
+                    <td><code class="docs-table-code">stable</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Cache -->
+          <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+              <code class="docs-inline-code font-semibold">actions/cache@v1</code>
+            </div>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Stores and restores a directory in OriginHub's cache store. Cache is keyed per repository.
+            </p>
+            <div class="docs-table-wrap border-base-300/80 mb-3 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th>Input</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">key</code></td>
+                    <td>Yes</td>
+                    <td>Cache key — use <code class="docs-table-code">hashFiles()</code> for dependency lock files</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">path</code></td>
+                    <td>Yes</td>
+                    <td>Directory to cache</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('actions-cache', actionsCacheYaml)"
+              >
+                @if (copiedId() === 'actions-cache') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsCacheYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Artifacts -->
+          <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+              <code class="docs-inline-code font-semibold">actions/upload-artifact@v1</code>
+              <code class="docs-inline-code font-semibold">actions/download-artifact@v1</code>
+            </div>
+            <p class="text-base-content/65 mb-3 text-sm">
+              Upload build outputs from one job and download them in a later job or from the UI. Artifacts are stored in
+              OriginHub's backend and scoped to the workflow run.
+            </p>
+            <div class="docs-table-wrap border-base-300/80 mb-3 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th>Input</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code class="docs-table-code">name</code></td>
+                    <td>both</td>
+                    <td>Artifact name</td>
+                  </tr>
+                  <tr>
+                    <td><code class="docs-table-code">path</code></td>
+                    <td>both</td>
+                    <td>Directory to upload / download to</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('actions-artifact', actionsArtifactYaml)"
+              >
+                @if (copiedId() === 'actions-artifact') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsArtifactYaml }}</code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Docker login -->
+          <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+            <div class="mb-2 flex flex-wrap items-center gap-2">
+              <code class="docs-inline-code font-semibold">actions/docker-login@v1</code>
+            </div>
+            <p class="text-base-content/65 text-sm">
+              Authenticates the Docker CLI against a registry. Inputs:
+              <code class="docs-inline-code">registry</code> (default: Docker Hub),
+              <code class="docs-inline-code">username</code>, <code class="docs-inline-code">password</code>.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <!-- 10 Runners -->
+      <section
+        id="actions-runner"
+        class="docs-section border-base-300/70 bg-base-100/90 scroll-mt-24 rounded-2xl border p-6 shadow-sm sm:p-8"
+      >
+        <header class="mb-6 flex flex-wrap items-start gap-4">
+          <span
+            class="bg-primary/15 text-primary ring-primary/20 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-bold ring-1"
+            >10</span
+          >
+          <div>
+            <h2 class="text-2xl font-bold tracking-tight sm:text-[1.65rem]">Self-hosted runners</h2>
+            <p class="text-base-content/70 mt-2 max-w-2xl text-sm leading-relaxed sm:text-base">
+              Every job runs on a runner you register. Runners connect via WebSocket, poll for jobs, and report results
+              back in real-time.
+            </p>
+          </div>
+        </header>
+
+        <div class="space-y-6">
+          <!-- How it works -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">How runners work</h3>
+            <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+              <li>
+                Generate a <strong class="text-base-content/85">registration token</strong> in
+                <em>Repository → Settings → Actions → Runners</em>.
+              </li>
+              <li>
+                Start the runner binary with <code class="docs-inline-code">--token</code> and
+                <code class="docs-inline-code">--labels</code>. It registers itself and gets a long-lived JWT.
+              </li>
+              <li>The runner opens a persistent WebSocket connection to OriginHub. It sends heartbeats every 30 s.</li>
+              <li>
+                When a workflow triggers a job, OriginHub picks the first idle runner whose labels match
+                <code class="docs-inline-code">runs-on:</code> and dispatches the job over the WebSocket.
+              </li>
+              <li>The runner executes steps in order, streams logs back live, and reports completion.</li>
+            </ol>
+          </div>
+
+          <!-- Runner status -->
+          <div>
+            <h3 class="text-base-content mb-3 text-base font-semibold">Runner statuses</h3>
+            <div class="docs-table-wrap border-base-300/80 overflow-hidden rounded-xl border">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span class="badge-pill badge-pill--success">online</span></td>
+                    <td>Idle and ready to accept jobs</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-pill badge-pill--warning">busy</span></td>
+                    <td>Currently executing a job</td>
+                  </tr>
+                  <tr>
+                    <td><span class="badge-pill badge-pill--neutral">offline</span></td>
+                    <td>Not connected or no heartbeat in 60 s</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Labels -->
+          <div>
+            <h3 class="text-base-content mb-2 text-base font-semibold">
+              Matching runners with <code class="docs-inline-code">runs-on:</code>
+            </h3>
+            <p class="text-base-content/65 text-sm leading-relaxed">
+              A runner is selected when <em>all</em> labels in the job's
+              <code class="docs-inline-code">runs-on:</code> list are present on the runner. Register multiple runners
+              with different label sets to route jobs to specific machines (e.g.
+              <code class="docs-inline-code">linux</code>, <code class="docs-inline-code">gpu</code>,
+              <code class="docs-inline-code">arm64</code>).
+            </p>
+          </div>
+
+          <!-- Start command -->
+          <div>
+            <h3 class="text-base-content mb-2 text-base font-semibold">Start command</h3>
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('runner-cmd', actionsRunnerCmd)"
+              >
+                @if (copiedId() === 'runner-cmd') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="m-0 overflow-x-auto p-4 pr-12 text-sm"><code>{{ actionsRunnerCmd }}</code></pre>
+              </div>
+            </div>
+            <p class="text-base-content/55 mt-3 text-xs leading-relaxed">
+              <code class="docs-inline-code">--executor</code> can be
+              <code class="docs-inline-code">shell</code> (default) or <code class="docs-inline-code">docker</code>. The
+              registration token is single-use but the runner JWT it generates is valid for 1 year.
+            </p>
+          </div>
         </div>
       </section>
 

@@ -17,11 +17,11 @@
 import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { RouterLink, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/services/auth.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { registrationErrorMessage } from '../../../shared/utils/api-error.utils';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,10 +56,7 @@ export class RegisterPage {
       this.toast.success('Account created successfully');
       void this.router.navigate(['/dashboard']);
     } catch (e) {
-      const msg =
-        e instanceof HttpErrorResponse
-          ? (e.error?.message ?? e.statusText ?? 'Registration failed')
-          : ((e as Error).message ?? 'Registration failed');
+      const msg = registrationErrorMessage(e, 'Registration failed');
       this.error.set(msg);
       this.toast.error(msg);
     } finally {

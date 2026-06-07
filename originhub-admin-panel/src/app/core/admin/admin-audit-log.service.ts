@@ -20,6 +20,7 @@ export class AdminAuditLogService {
     params = this.setOptional(params, 'action', query.action);
     params = this.setOptional(params, 'entityType', query.entityType);
     params = this.setOptional(params, 'entityId', query.entityId);
+    params = this.setOptional(params, 'ipAddress', query.ipAddress);
     params = this.setOptional(params, 'from', query.from);
     params = this.setOptional(params, 'to', query.to);
 

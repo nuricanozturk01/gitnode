@@ -39,7 +39,8 @@ public enum WebhookEventType {
   TASK_UPDATED("task.updated"),
   SNIPPET_CREATED("snippet.created"),
   SNIPPET_DELETED("snippet.deleted"),
-  SNIPPET_UPDATED("snippet.updated");
+  SNIPPET_UPDATED("snippet.updated"),
+  WORKFLOW_RUN_COMPLETED("workflow_run.completed");
 
   private final String value;
 

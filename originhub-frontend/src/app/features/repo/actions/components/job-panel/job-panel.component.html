@@ -1,0 +1,53 @@
+<div class="divide-base-300 divide-y">
+  @for (job of jobs(); track job.id) {
+    <div class="px-3 py-3 sm:px-4">
+      <button type="button" class="flex w-full items-center gap-3 text-left" (click)="selectJob(job.id)">
+        <lucide-icon
+          [name]="statusIconName(job.status, job.conclusion)"
+          class="size-4 shrink-0"
+          [class]="statusIconClass(displayStatus(job))"
+          [class.animate-spin]="statusIconSpinning(job.status, job.conclusion)"
+        ></lucide-icon>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-base-content font-medium">{{ job.name }}</span>
+            <span [class]="statusBadgeClass(displayStatus(job))">
+              {{ statusLabel(displayStatus(job)) }}
+            </span>
+          </div>
+          @if (job.runnerLabels.length) {
+            <p class="text-base-content/50 mt-0.5 text-xs">runs-on: {{ job.runnerLabels.join(', ') }}</p>
+          }
+        </div>
+        <lucide-icon
+          name="chevronDown"
+          class="size-4 shrink-0 transition-transform"
+          [class.rotate-180]="selectedJobId() === job.id"
+        ></lucide-icon>
+      </button>
+
+      @if (selectedJobId() === job.id && job.steps.length) {
+        <div class="border-base-300 mt-3 ml-7 space-y-1 border-l pl-3">
+          @for (step of job.steps; track step.id) {
+            <button
+              type="button"
+              class="hover:bg-base-200/60 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm"
+              (click)="selectStep(step.id)"
+            >
+              <lucide-icon
+                [name]="statusIconName(step.status, step.conclusion)"
+                class="size-3.5 shrink-0"
+                [class]="statusIconClass(resolveDisplayStatus(step.status, step.conclusion))"
+                [class.animate-spin]="statusIconSpinning(step.status, step.conclusion)"
+              ></lucide-icon>
+              <span class="min-w-0 flex-1 truncate">{{ step.name ?? step.uses ?? 'Step ' + step.stepNumber }}</span>
+              <span [class]="statusBadgeClass(resolveDisplayStatus(step.status, step.conclusion)) + ' text-[10px]'">
+                {{ statusLabel(resolveDisplayStatus(step.status, step.conclusion)) }}
+              </span>
+            </button>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

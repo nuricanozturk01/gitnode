@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule(allowedDependencies = {"shared", "auth :: api", "webhook :: api"})
+@ApplicationModule(
+    allowedDependencies = {"shared", "auth :: api", "webhook :: api", "actions :: api"})
 package com.nuricanozturk.originhub.admin;
 
 import org.jspecify.annotations.NullMarked;

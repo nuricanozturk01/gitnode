@@ -47,7 +47,8 @@ class AdminAuditLogServiceTest {
     when(auditLogRepository.findAll(any(Specification.class), any(Pageable.class)))
         .thenReturn(new PageImpl<>(List.of()));
 
-    adminAuditLogService.search(PageRequest.of(0, 10), "  ", "  ", "  ", "  ", "  ", null, null);
+    adminAuditLogService.search(
+        PageRequest.of(0, 10), "  ", "  ", "  ", "  ", "  ", null, null, null);
 
     verify(auditLogRepository).findAll(any(Specification.class), any(Pageable.class));
   }

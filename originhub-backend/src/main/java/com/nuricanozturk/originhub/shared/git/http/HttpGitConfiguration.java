@@ -20,6 +20,7 @@ import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.http.server.GitServlet;
@@ -63,9 +64,13 @@ public class HttpGitConfiguration {
 
   @Bean
   public FilterRegistrationBean<HttpGitAuthenticationFilter> httpGitAuthenticationFilter(
-      final TenantRepository tenantRepository, final RepoRepository repoRepository) {
+      final TenantRepository tenantRepository,
+      final RepoRepository repoRepository,
+      final Optional<RunnerTokenPort> runnerTokenPort) {
 
-    final var filter = new HttpGitAuthenticationFilter(tenantRepository, repoRepository);
+    final var filter =
+        new HttpGitAuthenticationFilter(
+            tenantRepository, repoRepository, runnerTokenPort.orElse(null));
     final var registration = new FilterRegistrationBean<>(filter);
 
     registration.addUrlPatterns("/git/*");

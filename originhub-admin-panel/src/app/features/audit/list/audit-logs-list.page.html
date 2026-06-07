@@ -164,6 +164,14 @@
         aria-label="Filter by entity ID"
       />
       <input
+        type="search"
+        class="input input-bordered input-xs w-full"
+        placeholder="Filter by IP address"
+        [value]="ipAddress()"
+        (input)="onIpAddressInput($event)"
+        aria-label="Filter by IP address"
+      />
+      <input
         type="datetime-local"
         class="input input-bordered input-xs w-full"
         [value]="from()"

@@ -16,6 +16,7 @@
 
 import { Component, ChangeDetectionStrategy, inject, signal, computed, OnInit, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Location } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
@@ -23,6 +24,11 @@ import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signa
 import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import type { PullRequestInfo } from '../../../domain/pull-request/models/pull-request-info.model';
+import { parseUrlTab, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
+
+const PR_LIST_TABS = ['open', 'closed', 'merged'] as const;
+type PrListTab = (typeof PR_LIST_TABS)[number];
+const DEFAULT_PR_LIST_TAB: PrListTab = 'open';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -33,13 +39,14 @@ import type { PullRequestInfo } from '../../../domain/pull-request/models/pull-r
 })
 export class PullRequestsPage implements OnInit {
   private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
   private readonly prService = inject(PullRequestService);
   private readonly destroyRef = inject(DestroyRef);
   readonly repoContext = inject(RepoContextService);
 
   readonly pulls = signal<PullRequestInfo[]>([]);
   readonly loading = signal(true);
-  readonly tab = signal<'open' | 'closed' | 'merged'>('open');
+  readonly tab = signal<PrListTab>(DEFAULT_PR_LIST_TAB);
 
   readonly page = signal(0);
   readonly totalPages = signal(0);
@@ -53,15 +60,24 @@ export class PullRequestsPage implements OnInit {
   readonly hasNext = computed(() => this.page() < this.totalPages() - 1);
 
   ngOnInit(): void {
+    this.route.fragment.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((fragment) => {
+      const next = parseUrlTab(fragment, PR_LIST_TABS, DEFAULT_PR_LIST_TAB);
+      if (next === this.tab()) return;
+      this.tab.set(next);
+      this.page.set(0);
+      void this.loadPage();
+    });
+
     this.route.parent!.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.page.set(0);
       void this.loadPage();
     });
   }
 
-  setTab(t: 'open' | 'closed' | 'merged'): void {
+  setTab(t: PrListTab): void {
     this.tab.set(t);
     this.page.set(0);
+    replaceUrlFragment(this.location, t === DEFAULT_PR_LIST_TAB ? null : t);
     void this.loadPage();
   }
 

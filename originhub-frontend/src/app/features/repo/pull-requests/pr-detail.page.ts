@@ -15,6 +15,8 @@
 ///
 
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Location } from '@angular/common';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { FormsModule } from '@angular/forms';
@@ -32,6 +34,11 @@ import type { PrCommentInfo } from '../../../domain/pull-request/models/pr-comme
 import type { FileDiff } from '../../../domain/commit/models/file-diff.model';
 import type { DiffLine } from '../../../domain/commit/models/diff-line.model';
 import type { CommitInfo } from '../../../domain/commit/models/commit-info.model';
+import { parseUrlTab, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
+
+const PR_DETAIL_TABS = ['conversation', 'commits', 'files'] as const;
+type PrDetailTab = (typeof PR_DETAIL_TABS)[number];
+const DEFAULT_PR_DETAIL_TAB: PrDetailTab = 'conversation';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -43,6 +50,7 @@ import type { CommitInfo } from '../../../domain/commit/models/commit-info.model
 })
 export class PrDetailPage {
   private readonly route = inject(ActivatedRoute);
+  private readonly location = inject(Location);
   private readonly prService = inject(PullRequestService);
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
@@ -60,7 +68,7 @@ export class PrDetailPage {
   readonly commitsLoading = signal(false);
   readonly filesLoaded = signal(false);
   readonly commitsLoaded = signal(false);
-  readonly activeTab = signal<'conversation' | 'commits' | 'files'>('conversation');
+  readonly activeTab = signal<PrDetailTab>(DEFAULT_PR_DETAIL_TAB);
   readonly expandedFiles = signal<Set<string>>(new Set());
 
   readonly newCommentBody = signal('');
@@ -141,6 +149,10 @@ export class PrDetailPage {
   private readonly routeKey = computed(() => `${this.owner()}/${this.repoName()}/${this.number()}`);
 
   constructor() {
+    this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
+      this.activeTab.set(parseUrlTab(fragment, PR_DETAIL_TABS, DEFAULT_PR_DETAIL_TAB));
+    });
+
     effect(() => {
       this.routeKey();
       if (!this.owner() || !this.repoName() || !this.number()) {
@@ -237,8 +249,9 @@ export class PrDetailPage {
     }
   }
 
-  setTab(t: 'conversation' | 'commits' | 'files'): void {
+  setTab(t: PrDetailTab): void {
     this.activeTab.set(t);
+    replaceUrlFragment(this.location, t === DEFAULT_PR_DETAIL_TAB ? null : t);
   }
 
   toggleFile(path: string): void {

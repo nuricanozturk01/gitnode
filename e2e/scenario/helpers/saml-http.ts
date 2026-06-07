@@ -5,7 +5,7 @@ export interface HtmlForm {
 }
 
 export function parseHtmlForm(html: string): HtmlForm | null {
-  const formTag = (/<form[^>]*>/i.exec(html))?.[0];
+  const formTag = /<form[^>]*>/i.exec(html)?.[0];
   if (!formTag) {
     return null;
   }

@@ -9,6 +9,7 @@
 <br/>
 
 [![Java](https://img.shields.io/badge/Java-25-orange?style=for-the-badge&logo=openjdk)](https://openjdk.org/)
+[![Go](https://img.shields.io/badge/Go-1.24-00ADD8?style=for-the-badge&logo=go&logoColor=white)](https://go.dev/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.x-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Angular](https://img.shields.io/badge/Angular-21-DD0031?style=for-the-badge&logo=angular)](https://angular.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.x-38BDF8?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
@@ -32,7 +33,7 @@
 
 ## 🔍 What is OriginHub?
 
-OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your repositories, pull requests, and CI/CD pipelines — running entirely on your own infrastructure, with zero dependency on third-party platforms.
+OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your repositories, pull requests, and CI/CD pipelines (YAML workflows + self-hosted runner agent) — running entirely on your own infrastructure, with zero dependency on third-party platforms.
 
 No subscriptions. No data leaving your servers. No vendor lock-in. Just Git, hosted your way.
 
@@ -56,7 +57,7 @@ OriginHub is built for developers and teams who care about ownership — whether
 
 ## ✨ Features
 
-OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — plus **enterprise SAML/LDAP SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all on your own infrastructure.
+OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **enterprise SAML/LDAP SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all on your own infrastructure.
 
 <div align="center">
 
@@ -68,7 +69,7 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 | 🔔 [Webhooks](#-webhooks) | 🔐 [Authentication](#-authentication) | 👥 [Collaborators](#-collaborators) |
 | 🍴 [Repository Forks](#-repository-forks) | 🛡 [Access Policies](#-repo-access-policies) | 🏢 [Enterprise SSO](#-enterprise-saml--ldap-sso) |
 | 📊 [Admin Panel](#-admin-panel) | ⚡ [Rate Limiting](#-rate-limiting) | 📈 [Observability](#-prometheus--grafana-observability) |
-| 📜 [Audit Logging](#-audit-logging) | ⚡ [Actions *(soon)*](#-actions--cicd-coming-soon) | |
+| 📜 [Audit Logging](#-audit-logging) | ⚡ [Actions](#-actions--cicd) | |
 
 </div>
 
@@ -172,9 +173,40 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 - Useful for organizations that want open-source-style read access without enabling arbitrary contributions
 - Configured in **Settings → Access Policies**; changes take effect immediately for all subsequent requests
 
-### ⚡ Actions — CI/CD *(coming soon)*
+### ⚡ Actions — CI/CD
 
-- YAML workflows, job/step execution, SSE logs, run history, triggers (push / PR / manual)
+- **YAML workflow definitions** checked in at `.originhub/workflows/*.yml` — `push`, `pull_request`, and `workflow_dispatch` triggers
+- **Job graph** with matrix strategy expansion and `needs` dependency ordering; `concurrency` groups with cancellation
+- **Runner protocol**: runners register via token, receive jobs over **WebSocket**, report step logs and status back to the server
+- **Shell and Docker executors** — built-in `actions/checkout@v1` step; custom `run` steps execute in a per-job workspace
+- **Secrets vault** — AES-256-GCM encrypted secrets per repo; injected as env vars at job runtime (masked in logs)
+- **Artifact store** — upload/download artifacts by run + name; retained per run
+- **Cache store** — key-based cache for workflow dependencies
+- **SSE log streaming** — real-time step logs via Server-Sent Events (`GET /api/repos/{owner}/{repo}/actions/runs/{runId}/events`)
+- **Run history** — list, cancel, and re-run workflows from the UI
+- **Runner management** — register, list, delete runners per repo; runner groups per org
+- **Admin panel Actions tab** — platform-wide runner stats, workflow run counts
+
+#### Go runner (`originhub-runner/`)
+
+Standalone agent that connects to the server. Single static binary (~12 MB), no JRE needed.
+
+```bash
+cd originhub-runner
+make build         # dist/originhub-runner (local arch)
+make build-all     # Linux amd64/arm64, macOS arm64, Windows amd64
+
+./dist/originhub-runner start \
+  --server-url http://originhub.company.com \
+  --token ghrt_xxxxxxxxxxxx \
+  --name my-runner \
+  --labels self-hosted,linux,docker \
+  --executor docker \       # or: shell
+  --work-dir /tmp/originhub-runner \
+  --concurrent-jobs 2
+```
+
+Config file (`~/.originhub-runner/config.yml`) is written automatically after first registration — subsequent starts use `runner_token` from that file.
 
 ### 🏢 Enterprise SAML & LDAP SSO
 
@@ -240,6 +272,8 @@ See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for set
 | Observability | Micrometer, Prometheus, Grafana              |
 | Resilience  | Resilience4j circuit breakers (webhook delivery, SAML metadata) |
 | Audit       | Application audit log (partitioned PostgreSQL)   |
+| CI/CD Engine | Spring Boot `actions` module — WebSocket runner protocol, SSE log streaming, secrets vault (AES-256-GCM), artifact/cache store |
+| Runner Agent | Go 1.24 (`originhub-runner`) — shell + Docker executors, single static binary |
 | Frontend    | Angular 21, TypeScript 5                         |
 | Admin UI    | Angular 21 (`originhub-admin-panel`)             |
 | Styling     | Tailwind CSS 4, DaisyUI 5                        |
@@ -405,7 +439,7 @@ OriginHub is under active development. Here's what's planned:
 - [x] Circuit breakers (Resilience4j) for webhook delivery and SAML metadata
 - [x] JaCoCo CI coverage gate
 - [x] Multi-instance deployment (Redis distributed lock, shared volume)
-- [ ] Actions — CI/CD
+- [x] Actions — CI/CD (YAML workflows, WebSocket runner, SSE logs, secrets, artifacts, cache, matrix strategy)
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Two-factor authentication (TOTP)
 

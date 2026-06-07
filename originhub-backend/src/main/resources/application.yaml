@@ -48,6 +48,21 @@ originhub:
     repo-root: ${ORIGINHUB_GIT_REPO__ROOT:${user.home}/.originhub}
   audit:
     enabled: ${ORIGINHUB_AUDIT_ENABLED:true}
+  actions:
+    enabled: ${ORIGINHUB_ACTIONS_ENABLED:true}
+    runner:
+      # Runners not seen within this window are marked offline
+      heartbeat-timeout-seconds: ${ORIGINHUB_ACTIONS_RUNNER_HEARTBEAT_TIMEOUT:60}
+      # Hard limit per job; runner will be told to abort after this
+      job-timeout-minutes: ${ORIGINHUB_ACTIONS_RUNNER_JOB_TIMEOUT_MINUTES:360}
+    artifacts:
+      store-type: ${ORIGINHUB_ACTIONS_ARTIFACTS_STORE_TYPE:local}
+      local-path: ${originhub.git.repo-root}/artifacts
+    cache:
+      max-size-gb: ${ORIGINHUB_ACTIONS_CACHE_MAX_SIZE_GB:10}
+    secrets:
+      # 32-byte AES-256 key, base64-encoded. Required to enable the secrets vault.
+      encryption-key: ${ACTIONS_ENCRYPTION_KEY:}
   webhook:
     dlq:
       retry-cron: ${ORIGINHUB_WEBHOOK_DLQ_RETRY_CRON:0 */5 * * * *}

@@ -1,0 +1,171 @@
+<div class="mx-auto max-w-6xl">
+  <nav class="text-base-content/70 mb-6 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">Actions</span>
+  </nav>
+
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Actions</h1>
+      <p class="text-base-content/65 mt-1 text-sm">
+        Platform-wide workflow runs and self-hosted runner fleet overview.
+      </p>
+      @if (!loading() && stats(); as s) {
+      <p class="text-base-content/55 mt-2 text-xs">
+        {{ s.totalRunners }} runner{{ s.totalRunners === 1 ? '' : 's' }} registered · {{ s.inProgressRuns }} run{{
+        s.inProgressRuns === 1 ? '' : 's' }} in progress
+      </p>
+      }
+    </div>
+    <button
+      type="button"
+      class="btn btn-outline btn-sm gap-1"
+      [disabled]="loading() || refreshing()"
+      (click)="refresh()"
+    >
+      @if (refreshing()) {
+      <span class="loading loading-spinner loading-xs"></span>
+      } @else {
+      <lucide-icon name="refreshCw" class="size-3.5"></lucide-icon>
+      } Refresh
+    </button>
+  </header>
+
+  @if (error()) {
+  <div class="alert alert-error mb-6" role="alert">
+    <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+    <span>{{ error() }}</span>
+  </div>
+  } @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else { @if (stats(); as s) {
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-base-content text-lg font-semibold">Workflow runs</h2>
+  </div>
+  <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Total runs</p>
+      <p class="text-base-content mt-1 text-3xl font-bold tabular-nums">{{ s.totalRuns }}</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Successful</p>
+      <p class="text-success mt-1 text-3xl font-bold tabular-nums">{{ s.successRuns }}</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Failed</p>
+      <p class="text-error mt-1 text-3xl font-bold tabular-nums">{{ s.failureRuns }}</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">In progress</p>
+      <p class="text-warning mt-1 text-3xl font-bold tabular-nums">{{ s.inProgressRuns }}</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Cancelled</p>
+      <p class="text-base-content/70 mt-1 text-3xl font-bold tabular-nums">{{ s.cancelledRuns }}</p>
+    </div>
+  </div>
+
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-base-content text-lg font-semibold">Runner fleet</h2>
+  </div>
+  <div class="mb-8 grid gap-4 sm:grid-cols-3">
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Total runners</p>
+      <p class="text-base-content mt-1 text-3xl font-bold tabular-nums">{{ s.totalRunners }}</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Online</p>
+      <p class="text-success mt-1 text-3xl font-bold tabular-nums">{{ s.onlineRunners }}</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Busy</p>
+      <p class="text-warning mt-1 text-3xl font-bold tabular-nums">{{ s.busyRunners }}</p>
+    </div>
+  </div>
+  }
+
+  <div class="repo-panel overflow-hidden">
+    <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div>
+        <h2 class="text-base-content font-semibold">All runners</h2>
+        <p class="text-base-content/60 text-xs">Self-hosted agents registered across the platform</p>
+      </div>
+      @if (runners().length > 0) {
+      <span class="badge-pill badge-pill--neutral">{{ runners().length }} registered</span>
+      }
+    </div>
+
+    @if (runners().length === 0) {
+    <div class="text-base-content/60 flex flex-col items-center gap-2 p-10 text-center">
+      <lucide-icon name="server" class="text-base-content/25 size-10"></lucide-icon>
+      <p class="text-base-content font-medium">No runners registered</p>
+      <p class="max-w-md text-sm">
+        Runners appear here when repositories register self-hosted agents via Actions settings.
+      </p>
+    </div>
+    } @else {
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Labels</th>
+            <th>OS / Arch</th>
+            <th>Version</th>
+            <th>Last heartbeat</th>
+            <th>Registered</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (runner of runners(); track runner.id) {
+          <tr class="hover">
+            <td>
+              <div class="flex items-center gap-2">
+                <lucide-icon
+                  [name]="statusIconName(runner.status)"
+                  class="size-4 shrink-0"
+                  [class]="statusIconClass(runner.status)"
+                  [class.animate-spin]="runner.status === 'BUSY'"
+                ></lucide-icon>
+                <span class="font-medium">{{ runner.name }}</span>
+              </div>
+              @if (runner.repoId) {
+              <p class="text-base-content/45 mt-0.5 font-mono text-[10px]">{{ runner.repoId }}</p>
+              }
+            </td>
+            <td>
+              <span [class]="statusBadgeClass(runner.status)">{{ statusLabel(runner.status) }}</span>
+            </td>
+            <td>
+              @if (runner.labels.length === 0) {
+              <span class="text-base-content/45 text-xs">—</span>
+              } @else {
+              <div class="flex flex-wrap gap-1">
+                @for (label of runner.labels; track label) {
+                <span class="badge-pill badge-pill--neutral text-[10px]">{{ label }}</span>
+                }
+              </div>
+              }
+            </td>
+            <td class="text-base-content/80 text-sm whitespace-nowrap">
+              {{ runner.os ?? '—' }} / {{ runner.arch ?? '—' }}
+            </td>
+            <td class="text-base-content/80 text-sm">{{ runner.version ?? '—' }}</td>
+            <td class="text-base-content/80 text-sm whitespace-nowrap">{{ formatDateTime(runner.lastHeartbeat) }}</td>
+            <td class="text-base-content/80 text-sm whitespace-nowrap">{{ formatDateTime(runner.createdAt) }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+  }
+</div>

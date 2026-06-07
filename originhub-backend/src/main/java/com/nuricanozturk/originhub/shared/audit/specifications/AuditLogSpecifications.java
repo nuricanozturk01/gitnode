@@ -37,12 +37,14 @@ public final class AuditLogSpecifications {
       final @Nullable String action,
       final @Nullable String entityType,
       final @Nullable String entityId,
+      final @Nullable String ipAddress,
       final @Nullable Instant from,
       final @Nullable Instant to) {
 
     return (root, query, cb) -> {
       final List<Predicate> predicates = new ArrayList<>();
-      addFieldPredicates(predicates, cb, root, actor, action, entityType, entityId, from, to);
+      addFieldPredicates(
+          predicates, cb, root, actor, action, entityType, entityId, ipAddress, from, to);
       addFullTextPredicate(predicates, cb, root, q);
       return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(Predicate[]::new));
     };
@@ -56,6 +58,7 @@ public final class AuditLogSpecifications {
       final @Nullable String action,
       final @Nullable String entityType,
       final @Nullable String entityId,
+      final @Nullable String ipAddress,
       final @Nullable Instant from,
       final @Nullable Instant to) {
 
@@ -71,6 +74,19 @@ public final class AuditLogSpecifications {
     if (entityId != null) {
       predicates.add(containsIgnoreCase(cb, root, "entityId", entityId));
     }
+    if (ipAddress != null) {
+      predicates.add(containsIgnoreCaseOrEmpty(cb, root, "ipAddress", ipAddress));
+    }
+    addRangePredicates(predicates, cb, root, from, to);
+  }
+
+  private static void addRangePredicates(
+      final List<Predicate> predicates,
+      final CriteriaBuilder cb,
+      final Root<AuditLog> root,
+      final @Nullable Instant from,
+      final @Nullable Instant to) {
+
     if (from != null) {
       predicates.add(cb.greaterThanOrEqualTo(root.get("occurredAt"), from));
     }

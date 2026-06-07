@@ -48,7 +48,6 @@ ADMIN_ENABLED  ?= true
   dev-setup dev-backend \
   actions-encryption-key saml-keygen \
   test test-backend test-runner test-lint verify \
-  k8s-bootstrap k8s-install k8s-template k8s-uninstall k8s-purge k8s-kubeconfig \
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
 
@@ -182,73 +181,6 @@ test-lint:
 verify:
 	./mvnw verify
 
-# ── Kubernetes + Argo CD (local kind) ─────────────────────────────────────────
-
-K8S_NAMESPACE         ?= originhub
-K8S_RELEASE           ?= originhub
-KIND_CLUSTER_NAME     ?= originhub
-DELETE_KIND           ?= 1
-K8S_CHART             := deploy/helm/originhub
-# Component flags (1=on, 0=off) — passed to Argo CD Helm parameters
-K8S_ADMIN_API         ?= 1
-K8S_FRONTEND          ?= 1
-K8S_ADMIN_PANEL       ?= 1
-K8S_OBSERVABILITY     ?= 1
-K8S_PROMETHEUS_INGRESS ?= 0
-K8S_DOMAIN            ?= originhub.test
-K8S_API_HOST          ?= api.$(K8S_DOMAIN)
-K8S_FRONTEND_HOST     ?= app.$(K8S_DOMAIN)
-K8S_ADMIN_PANEL_HOST  ?= admin.$(K8S_DOMAIN)
-K8S_GRAFANA_HOST      ?= grafana.$(K8S_DOMAIN)
-K8S_ARGOCD_HOST       ?= argocd.$(K8S_DOMAIN)
-K8S_PROMETHEUS_HOST   ?= prometheus.$(K8S_DOMAIN)
-ORIGINHUB_LOCAL_BUILD ?= 1
-KIND_HTTP_PORT        ?= 80
-KIND_HTTPS_PORT       ?= 443
-
-k8s-bootstrap:
-	chmod +x deploy/scripts/bootstrap.sh
-	ORIGINHUB_LOCAL_BUILD=$(ORIGINHUB_LOCAL_BUILD) ORIGINHUB_GIT_REPO_URL=$(ORIGINHUB_GIT_REPO_URL) \
-	  K8S_ADMIN_API=$(K8S_ADMIN_API) K8S_FRONTEND=$(K8S_FRONTEND) K8S_ADMIN_PANEL=$(K8S_ADMIN_PANEL) \
-	  K8S_OBSERVABILITY=$(K8S_OBSERVABILITY) K8S_PROMETHEUS_INGRESS=$(K8S_PROMETHEUS_INGRESS) \
-	  K8S_FRONTEND_HOST=$(K8S_FRONTEND_HOST) K8S_ADMIN_PANEL_HOST=$(K8S_ADMIN_PANEL_HOST) \
-	  K8S_GRAFANA_HOST=$(K8S_GRAFANA_HOST) K8S_ARGOCD_HOST=$(K8S_ARGOCD_HOST) \
-	  K8S_PROMETHEUS_HOST=$(K8S_PROMETHEUS_HOST) K8S_API_HOST=$(K8S_API_HOST) K8S_DOMAIN=$(K8S_DOMAIN) \
-	  KIND_HTTP_PORT=$(KIND_HTTP_PORT) KIND_HTTPS_PORT=$(KIND_HTTPS_PORT) \
-	  ./deploy/scripts/bootstrap.sh
-
-# Recreate kind with default ports 80/443 — no purge, no image rebuild (~5 min)
-k8s-fix-ports:
-	$(MAKE) k8s-bootstrap ORIGINHUB_LOCAL_BUILD=0
-
-k8s-hosts:
-	chmod +x deploy/scripts/ensure-hosts.sh
-	K8S_DOMAIN=$(K8S_DOMAIN) K8S_FRONTEND=$(K8S_FRONTEND) K8S_ADMIN_PANEL=$(K8S_ADMIN_PANEL) \
-	  K8S_OBSERVABILITY=$(K8S_OBSERVABILITY) K8S_PROMETHEUS_INGRESS=$(K8S_PROMETHEUS_INGRESS) \
-	  K8S_API_HOST=$(K8S_API_HOST) K8S_FRONTEND_HOST=$(K8S_FRONTEND_HOST) \
-	  K8S_ADMIN_PANEL_HOST=$(K8S_ADMIN_PANEL_HOST) K8S_GRAFANA_HOST=$(K8S_GRAFANA_HOST) \
-	  K8S_ARGOCD_HOST=$(K8S_ARGOCD_HOST) K8S_PROMETHEUS_HOST=$(K8S_PROMETHEUS_HOST) \
-	  ./deploy/scripts/ensure-hosts.sh
-
-k8s-template:
-	helm template $(K8S_RELEASE) $(K8S_CHART) \
-	  -f $(K8S_CHART)/values.yml \
-	  -n $(K8S_NAMESPACE)
-
-k8s-purge:
-	chmod +x deploy/scripts/k8s-purge.sh
-	KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) K8S_NAMESPACE=$(K8S_NAMESPACE) K8S_RELEASE=$(K8S_RELEASE) DELETE_KIND=$(DELETE_KIND) ./deploy/scripts/k8s-purge.sh
-
-k8s-kubeconfig:
-	chmod +x deploy/scripts/k8s-kubeconfig.sh
-	KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./deploy/scripts/k8s-kubeconfig.sh
-
-k8s-uninstall: k8s-purge
-
-sync-grafana-chart:
-	cp monitoring/grafana/provisioning/dashboards/originhub.json deploy/helm/originhub/config/grafana/dashboards/
-	cp monitoring/grafana/provisioning/dashboards/dashboard.yml deploy/helm/originhub/config/grafana/dashboards/
-
 # ── Logs ──────────────────────────────────────────────────────────────────────
 
 logs:
@@ -311,9 +243,6 @@ actions-encryption-key:
 	echo ""; \
 	echo "  export ACTIONS_ENCRYPTION_KEY=$$KEY"; \
 	echo ""; \
-	echo "  Helm deploy/helm/originhub/local.yml (k8s secret data):"; \
-	echo "    ACTIONS_ENCRYPTION_KEY: $$(echo -n "$$KEY" | base64)"; \
-	echo ""; \
 	echo "  application-local.yaml:"; \
 	echo "    originhub.actions.secrets.encryption-key: $$KEY"
 
@@ -374,14 +303,5 @@ help:
 	@echo "  make test-runner       → Go tests"
 	@echo "  make test-lint         → ESLint (frontend, admin, e2e)"
 	@echo "  make verify            → Full backend CI gate"
-	@echo "  ──────────────────────────────────────────────────────"
-	@echo "  make k8s-bootstrap     → K8s + Argo CD + OriginHub (LOCAL=1 for kind — see deploy/README.md)"
-	@echo "                         Flags: K8S_ADMIN_PANEL=0 K8S_FRONTEND=1 K8S_PROMETHEUS_INGRESS=1"
-	@echo "                         K8S_ADMIN_API=0 disables backend admin API"
-	@echo "  make k8s-install       → Helm only on current cluster (needs prod.yml)"
-	@echo "  make k8s-template      → Render Helm manifests"
-	@echo "  make k8s-kubeconfig    → Refresh ~/.kube/config for kind cluster"
-	@echo "  make k8s-purge         → Remove all K8s stack (Helm, namespaces, kind cluster) ⚠"
-	@echo "  make k8s-uninstall     → Alias for k8s-purge"
 	@echo "  make help              → This message"
 	@echo ""

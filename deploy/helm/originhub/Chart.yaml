@@ -1,6 +1,0 @@
-apiVersion: v2
-name: originhub
-description: OriginHub backend — API, Git HTTP/SSH, Postgres, Redis
-type: application
-version: 0.1.0
-appVersion: "2.0.1"

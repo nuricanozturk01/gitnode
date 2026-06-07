@@ -1,4 +1,4 @@
-/** Derive API base URL from admin.* host (K8s: admin.originhub.test → api.originhub.test). */
+/** Derive API base URL from admin.* hostname (e.g. admin.example.com → api.example.com). */
 export function resolveAdminPanelApiUrl(env: { apiUrl: string }): void {
   if (typeof window === 'undefined') {
     return;

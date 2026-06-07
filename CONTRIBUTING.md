@@ -142,24 +142,6 @@ Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin1
 
 Run `make help` for the full list.
 
-### Kubernetes + Argo CD
-
-Prerequisites and OS-specific install (kind, Docker, kubectl, Helm): *
-*[deploy/README.md#prerequisites](deploy/README.md#prerequisites)**
-
-| Command | Runs |
-|---------|------|
-| `make k8s-bootstrap` | kind + cert-manager + ingress + Argo CD + OriginHub (GitOps) |
-| `make k8s-template` | Render manifests (`deploy/helm/originhub/values.yml`) |
-| `make k8s-kubeconfig` | Refresh `~/.kube/config` for local kind cluster |
-| `make k8s-purge` | Remove everything bootstrap installed (Helm, namespaces, PVCs, cert-manager CRDs, kind cluster) |
-| `make k8s-uninstall` | Alias for `k8s-purge` |
-
-K8s component flags: `K8S_FRONTEND=1` `K8S_ADMIN_PANEL=1` `K8S_OBSERVABILITY=1` `K8S_PROMETHEUS_INGRESS=1` `K8S_ADMIN_API=0` —
-see [README.md#option-3--kubernetes--argo-cd](README.md#option-3--kubernetes--argo-cd).
-
-Details: [deploy/README.md](deploy/README.md)
-
 ---
 
 ## URLs

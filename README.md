@@ -18,7 +18,6 @@
 [![Prometheus](https://img.shields.io/badge/Prometheus-ready-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-ready-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Kubernetes](https://img.shields.io/badge/Kubernetes-Helm%20%2B%20Argo%20CD-326CE5?style=for-the-badge&logo=kubernetes)](deploy/README.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 <br/>
@@ -368,74 +367,6 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 | Prometheus | http://localhost:9090 | optional — `make monitoring` |
 | Grafana | http://localhost:3000 | optional — `make monitoring` |
 
-### Option 3 — Kubernetes + Argo CD
-
-**Local kind cluster** with separate backend, frontend, and admin panel images. Bootstrap builds all three and configures `/etc/hosts` automatically. Full guide: **[deploy/README.md](deploy/README.md)**.
-
-**Prerequisites:** Docker (running) · [kind](https://kind.sigs.k8s.io/) · kubectl · Helm 3 — [install steps](deploy/README.md#prerequisites)
-
-#### Clean start (recommended)
-
-```bash
-make k8s-purge
-git push origin main          # Argo CD syncs deploy/ from Git
-make k8s-bootstrap            # first run ~10–20 min
-```
-
-Disable admin panel: `K8S_ADMIN_PANEL=0 make k8s-bootstrap`
-
-Disable observability: `K8S_OBSERVABILITY=0 make k8s-bootstrap`
-
-Skip local image build: `ORIGINHUB_LOCAL_BUILD=0 make k8s-bootstrap`
-
-#### Local URLs
-
-| Service | URL | Default |
-|---------|-----|---------|
-| Frontend (SPA) | http://app.originhub.test | ✅ |
-| API | http://api.originhub.test | ✅ |
-| Admin panel | http://admin.originhub.test | ✅ (`admin` / `Admin123`) |
-| Grafana | http://grafana.originhub.test | ✅ (`admin` / `admin`) |
-| Argo CD | http://argocd.originhub.test | ✅ |
-| Prometheus UI | http://prometheus.originhub.test | `K8S_PROMETHEUS_INGRESS=1` |
-| Git SSH | `git@127.0.0.1:30222` | ✅ |
-
-Argo CD admin password:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-#### K8s component flags (Makefile → Argo CD)
-
-| Flag | Default | Effect |
-|------|---------|--------|
-| `K8S_FRONTEND=1` | on | Frontend at `app.originhub.test` |
-| `K8S_ADMIN_PANEL=1` | on | Admin panel at `admin.originhub.test` |
-| `K8S_OBSERVABILITY=1` | on | Grafana + Prometheus |
-| `K8S_ADMIN_API=1` | on | Backend admin API |
-| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI ingress |
-| `ORIGINHUB_LOCAL_BUILD=1` | on | Build local Docker images |
-
-#### Useful commands
-
-```bash
-make k8s-kubeconfig
-kubectl get pods -n originhub
-kubectl get ingress -A
-make k8s-purge
-```
-
-Domain config — single place in `deploy/helm/originhub/values.yml`:
-
-| Key | Purpose |
-|-----|---------|
-| `domain.apiHost` | Backend ingress (API, Git HTTP, OAuth callbacks) |
-| `domain.frontendUrl` | Public frontend URL (CORS + redirects) |
-| `domain.grafanaHost` | Grafana ingress |
-
-Production scaling: `originhub.replicaCount` in `deploy/helm/originhub/values.yml`. Shared Git repos need `persistence.repos.accessMode: ReadWriteMany` when `replicaCount > 1`. See [deploy/README.md](deploy/README.md).
-
 ### Environment Variables
 
 | Variable                       | Required | Default               | Description                          |
@@ -491,7 +422,6 @@ OriginHub is under active development. Here's what's planned:
 - [x] Webhook dead-letter queue (DLQ) with scheduled retry
 - [x] Circuit breakers (Resilience4j) for webhook delivery and SAML metadata
 - [x] JaCoCo CI coverage gate
-- [x] Multi-instance deployment (Kubernetes Helm — shared Redis, Postgres, PVC)
 - [x] Actions — CI/CD (YAML workflows, WebSocket runner, SSE logs, secrets, artifacts, cache, matrix strategy)
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Two-factor authentication (TOTP)

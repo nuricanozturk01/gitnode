@@ -1,56 +1,40 @@
 # OriginHub E2E
 
-Playwright tests against the OriginHub API. No browser — HTTP only.
+Playwright HTTP tests against the OriginHub API. No browser.
 
-## Quick start (local)
-
-From repo root:
+## Quick start
 
 ```bash
-make infra                                                          # Postgres + Redis
-./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
+make dev-setup                              # from repo root (once)
+make dev-backend                            # terminal 1
 
-cd e2e && pnpm install && pnpm test:e2e                           # full suite
+cd e2e && pnpm test:e2e                     # API → scenario → teardown
 ```
 
-Default API: `http://localhost:8080` · Node **24** · needs **git** for scenario tests.
+Needs **git** on PATH for scenario tests. Default API: `http://localhost:8080`.
+
+Optional: `cp .env.example .env`
 
 ## Commands
 
-| Command                  | What                       |
-| ------------------------ | -------------------------- |
-| `pnpm test:e2e`          | API → scenario → teardown  |
-| `pnpm test:e2e:api`      | REST tests only            |
-| `pnpm test:e2e:scenario` | Scenario + teardown        |
-| `pnpm test:e2e:saml`     | SAML SSO (optional, local) |
-| `pnpm test:e2e:ldap`     | LDAP SSO (optional, local) |
+| Command | What |
+|---------|------|
+| `pnpm test:e2e` | Full suite (api → scenario → teardown) |
+| `pnpm test:e2e:api` | REST tests only |
+| `pnpm test:e2e:scenario` | Git clone/push flows + teardown |
+| `pnpm test:e2e:saml` | SAML SSO *(local, optional)* |
+| `pnpm test:e2e:ldap` | LDAP SSO *(local, optional)* |
 
-Optional `.env`: copy [.env.example](.env.example) to `.env`.
+SAML/LDAP skipped by default. Need `make saml-keygen` or `make ldap-up` — see [scenario/README.md](scenario/README.md).
 
-## SAML & LDAP (optional, not in CI)
+## Layout
 
-Both are **skipped by default**. Run locally when you work on enterprise SSO.
-
-**LDAP**
-
-```bash
-make infra
-./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
-make ldap-up                    # test OpenLDAP on localhost:389
-cd e2e && pnpm test:e2e:ldap
-make ldap-down                  # when done
-```
-
-**SAML**
-
-```bash
-make saml-keygen                # once — ~/.originhub/saml/
-make infra
-./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
-cd e2e && pnpm test:e2e:saml    # needs internet → samltest.dev
-```
-
-Admin login for both: `admin` / `Admin123` (local profile).
+| Folder | Purpose |
+|--------|---------|
+| `api/` | REST endpoint tests |
+| `scenario/` | End-to-end flows with real git ops |
+| `teardown/` | Cleanup test users after full run |
+| `global-setup.ts` | Creates owner + intruder test accounts |
 
 ## Docs
 
@@ -58,6 +42,4 @@ Admin login for both: `admin` / `Admin123` (local profile).
 - [Scenario tests](scenario/README.md)
 - [Teardown](teardown/README.md)
 
-## CI
-
-GitHub Actions runs API + scenario against production. **SAML and LDAP are not run in CI** (no env flags, no LDAP container).
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for full dev guide.

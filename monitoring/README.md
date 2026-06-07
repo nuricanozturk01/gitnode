@@ -22,9 +22,9 @@ Included when `monitoring.enabled: true` (default in `deploy/helm/originhub/valu
 | Grafana UI | http://grafana.originhub.local | https://{domain.grafanaHost} |
 | Prometheus | in-cluster `originhub-prometheus:9090` | same (internal) |
 
-Domain: set **`domain.grafanaHost`** in `local.yml` / `prod.yml`.
+Domain: set **`domain.grafanaHost`** in `deploy/helm/originhub/values.yml`.
 
-Production Grafana password — base64 in `monitoring.secrets.GF_SECURITY_ADMIN_PASSWORD` (`prod.yml`).
+Disable locally: `K8S_OBSERVABILITY=0 make k8s-bootstrap` or `monitoring.enabled: false` in values.
 
 ## How it works
 

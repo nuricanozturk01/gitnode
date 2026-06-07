@@ -1,25 +1,17 @@
 ## OriginHub Helm Chart
 
-### Install
-
-```sh
-helm upgrade --install originhub . -f values.yml -f local.yml -n originhub --create-namespace
-```
-
 ### Template
 
 ```sh
-helm template originhub . -f values.yml -f local.yml -n originhub
+helm template originhub . -f values.yml -n originhub
 ```
 
-### Production
+### Install (manual, without Argo CD)
 
 ```sh
-cp prod.yml.example prod.yml
-# fill domain.* and base64 secrets
-helm upgrade --install originhub . -f values.yml -f prod.yml -n originhub --create-namespace
+helm upgrade --install originhub . -f values.yml -n originhub --create-namespace
 ```
 
-Domain URLs: edit **`domain.apiHost`** and **`domain.frontendUrl`** only.
+Domain URLs: edit **`domain.apiHost`**, **`domain.frontendUrl`**, and component `host` fields in `values.yml`.
 
 See [deploy/README.md](../../README.md).

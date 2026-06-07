@@ -370,31 +370,71 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 
 ### Option 3 — Kubernetes + Argo CD
 
-**Backend only** — frontend on Vercel / Cloudflare Pages. Full guide: **[deploy/README.md](deploy/README.md)** (kind, Docker, kubectl, Helm — macOS / Linux / Windows).
+**Local kind cluster** with separate backend, frontend, and admin panel images. Bootstrap builds all three and configures `/etc/hosts` automatically. Full guide: **[deploy/README.md](deploy/README.md)**.
 
-**Prerequisites (`LOCAL=1`):** Docker (running) · [kind](https://kind.sigs.k8s.io/) · kubectl · Helm 3 — install steps in [deploy/README.md#prerequisites](deploy/README.md#prerequisites)
+**Prerequisites:** Docker (running) · [kind](https://kind.sigs.k8s.io/) · kubectl · Helm 3 — [install steps](deploy/README.md#prerequisites)
 
-```bash
-make k8s-bootstrap LOCAL=1
-# then /etc/hosts → 127.0.0.1 api.originhub.local argocd.originhub.local grafana.originhub.local
-```
-
-**Server** (existing cluster — no kind):
+#### Clean start (recommended)
 
 ```bash
-cp deploy/helm/originhub/prod.yml.example deploy/helm/originhub/prod.yml
-make k8s-bootstrap ORIGINHUB_VALUE_FILE=prod.yml ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git
+make k8s-purge
+git push origin main          # Argo CD syncs deploy/ from Git
+make k8s-bootstrap            # first run ~10–20 min
 ```
 
-Domain config — single place in `deploy/helm/originhub/local.yml` or `prod.yml`:
+Disable admin panel: `K8S_ADMIN_PANEL=0 make k8s-bootstrap`
+
+Disable observability: `K8S_OBSERVABILITY=0 make k8s-bootstrap`
+
+Skip local image build: `ORIGINHUB_LOCAL_BUILD=0 make k8s-bootstrap`
+
+#### Local URLs
+
+| Service | URL | Default |
+|---------|-----|---------|
+| Frontend (SPA) | http://app.originhub.local | ✅ |
+| API | http://api.originhub.local | ✅ |
+| Admin panel | http://admin.originhub.local | ✅ (`admin` / `Admin123`) |
+| Grafana | http://grafana.originhub.local | ✅ (`admin` / `admin`) |
+| Argo CD | http://argocd.originhub.local | ✅ |
+| Prometheus UI | http://prometheus.originhub.local | `K8S_PROMETHEUS_INGRESS=1` |
+| Git SSH | `git@127.0.0.1:30222` | ✅ |
+
+Argo CD admin password:
+
+```bash
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+#### K8s component flags (Makefile → Argo CD)
+
+| Flag | Default | Effect |
+|------|---------|--------|
+| `K8S_FRONTEND=1` | on | Frontend at `app.originhub.local` |
+| `K8S_ADMIN_PANEL=1` | on | Admin panel at `admin.originhub.local` |
+| `K8S_OBSERVABILITY=1` | on | Grafana + Prometheus |
+| `K8S_ADMIN_API=1` | on | Backend admin API |
+| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI ingress |
+| `ORIGINHUB_LOCAL_BUILD=1` | on | Build local Docker images |
+
+#### Useful commands
+
+```bash
+make k8s-kubeconfig
+kubectl get pods -n originhub
+kubectl get ingress -A
+make k8s-purge
+```
+
+Domain config — single place in `deploy/helm/originhub/values.yml`:
 
 | Key | Purpose |
 |-----|---------|
 | `domain.apiHost` | Backend ingress (API, Git HTTP, OAuth callbacks) |
-| `domain.frontendUrl` | Vercel / Cloudflare Pages URL (CORS + redirects) |
-| `domain.grafanaHost` | Grafana ingress (dashboards pre-provisioned from `monitoring/`) |
+| `domain.frontendUrl` | Public frontend URL (CORS + redirects) |
+| `domain.grafanaHost` | Grafana ingress |
 
-Production scaling: Kubernetes — `originhub.replicaCount` in `deploy/helm/originhub/`. Shared Git repos need `persistence.repos.accessMode: ReadWriteMany` when `replicaCount > 1`. See [deploy/README.md](deploy/README.md).
+Production scaling: `originhub.replicaCount` in `deploy/helm/originhub/values.yml`. Shared Git repos need `persistence.repos.accessMode: ReadWriteMany` when `replicaCount > 1`. See [deploy/README.md](deploy/README.md).
 
 ### Environment Variables
 

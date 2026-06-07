@@ -223,8 +223,15 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+      probes:
+        enabled: true
     prometheus:
       enabled: ${ORIGINHUB_OBSERVABILITY_ENABLED:true}
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   prometheus:
     metrics:
       export:

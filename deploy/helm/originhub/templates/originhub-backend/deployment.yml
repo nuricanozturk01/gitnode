@@ -38,8 +38,6 @@ spec:
               name: ssh
               protocol: TCP
           env:
-            - name: SPRING_PROFILES_ACTIVE
-              value: os
             - name: JAVA_TOOL_OPTIONS
               value: {{ .Values.originhub.javaToolOptions | quote }}
             - name: SERVER_FORWARD_HEADERS_STRATEGY
@@ -58,7 +56,7 @@ spec:
             - name: ORIGINHUB_ADMIN_ENABLED
               value: {{ .Values.originhub.admin.enabled | quote }}
             - name: ORIGINHUB_OBSERVABILITY_ENABLED
-              value: "true"
+              value: {{ .Values.monitoring.enabled | quote }}
             - name: DB_DATABASE
               valueFrom:
                 secretKeyRef:
@@ -128,6 +126,13 @@ spec:
                 secretKeyRef:
                   name: originhub-backend-secret
                   key: ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD
+            {{- end }}
+            {{- if .Values.originhub.secrets.ACTIONS_ENCRYPTION_KEY }}
+            - name: ACTIONS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: ACTIONS_ENCRYPTION_KEY
             {{- end }}
           startupProbe:
             httpGet:

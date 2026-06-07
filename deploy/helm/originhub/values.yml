@@ -1,45 +1,42 @@
-# Base values — override secrets in prod.yml (base64). Public URLs: domain.* only.
-imageTag:
+# Local kind cluster defaults — edit domain.* and secrets for your environment.
+imageTag: local
 
-# ─── Single source of truth for URLs ─────────────────────────────────────────
-# apiHost     → Ingress host for backend (API, Git HTTP, OAuth callbacks)
-# frontendUrl → Vercel / Cloudflare Pages (CORS + post-login redirects)
 domain:
-  apiHost:
-  frontendUrl:
-  grafanaHost:
-  extraCorsOrigins: []
+  apiHost: api.originhub.local
+  frontendUrl: http://app.originhub.local
+  grafanaHost: grafana.originhub.local
+  extraCorsOrigins:
+    - http://admin.originhub.local
+    - http://localhost:4200
 
 persistence:
   repos:
     enabled: true
-    size: 20Gi
+    size: 5Gi
     storageClass: ""
-    # ReadWriteOnce = single replica (default). Scale-out: ReadWriteMany (NFS, EFS, Longhorn RWX, …)
     accessMode: ReadWriteOnce
   postgres:
     enabled: true
-    size: 10Gi
+    size: 5Gi
     storageClass: ""
 
 common:
   secrets:
-    ORIGINHUB_JWT_SECRET:
+    # Base64(JWT signing key) — JwtUtils decodes ORIGINHUB_JWT_SECRET again at runtime
+    ORIGINHUB_JWT_SECRET: Ykc5allXd3RaR1YyTFdwM2RDMXpaV055WlhRdGEyVjVMVE15WW5sMFpYTWhJUT09
 
 originhub:
-  # >1 requires persistence.repos.accessMode: ReadWriteMany — Git data on shared PVC
   replicaCount: 1
   admin:
     enabled: true
   ssh:
     enabled: true
     port: 2222
-    serviceType: LoadBalancer
+    serviceType: NodePort
     nodePort: 30222
   image:
-    repository: repo.repsy.io/nuricanozturk/originhub/originhub-os
-    pullPolicy: Always
-  # Heap only — image ENTRYPOINT uses ZGC; do not set -XX:+UseG1GC here (JVM crash)
+    repository: originhub-backend
+    pullPolicy: IfNotPresent
   javaToolOptions: "-Xms512m -Xmx1536m"
   imagePullSecrets: []
   secrets:
@@ -49,25 +46,31 @@ originhub:
     OAUTH2_GITHUB_CLIENT_SECRET:
     OAUTH2_GITLAB_CLIENT_ID:
     OAUTH2_GITLAB_CLIENT_SECRET:
-    ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD:
+    # Admin123 — platform admin for http://admin.originhub.local (username: admin)
+    ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD: QWRtaW4xMjM=
+    # Local dev Actions secrets vault — openssl rand -base64 32 (see: make actions-encryption-key)
+    ACTIONS_ENCRYPTION_KEY: czdDMzkrdGxxNnZnM2NXN0JpU1NNeHpic2R3cCs5WVFxTW9MaWdsZTM0ND0=
 
 postgres:
   image: postgres:17
   secrets:
-    DB_DATABASE:
-    DB_USERNAME:
-    DB_PASSWORD:
+    DB_DATABASE: b3JpZ2luaHVi
+    DB_USERNAME: b3JpZ2luaHVi
+    DB_PASSWORD: b3JpZ2luaHVi
 
 redis:
   image: redis:7-alpine
 
-# Optional UI (local K8s flags: K8S_FRONTEND, K8S_ADMIN_PANEL)
 frontend:
-  enabled: false
+  enabled: true
   host: app.originhub.local
+  image:
+    repository: originhub-frontend
+    tag: local
+    pullPolicy: IfNotPresent
 
 adminPanel:
-  enabled: false
+  enabled: true
   host: admin.originhub.local
   image:
     repository: originhub-admin-panel
@@ -96,7 +99,7 @@ monitoring:
 ingress:
   className: nginx
   tls:
-    enabled: true
+    enabled: false
     secretName: originhub-backend-tls-cert
   certManager:
     clusterIssuer: selfsigned-issuer

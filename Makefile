@@ -46,6 +46,7 @@ ADMIN_ENABLED  ?= true
   runner-build runner-build-all \
   ldap-up ldap-down \
   dev-setup dev-backend \
+  actions-encryption-key saml-keygen \
   test test-backend test-runner test-lint verify \
   k8s-bootstrap k8s-install k8s-template k8s-uninstall k8s-purge k8s-kubeconfig \
   logs logs-db logs-redis logs-prometheus logs-grafana \
@@ -109,6 +110,8 @@ monitoring-down:
 
 # ── App container ─────────────────────────────────────────────────────────────
 
+ACTIONS_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.originhub/actions-encryption-key 2>/dev/null)
+
 app:
 	@docker ps -a --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
 		&& echo "$(APP_NAME) already exists – skipping." \
@@ -128,6 +131,7 @@ app:
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
 			-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
 			-e ORIGINHUB_ADMIN_ENABLED=$(ADMIN_ENABLED) \
+			$(if $(ACTIONS_ENCRYPTION_KEY),-e ACTIONS_ENCRYPTION_KEY=$(ACTIONS_ENCRYPTION_KEY),) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
 			-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
@@ -178,32 +182,38 @@ test-lint:
 verify:
 	./mvnw verify
 
-# ── Kubernetes + Argo CD ──────────────────────────────────────────────────────
+# ── Kubernetes + Argo CD (local kind) ─────────────────────────────────────────
 
-K8S_NAMESPACE        ?= originhub
-K8S_RELEASE          ?= originhub
-KIND_CLUSTER_NAME    ?= originhub
-DELETE_KIND          ?= 1
-K8S_CHART            := deploy/helm/originhub
-ORIGINHUB_VALUE_FILE ?= local.yml
+K8S_NAMESPACE         ?= originhub
+K8S_RELEASE           ?= originhub
+KIND_CLUSTER_NAME     ?= originhub
+DELETE_KIND           ?= 1
+K8S_CHART             := deploy/helm/originhub
+# Component flags (1=on, 0=off) — passed to Argo CD Helm parameters
+K8S_ADMIN_API         ?= 1
+K8S_FRONTEND          ?= 1
+K8S_ADMIN_PANEL       ?= 1
+K8S_OBSERVABILITY     ?= 1
+K8S_PROMETHEUS_INGRESS ?= 0
+K8S_FRONTEND_HOST     ?= app.originhub.local
+K8S_ADMIN_PANEL_HOST  ?= admin.originhub.local
+K8S_PROMETHEUS_HOST   ?= prometheus.originhub.local
+K8S_API_HOST          ?= api.originhub.local
+ORIGINHUB_LOCAL_BUILD ?= 1
 
 k8s-bootstrap:
 	chmod +x deploy/scripts/bootstrap.sh
-	LOCAL=$(LOCAL) ORIGINHUB_VALUE_FILE=$(ORIGINHUB_VALUE_FILE) ORIGINHUB_GIT_REPO_URL=$(ORIGINHUB_GIT_REPO_URL) ./deploy/scripts/bootstrap.sh
+	ORIGINHUB_LOCAL_BUILD=$(ORIGINHUB_LOCAL_BUILD) ORIGINHUB_GIT_REPO_URL=$(ORIGINHUB_GIT_REPO_URL) \
+	  K8S_ADMIN_API=$(K8S_ADMIN_API) K8S_FRONTEND=$(K8S_FRONTEND) K8S_ADMIN_PANEL=$(K8S_ADMIN_PANEL) \
+	  K8S_OBSERVABILITY=$(K8S_OBSERVABILITY) K8S_PROMETHEUS_INGRESS=$(K8S_PROMETHEUS_INGRESS) \
+	  K8S_FRONTEND_HOST=$(K8S_FRONTEND_HOST) K8S_ADMIN_PANEL_HOST=$(K8S_ADMIN_PANEL_HOST) \
+	  K8S_PROMETHEUS_HOST=$(K8S_PROMETHEUS_HOST) K8S_API_HOST=$(K8S_API_HOST) \
+	  ./deploy/scripts/bootstrap.sh
 
 k8s-template:
 	helm template $(K8S_RELEASE) $(K8S_CHART) \
 	  -f $(K8S_CHART)/values.yml \
-	  -f $(K8S_CHART)/$(ORIGINHUB_VALUE_FILE) \
 	  -n $(K8S_NAMESPACE)
-
-k8s-install:
-	@test -f $(K8S_CHART)/prod.yml || (echo "Copy prod.yml.example → prod.yml and fill secrets"; exit 1)
-	helm upgrade --install $(K8S_RELEASE) $(K8S_CHART) \
-	  -f $(K8S_CHART)/values.yml \
-	  -f $(K8S_CHART)/prod.yml \
-	  -n $(K8S_NAMESPACE) --create-namespace \
-	  --wait --timeout 10m
 
 k8s-purge:
 	chmod +x deploy/scripts/k8s-purge.sh
@@ -271,6 +281,22 @@ saml-keygen:
 	@echo "  Key : ~/.originhub/saml/sp-signing.key"
 	@echo "  Cert: ~/.originhub/saml/sp-signing.crt"
 
+# 32-byte AES-256 key for Actions workflow secrets vault (base64)
+actions-encryption-key:
+	@mkdir -p ~/.originhub
+	@KEY=$$(openssl rand -base64 32 | tr -d '\n'); \
+	echo "$$KEY" > ~/.originhub/actions-encryption-key; \
+	chmod 600 ~/.originhub/actions-encryption-key; \
+	echo "Actions encryption key → ~/.originhub/actions-encryption-key"; \
+	echo ""; \
+	echo "  export ACTIONS_ENCRYPTION_KEY=$$KEY"; \
+	echo ""; \
+	echo "  Helm deploy/helm/originhub/local.yml (k8s secret data):"; \
+	echo "    ACTIONS_ENCRYPTION_KEY: $$(echo -n "$$KEY" | base64)"; \
+	echo ""; \
+	echo "  application-local.yaml:"; \
+	echo "    originhub.actions.secrets.encryption-key: $$KEY"
+
 sync-postgres-logs:
 	@mkdir -p $(HOME)/.originhub/postgres-logs
 	docker cp $(POSTGRES_NAME):/var/log/postgresql/. $(HOME)/.originhub/postgres-logs/
@@ -318,6 +344,7 @@ help:
 	@echo "  make ldap-up           → Start Docker OpenLDAP for LDAP E2E (port $(LDAP_PORT):10389)"
 	@echo "  make ldap-down         → Stop & remove LDAP test container"
 	@echo "  make saml-keygen       → Generate SP signing key pair (~/.originhub/saml/)"
+	@echo "  make actions-encryption-key → Actions secrets vault key (~/.originhub/actions-encryption-key)"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make dev-setup         → Infra + pnpm install + local config template"
 	@echo "  make dev-backend       → Run backend with local profile (:8080)"
@@ -329,6 +356,8 @@ help:
 	@echo "  make verify            → Full backend CI gate"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make k8s-bootstrap     → K8s + Argo CD + OriginHub (LOCAL=1 for kind — see deploy/README.md)"
+	@echo "                         Flags: K8S_ADMIN_PANEL=0 K8S_FRONTEND=1 K8S_PROMETHEUS_INGRESS=1"
+	@echo "                         K8S_ADMIN_API=0 disables backend admin API"
 	@echo "  make k8s-install       → Helm only on current cluster (needs prod.yml)"
 	@echo "  make k8s-template      → Render Helm manifests"
 	@echo "  make k8s-kubeconfig    → Refresh ~/.kube/config for kind cluster"

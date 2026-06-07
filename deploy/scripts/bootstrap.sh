@@ -1,31 +1,26 @@
 #!/usr/bin/env bash
-# Bootstrap Kubernetes + Argo CD + OriginHub backend (one shot).
+# Bootstrap local kind cluster + Argo CD + OriginHub (one shot).
 #
-# Local:  LOCAL=1 ./deploy/scripts/bootstrap.sh
-# Server: ./deploy/scripts/bootstrap.sh  (kubectl context must point to your cluster)
+#   make k8s-bootstrap
 #
 # Optional:
-#   ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git  → override auto-detected origin
-#   ORIGINHUB_GIT_REVISION=main                                   → override branch/tag
-#   ORIGINHUB_VALUE_FILE=local.yml|prod.yml
-#   ORIGINHUB_LOCAL_BUILD=1  → LOCAL=1: build originhub-os + admin-panel with api.originhub.local (default)
-#   K8S_ADMIN_PANEL=0        → disable admin panel ingress
+#   ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git
+#   ORIGINHUB_GIT_REVISION=main
+#   ORIGINHUB_LOCAL_BUILD=0          → skip Docker image builds (uses registry tags)
+#   K8S_FRONTEND=0                   → skip frontend deployment
+#   K8S_ADMIN_PANEL=0                → skip admin panel deployment
+#   K8S_OBSERVABILITY=0              → skip Grafana + Prometheus
+#   K8S_PROMETHEUS_INGRESS=1         → expose Prometheus UI via ingress
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CHART="${ROOT}/deploy/helm/originhub"
 NAMESPACE="${K8S_NAMESPACE:-originhub}"
 RELEASE="${K8S_RELEASE:-originhub}"
-VALUE_FILE="${ORIGINHUB_VALUE_FILE:-local.yml}"
-LOCAL="${LOCAL:-0}"
 HELM_TIMEOUT="${HELM_TIMEOUT:-10m}"
 ARGOCD_SYNC_TIMEOUT="${ARGOCD_SYNC_TIMEOUT:-15m}"
 CLUSTER="${KIND_CLUSTER_NAME:-originhub}"
-
-if [[ "$LOCAL" == "1" ]]; then
-  K8S_ADMIN_PANEL="${K8S_ADMIN_PANEL:-1}"
-  ORIGINHUB_LOCAL_BUILD="${ORIGINHUB_LOCAL_BUILD:-1}"
-fi
+ORIGINHUB_LOCAL_BUILD="${ORIGINHUB_LOCAL_BUILD:-1}"
 
 KIND_CONFIG=""
 KUBECONFIG_FILE=""
@@ -46,15 +41,23 @@ need() {
   case "$1" in
     kind)
       echo ""
-      echo "  LOCAL=1 needs kind (Kubernetes in Docker)."
       echo "  macOS:  brew install kind"
-      echo "  Linux:  go install sigs.k8s.io/kind@latest  (or see https://kind.sigs.k8s.io/docs/user/quick-start/)"
+      echo "  Linux:  go install sigs.k8s.io/kind@latest"
+      echo "  Docs:   https://kind.sigs.k8s.io/docs/user/quick-start/"
+      ;;
+    docker)
       echo ""
-      echo "  Or skip kind — use an existing cluster:"
-      echo "    make k8s-bootstrap   # without LOCAL=1, kubectl context must be set"
+      echo "  Docker must be installed and running for local image builds."
       ;;
   esac
   exit 1
+}
+
+k8s_flag_on() {
+  case "${1:-0}" in
+    1 | true | TRUE | yes | YES) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 port_in_use() {
@@ -130,20 +133,50 @@ ensure_kind_cluster() {
   use_kind_kubeconfig
   if ! verify_cluster; then
     echo ""
-    echo "  Fix: make k8s-purge && make k8s-bootstrap LOCAL=1"
+    echo "  Fix: make k8s-purge && make k8s-bootstrap"
     exit 1
   fi
 }
 
 ensure_kube_ready() {
-  if [[ "$LOCAL" == "1" ]]; then
-    use_kind_kubeconfig
-    if ! verify_cluster; then
-      echo ""
-      echo "  Kubernetes API lost mid-bootstrap. Try:"
-      echo "    make k8s-purge && make k8s-bootstrap LOCAL=1"
-      exit 1
-    fi
+  use_kind_kubeconfig
+  if ! verify_cluster; then
+    echo ""
+    echo "  Kubernetes API lost mid-bootstrap. Try:"
+    echo "    make k8s-purge && make k8s-bootstrap"
+    exit 1
+  fi
+}
+
+ensure_hosts() {
+  local marker="# originhub-k8s-local"
+  local hosts=("api.originhub.local" "argocd.originhub.local")
+
+  if k8s_flag_on "${K8S_FRONTEND:-1}"; then
+    hosts+=("${K8S_FRONTEND_HOST:-app.originhub.local}")
+  fi
+  if k8s_flag_on "${K8S_ADMIN_PANEL:-1}"; then
+    hosts+=("${K8S_ADMIN_PANEL_HOST:-admin.originhub.local}")
+  fi
+  if k8s_flag_on "${K8S_OBSERVABILITY:-1}"; then
+    hosts+=("grafana.originhub.local")
+  fi
+  if k8s_flag_on "${K8S_PROMETHEUS_INGRESS:-0}"; then
+    hosts+=("${K8S_PROMETHEUS_HOST:-prometheus.originhub.local}")
+  fi
+
+  if grep -q "$marker" /etc/hosts 2>/dev/null; then
+    echo "→ /etc/hosts already configured ($marker)"
+    return 0
+  fi
+
+  local line="127.0.0.1  ${hosts[*]}  $marker"
+  echo "→ Updating /etc/hosts (sudo required)..."
+  if echo "$line" | sudo tee -a /etc/hosts >/dev/null; then
+    echo "  ✓ /etc/hosts updated"
+  else
+    echo "  ⚠ Could not update /etc/hosts automatically. Add this line manually:"
+    echo "    $line"
   fi
 }
 
@@ -156,12 +189,6 @@ helm_install() {
 
   echo "  namespace: ${ns}  timeout: ${HELM_TIMEOUT}"
   if [[ "$release" == "originhub" ]]; then
-    local image_repo image_tag
-    image_repo="$(awk '/repository:/{print $2; exit}' "${CHART}/${VALUE_FILE}" 2>/dev/null || true)"
-    image_tag="$(awk '/^imageTag:/{print $2; exit}' "${CHART}/${VALUE_FILE}" 2>/dev/null || true)"
-    [[ -z "$image_repo" ]] && image_repo="repo.repsy.io/nuricanozturk/originhub/originhub-os"
-    [[ -z "$image_tag" ]] && image_tag="latest"
-    echo "  image:     ${image_repo}:${image_tag}"
     echo "  (pull + postgres + migrations — first run often 5–15 min; status every 20s)"
     echo ""
   fi
@@ -198,17 +225,14 @@ helm_install() {
     echo ""
     case "$release" in
       ingress-nginx)
-        echo "  Common fixes (local kind):"
-        echo "    • make k8s-purge && make k8s-bootstrap LOCAL=1"
-        echo "    • Longer wait: HELM_TIMEOUT=20m make k8s-bootstrap LOCAL=1"
+        echo "  Common fixes:"
+        echo "    • make k8s-purge && make k8s-bootstrap"
+        echo "    • Longer wait: HELM_TIMEOUT=20m make k8s-bootstrap"
         ;;
     esac
     exit 1
   fi
 }
-
-need kubectl
-need helm
 
 normalize_git_url() {
   local url="$1"
@@ -241,40 +265,42 @@ resolve_git_revision() {
   git -C "$ROOT" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main"
 }
 
-k8s_flag_on() {
-  case "${1:-0}" in
-    1 | true | TRUE | yes | YES) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
 build_helm_parameters_yaml() {
   local out=""
-  local admin_default=0
-  [[ "$LOCAL" == "1" ]] && admin_default=1
 
   append_param() {
     out+="        - name: $1"$'\n'"          value: \"$2\""$'\n'
   }
 
   append_param "originhub.admin.enabled" "$(k8s_flag_on "${K8S_ADMIN_API:-1}" && echo true || echo false)"
-  append_param "frontend.enabled" "$(k8s_flag_on "${K8S_FRONTEND:-0}" && echo true || echo false)"
-  append_param "adminPanel.enabled" "$(k8s_flag_on "${K8S_ADMIN_PANEL:-$admin_default}" && echo true || echo false)"
-  append_param "monitoring.grafana.enabled" "$(k8s_flag_on "${K8S_GRAFANA:-1}" && echo true || echo false)"
-  append_param "monitoring.prometheus.enabled" "$(k8s_flag_on "${K8S_PROMETHEUS:-1}" && echo true || echo false)"
+  append_param "frontend.enabled" "$(k8s_flag_on "${K8S_FRONTEND:-1}" && echo true || echo false)"
+  append_param "adminPanel.enabled" "$(k8s_flag_on "${K8S_ADMIN_PANEL:-1}" && echo true || echo false)"
+
+  if k8s_flag_on "${K8S_OBSERVABILITY:-1}"; then
+    append_param "monitoring.enabled" "true"
+    append_param "monitoring.grafana.enabled" "true"
+    append_param "monitoring.prometheus.enabled" "true"
+  else
+    append_param "monitoring.enabled" "false"
+    append_param "monitoring.grafana.enabled" "false"
+    append_param "monitoring.prometheus.enabled" "false"
+  fi
+
   append_param "monitoring.prometheus.ingress.enabled" "$(k8s_flag_on "${K8S_PROMETHEUS_INGRESS:-0}" && echo true || echo false)"
 
-  if [[ "$LOCAL" == "1" ]]; then
-    append_param "domain.frontendUrl" "http://${K8S_API_HOST:-api.originhub.local}"
-    if k8s_flag_on "${ORIGINHUB_LOCAL_BUILD:-1}"; then
-      append_param "imageTag" "local"
-      append_param "originhub.image.repository" "originhub-os"
-      append_param "originhub.image.pullPolicy" "IfNotPresent"
-      append_param "adminPanel.image.repository" "originhub-admin-panel"
-      append_param "adminPanel.image.tag" "local"
-      append_param "adminPanel.image.pullPolicy" "IfNotPresent"
-    fi
-  elif k8s_flag_on "${K8S_FRONTEND:-0}"; then
+  if k8s_flag_on "${ORIGINHUB_LOCAL_BUILD:-1}"; then
+    append_param "imageTag" "local"
+    append_param "originhub.image.repository" "originhub-backend"
+    append_param "originhub.image.pullPolicy" "IfNotPresent"
+    append_param "frontend.image.repository" "originhub-frontend"
+    append_param "frontend.image.tag" "local"
+    append_param "frontend.image.pullPolicy" "IfNotPresent"
+    append_param "adminPanel.image.repository" "originhub-admin-panel"
+    append_param "adminPanel.image.tag" "local"
+    append_param "adminPanel.image.pullPolicy" "IfNotPresent"
+  fi
+
+  if k8s_flag_on "${K8S_FRONTEND:-1}"; then
     append_param "domain.frontendUrl" "http://${K8S_FRONTEND_HOST:-app.originhub.local}"
   fi
 
@@ -296,28 +322,43 @@ render_application_manifest() {
   done < <(sed -e "s|ORIGINHUB_GIT_REPO_URL|${repo}|g" -e "s|ORIGINHUB_GIT_REVISION|${rev}|g" "$app_file")
 }
 
-build_originhub_image() {
-  if [[ "$LOCAL" != "1" ]] || ! k8s_flag_on "${ORIGINHUB_LOCAL_BUILD:-1}"; then
+load_image_into_kind() {
+  local image="$1"
+  echo "→ Loading ${image} into kind..."
+  kind load docker-image "$image" --name "$CLUSTER"
+}
+
+build_backend_image() {
+  if ! k8s_flag_on "${ORIGINHUB_LOCAL_BUILD:-1}"; then
+    return 0
+  fi
+  need docker
+  echo "→ Building backend image..."
+  echo "  First run may take 10–20 min."
+  docker build -f "${ROOT}/deploy/docker/backend/Dockerfile" \
+    -t originhub-backend:local \
+    "${ROOT}"
+  load_image_into_kind "originhub-backend:local"
+}
+
+build_frontend_image() {
+  if ! k8s_flag_on "${K8S_FRONTEND:-1}" || ! k8s_flag_on "${ORIGINHUB_LOCAL_BUILD:-1}"; then
     return 0
   fi
   need docker
   local api_url="http://${K8S_API_HOST:-api.originhub.local}"
   local git_ssh="git@127.0.0.1:30222"
-  echo "→ Building OriginHub OS image (SPA+API, API_URL=${api_url})..."
-  echo "  First run may take 10–20 min."
-  docker build -f "${ROOT}/Dockerfile" \
+  echo "→ Building frontend image (API_URL=${api_url})..."
+  docker build -f "${ROOT}/deploy/docker/frontend/Dockerfile" \
     --build-arg "API_URL=${api_url}" \
     --build-arg "GIT_SSH_URL=${git_ssh}" \
-    -t originhub-os:local \
+    -t originhub-frontend:local \
     "${ROOT}"
-  echo "→ Loading originhub-os:local into kind..."
-  kind load docker-image originhub-os:local --name "$CLUSTER"
+  load_image_into_kind "originhub-frontend:local"
 }
 
 build_admin_panel_image() {
-  local admin_default=0
-  [[ "$LOCAL" == "1" ]] && admin_default=1
-  if ! k8s_flag_on "${K8S_ADMIN_PANEL:-$admin_default}"; then
+  if ! k8s_flag_on "${K8S_ADMIN_PANEL:-1}" || ! k8s_flag_on "${ORIGINHUB_LOCAL_BUILD:-1}"; then
     return 0
   fi
   need docker
@@ -327,16 +368,11 @@ build_admin_panel_image() {
     --build-arg "API_URL=${api_url}" \
     -t originhub-admin-panel:local \
     "${ROOT}"
-  if [[ "$LOCAL" == "1" ]]; then
-    echo "→ Loading admin panel image into kind..."
-    kind load docker-image originhub-admin-panel:local --name "$CLUSTER"
-  fi
+  load_image_into_kind "originhub-admin-panel:local"
 }
 
 apply_originhub_application() {
-  local app_file="${ROOT}/deploy/argocd/applications/originhub-prod.yml"
-  [[ "$VALUE_FILE" == "local.yml" ]] && app_file="${ROOT}/deploy/argocd/applications/originhub-local.yml"
-
+  local app_file="${ROOT}/deploy/argocd/applications/originhub.yml"
   local repo rev params
   repo="$(resolve_git_repo)" || {
     echo ""
@@ -348,11 +384,11 @@ apply_originhub_application() {
   params="$(build_helm_parameters_yaml)"
 
   echo "→ Argo CD Application (GitOps)..."
-  echo "  repo:       ${repo}"
-  echo "  revision:   ${rev}"
-  echo "  chart:      deploy/helm/originhub"
-  echo "  values:     values.yml + ${VALUE_FILE}"
-  echo "  components: adminAPI=${K8S_ADMIN_API:-1} adminPanel=${K8S_ADMIN_PANEL:-0} localBuild=${ORIGINHUB_LOCAL_BUILD:-0} grafana=${K8S_GRAFANA:-1}"
+  echo "  repo:        ${repo}"
+  echo "  revision:    ${rev}"
+  echo "  chart:       deploy/helm/originhub"
+  echo "  values:      values.yml"
+  echo "  components:  frontend=${K8S_FRONTEND:-1} adminPanel=${K8S_ADMIN_PANEL:-1} observability=${K8S_OBSERVABILITY:-1} localBuild=${ORIGINHUB_LOCAL_BUILD:-1}"
   echo ""
   render_application_manifest "$app_file" "$repo" "$rev" "$params" | kubectl apply -f -
 }
@@ -391,10 +427,13 @@ parse_duration_minutes() {
   fi
 }
 
-if [[ "$LOCAL" == "1" ]]; then
-  need kind
-  ensure_kind_cluster
-fi
+need kubectl
+need helm
+need kind
+need docker
+
+ensure_kind_cluster
+ensure_hosts
 
 echo "→ Helm repos..."
 helm repo add argo https://argoproj.github.io/argo-helm >/dev/null 2>&1 || true
@@ -408,14 +447,8 @@ helm_install cert-manager jetstack/cert-manager cert-manager \
 kubectl apply -f "${ROOT}/deploy/argocd/clusterissuer-local.yml"
 
 echo "→ ingress-nginx (may take several minutes on first pull)..."
-INGRESS_EXTRA=()
-if [[ "$LOCAL" == "1" ]]; then
-  INGRESS_EXTRA=(-f "${ROOT}/deploy/kind/ingress-nginx-values.yaml")
-else
-  INGRESS_EXTRA=(--set controller.watchIngressWithoutClass=true)
-fi
 helm_install ingress-nginx ingress-nginx/ingress-nginx ingress-nginx \
-  "${INGRESS_EXTRA[@]}"
+  -f "${ROOT}/deploy/kind/ingress-nginx-values.yaml"
 
 echo "→ Argo CD..."
 helm_install argocd argo/argo-cd argocd \
@@ -424,7 +457,8 @@ helm_install argocd argo/argo-cd argocd \
 echo "→ Argo CD AppProject..."
 kubectl apply -f "${ROOT}/deploy/argocd/project.yml"
 
-build_originhub_image
+build_backend_image
+build_frontend_image
 build_admin_panel_image
 apply_originhub_application
 wait_for_originhub_application || true
@@ -433,30 +467,12 @@ ARGO_PASS="$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpat
 GIT_REPO_DISPLAY="$(resolve_git_repo 2>/dev/null || echo unknown)"
 GIT_REV_DISPLAY="$(resolve_git_revision)"
 
-if [[ "$LOCAL" == "1" ]]; then
-  kind export kubeconfig --name "$CLUSTER"
-fi
+kind export kubeconfig --name "$CLUSTER"
 
 echo ""
 echo "════════════════════════════════════════════════════════════"
 echo "  Bootstrap complete"
 echo "════════════════════════════════════════════════════════════"
-echo ""
-echo "  Add to /etc/hosts (required — URLs won't open in browser without this):"
-if [[ "$LOCAL" == "1" ]]; then
-  echo "    127.0.0.1  api.originhub.local  argocd.originhub.local  grafana.originhub.local  admin.originhub.local"
-else
-  echo "    127.0.0.1  api.originhub.local  argocd.originhub.local  grafana.originhub.local"
-fi
-if k8s_flag_on "${K8S_FRONTEND:-0}"; then
-  echo "    127.0.0.1  ${K8S_FRONTEND_HOST:-app.originhub.local}"
-fi
-if [[ "$LOCAL" != "1" ]] && k8s_flag_on "${K8S_ADMIN_PANEL:-0}"; then
-  echo "    127.0.0.1  ${K8S_ADMIN_PANEL_HOST:-admin.originhub.local}"
-fi
-if k8s_flag_on "${K8S_PROMETHEUS_INGRESS:-0}"; then
-  echo "    127.0.0.1  ${K8S_PROMETHEUS_HOST:-prometheus.originhub.local}"
-fi
 echo ""
 echo "  Argo CD UI:     http://argocd.originhub.local${URL_SUFFIX}"
 echo "  Application: originhub  (${GIT_REPO_DISPLAY} @ ${GIT_REV_DISPLAY})"
@@ -467,38 +483,32 @@ else
   echo "  Password:    kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
 fi
 echo ""
-echo "  OriginHub App:  http://api.originhub.local${URL_SUFFIX}  (SPA + API, os profile)"
-echo "  OriginHub API:  http://api.originhub.local${URL_SUFFIX}/actuator/health"
-if k8s_flag_on "${K8S_GRAFANA:-1}"; then
-  echo "  Grafana:        http://grafana.originhub.local${URL_SUFFIX}  (admin / admin)"
-else
-  echo "  Grafana:        disabled"
-fi
-if k8s_flag_on "${K8S_FRONTEND:-0}"; then
+if k8s_flag_on "${K8S_FRONTEND:-1}"; then
   echo "  Frontend:       http://${K8S_FRONTEND_HOST:-app.originhub.local}${URL_SUFFIX}"
 fi
-if k8s_flag_on "${K8S_ADMIN_PANEL:-0}"; then
+echo "  OriginHub API:  http://${K8S_API_HOST:-api.originhub.local}${URL_SUFFIX}"
+echo "  Health:         http://${K8S_API_HOST:-api.originhub.local}${URL_SUFFIX}/actuator/health"
+if k8s_flag_on "${K8S_ADMIN_PANEL:-1}"; then
   echo "  Admin panel:    http://${K8S_ADMIN_PANEL_HOST:-admin.originhub.local}${URL_SUFFIX}"
-  if [[ "$LOCAL" == "1" ]]; then
-    echo "                  login: admin / Admin123"
+  echo "                  login: admin / Admin123"
+fi
+if k8s_flag_on "${K8S_OBSERVABILITY:-1}"; then
+  echo "  Grafana:        http://grafana.originhub.local${URL_SUFFIX}  (admin / admin)"
+  if k8s_flag_on "${K8S_PROMETHEUS_INGRESS:-0}"; then
+    echo "  Prometheus:     http://${K8S_PROMETHEUS_HOST:-prometheus.originhub.local}${URL_SUFFIX}"
+  else
+    echo "  Prometheus:     cluster-internal originhub-prometheus:9090"
   fi
-fi
-if k8s_flag_on "${K8S_PROMETHEUS_INGRESS:-0}"; then
-  echo "  Prometheus:     http://${K8S_PROMETHEUS_HOST:-prometheus.originhub.local}${URL_SUFFIX}"
-elif k8s_flag_on "${K8S_PROMETHEUS:-1}"; then
-  echo "  Prometheus:     cluster-internal originhub-prometheus:9090"
 else
-  echo "  Prometheus:     disabled"
+  echo "  Observability:  disabled"
 fi
-echo "  Git SSH:        git@127.0.0.1:30222  (NodePort, local profile)"
+echo "  Git SSH:        git@127.0.0.1:30222  (NodePort)"
 if [[ -n "$URL_SUFFIX" ]]; then
   echo ""
   echo "  Note: ingress uses host port ${HOST_HTTP_PORT} (80/443 were in use)."
 fi
 echo ""
-echo "  Domain config:  deploy/helm/originhub/${VALUE_FILE}"
-echo "    domain.apiHost      → backend ingress"
-echo "    domain.frontendUrl  → Vercel / Cloudflare Pages (CORS + OAuth)"
+echo "  Domain config:  deploy/helm/originhub/values.yml"
 echo ""
 echo "  GitOps: push deploy/ changes to ${GIT_REV_DISPLAY} on ${GIT_REPO_DISPLAY} for Argo CD to pick them up."
 echo ""

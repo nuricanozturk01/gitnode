@@ -9,7 +9,7 @@ if ! command -v kind >/dev/null 2>&1; then
   exit 1
 fi
 if ! kind get clusters 2>/dev/null | grep -qx "$CLUSTER"; then
-  echo "Kind cluster '${CLUSTER}' not found. Run: make k8s-bootstrap LOCAL=1"
+  echo "Kind cluster '${CLUSTER}' not found. Run: make k8s-bootstrap"
   exit 1
 fi
 

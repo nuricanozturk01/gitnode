@@ -1,167 +1,67 @@
 # Kubernetes + Argo CD
 
-OriginHub **backend only** (API, Git HTTP/SSH, Postgres, Redis). Frontend is deployed separately on **Vercel** or **Cloudflare Pages** — configure its API URL to `domain.apiHost`.
+Local **kind** cluster with GitOps: backend, frontend, admin panel, Postgres, Redis, optional Prometheus/Grafana.
 
-Pattern follows [setupshowroom-helm](https://github.com/nuricanozturk/setupshowroom-helm): `values.yml` + env overlay (`local.yml` / `prod.yml`), secrets as base64.
+Each UI component has its own Docker image under `deploy/docker/`:
+
+| Image | Dockerfile |
+|-------|------------|
+| `originhub-backend:local` | `deploy/docker/backend/Dockerfile` |
+| `originhub-frontend:local` | `deploy/docker/frontend/Dockerfile` |
+| `originhub-admin-panel:local` | `deploy/docker/admin-panel/Dockerfile` |
 
 ## Prerequisites
 
-Install these **before** running `make k8s-bootstrap`.
+Install before running `make k8s-bootstrap`.
 
-| Tool | Required when | Purpose |
-|------|---------------|---------|
-| [kubectl](https://kubernetes.io/docs/tasks/tools/) | Always | Cluster CLI |
-| [Helm 3](https://helm.sh/docs/intro/install/) | Always | Chart install |
-| [Docker](https://docs.docker.com/get-docker/) | `LOCAL=1` | Runs the kind cluster (Engine must be **running**) |
-| [kind](https://kind.sigs.k8s.io/) | `LOCAL=1` only | Local Kubernetes cluster in Docker |
+| Tool | Purpose |
+|------|---------|
+| [Docker](https://docs.docker.com/get-docker/) | kind node + image builds (Engine must be **running**) |
+| [kind](https://kind.sigs.k8s.io/) | Local Kubernetes cluster |
+| [kubectl](https://kubernetes.io/docs/tasks/tools/) | Cluster CLI |
+| [Helm 3](https://helm.sh/docs/intro/install/) | Chart install |
 
-**Server / existing cluster:** `kubectl` + `Helm` only. Point `kubectl` at your cluster (`kubectl config current-context`).
-
-### Install kind
-
-<details>
-<summary><strong>macOS</strong></summary>
+### Install kind (macOS)
 
 ```bash
-brew install kind
-# or: curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-darwin-arm64   # Apple Silicon
-# or: curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-darwin-amd64   # Intel
-# chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+brew install kind kubectl helm
 ```
 
-</details>
-
-<details>
-<summary><strong>Linux</strong></summary>
+### Install kind (Linux)
 
 ```bash
-# apt (Debian/Ubuntu) — kind is not in default repos; use binary:
 curl -Lo ./kind https://kind.sigs.k8s.io/dl/latest/kind-linux-amd64
-chmod +x ./kind
-sudo mv ./kind /usr/local/bin/kind
-
-# or Go:
-go install sigs.k8s.io/kind@latest
+chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
 ```
-
-</details>
-
-<details>
-<summary><strong>Windows</strong></summary>
-
-Use [WSL2](https://learn.microsoft.com/en-us/windows/wsl/install) + Docker Desktop, then follow the **Linux** steps inside WSL.
-
-Or [Chocolatey](https://community.chocolatey.org/packages/kind):
-
-```powershell
-choco install kind
-```
-
-</details>
-
-### Install kubectl & Helm
-
-<details>
-<summary><strong>macOS</strong></summary>
-
-```bash
-brew install kubectl helm
-```
-
-</details>
-
-<details>
-<summary><strong>Linux</strong></summary>
-
-```bash
-# kubectl — see https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl && sudo mv kubectl /usr/local/bin/
-
-# Helm — see https://helm.sh/docs/intro/install/
-curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-```
-
-</details>
-
-<details>
-<summary><strong>Windows</strong></summary>
-
-```powershell
-choco install kubernetes-cli kubernetes-helm
-```
-
-Or use WSL2 and the Linux instructions.
-
-</details>
 
 ### Verify
 
 ```bash
-docker info          # LOCAL=1 — must not error
-kind version         # LOCAL=1
+docker info
+kind version
 kubectl version --client
 helm version
-```
-
-### Without kind
-
-If you already have a cluster (cloud, k3s, minikube, Docker Desktop Kubernetes, etc.):
-
-```bash
-kubectl config use-context <your-context>
-make k8s-bootstrap              # no LOCAL=1
 ```
 
 ---
 
 ## One-shot bootstrap
 
-### Local (kind)
-
-Requires [Prerequisites](#prerequisites) (`kind`, Docker, `kubectl`, `helm`). First run ~10–20 minutes (builds `originhub-os:local` + `originhub-admin-panel:local`).
-
 ```bash
-make k8s-bootstrap LOCAL=1
+make k8s-purge          # optional — clean slate
+make k8s-bootstrap      # kind + cert-manager + ingress + Argo CD + OriginHub
 ```
 
-Installs: kind cluster · cert-manager · ingress-nginx · **Argo CD** · OriginHub (GitOps).
+First run ~10–20 minutes (builds backend + frontend + admin-panel images). `/etc/hosts` is updated automatically (sudo prompt).
 
-**UI:** Main app (SPA + API) at `http://api.originhub.local` — backend `os` profile embeds the frontend; bootstrap bakes `API_URL=http://api.originhub.local` into the image. **Admin panel** at `http://admin.originhub.local` (enabled by default for `LOCAL=1`).
-
-**Apple Silicon (M1/M2/M3):** Local bootstrap builds arm64 images on your machine — no registry pull required.
-
-### Local component flags (Makefile → Argo CD Helm parameters)
-
-| Flag | Default (`LOCAL=1`) | Effect |
-|------|---------------------|--------|
-| `K8S_ADMIN_API=1` | on | Backend admin API (`originhub.admin.enabled`) |
-| `K8S_ADMIN_PANEL=1` | on | Build + deploy admin panel (`admin.originhub.local`) |
-| `K8S_FRONTEND=1` | off | Extra ingress `app.originhub.local` (SPA already on API host) |
-| `K8S_GRAFANA=1` | on | Grafana deployment + ingress |
-| `K8S_PROMETHEUS=1` | on | Prometheus deployment (cluster-internal) |
-| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI at `prometheus.originhub.local` |
-| `ORIGINHUB_LOCAL_BUILD=0` | on | Skip local OS image build (uses registry) |
-
-Example — Prometheus UI + separate frontend ingress:
-
-```bash
-K8S_FRONTEND=1 K8S_PROMETHEUS_INGRESS=1 make k8s-bootstrap LOCAL=1
-```
-
-Add to `/etc/hosts` (macOS/Linux: `/etc/hosts`, Windows: `C:\Windows\System32\drivers\etc\hosts`):
-
-```
-127.0.0.1  api.originhub.local  argocd.originhub.local  grafana.originhub.local  admin.originhub.local
-```
-
-| Service | URL |
-|---------|-----|
-| Argo CD UI | http://argocd.originhub.local (admin / see below) |
-| OriginHub App (SPA + API) | http://api.originhub.local |
-| Admin panel | http://admin.originhub.local (`admin` / `Admin123`) |
-| Grafana | http://grafana.originhub.local (admin / admin) |
-| Git SSH | `git@127.0.0.1:30222` (NodePort) |
+| Service | URL | Default |
+|---------|-----|---------|
+| Frontend (SPA) | http://app.originhub.local | ✅ |
+| API | http://api.originhub.local | ✅ |
+| Admin panel | http://admin.originhub.local | ✅ (`admin` / `Admin123`) |
+| Grafana | http://grafana.originhub.local | ✅ (`admin` / `admin`) |
+| Argo CD | http://argocd.originhub.local | ✅ |
+| Git SSH | `git@127.0.0.1:30222` | ✅ |
 
 Argo CD admin password:
 
@@ -169,260 +69,171 @@ Argo CD admin password:
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
-#### Troubleshooting: `context deadline exceeded` on ingress-nginx
+### Component flags (Makefile → Argo CD)
 
-Helm waits up to **10 minutes** (override with `HELM_TIMEOUT=20m`). First install is slow while Docker pulls the controller image.
+| Flag | Default | Effect |
+|------|---------|--------|
+| `K8S_FRONTEND=1` | on | Build + deploy frontend at `app.originhub.local` |
+| `K8S_ADMIN_PANEL=1` | on | Build + deploy admin panel at `admin.originhub.local` |
+| `K8S_OBSERVABILITY=1` | on | Deploy Grafana + Prometheus |
+| `K8S_ADMIN_API=1` | on | Backend admin API |
+| `K8S_PROMETHEUS_INGRESS=1` | off | Prometheus UI at `prometheus.originhub.local` |
+| `ORIGINHUB_LOCAL_BUILD=0` | on | Skip local image builds (uses registry tags) |
 
-#### Troubleshooting: ports 80/443 in use
-
-Bootstrap **auto-switches to 9080/9443** and recreates the kind cluster if needed. URLs become `http://api.originhub.local:9080` (shown at end of bootstrap).
-
-To force standard ports after freeing 80/443:
+Examples:
 
 ```bash
-make k8s-purge
-KIND_HTTP_PORT=80 KIND_HTTPS_PORT=443 make k8s-bootstrap LOCAL=1
+# No admin panel
+K8S_ADMIN_PANEL=0 make k8s-bootstrap
+
+# No Grafana / Prometheus
+K8S_OBSERVABILITY=0 make k8s-bootstrap
+
+# Prometheus UI via ingress
+K8S_PROMETHEUS_INGRESS=1 make k8s-bootstrap
 ```
 
-#### Troubleshooting: `Kubernetes cluster unreachable` / `localhost:8080`
+### Troubleshooting
 
-Usually a stale kubeconfig or unhealthy kind cluster after port conflicts. Reset:
+**Ports 80/443 in use** — bootstrap auto-switches to 9080/9443. URLs become `http://app.originhub.local:9080`.
+
+**Stale kubeconfig:**
 
 ```bash
 make k8s-kubeconfig
-# or: kind export kubeconfig --name originhub
 kubectl get pods -n originhub
 ```
 
-If still failing:
+**Full reset:**
 
 ```bash
-make k8s-purge
-make k8s-bootstrap LOCAL=1
+make k8s-purge && make k8s-bootstrap
 ```
 
-1. **Ports 80/443 busy** — handled automatically (9080/9443) or stop conflicting services.
-2. **Retry after partial install:**
-   ```bash
-   make k8s-purge
-   make k8s-bootstrap LOCAL=1
-   ```
-3. **Inspect pods** (while bootstrap runs or after failure):
-   ```bash
-   kubectl get pods -n ingress-nginx -w
-   kubectl describe pod -n ingress-nginx -l app.kubernetes.io/component=controller
-   ```
-   `ImagePullBackOff` → check Docker network; `CrashLoopBackOff` on port bind → free 80/443 or use auto 9080/9443.
-
-Local kind uses `deploy/kind/ingress-nginx-values.yaml` (hostPort 80/443 inside the node + no admission webhook).
-
-### Server (existing cluster)
-
-1. Copy and fill production overlay:
-
-```bash
-cp deploy/helm/originhub/prod.yml.example deploy/helm/originhub/prod.yml
-# Edit domain.* and base64 secrets: echo -n 'secret' | base64
-```
-
-2. Bootstrap:
-
-```bash
-make k8s-bootstrap \
-  ORIGINHUB_VALUE_FILE=prod.yml
-```
-
-Git repo URL is auto-detected from `origin`. Override: `ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git`
+---
 
 ## Full teardown
 
-Remove everything `bootstrap.sh` installed — idempotent (safe to run when nothing is deployed):
-
 ```bash
 make k8s-purge
 ```
 
-This uninstalls Helm releases, deletes namespaces (including PVCs), removes cert-manager CRDs and the `selfsigned-issuer` ClusterIssuer, and deletes the local **kind** cluster (`originhub` by default).
+Removes Helm releases, namespaces (including PVCs), cert-manager CRDs, and the kind cluster.
 
-On a **shared server cluster** where you must keep the Kubernetes cluster itself:
+---
 
-```bash
-DELETE_KIND=0 make k8s-purge
-```
+## Configuration
 
-Works on macOS, Linux, and Windows (Git Bash or WSL with `make`, `kubectl`, `helm`, and optionally `kind` on `PATH`).
-
-## Domain configuration (single place)
-
-Edit **`domain`** in `local.yml` or `prod.yml`:
+Single values file: **`deploy/helm/originhub/values.yml`**
 
 ```yaml
 domain:
-  apiHost: api.originhub.example.com      # Ingress → backend
-  frontendUrl: https://originhub.example.com   # Vercel / Cloudflare Pages
-  grafanaHost: grafana.originhub.example.com   # Grafana ingress
-  extraCorsOrigins: []
+  apiHost: api.originhub.local
+  frontendUrl: http://app.originhub.local   # CORS + OAuth redirects
+  grafanaHost: grafana.originhub.local
+
+frontend:
+  enabled: true
+  host: app.originhub.local
+
+adminPanel:
+  enabled: true
+  host: admin.originhub.local
+
+monitoring:
+  enabled: true
 ```
 
 Helm sets automatically:
 
 - `ORIGINHUB_FRONTEND_BASE_URL` ← `domain.frontendUrl`
 - `ORIGINHUB_CORS_ALLOWED_ORIGINS` ← `frontendUrl` + `extraCorsOrigins`
-- Ingress host ← `domain.apiHost`
-- Grafana ingress ← `domain.grafanaHost` (dashboards from `monitoring/grafana/provisioning/`)
+- Backend ingress ← `domain.apiHost`
+- Grafana ingress ← `domain.grafanaHost`
 
-### Monitoring (Prometheus + Grafana)
+### Secrets (base64)
 
-Enabled by default (`monitoring.enabled: true`).
-
-| Service | Access |
-|---------|--------|
-| Grafana | `https://{domain.grafanaHost}` — login `admin` / see `monitoring.grafana.adminPassword` (local) or `monitoring.secrets.GF_SECURITY_ADMIN_PASSWORD` (prod, base64) |
-| Prometheus | in-cluster only — `originhub-prometheus.originhub.svc:9090` |
-
-When you update `monitoring/grafana/provisioning/dashboards/originhub.json`, copy to `deploy/helm/originhub/config/grafana/dashboards/originhub.json`.
-
-### Frontend (Vercel / Cloudflare)
-
-Build env on your frontend host:
-
-```
-VERCEL_API_BASE_URL=https://api.originhub.example.com
-VERCEL_GIT_SSH_URL=git@api.originhub.example.com:2222
+```bash
+echo -n 'my-jwt-secret-min-32-chars........' | base64
+make actions-encryption-key   # Actions secrets vault key
 ```
 
-### OAuth callbacks (register at IdP)
+| Key | Location |
+|-----|----------|
+| `common.secrets.ORIGINHUB_JWT_SECRET` | `values.yml` |
+| `postgres.secrets.*` | `values.yml` |
+| `originhub.secrets.ACTIONS_ENCRYPTION_KEY` | `values.yml` |
 
-| Provider | URL |
-|----------|-----|
-| Google | `https://{apiHost}/login/oauth2/code/google` |
-| GitHub | `https://{apiHost}/login/oauth2/code/github` |
-| GitLab | `https://{apiHost}/login/oauth2/code/gitlab` |
+---
 
 ## Helm commands
 
 ```bash
-# Render (debug)
-make k8s-template ORIGINHUB_VALUE_FILE=local.yml
-
-# Helm only (no Argo CD bootstrap)
-make k8s-install
-
-# Uninstall everything (Helm releases, namespaces, PVCs, cert-manager CRDs, kind cluster)
-make k8s-purge
-
-# Same as k8s-purge (alias)
-make k8s-uninstall
-
-# On a shared server cluster: keep the cluster, only remove bootstrap resources
-DELETE_KIND=0 make k8s-purge
+make k8s-template          # render manifests (debug)
+make k8s-kubeconfig        # refresh ~/.kube/config
+make k8s-purge             # full teardown
 ```
 
-Manual Helm (setupshowroom style):
+Manual Helm:
 
 ```bash
 helm template originhub deploy/helm/originhub \
   -f deploy/helm/originhub/values.yml \
-  -f deploy/helm/originhub/local.yml \
   -n originhub
-
-helm upgrade --install originhub deploy/helm/originhub \
-  -f deploy/helm/originhub/values.yml \
-  -f deploy/helm/originhub/prod.yml \
-  -n originhub --create-namespace
 ```
+
+---
 
 ## Layout
 
 ```
 deploy/
-├── helm/originhub/           Backend chart
-│   ├── values.yml            Base (empty secrets)
-│   ├── local.yml             Local domain + dev secrets
-│   ├── prod.yml.example      Production template
+├── docker/
+│   ├── backend/Dockerfile
+│   ├── frontend/Dockerfile
+│   └── admin-panel/Dockerfile
+├── helm/originhub/
+│   ├── values.yml
 │   └── templates/
-├── argocd/                   Argo CD config
-│   ├── applications/         originhub-local.yml · originhub-prod.yml
+├── argocd/
+│   ├── applications/originhub.yml
 │   ├── project.yml
-│   └── values.yaml           Argo CD Helm values (ingress host)
+│   └── values.yaml
 ├── kind/kind-config.yaml
 └── scripts/
-    ├── bootstrap.sh      One-shot installer
-    └── k8s-purge.sh      Full teardown (reverse of bootstrap)
+    ├── bootstrap.sh
+    └── k8s-purge.sh
 ```
 
 ## Argo CD
 
-Bootstrap always registers:
+Bootstrap registers:
 
 - **AppProject:** `originhub` (`deploy/argocd/project.yml`)
-- **Application:** `originhub` (`deploy/argocd/applications/originhub-local.yml` or `originhub-prod.yml`)
+- **Application:** `originhub` (`deploy/argocd/applications/originhub.yml`)
 
-Git repo URL is auto-detected from `git remote get-url origin` (SSH → HTTPS). Override with `ORIGINHUB_GIT_REPO_URL`. Branch defaults to current branch (`ORIGINHUB_GIT_REVISION` to override).
+Git repo URL is auto-detected from `git remote get-url origin`. Override: `ORIGINHUB_GIT_REPO_URL`.
 
-OriginHub stack is deployed **by Argo CD** from `deploy/helm/originhub` — not direct Helm in bootstrap. Push `deploy/` changes to Git for sync.
-
-Open **Argo CD UI** to watch sync status, diff, rollback, and health.
-
-- Values: `deploy/argocd/values.yaml` (Argo CD ingress host)
-
-## Secrets (base64)
-
-```bash
-echo -n 'my-jwt-secret-min-32-chars........' | base64
-```
-
-| Key | File |
-|-----|------|
-| `common.secrets.ORIGINHUB_JWT_SECRET` | values overlay |
-| `postgres.secrets.*` | values overlay |
-| `originhub.secrets.OAUTH2_*` | values overlay (optional) |
+OriginHub is deployed **by Argo CD** from `deploy/helm/originhub` — push `deploy/` changes to Git for sync.
 
 ## Components
 
 | Resource | Purpose |
 |----------|---------|
 | originhub-backend | Spring Boot API + Git SSH |
+| originhub-frontend | Angular SPA (nginx) |
+| originhub-admin-panel | Platform admin UI (nginx) |
 | originhub-postgres | PostgreSQL 17 |
 | originhub-redis | Redis 7 |
-| originhub-backend-ssh | LoadBalancer / NodePort :2222 |
-| Ingress | HTTP(S) → backend :8080 |
 | originhub-prometheus | Scrapes `/actuator/prometheus` |
 | originhub-grafana | Pre-provisioned OriginHub dashboard |
 
-Set `monitoring.enabled: false` in values overlay to disable Prometheus/Grafana.
+Set `monitoring.enabled: false` or `K8S_OBSERVABILITY=0` to disable Prometheus/Grafana.
 
-Admin panel UI is **not** in this chart — optional, run separately.
+Set `adminPanel.enabled: false` or `K8S_ADMIN_PANEL=0` to skip admin panel.
 
-## Multi-instance (Redis lock + shared volume)
+Set `frontend.enabled: false` or `K8S_FRONTEND=0` to skip frontend.
 
-The backend is designed for horizontal scale when **both** are true:
+## Multi-instance
 
-| Requirement | K8s chart |
-|-------------|-----------|
-| **Shared Redis** | All pods → `originhub-redis` Service (cache, rate limits, distributed locks, circuit-breaker keys) |
-| **Shared Git volume** | PVC `originhub-repos` mounted at `/data/repos` (repos, SSH host keys under `.hosts/`, actions artifacts/cache on disk) |
-
-**Redis distributed lock** — used by:
-
-- Webhook DLQ retry scheduler (`lock:webhook:dlq:retry`) — one pod per window
-- Bootstrap admin initializer — one pod creates platform admin on first start
-- Circuit breaker state via `DistributedCircuitBreakerGuard` (Redis TTL keys)
-
-With a single shared Redis Service, this works the same as Docker multi-instance.
-
-**Shared volume caveat:**
-
-| `replicaCount` | PVC `accessMode` |
-|----------------|------------------|
-| `1` (default) | `ReadWriteOnce` ✅ |
-| `> 1` | **`ReadWriteMany` required** (NFS, EFS, Longhorn RWX, …) — set `persistence.repos.accessMode` + matching `storageClass` |
-
-`ReadWriteOnce` + multiple replicas → second pod cannot mount the volume (or must land on the same node with unsupported multi-attach). JGit file locking only helps after the filesystem is actually shared.
-
-**Helm env vs `application.yaml`:** chart sets DB, Redis, JWT, CORS, frontend URL, Git root, admin flag, observability, forward headers. Defaults apply for audit, actions, DLQ cron, SSO (off). Production should also set in `prod.yml`:
-
-- `ACTIONS_ENCRYPTION_KEY` — if using Actions secrets vault
-- `ORIGINHUB_PLATFORM_ADMIN_USERNAMES` — platform admin access
-- OAuth secrets — if SSO providers enabled
-
+`replicaCount > 1` requires `persistence.repos.accessMode: ReadWriteMany` (NFS, EFS, Longhorn RWX, …).

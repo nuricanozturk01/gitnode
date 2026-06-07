@@ -25,6 +25,7 @@ import { RepoService } from '../../../core/repo/services/repo.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { WebhookService } from '../../../core/webhook/webhook.service';
 import { CollaboratorService } from '../../../core/collaborator/collaborator.service';
 import type { WebhookInfo } from '../../../domain/webhook/webhook.model';
@@ -638,8 +639,8 @@ export class RepoSettingsPage {
 
   copyLink(username: string): void {
     const link = this.generatedLinks()[username];
-    if (link) void navigator.clipboard.writeText(link);
-    this.toast.success('Link copied to clipboard');
+    if (!link) return;
+    void copyTextToClipboard(link).then(() => this.toast.success('Link copied to clipboard'));
   }
 
   async removeCollaborator(username: string): Promise<void> {

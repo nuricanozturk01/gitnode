@@ -12,6 +12,7 @@ import { ToastService } from '../../../../core/toast/toast.service';
 import { environment } from '../../../../../environments/environment';
 import type { RunnerInfo, RegistrationToken } from '../../../../domain/actions/models/runner.model';
 import type { SecretInfo } from '../../../../domain/actions/models/secret.model';
+import { copyTextToClipboard } from '../../../../shared/utils/clipboard.util';
 import { normalizeStatusKey, runnerStatusLabel } from '../../../../shared/utils/workflow-status.utils';
 import { buildCompoundFragment, parseCompoundSubTab, replaceUrlFragment } from '../../../../shared/utils/url-tab.utils';
 
@@ -136,7 +137,7 @@ export class ActionsSettingsComponent {
     const token = this.registrationToken()?.token;
     if (!token) return;
     try {
-      await navigator.clipboard.writeText(token);
+      await copyTextToClipboard(token);
       this.toast.success('Token copied');
     } catch {
       this.toast.error('Could not copy token');

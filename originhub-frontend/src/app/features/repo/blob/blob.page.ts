@@ -30,6 +30,7 @@ import { grandParentParamMapSignal } from '../../../core/repo/utils/route-param-
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
+import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { FileSizePipe } from '../../../shared/pipes/file-size.pipe';
 import { environment } from '../../../../environments/environment';
 import type { BlobResponse } from '../../../domain/repository/models/blob-response.model';
@@ -350,14 +351,12 @@ export class BlobPage implements OnDestroy {
   }
 
   copyContent(): void {
-    navigator.clipboard.writeText(this.decodedContent());
-    this.scheduleCopied();
+    void copyTextToClipboard(this.decodedContent()).then(() => this.scheduleCopied());
   }
 
   copyRawUrl(): void {
     const url = `${environment.apiUrl}/api/repos/${this.owner()}/${this.repoName()}/raw/${this.branch()}/${this.path()}`;
-    navigator.clipboard.writeText(url);
-    this.scheduleCopied();
+    void copyTextToClipboard(url).then(() => this.scheduleCopied());
   }
 
   private scheduleCopied(): void {

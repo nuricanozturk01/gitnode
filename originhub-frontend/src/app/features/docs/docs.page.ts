@@ -19,6 +19,7 @@ import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -181,8 +182,7 @@ jobs:
   }
 
   copySnippet(id: string, text: string): void {
-    void navigator.clipboard.writeText(text);
-    this.toast.success('Copied to clipboard');
+    void copyTextToClipboard(text).then(() => this.toast.success('Copied to clipboard'));
     this.copiedId.set(id);
     if (this.copiedTimer !== null) clearTimeout(this.copiedTimer);
     this.copiedTimer = setTimeout(() => {

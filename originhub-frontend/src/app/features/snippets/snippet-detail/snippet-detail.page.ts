@@ -32,6 +32,7 @@ import { marked } from 'marked';
 import { SnippetService } from '../../../core/snippet/services/snippet.service';
 import { TokenService } from '../../../core/auth/services/token.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
@@ -181,7 +182,7 @@ export class SnippetDetailPage implements OnInit {
   }
 
   copyToClipboard(text: string): void {
-    navigator.clipboard.writeText(text).then(() => {
+    void copyTextToClipboard(text).then(() => {
       this.toastService.success('Copied to clipboard');
     });
   }

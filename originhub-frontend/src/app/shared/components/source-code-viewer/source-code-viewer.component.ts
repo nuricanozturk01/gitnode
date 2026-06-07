@@ -11,6 +11,7 @@ import {
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { LucideAngularModule } from 'lucide-angular';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { copyTextToClipboard } from '../../utils/clipboard.util';
 import type { HLJSApi } from 'highlight.js';
 
 @Component({
@@ -50,7 +51,7 @@ export class SourceCodeViewerComponent {
 
   async copyContent(): Promise<void> {
     try {
-      await navigator.clipboard.writeText(this.content());
+      await copyTextToClipboard(this.content());
       this.copied.set(true);
       if (this.copiedTimer) clearTimeout(this.copiedTimer);
       this.copiedTimer = setTimeout(() => this.copied.set(false), 2000);

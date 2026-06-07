@@ -19,6 +19,7 @@ import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -53,8 +54,7 @@ export class LandingPage implements OnDestroy {
   }
 
   copyCloneCommand(value: string, kind: 'https' | 'ssh'): void {
-    void navigator.clipboard.writeText(value);
-    this.toast.success('Copied to clipboard');
+    void copyTextToClipboard(value).then(() => this.toast.success('Copied to clipboard'));
     this.copied.set(kind);
     if (this.copiedTimer !== null) clearTimeout(this.copiedTimer);
     this.copiedTimer = setTimeout(() => {

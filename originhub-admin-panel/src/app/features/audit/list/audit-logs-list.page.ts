@@ -5,6 +5,7 @@ import { AdminAuditLogService } from '../../../core/admin/admin-audit-log.servic
 import type { AuditLogEntry, AuditPeriodPreset } from '../../../core/admin/admin.models';
 import { AUDIT_PAGE_SIZE } from '../../../core/organization/organization.models';
 import { ToastService } from '../../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 @Component({
@@ -362,7 +363,7 @@ export class AuditLogsListPage implements OnInit {
     if (!value) return;
 
     try {
-      await navigator.clipboard.writeText(value);
+      await copyTextToClipboard(value);
       this.toast.success(`${label} copied`);
     } catch {
       this.toast.error('Could not copy to clipboard');
@@ -371,7 +372,7 @@ export class AuditLogsListPage implements OnInit {
 
   async copyEntryJson(entry: AuditLogEntry): Promise<void> {
     try {
-      await navigator.clipboard.writeText(JSON.stringify(entry, null, 2));
+      await copyTextToClipboard(JSON.stringify(entry, null, 2));
       this.toast.success('Event copied as JSON');
     } catch {
       this.toast.error('Could not copy to clipboard');

@@ -4,14 +4,14 @@ global:
 
 scrape_configs:
   # App running in Docker (make app) on the originhub network
-  - job_name: originhub-docker
+  - job_name: originhub
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
           - originhub:8080
 
   # App running on the host (./mvnw spring-boot:run)
-  - job_name: originhub-host
+  - job_name: originhub
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:

@@ -30,6 +30,7 @@ import { RouterLink, ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { finalize, firstValueFrom, noop } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
+import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { FileSizePipe } from '../../../shared/pipes/file-size.pipe';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { BranchService } from '../../../core/branch/services/branch.service';
@@ -313,9 +314,10 @@ export class RepoHomePage implements OnDestroy {
   }
 
   copyText(value: string, type: 'https' | 'ssh'): void {
-    navigator.clipboard.writeText(value);
-    this.toast.success('Copied to clipboard');
-    this.scheduleCopied(type);
+    void copyTextToClipboard(value).then(() => {
+      this.toast.success('Copied to clipboard');
+      this.scheduleCopied(type);
+    });
   }
 
   private scheduleCopied(type: 'https' | 'ssh'): void {

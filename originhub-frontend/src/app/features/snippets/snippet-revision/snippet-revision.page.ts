@@ -30,6 +30,7 @@ import { LucideAngularModule } from 'lucide-angular';
 import hljs from 'highlight.js';
 import { SnippetService } from '../../../core/snippet/services/snippet.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { filenameToHljsLanguage, isMarkdown } from '../shared/language-detect.util';
@@ -129,7 +130,7 @@ export class SnippetRevisionPage implements OnInit {
   }
 
   copyToClipboard(text: string): void {
-    navigator.clipboard.writeText(text).then(() => {
+    void copyTextToClipboard(text).then(() => {
       this.toastService.success('Copied to clipboard');
     });
   }

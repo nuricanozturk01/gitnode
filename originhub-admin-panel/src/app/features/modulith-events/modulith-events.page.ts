@@ -9,6 +9,7 @@ import type {
 } from '../../core/admin/admin.models';
 import { AUDIT_PAGE_SIZE } from '../../core/organization/organization.models';
 import { ToastService } from '../../core/toast/toast.service';
+import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 import { PaginationComponent } from '../../shared/components/pagination/pagination.component';
 
 @Component({
@@ -187,7 +188,7 @@ export class ModulithEventsPage implements OnInit {
   async copyText(label: string, value: string | null): Promise<void> {
     if (!value) return;
     try {
-      await navigator.clipboard.writeText(value);
+      await copyTextToClipboard(value);
       this.toast.success(`${label} copied`);
     } catch {
       this.toast.error('Could not copy to clipboard');

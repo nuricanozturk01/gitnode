@@ -1,0 +1,36 @@
+# Argo CD Helm values — https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+global:
+  domain: argocd.originhub.local
+
+configs:
+  params:
+    server.insecure: true
+
+server:
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hostname: argocd.originhub.local
+    tls: false
+  metrics:
+    enabled: true
+
+dex:
+  enabled: false
+
+notifications:
+  enabled: false
+
+applicationSet:
+  enabled: true
+
+controller:
+  metrics:
+    enabled: true
+
+repoServer:
+  metrics:
+    enabled: true
+
+redis-ha:
+  enabled: false

@@ -1,0 +1,165 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: originhub-backend
+  namespace: {{ include "originhub.namespace" . }}
+  labels:
+    app: originhub-backend
+spec:
+  minReadySeconds: 15
+  replicas: {{ .Values.originhub.replicaCount }}
+  selector:
+    matchLabels:
+      app: originhub-backend
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: originhub-backend
+    spec:
+      terminationGracePeriodSeconds: 180
+      {{- with .Values.originhub.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: originhub-backend
+          image: {{ .Values.originhub.image.repository }}:{{ required "imageTag is required" .Values.imageTag }}
+          imagePullPolicy: {{ .Values.originhub.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+            - containerPort: {{ .Values.originhub.ssh.port }}
+              name: ssh
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: os
+            - name: JAVA_TOOL_OPTIONS
+              value: "-Xms512m -Xmx1536m -XX:+UseG1GC -XX:+UseStringDeduplication"
+            - name: SERVER_FORWARD_HEADERS_STRATEGY
+              value: native
+            - name: ORIGINHUB_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: common-secret
+                  key: ORIGINHUB_JWT_SECRET
+            - name: ORIGINHUB_FRONTEND_BASE_URL
+              value: {{ required "domain.frontendUrl is required (Vercel / Cloudflare Pages URL)" .Values.domain.frontendUrl | quote }}
+            - name: ORIGINHUB_CORS_ALLOWED_ORIGINS
+              value: {{ include "originhub.corsOrigins" . | quote }}
+            - name: ORIGINHUB_GIT_REPO__ROOT
+              value: /data/repos
+            - name: ORIGINHUB_ADMIN_ENABLED
+              value: {{ .Values.originhub.admin.enabled | quote }}
+            - name: ORIGINHUB_OBSERVABILITY_ENABLED
+              value: "true"
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://originhub-postgres.{{ include "originhub.namespace" . }}.svc.cluster.local:5432/$(DB_DATABASE)
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DB_DATABASE
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DB_USERNAME
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DB_PASSWORD
+            - name: SPRING_DATA_REDIS_HOST
+              value: originhub-redis.{{ include "originhub.namespace" . }}.svc.cluster.local
+            - name: SPRING_DATA_REDIS_PORT
+              value: "6379"
+            {{- if .Values.originhub.secrets.OAUTH2_GOOGLE_CLIENT_ID }}
+            - name: OAUTH2_GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: OAUTH2_GOOGLE_CLIENT_ID
+            {{- end }}
+            {{- if .Values.originhub.secrets.OAUTH2_GOOGLE_CLIENT_SECRET }}
+            - name: OAUTH2_GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: OAUTH2_GOOGLE_CLIENT_SECRET
+            {{- end }}
+            {{- if .Values.originhub.secrets.OAUTH2_GITHUB_CLIENT_ID }}
+            - name: OAUTH2_GITHUB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: OAUTH2_GITHUB_CLIENT_ID
+            {{- end }}
+            {{- if .Values.originhub.secrets.OAUTH2_GITHUB_CLIENT_SECRET }}
+            - name: OAUTH2_GITHUB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: OAUTH2_GITHUB_CLIENT_SECRET
+            {{- end }}
+            {{- if .Values.originhub.secrets.OAUTH2_GITLAB_CLIENT_ID }}
+            - name: OAUTH2_GITLAB_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: OAUTH2_GITLAB_CLIENT_ID
+            {{- end }}
+            {{- if .Values.originhub.secrets.OAUTH2_GITLAB_CLIENT_SECRET }}
+            - name: OAUTH2_GITLAB_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: OAUTH2_GITLAB_CLIENT_SECRET
+            {{- end }}
+            {{- if .Values.originhub.secrets.ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD }}
+            - name: ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: originhub-backend-secret
+                  key: ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 5
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              port: 8080
+              path: /actuator/health
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            failureThreshold: 5
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2048Mi
+            requests:
+              cpu: 150m
+              memory: 512Mi
+          volumeMounts:
+            - name: repos
+              mountPath: /data/repos
+      volumes:
+        - name: repos
+          {{- if .Values.persistence.repos.enabled }}
+          persistentVolumeClaim:
+            claimName: originhub-repos
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

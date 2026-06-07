@@ -18,7 +18,7 @@
 [![Prometheus](https://img.shields.io/badge/Prometheus-ready-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-ready-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
-[![Multi-Instance](https://img.shields.io/badge/Multi--Instance-ready-4CAF50?style=for-the-badge)](README.md#multi-instance-deployment)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Helm%20%2B%20Argo%20CD-326CE5?style=for-the-badge&logo=kubernetes)](deploy/README.md)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
 
 <br/>
@@ -368,36 +368,33 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 | Prometheus | http://localhost:9090 | optional — `make monitoring` |
 | Grafana | http://localhost:3000 | optional — `make monitoring` |
 
-### Multi-Instance Deployment
+### Option 3 — Kubernetes + Argo CD
 
-OriginHub supports production horizontal scaling. All critical shared-state concerns are handled:
+**Backend only** — frontend on Vercel / Cloudflare Pages. Full guide: **[deploy/README.md](deploy/README.md)** (kind, Docker, kubectl, Helm — macOS / Linux / Windows).
+
+**Prerequisites (`LOCAL=1`):** Docker (running) · [kind](https://kind.sigs.k8s.io/) · kubectl · Helm 3 — install steps in [deploy/README.md#prerequisites](deploy/README.md#prerequisites)
 
 ```bash
-make infra            # Postgres + Redis
-make monitoring       # optional — Prometheus + Grafana
-make app-scale N=3    # 3 instances (no external ports — use proxy)
-make proxy            # HAProxy: HTTP on :8080, SSH on :2222
-
-# Or infra + N instances + proxy in one step:
-make up-ha N=3
+make k8s-bootstrap LOCAL=1
+# then /etc/hosts → 127.0.0.1 api.originhub.local argocd.originhub.local grafana.originhub.local
 ```
 
-All instances share:
-- **`originhub-repos` Docker volume** — Git repo data; JGit file-level locking handles concurrent access
-- **Redis** — DLQ retry lock (one instance per window), rate limiting, response cache, **and circuit breaker state**
-- **PostgreSQL** — all application state, Modulith event publication table
+**Server** (existing cluster — no kind):
 
-**Circuit breaker state is shared across instances** via `DistributedCircuitBreakerGuard`: when any instance opens a CB for a webhook host (e.g. `webhook.example.com`), a Redis key is set with the CB's wait-duration as TTL. All other instances check Redis before attempting delivery — they immediately route to DLQ without burning retries.
+```bash
+cp deploy/helm/originhub/prod.yml.example deploy/helm/originhub/prod.yml
+make k8s-bootstrap ORIGINHUB_VALUE_FILE=prod.yml ORIGINHUB_GIT_REPO_URL=https://github.com/you/originhub.git
+```
 
-**SSH + HTTP load balancing** via HAProxy (`proxy/haproxy.cfg`):
-- SSH (`leastconn` balance) — distributes Git-over-SSH connections, honours long-lived session timeouts
-- HTTP (`roundrobin`) — distributes API/web traffic
-- TCP health checks — down instances are removed automatically, no manual intervention needed
-- Static backends for `originhub` + `originhub-1` through `originhub-4` (edit cfg to add more)
+Domain config — single place in `deploy/helm/originhub/local.yml` or `prod.yml`:
 
-Known limitations:
-- **Admin stats cache** is per-instance in-memory. Minor TTL-based inconsistency across instances — no correctness issue.
-- **Max 4 scaled instances** with the default HAProxy config. Edit `proxy/haproxy.cfg` to add more backends.
+| Key | Purpose |
+|-----|---------|
+| `domain.apiHost` | Backend ingress (API, Git HTTP, OAuth callbacks) |
+| `domain.frontendUrl` | Vercel / Cloudflare Pages URL (CORS + redirects) |
+| `domain.grafanaHost` | Grafana ingress (dashboards pre-provisioned from `monitoring/`) |
+
+Production scaling: Kubernetes — `originhub.replicaCount` in `deploy/helm/originhub/`. Shared Git repos need `persistence.repos.accessMode: ReadWriteMany` when `replicaCount > 1`. See [deploy/README.md](deploy/README.md).
 
 ### Environment Variables
 
@@ -454,7 +451,7 @@ OriginHub is under active development. Here's what's planned:
 - [x] Webhook dead-letter queue (DLQ) with scheduled retry
 - [x] Circuit breakers (Resilience4j) for webhook delivery and SAML metadata
 - [x] JaCoCo CI coverage gate
-- [x] Multi-instance deployment (Redis distributed lock, shared volume)
+- [x] Multi-instance deployment (Kubernetes Helm — shared Redis, Postgres, PVC)
 - [x] Actions — CI/CD (YAML workflows, WebSocket runner, SSE logs, secrets, artifacts, cache, matrix strategy)
 - [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
 - [ ] Two-factor authentication (TOTP)

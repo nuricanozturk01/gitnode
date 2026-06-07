@@ -1,0 +1,16 @@
+# kind local profile — pairs with deploy/kind/kind-config.yaml extraPortMappings (80, 443).
+controller:
+  watchIngressWithoutClass: true
+  hostPort:
+    enabled: true
+    ports:
+      http: 80
+      https: 443
+  service:
+    type: ClusterIP
+  admissionWebhooks:
+    enabled: false
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi

@@ -131,16 +131,6 @@ Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin1
 | `make ldap-down` | Stop OpenLDAP container |
 | `make saml-keygen` | SAML signing keys → `~/.originhub/saml/` |
 
-### Docker — scaling (production)
-
-| Command | Runs |
-|---------|------|
-| `make app-scale N=3` | N app instances (no external ports) |
-| `make app-scale-stop N=3` | Stop N instances |
-| `make proxy` | HAProxy → :8080 HTTP, :2222 SSH |
-| `make proxy-stop` | Stop HAProxy |
-| `make up-ha N=3` | Infra + N instances + proxy |
-
 ### Runner
 
 | Command | Runs |
@@ -149,6 +139,21 @@ Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin1
 | `make runner-build-all` | Runner binaries for all platforms |
 
 Run `make help` for the full list.
+
+### Kubernetes + Argo CD
+
+Prerequisites and OS-specific install (kind, Docker, kubectl, Helm): **[deploy/README.md#prerequisites](deploy/README.md#prerequisites)**
+
+| Command | Runs |
+|---------|------|
+| `make k8s-bootstrap LOCAL=1` | kind + cert-manager + ingress + Argo CD + OriginHub backend |
+| `make k8s-bootstrap` | Same on current kubectl context (server) |
+| `make k8s-install` | Helm only — requires `deploy/helm/originhub/prod.yml` |
+| `make k8s-template` | Render manifests (`ORIGINHUB_VALUE_FILE=local.yml`) |
+| `make k8s-purge` | Remove everything bootstrap installed (Helm, namespaces, PVCs, cert-manager CRDs, kind cluster) |
+| `make k8s-uninstall` | Alias for `k8s-purge` |
+
+Details: [deploy/README.md](deploy/README.md)
 
 ---
 

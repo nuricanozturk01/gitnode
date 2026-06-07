@@ -27,8 +27,6 @@ SPRING_PROFILE := os
 
 HTTP_PORT  := 8080
 SSH_PORT   := 2222
-PROXY_NAME := originhub-proxy
-PROXY_IMAGE:= haproxy:3.0-alpine
 
 # OAuth2 – fill in before running
 GOOGLE_CLIENT_ID     := YOUR_CLIENT
@@ -38,19 +36,18 @@ GITHUB_CLIENT_SECRET := YOUR_SECRET
 GITLAB_CLIENT_ID     := YOUR_CLIENT
 GITLAB_CLIENT_SECRET := YOUR_SECRET
 
-N ?= 1
 ADMIN_ENABLED  ?= true
 
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: all up down start stop restart \
   infra infra-down infra-stop infra-start \
   monitoring monitoring-down \
-  app app-stop app-scale app-scale-stop \
-  proxy proxy-stop up-ha \
+  app app-stop \
   runner-build runner-build-all \
   ldap-up ldap-down \
   dev-setup dev-backend \
   test test-backend test-runner test-lint verify \
+  k8s-bootstrap k8s-install k8s-template k8s-uninstall k8s-purge k8s-kubeconfig \
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
 
@@ -144,78 +141,6 @@ app-stop:
 	-docker stop $(APP_NAME)
 	-docker rm   $(APP_NAME)
 
-# ── Multiple app instances (make app-scale N=3) ───────────────────────────────
-
-app-scale:
-	@for i in $$(seq 1 $(N)); do \
-		NAME=$(APP_NAME)-$$i; \
-		if docker ps -a --format "{{.Names}}" | grep -q "^$$NAME$$"; then \
-			echo "$$NAME already exists – skipping."; \
-		else \
-			docker run -d \
-				--name $$NAME \
-				--network $(NETWORK) \
-				-e JAVA_TOOL_OPTIONS="-Xms256m -Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=100" \
-				-e SPRING_DATASOURCE_URL=jdbc:postgresql://$(POSTGRES_NAME):5432/$(POSTGRES_DB) \
-				-e SPRING_DATASOURCE_USERNAME=$(POSTGRES_USER) \
-				-e SPRING_DATASOURCE_PASSWORD=$(POSTGRES_PASS) \
-				-e ORIGINHUB_JWT_SECRET=$(JWT_SECRET) \
-				-e ORIGINHUB_GIT_REPO__ROOT=$(GIT_REPO_ROOT) \
-				-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
-				-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
-				-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
-				-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
-				-e ORIGINHUB_ADMIN_ENABLED=$(ADMIN_ENABLED) \
-				-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
-				-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
-				-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
-				-e OAUTH2_GITHUB_CLIENT_SECRET=$(GITHUB_CLIENT_SECRET) \
-				-e OAUTH2_GITLAB_CLIENT_ID=$(GITLAB_CLIENT_ID) \
-				-e OAUTH2_GITLAB_CLIENT_SECRET=$(GITLAB_CLIENT_SECRET) \
-				-v $(REPOS_VOLUME):$(GIT_REPO_ROOT) \
-				$(IMAGE) \
-			&& echo "Started $$NAME (internal only — use 'make proxy' for external access)"; \
-		fi; \
-	done
-
-app-scale-stop:
-	@for i in $$(seq 1 $(N)); do \
-		NAME=$(APP_NAME)-$$i; \
-		docker stop $$NAME 2>/dev/null && docker rm $$NAME 2>/dev/null && echo "Stopped $$NAME" || echo "$$NAME not running"; \
-	done
-
-# ── HAProxy TCP proxy (HTTP + SSH load balancer) ──────────────────────────────
-
-proxy:
-	@docker ps -a --format "{{.Names}}" | grep -q "^$(PROXY_NAME)$$" \
-		&& echo "$(PROXY_NAME) already exists – skipping." \
-		|| docker run -d \
-			--name $(PROXY_NAME) \
-			--network $(NETWORK) \
-			-p $(HTTP_PORT):8080 \
-			-p $(SSH_PORT):22 \
-			-v $(PWD)/proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro \
-			$(PROXY_IMAGE) \
-		&& echo "" \
-		&& echo "  HAProxy running:" \
-		&& echo "  HTTP → http://localhost:$(HTTP_PORT)  (round-robin across instances)" \
-		&& echo "  SSH  → localhost:$(SSH_PORT)          (least-conn across instances)" \
-		&& echo ""
-
-proxy-stop:
-	-docker stop $(PROXY_NAME)
-	-docker rm   $(PROXY_NAME)
-
-# ── High-availability stack (infra + N instances + proxy) ────────────────────
-
-up-ha: infra app-scale proxy
-	@echo ""
-	@echo "  OriginHub HA stack is up ($(N) instance(s) + HAProxy)"
-	@echo "  App (via proxy) → http://localhost:$(HTTP_PORT)"
-	@echo "  SSH (via proxy) → localhost:$(SSH_PORT)"
-	@echo "  Monitoring      → optional: make monitoring"
-	@echo ""
-
 # ── Local development ─────────────────────────────────────────────────────────
 
 dev-setup:
@@ -252,6 +177,47 @@ test-lint:
 
 verify:
 	./mvnw verify
+
+# ── Kubernetes + Argo CD ──────────────────────────────────────────────────────
+
+K8S_NAMESPACE        ?= originhub
+K8S_RELEASE          ?= originhub
+KIND_CLUSTER_NAME    ?= originhub
+DELETE_KIND          ?= 1
+K8S_CHART            := deploy/helm/originhub
+ORIGINHUB_VALUE_FILE ?= local.yml
+
+k8s-bootstrap:
+	chmod +x deploy/scripts/bootstrap.sh
+	LOCAL=$(LOCAL) ORIGINHUB_VALUE_FILE=$(ORIGINHUB_VALUE_FILE) ORIGINHUB_GIT_REPO_URL=$(ORIGINHUB_GIT_REPO_URL) ./deploy/scripts/bootstrap.sh
+
+k8s-template:
+	helm template $(K8S_RELEASE) $(K8S_CHART) \
+	  -f $(K8S_CHART)/values.yml \
+	  -f $(K8S_CHART)/$(ORIGINHUB_VALUE_FILE) \
+	  -n $(K8S_NAMESPACE)
+
+k8s-install:
+	@test -f $(K8S_CHART)/prod.yml || (echo "Copy prod.yml.example → prod.yml and fill secrets"; exit 1)
+	helm upgrade --install $(K8S_RELEASE) $(K8S_CHART) \
+	  -f $(K8S_CHART)/values.yml \
+	  -f $(K8S_CHART)/prod.yml \
+	  -n $(K8S_NAMESPACE) --create-namespace \
+	  --wait --timeout 10m
+
+k8s-purge:
+	chmod +x deploy/scripts/k8s-purge.sh
+	KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) K8S_NAMESPACE=$(K8S_NAMESPACE) K8S_RELEASE=$(K8S_RELEASE) DELETE_KIND=$(DELETE_KIND) ./deploy/scripts/k8s-purge.sh
+
+k8s-kubeconfig:
+	chmod +x deploy/scripts/k8s-kubeconfig.sh
+	KIND_CLUSTER_NAME=$(KIND_CLUSTER_NAME) ./deploy/scripts/k8s-kubeconfig.sh
+
+k8s-uninstall: k8s-purge
+
+sync-grafana-chart:
+	cp monitoring/grafana/provisioning/dashboards/originhub.json deploy/helm/originhub/config/grafana/dashboards/
+	cp monitoring/grafana/provisioning/dashboards/dashboard.yml deploy/helm/originhub/config/grafana/dashboards/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 
@@ -313,7 +279,7 @@ sync-postgres-logs:
 ps:
 	docker ps --filter "network=$(NETWORK)" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-purge: down proxy-stop
+purge: down
 	-docker volume rm $(REPOS_VOLUME)
 	-docker volume rm $(POSTGRES_LOGS_VOLUME)
 	@echo "All OriginHub resources removed (containers + volumes)."
@@ -336,11 +302,6 @@ help:
 	@echo "  make infra-start       → docker compose start"
 	@echo "  make app               → Start app container only"
 	@echo "  make app-stop          → Stop & remove app container"
-	@echo "  make app-scale N=3     → Start N app instances (no external ports — use proxy)"
-	@echo "  make app-scale-stop N=3→ Stop N app instances"
-	@echo "  make proxy             → Start HAProxy (HTTP:$(HTTP_PORT) + SSH:$(SSH_PORT)) for scaled instances"
-	@echo "  make proxy-stop        → Stop HAProxy"
-	@echo "  make up-ha N=3         → infra + 3 instances + proxy (full HA stack)"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make logs              → Follow app logs"
 	@echo "  make logs-db           → Follow Postgres logs"
@@ -366,5 +327,12 @@ help:
 	@echo "  make test-runner       → Go tests"
 	@echo "  make test-lint         → ESLint (frontend, admin, e2e)"
 	@echo "  make verify            → Full backend CI gate"
+	@echo "  ──────────────────────────────────────────────────────"
+	@echo "  make k8s-bootstrap     → K8s + Argo CD + OriginHub (LOCAL=1 for kind — see deploy/README.md)"
+	@echo "  make k8s-install       → Helm only on current cluster (needs prod.yml)"
+	@echo "  make k8s-template      → Render Helm manifests"
+	@echo "  make k8s-kubeconfig    → Refresh ~/.kube/config for kind cluster"
+	@echo "  make k8s-purge         → Remove all K8s stack (Helm, namespaces, kind cluster) ⚠"
+	@echo "  make k8s-uninstall     → Alias for k8s-purge"
 	@echo "  make help              → This message"
 	@echo ""

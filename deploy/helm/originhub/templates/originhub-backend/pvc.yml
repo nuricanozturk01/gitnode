@@ -1,0 +1,18 @@
+{{- if .Values.persistence.repos.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: originhub-repos
+  namespace: {{ include "originhub.namespace" . }}
+  labels:
+    app: originhub-backend
+spec:
+  accessModes:
+    - {{ .Values.persistence.repos.accessMode }}
+  {{- if .Values.persistence.repos.storageClass }}
+  storageClassName: {{ .Values.persistence.repos.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.repos.size }}
+{{- end }}

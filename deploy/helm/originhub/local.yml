@@ -1,0 +1,37 @@
+# Local profile (kind) — safe dev secrets (base64). Pair with: make k8s-bootstrap LOCAL=1
+# Uses published Repsy image on amd64. Apple Silicon (arm64): bootstrap builds locally
+# (registry image may be amd64-only until multi-arch deploy). Force registry: ORIGINHUB_LOCAL_BUILD=0
+imageTag: latest
+
+domain:
+  apiHost: api.originhub.local
+  frontendUrl: http://localhost:4200
+  grafanaHost: grafana.originhub.local
+
+persistence:
+  repos:
+    size: 5Gi
+  postgres:
+    size: 5Gi
+
+common:
+  secrets:
+    ORIGINHUB_JWT_SECRET: bG9jYWwtZGV2LWp3dC1zZWNyZXQtbWluaW11bS0zMi1jaGFyYWN0ZXJzLWxvbmM=
+
+originhub:
+  image:
+    repository: repo.repsy.io/nuricanozturk/originhub/originhub-os
+  ssh:
+    serviceType: NodePort
+    nodePort: 30222
+  secrets: {}
+
+postgres:
+  secrets:
+    DB_DATABASE: b3JpZ2luaHVi
+    DB_USERNAME: b3JpZ2luaHVi
+    DB_PASSWORD: b3JpZ2luaHVi
+
+ingress:
+  tls:
+    enabled: false

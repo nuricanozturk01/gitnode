@@ -41,20 +41,6 @@ OriginHub is built for developers and teams who care about ownership — whether
 
 ---
 
-## 🎬 Demo
-
-<div align="center">
-
-<a href="https://youtu.be/mis1Za2800E">
-  <img src="images/cover.png" alt="OriginHub walkthrough — play on YouTube" width="480" />
-</a>
-
-**[Watch on YouTube →](https://youtu.be/mis1Za2800E)**
-
-</div>
-
----
-
 ## ✨ Features
 
 OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **enterprise SAML/LDAP SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all on your own infrastructure.

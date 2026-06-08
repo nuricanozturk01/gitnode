@@ -1,6 +1,6 @@
-# Contributing to OriginHub
+# Contributing to GitNode
 
-How to run and develop OriginHub locally.
+How to run and develop GitNode locally.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ Maven bundled — use `./mvnw`.
 
 ## How it works
 
-OriginHub is split into optional layers. Start only what you need.
+GitNode is split into optional layers. Start only what you need.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -35,7 +35,7 @@ OriginHub is split into optional layers. Start only what you need.
 | Postgres + Redis     | 5432, 6379              | Yes                                                          |
 | Backend              | 8080, 2222              | Yes                                                          |
 | Frontend             | 4200                    | Dev only (prod: embedded in backend image)                   |
-| Admin API            | `/api/admin/**` on 8080 | On by default — disable with `ORIGINHUB_ADMIN_ENABLED=false` |
+| Admin API            | `/api/admin/**` on 8080 | On by default — disable with `GITNODE_ADMIN_ENABLED=false` |
 | Admin panel UI       | 4300                    | Optional — needs admin API                                   |
 | Prometheus + Grafana | 9090, 3000              | Optional                                                     |
 
@@ -50,7 +50,7 @@ Minimum for daily dev. No Grafana, no admin panel.
 ```bash
 make dev-setup                    # once: infra + deps + local config
 make dev-backend                  # terminal 1 → :8080
-cd originhub-frontend && pnpm start   # terminal 2 → :4200
+cd gitnode-frontend && pnpm start   # terminal 2 → :4200
 ```
 
 Docker (production image, no frontend dev server):
@@ -69,8 +69,8 @@ Everything enabled.
 make dev-setup
 make dev-backend                  # terminal 1 → :8080 (admin API on by default)
 make monitoring                   # terminal 2 — Prometheus + Grafana
-cd originhub-frontend && pnpm start       # terminal 3 → :4200
-cd originhub-admin-panel && pnpm start    # terminal 4 → :4300
+cd gitnode-frontend && pnpm start       # terminal 3 → :4200
+cd gitnode-admin-panel && pnpm start    # terminal 4 → :4300
 ```
 
 **Docker:**
@@ -78,7 +78,7 @@ cd originhub-admin-panel && pnpm start    # terminal 4 → :4300
 ```bash
 make up                           # admin API on by default
 make monitoring
-cd originhub-admin-panel && pnpm start    # admin UI — separate dev server
+cd gitnode-admin-panel && pnpm start    # admin UI — separate dev server
 ```
 
 **Disable admin API (Docker):** `ADMIN_ENABLED=false make up` on first start, or
@@ -98,7 +98,7 @@ Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin1
 | `make dev-backend`  | Backend with `local` profile → http://localhost:8080                           |
 | `make test`         | Backend unit tests + runner tests + frontend/admin/e2e lint                    |
 | `make test-backend` | `./mvnw test`                                                                  |
-| `make test-runner`  | Go tests in `originhub-runner/`                                                |
+| `make test-runner`  | Go tests in `gitnode-runner/`                                                |
 | `make test-lint`    | ESLint on all JS/TS workspaces                                                 |
 | `make verify`       | Full backend CI gate (checkstyle, fmt, spotbugs)                               |
 
@@ -112,7 +112,7 @@ Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin1
 | `make infra-down` | Stop and remove infra containers                    |
 | `make app`        | App container only (infra must be up)               |
 | `make app-stop`   | Stop and remove app container                       |
-| `make ps`         | List running OriginHub containers                   |
+| `make ps`         | List running GitNode containers                   |
 | `make logs`       | Follow app container logs                           |
 | `make logs-db`    | Follow Postgres logs                                |
 | `make logs-redis` | Follow Redis logs                                   |
@@ -130,14 +130,14 @@ Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin1
 | `make app-stop && ADMIN_ENABLED=false make app` | Recreate app without admin API                                                     |
 | `make ldap-up`                                  | OpenLDAP test container (LDAP E2E)                                                 |
 | `make ldap-down`                                | Stop OpenLDAP container                                                            |
-| `make saml-keygen`                              | SAML signing keys → `~/.originhub/saml/`                                           |
-| `make actions-encryption-key`                   | Actions workflow secrets vault AES-256 key → `~/.originhub/actions-encryption-key` |
+| `make saml-keygen`                              | SAML signing keys → `~/.gitnode/saml/`                                           |
+| `make actions-encryption-key`                   | Actions workflow secrets vault AES-256 key → `~/.gitnode/actions-encryption-key` |
 
 ### Runner
 
 | Command                 | Runs                                        |
 |-------------------------|---------------------------------------------|
-| `make runner-build`     | Go runner binary → `originhub-runner/dist/` |
+| `make runner-build`     | Go runner binary → `gitnode-runner/dist/` |
 | `make runner-build-all` | Runner binaries for all platforms           |
 
 Run `make help` for the full list.
@@ -160,16 +160,16 @@ Run `make help` for the full list.
 ## Local config
 
 ```bash
-cp originhub-backend/src/main/resources/application-local.yaml.example \
-   originhub-backend/src/main/resources/application-local.yaml
+cp gitnode-backend/src/main/resources/application-local.yaml.example \
+   gitnode-backend/src/main/resources/application-local.yaml
 ```
 
 `make dev-setup` does this automatically. File is gitignored.
 
-Admin API is **on by default** (`originhub.admin.enabled: true` in the example). To disable locally:
+Admin API is **on by default** (`gitnode.admin.enabled: true` in the example). To disable locally:
 
 ```yaml
-originhub:
+gitnode:
   admin:
     enabled: false
 ```
@@ -194,10 +194,10 @@ See [e2e/README.md](e2e/README.md) for API-only and scenario commands.
 
 | Path                                                               | What                    |
 |--------------------------------------------------------------------|-------------------------|
-| [originhub-backend/README.md](originhub-backend/README.md)         | Backend modules, Flyway |
-| [originhub-frontend/README.md](originhub-frontend/README.md)       | Angular SPA scripts     |
-| [originhub-admin-panel/README.md](originhub-admin-panel/README.md) | Admin UI                |
-| [originhub-runner/README.md](originhub-runner/README.md)           | CI/CD runner agent      |
+| [gitnode-backend/README.md](gitnode-backend/README.md)         | Backend modules, Flyway |
+| [gitnode-frontend/README.md](gitnode-frontend/README.md)       | Angular SPA scripts     |
+| [gitnode-admin-panel/README.md](gitnode-admin-panel/README.md) | Admin UI                |
+| [gitnode-runner/README.md](gitnode-runner/README.md)           | CI/CD runner agent      |
 | [monitoring/README.md](monitoring/README.md)                       | Prometheus + Grafana    |
 | [e2e/README.md](e2e/README.md)                                     | Playwright tests        |
 
@@ -206,12 +206,12 @@ See [e2e/README.md](e2e/README.md) for API-only and scenario commands.
 ## Repo layout
 
 ```
-originhub/
-├── originhub-backend/      API + Git (Spring Boot)
-├── originhub-frontend/     Main UI (Angular, :4200)
-├── originhub-admin-panel/  Platform admin UI (Angular, :4300)
-├── originhub-runner/       CI/CD agent (Go)
-├── originhub-events/       Shared domain events
+gitnode/
+├── gitnode-backend/      API + Git (Spring Boot)
+├── gitnode-frontend/     Main UI (Angular, :4200)
+├── gitnode-admin-panel/  Platform admin UI (Angular, :4300)
+├── gitnode-runner/       CI/CD agent (Go)
+├── gitnode-events/       Shared domain events
 ├── e2e/                    Playwright tests
 ├── monitoring/             Prometheus + Grafana config
 ├── docker-compose.yml      Postgres + Redis (+ monitoring profile)

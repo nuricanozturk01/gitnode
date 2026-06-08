@@ -16,7 +16,7 @@ Grafana login: `admin` / `admin`
 ## How it works
 
 - Prometheus scrapes `GET /actuator/prometheus` on the backend
-- Grafana datasource + **OriginHub dashboard** provisioned from `monitoring/grafana/provisioning/`
+- Grafana datasource + **GitNode dashboard** provisioned from `monitoring/grafana/provisioning/`
 
 Config sources:
 
@@ -25,4 +25,4 @@ Config sources:
 | `monitoring/prometheus.yml` | Docker Compose |
 | `monitoring/grafana/provisioning/` | Docker Compose |
 
-App metrics export: `ORIGINHUB_OBSERVABILITY_ENABLED=true`
+App metrics export: `GITNODE_OBSERVABILITY_ENABLED=true`

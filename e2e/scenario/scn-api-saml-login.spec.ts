@@ -2,7 +2,7 @@
  * SCN-SAML — SAML2 SSO via samltest.dev IdP.
  *
  * Requires:
- * - Backend with originhub.sso.saml.enabled=true and SP signing key/cert
+ * - Backend with gitnode.sso.saml.enabled=true and SP signing key/cert
  * - Platform admin (bootstrap admin by default)
  * - Network access to https://www.samltest.dev
  * - E2E_SAML_ENABLED=1

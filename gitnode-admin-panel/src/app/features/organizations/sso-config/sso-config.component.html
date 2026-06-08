@@ -1,0 +1,171 @@
+<section class="repo-panel org-auth-accordion overflow-hidden">
+  <div class="org-auth-accordion__header" [class.org-auth-accordion__header--open]="expanded()">
+    <button
+      type="button"
+      class="org-auth-accordion__trigger"
+      [attr.aria-expanded]="expanded()"
+      (click)="toggleExpanded()"
+    >
+      <span class="org-auth-accordion__icon" aria-hidden="true">
+        <lucide-icon name="shieldCheck" class="size-5"></lucide-icon>
+      </span>
+      <span class="text-base-content font-semibold">Single Sign-On (SAML)</span>
+      @if (organization().ssoEnabled) {
+        <span class="badge-pill badge-pill--success">Enabled</span>
+      } @else {
+        <span class="badge-pill badge-pill--neutral">Disabled</span>
+      }
+      <lucide-icon
+        name="chevronDown"
+        class="org-auth-accordion__chevron size-4"
+        [class.org-auth-accordion__chevron--open]="expanded()"
+      ></lucide-icon>
+    </button>
+
+    <div class="org-auth-accordion__actions">
+      <app-sso-switch
+        [checked]="organization().ssoEnabled"
+        [disabled]="toggling() || organization().ldapEnabled"
+        size="sm"
+        [showLabels]="false"
+        [ariaLabel]="'Enable SAML for ' + organization().name"
+        (checkedChange)="onQuickToggle($event)"
+      />
+    </div>
+  </div>
+
+  @if (expanded()) {
+    <div class="org-auth-accordion__content">
+      <div class="org-auth-accordion__content-inner">
+        <p class="text-base-content/65 text-sm leading-relaxed">
+          Turn on SSO after IdP metadata is saved and connection test passes. Users with matching email domains sign in
+          from the login page.
+        </p>
+
+        @if (organization().ldapEnabled) {
+          <div class="alert alert-warning rounded-lg" role="status">
+            <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+            <span>LDAP is active for this organization. Disable LDAP before enabling SAML.</span>
+          </div>
+        }
+
+        @if (!organization().ssoEnabled && organization().metadataCached) {
+          <div class="alert alert-warning rounded-lg" role="status">
+            <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+            <span>Metadata is cached but SAML is off — enable the switch above so users can sign in.</span>
+          </div>
+        }
+
+        <div class="border-base-300 border-t pt-4">
+          <h3 class="text-base-content mb-1 font-semibold">IdP configuration</h3>
+          <p class="text-base-content/60 mb-4 text-xs">Metadata URI and SAML attribute mapping</p>
+
+          <form [formGroup]="form" class="flex flex-col gap-5" (ngSubmit)="onSave()">
+            <div class="form-control">
+              <label class="label" for="idpMetadataUri">
+                <span class="label-text font-medium">IdP metadata URI</span>
+              </label>
+              <input
+                id="idpMetadataUri"
+                type="url"
+                formControlName="idpMetadataUri"
+                class="input input-bordered w-full min-w-0"
+                placeholder="https://idp.example.com/metadata"
+              />
+              <span class="label">
+                <span class="label-text-alt text-base-content/60"
+                  >URL provided by the customer's identity provider</span
+                >
+              </span>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2">
+              <div class="form-control min-w-0">
+                <label class="label" for="emailAttribute">
+                  <span class="label-text font-medium">Email attribute</span>
+                </label>
+                <input
+                  id="emailAttribute"
+                  type="text"
+                  formControlName="emailAttribute"
+                  class="input input-bordered w-full min-w-0"
+                />
+              </div>
+              <div class="form-control min-w-0">
+                <label class="label flex-wrap gap-x-2" for="usernameAttribute">
+                  <span class="label-text font-medium">Username attribute</span>
+                  <span class="label-text-alt">Optional</span>
+                </label>
+                <input
+                  id="usernameAttribute"
+                  type="text"
+                  formControlName="usernameAttribute"
+                  class="input input-bordered w-full min-w-0"
+                  placeholder="username"
+                />
+              </div>
+            </div>
+
+            <div class="form-control">
+              <label class="label flex-wrap gap-x-2" for="spEntityId">
+                <span class="label-text font-medium">SP Entity ID override</span>
+                <span class="label-text-alt">Optional</span>
+              </label>
+              <input
+                id="spEntityId"
+                type="text"
+                formControlName="spEntityId"
+                class="input input-bordered mono w-full min-w-0 break-all"
+                placeholder="urn:gitnode:sp:acme-corp"
+              />
+            </div>
+
+            @if (testResult(); as result) {
+              <div
+                class="alert"
+                [class.alert-success]="result.success"
+                [class.alert-error]="!result.success"
+                role="status"
+              >
+                @if (result.success) {
+                  <lucide-icon name="checkCircle" class="size-4 shrink-0"></lucide-icon>
+                } @else {
+                  <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+                }
+                <div class="min-w-0">
+                  <p class="break-words">{{ result.message }}</p>
+                  @if (result.details) {
+                    <p class="text-sm break-words opacity-80">{{ result.details }}</p>
+                  }
+                </div>
+              </div>
+            }
+
+            <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <button type="submit" class="btn btn-primary w-full sm:w-auto" [disabled]="form.invalid || saving()">
+                @if (saving()) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                } @else {
+                  Save SAML settings
+                }
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline w-full gap-2 sm:w-auto"
+                [disabled]="testing()"
+                (click)="onTest()"
+              >
+                @if (testing()) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                } @else {
+                  <lucide-icon name="play" class="size-4"></lucide-icon>
+                }
+                Test connection
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  }
+</section>

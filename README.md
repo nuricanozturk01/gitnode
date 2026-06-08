@@ -2,7 +2,7 @@
 
 <br/>
 
-<img src="images/logo.png" alt="OriginHub Logo" width="45%"/>
+<img src="images/logo.png" alt="GitNode Logo" width="45%"/>
 
 <h3>A simple, self-hosted Git registry — your code, your server, your rules.</h3>
 
@@ -30,23 +30,23 @@
 
 ---
 
-## 🔍 What is OriginHub?
+## 🔍 What is GitNode?
 
-OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your
+GitNode is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your
 repositories, pull requests, and CI/CD pipelines (YAML workflows + self-hosted runner agent) — running entirely on your
 own infrastructure, with zero dependency on third-party platforms.
 
 No subscriptions. No data leaving your servers. No vendor lock-in. Just Git, hosted your way.
 
-OriginHub is built for developers and teams who care about ownership — whether you're an indie developer running it on a
+GitNode is built for developers and teams who care about ownership — whether you're an indie developer running it on a
 VPS, or an enterprise team deploying it on private infrastructure. If you've ever thought *"I wish GitHub ran on my own
-server"*, OriginHub is for you.
+server"*, GitNode is for you.
 
 ---
 
 ## ✨ Features
 
-OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code
+GitNode covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code
 snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **enterprise SAML/LDAP
 SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all
 on your own infrastructure.
@@ -72,7 +72,7 @@ on your own infrastructure.
 - Create, clone, push, and pull repositories
 - **Public and private** repositories, descriptions, and **topics**
 - **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your
-  OriginHub host
+  GitNode host
 - **SSH** Git on a configurable port (default **2222** in Docker)
 - Per-repo **Settings**: general metadata, optional **auto-delete head branch** after PR merge or close
 
@@ -85,7 +85,7 @@ on your own infrastructure.
 ### 📥 GitHub Repository Migration
 
 - **Migrate from GitHub** with a repository URL and **personal access token** (classic or fine-grained with repo read)
-- **Mirror clone** the Git history into your OriginHub account
+- **Mirror clone** the Git history into your GitNode account
 - Optionally migrate **pull requests** from GitHub in the same job
 
 ### 🗂 Code Browsing
@@ -146,7 +146,7 @@ on your own infrastructure.
 
 ### 👥 Collaborators
 
-- Invite other OriginHub users to your repository with **fine-grained per-permission roles**
+- Invite other GitNode users to your repository with **fine-grained per-permission roles**
 - Available permissions (each toggled independently): **Push**, **Pull Request management**, **Issue management**, *
   *Settings access**, **Admin** (all permissions)
 - Share an **invite link** with a configurable expiry — recipient accepts via the link, no admin approval needed
@@ -173,7 +173,7 @@ on your own infrastructure.
 
 ### ⚡ Actions — CI/CD
 
-- **YAML workflow definitions** checked in at `.originhub/workflows/*.yml` — `push`, `pull_request`, and
+- **YAML workflow definitions** checked in at `.gitnode/workflows/*.yml` — `push`, `pull_request`, and
   `workflow_dispatch` triggers
 - **Job graph** with matrix strategy expansion and `needs` dependency ordering; `concurrency` groups with cancellation
 - **Runner protocol**: runners register via token, receive jobs over **WebSocket**, report step logs and status back to
@@ -189,26 +189,26 @@ on your own infrastructure.
 - **Runner management** — register, list, delete runners per repo; runner groups per org
 - **Admin panel Actions tab** — platform-wide runner stats, workflow run counts
 
-#### Go runner (`originhub-runner/`)
+#### Go runner (`gitnode-runner/`)
 
 Standalone agent that connects to the server. Single static binary (~12 MB), no JRE needed.
 
 ```bash
-cd originhub-runner
-make build         # dist/originhub-runner (local arch)
+cd gitnode-runner
+make build         # dist/gitnode-runner (local arch)
 make build-all     # Linux amd64/arm64, macOS arm64, Windows amd64
 
-./dist/originhub-runner start \
-  --server-url http://originhub.company.com \
+./dist/gitnode-runner start \
+  --server-url http://gitnode.company.com \
   --token ghrt_xxxxxxxxxxxx \
   --name my-runner \
   --labels self-hosted,linux,docker \
   --executor docker \       # or: shell
-  --work-dir /tmp/originhub-runner \
+  --work-dir /tmp/gitnode-runner \
   --concurrent-jobs 2
 ```
 
-Config file (`~/.originhub-runner/config.yml`) is written automatically after first registration — subsequent starts use
+Config file (`~/.gitnode-runner/config.yml`) is written automatically after first registration — subsequent starts use
 `runner_token` from that file.
 
 ### 🏢 Enterprise SAML & LDAP SSO
@@ -217,17 +217,17 @@ Config file (`~/.originhub-runner/config.yml`) is written automatically after fi
 - **SAML 2.0 service provider** — metadata URI, connection test, cached IdP XML, SP entity ID override
 - **LDAP directory auth** — manager bind, user search base/filter, email and display-name attributes, optional group
   mapping
-- **Work-email login flow** — users enter work email on the login page; OriginHub routes to the correct org and
+- **Work-email login flow** — users enter work email on the login page; GitNode routes to the correct org and
   provisions accounts on first successful sign-in
 - **Mutually exclusive per org** — SAML and LDAP cannot both be enabled on the same organization
-- Configure in the **admin panel** (`originhub-admin-panel`, port **4300** in local dev)
+- Configure in the **admin panel** (`gitnode-admin-panel`, port **4300** in local dev)
 
 ### 📊 Admin Panel
 
 **Optional.** Separate Angular app — not started with core stack.
 
-- Dev: `cd originhub-admin-panel && pnpm start` → http://localhost:4300
-- See [originhub-admin-panel/README.md](originhub-admin-panel/README.md)
+- Dev: `cd gitnode-admin-panel && pnpm start` → http://localhost:4300
+- See [gitnode-admin-panel/README.md](gitnode-admin-panel/README.md)
 
 Features when enabled:
 
@@ -237,7 +237,7 @@ Features when enabled:
 - **Organizations** — create, edit, delete; configure **SAML** or **LDAP** per org; test connections before enabling
 - **Audit log API** — query application audit events (`GET /api/admin/audit-logs`)
 
-See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for setup. Platform admin access needs
+See [`gitnode-admin-panel/README.md`](gitnode-admin-panel/README.md) for setup. Platform admin access needs
 bootstrap credentials (see Environment Variables in README).
 
 ### ⚡ Rate Limiting
@@ -251,10 +251,10 @@ bootstrap credentials (see Environment Variables in README).
 
 **Optional.** Monitoring containers are not started by default — run `make monitoring` when needed.
 
-- **Micrometer** metrics exported at `/actuator/prometheus` (toggle with `ORIGINHUB_OBSERVABILITY_ENABLED`)
+- **Micrometer** metrics exported at `/actuator/prometheus` (toggle with `GITNODE_OBSERVABILITY_ENABLED`)
 - **Docker Compose profile `monitoring`** — Prometheus (**9090**) and Grafana (**3000**, admin / admin)
 - See [monitoring/README.md](monitoring/README.md) for setup
-- Scrape targets: app container (`originhub:8080`) or host-run backend (`host.docker.internal:8080`)
+- Scrape targets: app container (`gitnode:8080`) or host-run backend (`host.docker.internal:8080`)
 - **Circuit breaker health** at `/actuator/circuitbreakers` — real-time `CLOSED / OPEN / HALF_OPEN` state for webhook
   delivery and SAML metadata circuit breakers; included in `/actuator/health` details
 
@@ -263,9 +263,9 @@ bootstrap credentials (see Environment Variables in README).
 - **Application audit log** — `@Audited` actions persisted to partitioned `audit_logs` tables (append-only triggers)
 - **Admin API** — paginated queries by actor and recent window
 - **pgAudit** — Postgres image logs write, DDL, and role operations (`shared_preload_libraries=pgaudit`). Admin log
-  viewer is **off by default** — set `ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true` and mount the Postgres log volume into the
+  viewer is **off by default** — set `GITNODE_ADMIN_PGAUDIT_ENABLED=true` and mount the Postgres log volume into the
   app container.
-- Toggle application audit with `ORIGINHUB_AUDIT_ENABLED` (default `true`)
+- Toggle application audit with `GITNODE_AUDIT_ENABLED` (default `true`)
 
 ### 🔐 Authentication
 
@@ -292,9 +292,9 @@ bootstrap credentials (see Environment Variables in README).
 | Resilience    | Resilience4j circuit breakers (webhook delivery, SAML metadata)                                                                |
 | Audit         | Application audit log (partitioned PostgreSQL)                                                                                 |
 | CI/CD Engine  | Spring Boot `actions` module — WebSocket runner protocol, SSE log streaming, secrets vault (AES-256-GCM), artifact/cache store |
-| Runner Agent  | Go 1.24 (`originhub-runner`) — shell + Docker executors, single static binary                                                  |
+| Runner Agent  | Go 1.24 (`gitnode-runner`) — shell + Docker executors, single static binary                                                    |
 | Frontend      | Angular 21, TypeScript 5                                                                                                       |
-| Admin UI      | Angular 21 (`originhub-admin-panel`)                                                                                           |
+| Admin UI      | Angular 21 (`gitnode-admin-panel`)                                                                                             |
 | Styling       | Tailwind CSS 4, DaisyUI 5                                                                                                      |
 | Container     | Docker (multi-stage build, single image)                                                                                       |
 
@@ -302,7 +302,7 @@ bootstrap credentials (see Environment Variables in README).
 
 ## 🚀 Getting Started
 
-> 📖 Documentation is available in-app at **`/docs`** once OriginHub is running.
+> 📖 Documentation is available in-app at **`/docs`** once GitNode is running.
 
 ### Developing locally
 
@@ -312,7 +312,7 @@ See **[CONTRIBUTING.md](CONTRIBUTING.md)** for run profiles, Makefile commands, 
 
 ```bash
 make dev-setup && make dev-backend          # terminal 1
-cd originhub-frontend && pnpm start         # terminal 2 → :4200
+cd gitnode-frontend && pnpm start         # terminal 2 → :4200
 ```
 
 **Full app** (+ Grafana + Admin): see [CONTRIBUTING.md#run-profiles](CONTRIBUTING.md#run-profiles)
@@ -326,34 +326,34 @@ make test    # unit tests + lint
 ```bash
 SECRET=$(openssl rand -base64 64 | tr -d '\n')
 
-# Infrastructure (Postgres with pgAudit, Redis) — creates the originhub network
+# Infrastructure (Postgres with pgAudit, Redis) — creates the gitnode network
 docker compose up -d
 
 # Optional: Prometheus + Grafana
 docker compose --profile monitoring up -d
 
 # Optional: admin panel UI (dev, separate terminal)
-# cd originhub-admin-panel && pnpm install && pnpm start   → http://localhost:4300
+# cd gitnode-admin-panel && pnpm install && pnpm start   → http://localhost:4300
 
 docker run -d \
-  --name originhub \
-  --network originhub \
+  --name gitnode \
+  --network gitnode \
   -p 8080:8080 \
   -p 2222:2222 \
-  -e SPRING_DATASOURCE_URL=jdbc:postgresql://originhub-postgres:5432/originhub \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://gitnode-postgres:5432/gitnode \
   -e SPRING_DATASOURCE_USERNAME=admin \
   -e SPRING_DATASOURCE_PASSWORD=admin123 \
-  -e "ORIGINHUB_JWT_SECRET=$SECRET" \
-  -e ORIGINHUB_GIT_REPO__ROOT=/data/repos \
-  -e SPRING_DATA_REDIS_HOST=originhub-redis \
+  -e "GITNODE_JWT_SECRET=$SECRET" \
+  -e GITNODE_GIT_REPO__ROOT=/data/repos \
+  -e SPRING_DATA_REDIS_HOST=gitnode-redis \
   -e SPRING_DATA_REDIS_PORT=6379 \
   -e SPRING_PROFILES_ACTIVE=os \
-  -e ORIGINHUB_OBSERVABILITY_ENABLED=true \
-  -e ORIGINHUB_AUDIT_ENABLED=true \
-  -e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
-  -e ORIGINHUB_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300 \
-  -v originhub-repos:/data/repos \
-  repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
+  -e GITNODE_OBSERVABILITY_ENABLED=true \
+  -e GITNODE_AUDIT_ENABLED=true \
+  -e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
+  -e GITNODE_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300 \
+  -v gitnode-repos:/data/repos \
+  repo.repsy.io/nuricanozturk/gitnode/originhub-os:latest
 ```
 
 ### Option 2 — Makefile (recommended)
@@ -368,7 +368,7 @@ make up          # → http://localhost:8080
 
 ```bash
 make monitoring                  # Prometheus + Grafana
-cd originhub-admin-panel && pnpm start   # admin UI → :4300 (API on by default)
+cd gitnode-admin-panel && pnpm start   # admin UI → :4300 (API on by default)
 ```
 
 All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
@@ -384,31 +384,31 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 
 ### Environment Variables
 
-| Variable                                  | Required | Default                                       | Description                                       |
-|-------------------------------------------|----------|-----------------------------------------------|---------------------------------------------------|
-| `ORIGINHUB_ADMIN_PGAUDIT_ENABLED`         |          | `false`                                       | Admin panel pgAudit log viewer                    |
-| `ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY`   |          | —                                             | Postgres log dir in app container (enable viewer) |
-| `ORIGINHUB_JWT_SECRET`                    | ✅        | —                                             | Min 32-char secret for JWT signing                |
-| `ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME`      |          | `admin`                                       | First-start platform admin username               |
-| `ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD`      | ✅ prod   | —                                             | Bootstrap admin password (empty skips)            |
-| `ORIGINHUB_PLATFORM_ADMIN_USERNAMES`      |          | —                                             | Comma-separated platform admin usernames          |
-| `ORIGINHUB_GIT_REPO__ROOT`                |          | `/data/repos`                                 | Git repository storage path                       |
-| `ORIGINHUB_FRONTEND_BASE_URL`             |          | `http://localhost:8080`                       | Public base URL                                   |
-| `ORIGINHUB_CORS_ALLOWED_ORIGINS`          |          | `http://localhost:4200,http://localhost:4300` | CORS origins (add admin panel URL)                |
-| `ORIGINHUB_AUDIT_ENABLED`                 |          | `true`                                        | Application audit log                             |
-| `ORIGINHUB_OBSERVABILITY_ENABLED`         |          | `true`                                        | Prometheus `/actuator/prometheus`                 |
-| `ORIGINHUB_SSO_SAML_ENABLED`              |          | `false`                                       | Global SAML feature flag                          |
-| `ORIGINHUB_SSO_LDAP_ENABLED`              |          | `false`                                       | Global LDAP feature flag                          |
-| `ORIGINHUB_SSO_SAML_SP_SIGNING_KEY_PATH`  |          | —                                             | SP signing private key (SAML)                     |
-| `ORIGINHUB_SSO_SAML_SP_SIGNING_CERT_PATH` |          | —                                             | SP signing certificate (SAML)                     |
-| `SPRING_DATA_REDIS_HOST`                  |          | `originhub-redis`                             | Redis hostname                                    |
-| `SPRING_DATA_REDIS_PORT`                  |          | `6379`                                        | Redis port                                        |
-| `OAUTH2_GOOGLE_CLIENT_ID`                 |          | —                                             | Google OAuth2 client ID                           |
-| `OAUTH2_GOOGLE_CLIENT_SECRET`             |          | —                                             | Google OAuth2 client secret                       |
-| `OAUTH2_GITHUB_CLIENT_ID`                 |          | —                                             | GitHub OAuth2 client ID                           |
-| `OAUTH2_GITHUB_CLIENT_SECRET`             |          | —                                             | GitHub OAuth2 client secret                       |
-| `OAUTH2_GITLAB_CLIENT_ID`                 |          | —                                             | GitLab OAuth2 client ID                           |
-| `OAUTH2_GITLAB_CLIENT_SECRET`             |          | —                                             | GitLab OAuth2 client secret                       |
+| Variable                                | Required | Default                                       | Description                                       |
+|-----------------------------------------|----------|-----------------------------------------------|---------------------------------------------------|
+| `GITNODE_ADMIN_PGAUDIT_ENABLED`         |          | `false`                                       | Admin panel pgAudit log viewer                    |
+| `GITNODE_ADMIN_PGAUDIT_LOG_DIRECTORY`   |          | —                                             | Postgres log dir in app container (enable viewer) |
+| `GITNODE_JWT_SECRET`                    | ✅        | —                                             | Min 32-char secret for JWT signing                |
+| `GITNODE_BOOTSTRAP_ADMIN_USERNAME`      |          | `admin`                                       | First-start platform admin username               |
+| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`      | ✅ prod   | —                                             | Bootstrap admin password (empty skips)            |
+| `GITNODE_PLATFORM_ADMIN_USERNAMES`      |          | —                                             | Comma-separated platform admin usernames          |
+| `GITNODE_GIT_REPO__ROOT`                |          | `/data/repos`                                 | Git repository storage path                       |
+| `GITNODE_FRONTEND_BASE_URL`             |          | `http://localhost:8080`                       | Public base URL                                   |
+| `GITNODE_CORS_ALLOWED_ORIGINS`          |          | `http://localhost:4200,http://localhost:4300` | CORS origins (add admin panel URL)                |
+| `GITNODE_AUDIT_ENABLED`                 |          | `true`                                        | Application audit log                             |
+| `GITNODE_OBSERVABILITY_ENABLED`         |          | `true`                                        | Prometheus `/actuator/prometheus`                 |
+| `GITNODE_SSO_SAML_ENABLED`              |          | `false`                                       | Global SAML feature flag                          |
+| `GITNODE_SSO_LDAP_ENABLED`              |          | `false`                                       | Global LDAP feature flag                          |
+| `GITNODE_SSO_SAML_SP_SIGNING_KEY_PATH`  |          | —                                             | SP signing private key (SAML)                     |
+| `GITNODE_SSO_SAML_SP_SIGNING_CERT_PATH` |          | —                                             | SP signing certificate (SAML)                     |
+| `SPRING_DATA_REDIS_HOST`                |          | `gitnode-redis`                               | Redis hostname                                    |
+| `SPRING_DATA_REDIS_PORT`                |          | `6379`                                        | Redis port                                        |
+| `OAUTH2_GOOGLE_CLIENT_ID`               |          | —                                             | Google OAuth2 client ID                           |
+| `OAUTH2_GOOGLE_CLIENT_SECRET`           |          | —                                             | Google OAuth2 client secret                       |
+| `OAUTH2_GITHUB_CLIENT_ID`               |          | —                                             | GitHub OAuth2 client ID                           |
+| `OAUTH2_GITHUB_CLIENT_SECRET`           |          | —                                             | GitHub OAuth2 client secret                       |
+| `OAUTH2_GITLAB_CLIENT_ID`               |          | —                                             | GitLab OAuth2 client ID                           |
+| `OAUTH2_GITLAB_CLIENT_SECRET`           |          | —                                             | GitLab OAuth2 client secret                       |
 
 ---
 
@@ -422,7 +422,7 @@ Distributed under the [MIT License](LICENSE.txt).
 
 <div align="center">
 
-If OriginHub saves you time or you just want to say thanks, consider buying me a coffee. It keeps the project alive and
+If GitNode saves you time or you just want to say thanks, consider buying me a coffee. It keeps the project alive and
 the commits coming.
 
 <a href="https://www.buymeacoffee.com/nuricanozturk" target="_blank">

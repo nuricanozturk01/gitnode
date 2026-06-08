@@ -1,0 +1,207 @@
+<div class="navbar-shell" [class.navbar-shell--compact]="isCompact()" [style.--navbar-scroll]="scrollProgress()">
+  <div class="navbar-shell__inner mx-auto flex w-full max-w-7xl items-center justify-between gap-2 sm:gap-4">
+    <!-- Mobile: hamburger (left) + brand icon + GitNode (right) -->
+    <div class="flex min-w-0 flex-1 items-center justify-between gap-2 md:hidden">
+      <div class="dropdown dropdown-start shrink-0">
+        <button
+          type="button"
+          tabindex="0"
+          class="btn btn-ghost btn-square btn-sm"
+          aria-label="Open navigation menu"
+          aria-haspopup="menu"
+        >
+          <lucide-icon name="menu" class="size-6" aria-hidden="true"></lucide-icon>
+        </button>
+        <ul
+          tabindex="0"
+          class="menu menu-sm dropdown-content border-base-300 bg-base-100 rounded-box z-[100] mt-2 w-64 max-w-[min(100vw-2rem,20rem)] border p-2 shadow-lg"
+          role="menu"
+        >
+          @if (isLoggedIn()) {
+            <li>
+              <a routerLink="/dashboard" class="no-underline" routerLinkActive="text-primary font-medium">Dashboard</a>
+            </li>
+            <li>
+              <a routerLink="/projects" class="no-underline" routerLinkActive="text-primary font-medium">Projects</a>
+            </li>
+            <li>
+              <a routerLink="/snippets" class="no-underline" routerLinkActive="text-primary font-medium">Snippets</a>
+            </li>
+            <li><a routerLink="/new" class="no-underline">New repository</a></li>
+            <li><a routerLink="/migrate" class="no-underline">Migrate from GitHub</a></li>
+            <li><a routerLink="/docs" class="no-underline">Docs</a></li>
+            <li><a routerLink="/settings" class="no-underline">Settings</a></li>
+            <li>
+              <a [routerLink]="user() ? ['/', user()!.username] : ['/']" class="no-underline">Profile</a>
+            </li>
+          } @else {
+            <li><a routerLink="/docs" class="no-underline">Docs</a></li>
+            <li><a routerLink="/login" class="no-underline">Login</a></li>
+            <li>
+              <a routerLink="/register" class="btn btn-primary btn-sm mt-1 w-full justify-center no-underline"
+                >Register</a
+              >
+            </li>
+          }
+          <li><hr class="border-base-300 my-1" /></li>
+          <li>
+            <button
+              type="button"
+              class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left font-medium"
+              [attr.aria-label]="theme.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+              (click)="theme.toggle()"
+            >
+              @if (theme.isDark()) {
+                <lucide-icon name="sun" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
+                <span>Light mode</span>
+              } @else {
+                <lucide-icon name="moon" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
+                <span>Dark mode</span>
+              }
+            </button>
+          </li>
+          @if (isLoggedIn()) {
+            <li><hr class="border-base-300 my-1" /></li>
+            <li>
+              <button type="button" class="text-error font-medium" (click)="logout()">Sign out</button>
+            </li>
+          }
+        </ul>
+      </div>
+      <a
+        routerLink="/"
+        class="text-base-content flex max-w-full min-w-0 flex-1 items-center justify-end gap-2 pl-2 no-underline hover:opacity-95 sm:gap-2.5"
+        aria-label="GitNode home"
+      >
+        <span class="navbar-logo-mark inline-flex shrink-0 items-center justify-center">
+          <img
+            src="/icon.png"
+            class="navbar-logo-mark__img object-contain"
+            alt=""
+            width="28"
+            height="28"
+            decoding="async"
+          />
+        </span>
+        <span class="navbar-mark gitnode-mark shrink-0 leading-none whitespace-nowrap">
+          <span class="gitnode-mark__origin">Git</span><span class="gitnode-mark__hub">Node</span>
+        </span>
+      </a>
+    </div>
+
+    <!-- Desktop: full brand + inline nav -->
+    <div class="hidden min-w-0 flex-1 items-center gap-3 md:flex">
+      <a
+        routerLink="/"
+        class="text-base-content flex min-w-0 items-center gap-2.5 no-underline hover:no-underline"
+        aria-label="GitNode home"
+      >
+        <span class="navbar-logo-mark inline-flex shrink-0 items-center justify-center">
+          <img
+            src="/icon.png"
+            class="navbar-logo-mark__img object-contain"
+            alt=""
+            width="28"
+            height="28"
+            decoding="async"
+          />
+        </span>
+        <span class="navbar-mark gitnode-mark">
+          <span class="gitnode-mark__origin">Git</span><span class="gitnode-mark__hub">Node</span>
+        </span>
+      </a>
+      @if (isLoggedIn()) {
+        <ul class="menu menu-horizontal flex gap-1 px-1">
+          <li>
+            <a
+              routerLink="/dashboard"
+              routerLinkActive="text-primary font-medium"
+              class="text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-lg font-medium no-underline"
+              >Dashboard</a
+            >
+          </li>
+          <li>
+            <a
+              routerLink="/projects"
+              routerLinkActive="text-primary font-medium"
+              class="text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-lg font-medium no-underline"
+              >Projects</a
+            >
+          </li>
+          <li>
+            <a
+              routerLink="/snippets"
+              routerLinkActive="text-primary font-medium"
+              class="text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-lg font-medium no-underline"
+              >Snippets</a
+            >
+          </li>
+          <li>
+            <a
+              routerLink="/docs"
+              routerLinkActive="text-primary font-medium"
+              class="text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-lg font-medium no-underline"
+              >Docs</a
+            >
+          </li>
+        </ul>
+      }
+    </div>
+
+    <!-- Right: desktop theme + auth / user -->
+    <div class="flex shrink-0 items-center gap-2">
+      <button
+        type="button"
+        class="btn btn-ghost btn-square btn-sm hidden md:inline-flex"
+        [attr.aria-label]="theme.isDark() ? 'Switch to light theme' : 'Switch to dark theme'"
+        (click)="theme.toggle()"
+      >
+        @if (theme.isDark()) {
+          <lucide-icon name="sun" class="size-5" aria-hidden="true"></lucide-icon>
+        } @else {
+          <lucide-icon name="moon" class="size-5" aria-hidden="true"></lucide-icon>
+        }
+      </button>
+      @if (isLoggedIn()) {
+        <div class="dropdown dropdown-end hidden md:block">
+          <div
+            tabindex="0"
+            role="button"
+            class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg p-1"
+          >
+            <app-avatar
+              [avatarUrl]="avatarUrl()"
+              [email]="userEmail()"
+              [username]="user()?.username ?? null"
+              [fallback]="user() ? user()!.username.charAt(0).toUpperCase() : '?'"
+              size="md"
+            />
+            <span class="text-base-content/70 max-w-32 truncate text-sm sm:max-w-none">{{
+              user()?.displayName ?? user()?.username ?? 'User'
+            }}</span>
+          </div>
+          <ul
+            tabindex="0"
+            class="menu menu-sm dropdown-content border-base-300 bg-base-100 rounded-box z-[100] mt-3 w-56 border p-2 shadow-lg"
+          >
+            <li>
+              <a [routerLink]="user() ? ['/', user()!.username] : ['/']" class="font-medium no-underline">{{
+                user()?.displayName ?? 'Profile'
+              }}</a>
+            </li>
+            <li><a routerLink="/settings" class="no-underline">Settings</a></li>
+            <li><a routerLink="/dashboard" class="no-underline">Dashboard</a></li>
+            <li><a routerLink="/migrate" class="no-underline">Migrate from GitHub</a></li>
+            <li><a routerLink="/docs" class="no-underline">Docs</a></li>
+            <li><hr class="my-1" /></li>
+            <li><button type="button" (click)="logout()">Sign out</button></li>
+          </ul>
+        </div>
+      } @else {
+        <a routerLink="/docs" class="btn btn-ghost btn-sm hidden md:inline-flex">Docs</a>
+        <a routerLink="/login" class="btn btn-ghost btn-sm hidden md:inline-flex">Login</a>
+        <a routerLink="/register" class="btn btn-primary btn-sm hidden md:inline-flex">Register</a>
+      }
+    </div>
+  </div>
+</div>

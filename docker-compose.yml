@@ -1,12 +1,12 @@
 services:
   postgres:
-    container_name: originhub-postgres
-    hostname: originhub-postgres
+    container_name: gitnode-postgres
+    hostname: gitnode-postgres
     build:
       context: ./postgres
       dockerfile: Dockerfile
     environment:
-      POSTGRES_DB: originhub
+      POSTGRES_DB: gitnode
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin123
     command: >
@@ -25,15 +25,15 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U admin -d originhub']
+      test: ['CMD-SHELL', 'pg_isready -U admin -d gitnode']
       interval: 5s
       timeout: 5s
       retries: 10
     networks:
-      - originhub
+      - gitnode
 
   redis:
-    container_name: originhub-redis
+    container_name: gitnode-redis
     image: redis:7-alpine
     command: redis-server --save "" --maxmemory 512mb --maxmemory-policy volatile-lru
     ports:
@@ -44,10 +44,10 @@ services:
       timeout: 3s
       retries: 10
     networks:
-      - originhub
+      - gitnode
 
   prometheus:
-    container_name: originhub-prometheus
+    container_name: gitnode-prometheus
     image: prom/prometheus:v3.4.0
     profiles:
       - monitoring
@@ -56,7 +56,7 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - originhub
+      - gitnode
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     command:
@@ -64,7 +64,7 @@ services:
       - "--storage.tsdb.retention.time=7d"
 
   grafana:
-    container_name: originhub-grafana
+    container_name: gitnode-grafana
     image: grafana/grafana:12.0.1
     profiles:
       - monitoring
@@ -76,7 +76,7 @@ services:
     ports:
       - "3000:3000"
     networks:
-      - originhub
+      - gitnode
     depends_on:
       prometheus:
         condition: service_started
@@ -85,36 +85,36 @@ services:
   # Prerequisites:
   #   1. Build the runner: make runner-build
   #   2. Register it once to generate the config file:
-  #        ./originhub-runner/dist/originhub-runner start \
+  #        ./gitnode-runner/dist/gitnode-runner start \
   #          --server-url http://localhost:8080 --token <registration-token> \
   #          --name docker-runner --labels self-hosted,linux,docker \
-  #          --executor docker --config ~/.originhub-runner/config.yml
+  #          --executor docker --config ~/.gitnode-runner/config.yml
   #   3. Start via Compose: docker compose --profile runner up -d runner
   runner:
-    container_name: originhub-runner
+    container_name: gitnode-runner
     build:
-      context: ./originhub-runner
+      context: ./gitnode-runner
       dockerfile: Dockerfile
     profiles:
       - runner
-    command: ["./originhub-runner", "start", "--config", "/root/.originhub-runner/config.yml"]
+    command: ["./gitnode-runner", "start", "--config", "/root/.gitnode-runner/config.yml"]
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - runner-work:/tmp/originhub-runner
-      - ~/.originhub-runner:/root/.originhub-runner
+      - runner-work:/tmp/gitnode-runner
+      - ~/.gitnode-runner:/root/.gitnode-runner
     networks:
-      - originhub
+      - gitnode
     restart: unless-stopped
 
 networks:
-  originhub:
-    name: originhub
+  gitnode:
+    name: gitnode
     driver: bridge
 
 volumes:
   postgres-logs:
-    name: originhub-postgres-logs
-  originhub-repos:
-    name: originhub-repos
+    name: gitnode-postgres-logs
+  gitnode-repos:
+    name: gitnode-repos
   runner-work:
-    name: originhub-runner-work
+    name: gitnode-runner-work

@@ -1,4 +1,4 @@
-name: MR Checks | OriginHub
+name: MR Checks | GitNode
 
 on:
   workflow_dispatch:
@@ -19,8 +19,8 @@ jobs:
       - name: Run editorconfig-checker
         run: editorconfig-checker -exclude 'Makefile'
 
-  originhub-backend-checks:
-    name: OriginHub Backend Checks
+  gitnode-backend-checks:
+    name: GitNode Backend Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -38,12 +38,12 @@ jobs:
       - name: Build and Verify
         run: mvn -B -ntp verify
 
-  originhub-runner-checks:
-    name: OriginHub Runner Checks
+  gitnode-runner-checks:
+    name: GitNode Runner Checks
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./originhub-runner
+        working-directory: ./gitnode-runner
     steps:
       - uses: actions/checkout@v5
 
@@ -51,7 +51,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.24"
-          cache-dependency-path: originhub-runner/go.sum
+          cache-dependency-path: gitnode-runner/go.sum
 
       - name: Format check
         run: make fmt-check
@@ -65,15 +65,15 @@ jobs:
       - name: Build
         run: make build
 
-  originhub-frontend-checks:
-    name: OriginHub Checks (${{ matrix.project }})
+  gitnode-frontend-checks:
+    name: GitNode Checks (${{ matrix.project }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         project:
-          - originhub-frontend
+          - gitnode-frontend
           - e2e
-          - originhub-admin-panel
+          - gitnode-admin-panel
     defaults:
       run:
         working-directory: ./${{ matrix.project }}

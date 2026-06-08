@@ -1,5 +1,5 @@
 {
-  "name": "originhub-e2e",
+  "name": "gitnode-e2e",
   "private": true,
   "engines": {
     "node": ">=24.0.0 <25.0.0"

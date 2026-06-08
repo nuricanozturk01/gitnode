@@ -30,7 +30,7 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"originhub\"}[1m])) by (uri, method)",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"gitnode\"}[1m])) by (uri, method)",
           "legendFormat": "{{method}} {{uri}}",
           "refId": "A"
         }
@@ -53,17 +53,17 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"originhub\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_server_requests_seconds_bucket{job=\"gitnode\"}[1m])) by (le))",
           "legendFormat": "p50",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"originhub\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"gitnode\"}[1m])) by (le))",
           "legendFormat": "p95",
           "refId": "B"
         },
         {
-          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"originhub\"}[1m])) by (le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_server_requests_seconds_bucket{job=\"gitnode\"}[1m])) by (le))",
           "legendFormat": "p99",
           "refId": "C"
         }
@@ -95,12 +95,12 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"originhub\", status=~\"5..\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"gitnode\", status=~\"5..\"}[1m]))",
           "legendFormat": "5xx",
           "refId": "A"
         },
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"originhub\", status=~\"4..\"}[1m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"gitnode\", status=~\"4..\"}[1m]))",
           "legendFormat": "4xx",
           "refId": "B"
         }
@@ -119,7 +119,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "value", "graphMode": "none" },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"originhub\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"gitnode\"}[5m]))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -138,7 +138,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"originhub\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"gitnode\"}[5m])) by (le))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -157,7 +157,7 @@
       "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none" },
       "targets": [
         {
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"originhub\", status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"originhub\"}[5m]))",
+          "expr": "sum(rate(http_server_requests_seconds_count{job=\"gitnode\", status=~\"5..\"}[5m])) / sum(rate(http_server_requests_seconds_count{job=\"gitnode\"}[5m]))",
           "legendFormat": "",
           "refId": "A"
         }
@@ -187,12 +187,12 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "sum(jvm_memory_used_bytes{job=\"originhub\", area=\"heap\"}) by (id)",
+          "expr": "sum(jvm_memory_used_bytes{job=\"gitnode\", area=\"heap\"}) by (id)",
           "legendFormat": "used: {{id}}",
           "refId": "A"
         },
         {
-          "expr": "sum(jvm_memory_max_bytes{job=\"originhub\", area=\"heap\"}) by (id)",
+          "expr": "sum(jvm_memory_max_bytes{job=\"gitnode\", area=\"heap\"}) by (id)",
           "legendFormat": "max: {{id}}",
           "refId": "B"
         }
@@ -215,17 +215,17 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "jvm_threads_live_threads{job=\"originhub\"}",
+          "expr": "jvm_threads_live_threads{job=\"gitnode\"}",
           "legendFormat": "live",
           "refId": "A"
         },
         {
-          "expr": "jvm_threads_daemon_threads{job=\"originhub\"}",
+          "expr": "jvm_threads_daemon_threads{job=\"gitnode\"}",
           "legendFormat": "daemon",
           "refId": "B"
         },
         {
-          "expr": "jvm_threads_peak_threads{job=\"originhub\"}",
+          "expr": "jvm_threads_peak_threads{job=\"gitnode\"}",
           "legendFormat": "peak",
           "refId": "C"
         }
@@ -248,7 +248,7 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "rate(jvm_gc_pause_seconds_sum{job=\"originhub\"}[1m])",
+          "expr": "rate(jvm_gc_pause_seconds_sum{job=\"gitnode\"}[1m])",
           "legendFormat": "{{action}} {{cause}}",
           "refId": "A"
         }
@@ -273,12 +273,12 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "process_cpu_usage{job=\"originhub\"}",
+          "expr": "process_cpu_usage{job=\"gitnode\"}",
           "legendFormat": "process CPU",
           "refId": "A"
         },
         {
-          "expr": "system_cpu_usage{job=\"originhub\"}",
+          "expr": "system_cpu_usage{job=\"gitnode\"}",
           "legendFormat": "system CPU",
           "refId": "B"
         }
@@ -308,22 +308,22 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "hikaricp_connections_active{job=\"originhub\"}",
+          "expr": "hikaricp_connections_active{job=\"gitnode\"}",
           "legendFormat": "active",
           "refId": "A"
         },
         {
-          "expr": "hikaricp_connections_idle{job=\"originhub\"}",
+          "expr": "hikaricp_connections_idle{job=\"gitnode\"}",
           "legendFormat": "idle",
           "refId": "B"
         },
         {
-          "expr": "hikaricp_connections_pending{job=\"originhub\"}",
+          "expr": "hikaricp_connections_pending{job=\"gitnode\"}",
           "legendFormat": "pending",
           "refId": "C"
         },
         {
-          "expr": "hikaricp_connections_max{job=\"originhub\"}",
+          "expr": "hikaricp_connections_max{job=\"gitnode\"}",
           "legendFormat": "max",
           "refId": "D"
         }
@@ -346,12 +346,12 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"originhub\"}[1m]) / rate(hikaricp_connections_acquire_seconds_count{job=\"originhub\"}[1m])",
+          "expr": "rate(hikaricp_connections_acquire_seconds_sum{job=\"gitnode\"}[1m]) / rate(hikaricp_connections_acquire_seconds_count{job=\"gitnode\"}[1m])",
           "legendFormat": "avg acquire time",
           "refId": "A"
         },
         {
-          "expr": "rate(hikaricp_connections_usage_seconds_sum{job=\"originhub\"}[1m]) / rate(hikaricp_connections_usage_seconds_count{job=\"originhub\"}[1m])",
+          "expr": "rate(hikaricp_connections_usage_seconds_sum{job=\"gitnode\"}[1m]) / rate(hikaricp_connections_usage_seconds_count{job=\"gitnode\"}[1m])",
           "legendFormat": "avg usage time",
           "refId": "B"
         }
@@ -390,17 +390,17 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "rate(logback_events_total{job=\"originhub\", level=\"error\"}[1m])",
+          "expr": "rate(logback_events_total{job=\"gitnode\", level=\"error\"}[1m])",
           "legendFormat": "error",
           "refId": "A"
         },
         {
-          "expr": "rate(logback_events_total{job=\"originhub\", level=\"warn\"}[1m])",
+          "expr": "rate(logback_events_total{job=\"gitnode\", level=\"warn\"}[1m])",
           "legendFormat": "warn",
           "refId": "B"
         },
         {
-          "expr": "rate(logback_events_total{job=\"originhub\", level=\"info\"}[1m])",
+          "expr": "rate(logback_events_total{job=\"gitnode\", level=\"info\"}[1m])",
           "legendFormat": "info",
           "refId": "C"
         }
@@ -423,7 +423,7 @@
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "jvm_memory_used_bytes{job=\"originhub\", area=\"nonheap\"}",
+          "expr": "jvm_memory_used_bytes{job=\"gitnode\", area=\"nonheap\"}",
           "legendFormat": "non-heap: {{id}}",
           "refId": "A"
         }
@@ -434,12 +434,12 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": ["originhub", "spring-boot"],
+  "tags": ["gitnode", "spring-boot"],
   "templating": { "list": [] },
   "time": { "from": "now-1h", "to": "now" },
   "timepicker": {},
   "timezone": "browser",
-  "title": "OriginHub",
-  "uid": "originhub-main",
+  "title": "GitNode",
+  "uid": "gitnode-main",
   "version": 1
 }

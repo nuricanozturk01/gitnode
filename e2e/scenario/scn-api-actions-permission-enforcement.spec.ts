@@ -107,7 +107,7 @@ async function removeCollaborator(
 
 // ─── Workflow YAML helpers ─────────────────────────────────────────────────────
 
-const DISPATCH_WORKFLOW_PATH = '.originhub/workflows/scn-dispatch.yaml';
+const DISPATCH_WORKFLOW_PATH = '.gitnode/workflows/scn-dispatch.yaml';
 const DISPATCH_WORKFLOW_YAML = `name: SCN Dispatch Test
 on:
   workflow_dispatch:

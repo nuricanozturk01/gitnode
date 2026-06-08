@@ -87,7 +87,7 @@ export async function provisionSamlE2eScenario(
   try {
     samlTestApp = await createSamlTestApp({
       spAcsUrl: acsUrl,
-      spEntityId: 'originhub',
+      spEntityId: 'gitnode',
       users: [{ email, firstName: 'E2E', lastName: runId.slice(0, 12) }],
     });
 
@@ -101,7 +101,7 @@ export async function provisionSamlE2eScenario(
     await configureOrganizationSso(request, admin, slug, {
       idpMetadataUri: samlTestMetadataUri(samlTestApp.id),
       emailAttribute: 'email',
-      spEntityId: 'originhub',
+      spEntityId: 'gitnode',
     });
 
     const testResult = await testOrganizationSso(request, admin, slug);

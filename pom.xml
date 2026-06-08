@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.nuricanozturk</groupId>
-  <artifactId>originhub-parent</artifactId>
+  <artifactId>gitnode-parent</artifactId>
   <version>2.0.2-SNAPSHOT</version>
   <packaging>pom</packaging>
 
@@ -37,8 +37,8 @@
   </properties>
 
   <scm>
-    <connection>scm:git:https://github.com/nuricanozturk01/originhub.git</connection>
-    <developerConnection>scm:git:https://github.com/nuricanozturk01/originhub.git</developerConnection>
+    <connection>scm:git:https://github.com/nuricanozturk01/gitnode.git</connection>
+    <developerConnection>scm:git:https://github.com/nuricanozturk01/gitnode.git</developerConnection>
     <tag>HEAD</tag>
   </scm>
 
@@ -93,8 +93,8 @@
   </dependencies>
 
   <modules>
-    <module>originhub-backend</module>
-    <module>originhub-events</module>
+    <module>gitnode-backend</module>
+    <module>gitnode-events</module>
   </modules>
 
   <build>

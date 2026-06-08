@@ -1,28 +1,28 @@
-# OriginHub – Makefile
+# GitNode – Makefile
 # Usage: make <target>
 
-NETWORK        := originhub
-POSTGRES_NAME  := originhub-postgres
-REDIS_NAME     := originhub-redis
-PROMETHEUS_NAME:= originhub-prometheus
-GRAFANA_NAME   := originhub-grafana
-APP_NAME       := originhub
-RUNNER_NAME    := originhub-runner
-RUNNER_DIR     := originhub-runner
-LDAP_NAME      := originhub-ldap
+NETWORK        := gitnode
+POSTGRES_NAME  := gitnode-postgres
+REDIS_NAME     := gitnode-redis
+PROMETHEUS_NAME:= gitnode-prometheus
+GRAFANA_NAME   := gitnode-grafana
+APP_NAME       := gitnode
+RUNNER_NAME    := gitnode-runner
+RUNNER_DIR     := gitnode-runner
+LDAP_NAME      := gitnode-ldap
 LDAP_IMAGE     := ghcr.io/rroemhild/docker-test-openldap:master
 LDAP_PORT      := 389
-IMAGE          := repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
+IMAGE          := repo.repsy.io/nuricanozturk/gitnode/originhub-os:latest
 
-POSTGRES_DB    := originhub
+POSTGRES_DB    := gitnode
 POSTGRES_USER  := admin
 POSTGRES_PASS  := admin123
 REDIS_PORT     := 6379
 
 JWT_SECRET     := 995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0
 GIT_REPO_ROOT  := /data/repos
-REPOS_VOLUME   := originhub-repos
-POSTGRES_LOGS_VOLUME := originhub-postgres-logs
+REPOS_VOLUME   := gitnode-repos
+POSTGRES_LOGS_VOLUME := gitnode-postgres-logs
 SPRING_PROFILE := os
 
 HTTP_PORT  := 8080
@@ -49,8 +49,8 @@ GITLAB_CLIENT_SECRET := YOUR_SECRET
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
 
-LOCAL_CONFIG := originhub-backend/src/main/resources/application-local.yaml
-LOCAL_CONFIG_EXAMPLE := originhub-backend/src/main/resources/application-local.yaml.example
+LOCAL_CONFIG := gitnode-backend/src/main/resources/application-local.yaml
+LOCAL_CONFIG_EXAMPLE := gitnode-backend/src/main/resources/application-local.yaml.example
 
 all: up
 
@@ -58,7 +58,7 @@ all: up
 
 up: infra app
 	@echo ""
-	@echo "  OriginHub stack is up"
+	@echo "  GitNode stack is up"
 	@echo "  App         → http://localhost:$(HTTP_PORT)"
 	@echo "  SSH         → localhost:$(SSH_PORT)"
 	@echo "  Monitoring  → optional: make monitoring"
@@ -106,7 +106,7 @@ monitoring-down:
 
 # ── App container ─────────────────────────────────────────────────────────────
 
-ACTIONS_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.originhub/actions-encryption-key 2>/dev/null)
+ACTIONS_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.gitnode/actions-encryption-key 2>/dev/null)
 
 app:
 	@docker ps --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
@@ -120,12 +120,12 @@ app:
 			-e SPRING_DATASOURCE_URL=jdbc:postgresql://$(POSTGRES_NAME):5432/$(POSTGRES_DB) \
 			-e SPRING_DATASOURCE_USERNAME=$(POSTGRES_USER) \
 			-e SPRING_DATASOURCE_PASSWORD=$(POSTGRES_PASS) \
-			-e ORIGINHUB_JWT_SECRET=$(JWT_SECRET) \
-			-e ORIGINHUB_GIT_REPO__ROOT=$(GIT_REPO_ROOT) \
+			-e GITNODE_JWT_SECRET=$(JWT_SECRET) \
+			-e GITNODE_GIT_REPO__ROOT=$(GIT_REPO_ROOT) \
 			-e SPRING_DATA_REDIS_HOST=$(REDIS_NAME) \
 			-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
-			-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
+			-e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
 			$(if $(ACTIONS_ENCRYPTION_KEY),-e ACTIONS_ENCRYPTION_KEY=$(ACTIONS_ENCRYPTION_KEY),) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
@@ -145,18 +145,18 @@ app-stop:
 dev-setup:
 	@test -f $(LOCAL_CONFIG) || (cp $(LOCAL_CONFIG_EXAMPLE) $(LOCAL_CONFIG) && echo "Created $(LOCAL_CONFIG) from example.")
 	@$(MAKE) infra
-	@cd originhub-frontend && pnpm install
-	@cd originhub-admin-panel && pnpm install
+	@cd gitnode-frontend && pnpm install
+	@cd gitnode-admin-panel && pnpm install
 	@cd e2e && pnpm install
 	@echo ""
 	@echo "  Dev setup complete"
 	@echo "  1. make dev-backend          → API at http://localhost:8080"
-	@echo "  2. cd originhub-frontend && pnpm start  → UI at http://localhost:4200"
+	@echo "  2. cd gitnode-frontend && pnpm start  → UI at http://localhost:4200"
 	@echo "  Bootstrap admin: admin / Admin123"
 	@echo ""
 
 dev-backend:
-	./mvnw spring-boot:run -pl originhub-backend -Dspring-boot.run.profiles=local
+	./mvnw spring-boot:run -pl gitnode-backend -Dspring-boot.run.profiles=local
 
 # ── Tests (no running server required) ────────────────────────────────────────
 
@@ -170,8 +170,8 @@ test-runner:
 	$(MAKE) -C $(RUNNER_DIR) test
 
 test-lint:
-	cd originhub-frontend && pnpm lint
-	cd originhub-admin-panel && pnpm lint
+	cd gitnode-frontend && pnpm lint
+	cd gitnode-admin-panel && pnpm lint
 	cd e2e && pnpm lint
 
 verify:
@@ -219,33 +219,33 @@ ldap-down:
 	-docker rm -f $(LDAP_NAME)
 
 saml-keygen:
-	@mkdir -p ~/.originhub/saml
+	@mkdir -p ~/.gitnode/saml
 	@openssl req -newkey rsa:2048 -nodes \
-	  -keyout ~/.originhub/saml/sp-signing.key \
+	  -keyout ~/.gitnode/saml/sp-signing.key \
 	  -x509 -days 3650 \
-	  -out ~/.originhub/saml/sp-signing.crt \
-	  -subj "/CN=originhub-sp/O=OriginHub/C=TR"
-	@echo "SAML SP key pair generated at ~/.originhub/saml/"
-	@echo "  Key : ~/.originhub/saml/sp-signing.key"
-	@echo "  Cert: ~/.originhub/saml/sp-signing.crt"
+	  -out ~/.gitnode/saml/sp-signing.crt \
+	  -subj "/CN=gitnode-sp/O=GitNode/C=TR"
+	@echo "SAML SP key pair generated at ~/.gitnode/saml/"
+	@echo "  Key : ~/.gitnode/saml/sp-signing.key"
+	@echo "  Cert: ~/.gitnode/saml/sp-signing.crt"
 
 # 32-byte AES-256 key for Actions workflow secrets vault (base64)
 actions-encryption-key:
-	@mkdir -p ~/.originhub
+	@mkdir -p ~/.gitnode
 	@KEY=$$(openssl rand -base64 32 | tr -d '\n'); \
-	echo "$$KEY" > ~/.originhub/actions-encryption-key; \
-	chmod 600 ~/.originhub/actions-encryption-key; \
-	echo "Actions encryption key → ~/.originhub/actions-encryption-key"; \
+	echo "$$KEY" > ~/.gitnode/actions-encryption-key; \
+	chmod 600 ~/.gitnode/actions-encryption-key; \
+	echo "Actions encryption key → ~/.gitnode/actions-encryption-key"; \
 	echo ""; \
 	echo "  export ACTIONS_ENCRYPTION_KEY=$$KEY"; \
 	echo ""; \
 	echo "  application-local.yaml:"; \
-	echo "    originhub.actions.secrets.encryption-key: $$KEY"
+	echo "    gitnode.actions.secrets.encryption-key: $$KEY"
 
 sync-postgres-logs:
-	@mkdir -p $(HOME)/.originhub/postgres-logs
-	docker cp $(POSTGRES_NAME):/var/log/postgresql/. $(HOME)/.originhub/postgres-logs/
-	@echo "Postgres logs copied to $(HOME)/.originhub/postgres-logs"
+	@mkdir -p $(HOME)/.gitnode/postgres-logs
+	docker cp $(POSTGRES_NAME):/var/log/postgresql/. $(HOME)/.gitnode/postgres-logs/
+	@echo "Postgres logs copied to $(HOME)/.gitnode/postgres-logs"
 
 ps:
 	docker ps --filter "network=$(NETWORK)" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
@@ -253,11 +253,11 @@ ps:
 purge: down
 	-docker volume rm $(REPOS_VOLUME)
 	-docker volume rm $(POSTGRES_LOGS_VOLUME)
-	@echo "All OriginHub resources removed (containers + volumes)."
+	@echo "All GitNode resources removed (containers + volumes)."
 
 help:
 	@echo ""
-	@echo "  OriginHub Makefile"
+	@echo "  GitNode Makefile"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make up                → Postgres + Redis + app container"
 	@echo "  make down              → Stop & remove all containers"
@@ -288,8 +288,8 @@ help:
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make ldap-up           → Start Docker OpenLDAP for LDAP E2E (port $(LDAP_PORT):10389)"
 	@echo "  make ldap-down         → Stop & remove LDAP test container"
-	@echo "  make saml-keygen       → Generate SP signing key pair (~/.originhub/saml/)"
-	@echo "  make actions-encryption-key → Actions secrets vault key (~/.originhub/actions-encryption-key)"
+	@echo "  make saml-keygen       → Generate SP signing key pair (~/.gitnode/saml/)"
+	@echo "  make actions-encryption-key → Actions secrets vault key (~/.gitnode/actions-encryption-key)"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make dev-setup         → Infra + pnpm install + local config template"
 	@echo "  make dev-backend       → Run backend with local profile (:8080)"

@@ -1,4 +1,4 @@
-# OriginHub E2E
+# GitNode E2E
 
 Playwright HTTP tests. No browser.
 

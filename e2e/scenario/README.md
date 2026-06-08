@@ -45,13 +45,13 @@ pnpm test:e2e:saml
 
 1. Generate SP signing key pair:
    ```bash
-   make saml-keygen          # writes to ~/.originhub/saml/
+   make saml-keygen          # writes to ~/.gitnode/saml/
    ```
 2. Start backend with SAML enabled:
    ```bash
-   mvn spring-boot:run -pl originhub-backend \
+   mvn spring-boot:run -pl gitnode-backend \
      -Dspring-boot.run.profiles=local \
-     -Doriginhub.sso.saml.enabled=true
+     -Dgitnode.sso.saml.enabled=true
    ```
 3. Network access to `https://www.samltest.dev` required (IdP for tests).
 
@@ -76,9 +76,9 @@ pnpm test:e2e:ldap
    ```
 2. Start backend with LDAP enabled:
    ```bash
-   mvn spring-boot:run -pl originhub-backend \
+   mvn spring-boot:run -pl gitnode-backend \
      -Dspring-boot.run.profiles=local \
-     -Doriginhub.sso.ldap.enabled=true
+     -Dgitnode.sso.ldap.enabled=true
    ```
 
 Spec: `scn-api-ldap-login.spec.ts` — provisions a fresh admin organization per run; tears down in afterAll.

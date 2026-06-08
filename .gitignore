@@ -54,10 +54,10 @@ out/
 
 # Since we use pnpm by default
 package-lock.json
-# Helm prod secrets overlay (local dev uses deploy/helm/originhub/local.yml in git)
-/deploy/helm/originhub/prod.yml
+# Helm prod secrets overlay (local dev uses deploy/helm/gitnode/local.yml in git)
+/deploy/helm/gitnode/prod.yml
 
 # Vercel
 CLAUDE.md
 PLAN.md
-originhub-runner/dist/originhub-runner
+gitnode-runner/dist/gitnode-runner

@@ -1,0 +1,191 @@
+<section class="repo-panel overflow-hidden">
+  <div class="repo-toolbar px-3 py-3 sm:px-4">
+    <div class="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+        <h2 class="text-base-content flex shrink-0 items-center gap-2 text-lg font-semibold">
+          <lucide-icon name="workflow" class="size-5"></lucide-icon>
+          Actions
+        </h2>
+        <div class="join border-base-300 inline-flex shrink-0 rounded-lg border">
+          <button
+            type="button"
+            class="join-item btn btn-sm btn-ghost gap-1.5 rounded-none px-3"
+            [class.bg-base-200]="tab() === 'workflows'"
+            [class.text-primary]="tab() === 'workflows'"
+            [class.font-semibold]="tab() === 'workflows'"
+            (click)="setTab('workflows')"
+          >
+            Workflows
+          </button>
+          <button
+            type="button"
+            class="join-item btn btn-sm btn-ghost border-base-300 gap-1.5 rounded-none border-l px-3"
+            [class.bg-base-200]="tab() === 'runs'"
+            [class.text-primary]="tab() === 'runs'"
+            [class.font-semibold]="tab() === 'runs'"
+            (click)="setTab('runs')"
+          >
+            All runs @if (totalRuns() > 0) {
+            <span class="badge-pill badge-pill--neutral text-xs">{{ totalRuns() }}</span>
+            }
+          </button>
+        </div>
+      </div>
+      @if (repoContext.canViewSettings()) {
+      <a
+        [routerLink]="['/', owner(), repoName(), 'settings']"
+        fragment="actions"
+        class="btn btn-outline btn-sm shrink-0 gap-2 self-start sm:self-auto"
+      >
+        <lucide-icon name="settings" class="size-3.5"></lucide-icon>
+        Actions settings
+      </a>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+  <div class="divide-base-300 divide-y">
+    @for (i of [1, 2, 3]; track i) {
+    <div class="flex animate-pulse items-center gap-3 px-3 py-4 sm:px-4">
+      <div class="bg-base-200 size-10 shrink-0 rounded-xl"></div>
+      <div class="min-w-0 flex-1 space-y-2">
+        <div class="bg-base-200 h-4 w-48 rounded"></div>
+        <div class="bg-base-200 h-3 w-32 rounded"></div>
+      </div>
+    </div>
+    }
+  </div>
+  } @else if (tab() === 'workflows') { @if (workflows().length === 0) {
+  <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16">
+    <lucide-icon name="workflow" class="text-base-content/30 size-12"></lucide-icon>
+    <p class="text-base-content text-base font-semibold">No workflows found</p>
+    <p class="max-w-md text-center text-sm">
+      Add workflow files under <code class="text-xs">.gitnode/workflows/</code> in your repository to get started.
+    </p>
+  </div>
+  } @else {
+  <div class="divide-base-300 divide-y">
+    @for (workflow of workflows(); track workflow.filePath) {
+    <div class="flex flex-col gap-3 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-4">
+      <a
+        [routerLink]="['/', owner(), repoName(), 'actions', 'workflow']"
+        [queryParams]="{ path: workflow.filePath }"
+        class="hover:bg-base-200/30 -mx-1 min-w-0 flex-1 rounded-lg px-1 py-1 no-underline sm:mx-0"
+      >
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-base-content font-semibold">{{ workflow.name }}</span>
+          @if (!workflow.enabled) {
+          <span class="badge-pill badge-pill--neutral">Disabled</span>
+          } @if (workflow.lastRunStatus) {
+          <lucide-icon
+            [name]="statusIconName(workflow.lastRunStatus)"
+            class="size-3.5 shrink-0"
+            [class]="statusIconClass(workflow.lastRunStatus)"
+            [class.animate-spin]="statusIconSpinning(workflow.lastRunStatus)"
+          ></lucide-icon>
+          <span [class]="statusBadgeClass(workflow.lastRunStatus)"> {{ statusLabel(workflow.lastRunStatus) }} </span>
+          }
+        </div>
+        <p class="text-base-content/50 mt-1 font-mono text-xs">{{ workflow.filePath }}</p>
+      </a>
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
+        @if (workflow.dispatchable && repoContext.canWriteActions()) {
+        <button
+          type="button"
+          class="btn btn-primary btn-sm gap-1.5"
+          [disabled]="dispatching() === workflow.filePath"
+          (click)="dispatchWorkflow(workflow)"
+        >
+          @if (dispatching() === workflow.filePath) {
+          <span class="loading loading-spinner loading-xs"></span>
+          } @else {
+          <lucide-icon name="play" class="size-3.5"></lucide-icon>
+          } Run workflow
+        </button>
+        } @if (repoContext.canWriteActions()) {
+        <button type="button" class="btn btn-outline btn-sm" (click)="toggleEnabled(workflow)">
+          {{ workflow.enabled ? 'Disable' : 'Enable' }}
+        </button>
+        }
+      </div>
+    </div>
+    }
+  </div>
+  } } @else { @if (runs().length === 0) {
+  <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16">
+    <lucide-icon name="activity" class="text-base-content/30 size-12"></lucide-icon>
+    <p class="text-base-content text-base font-semibold">No workflow runs yet</p>
+    <p class="text-sm">Runs appear here when workflows are triggered by push, pull request, or manual dispatch.</p>
+  </div>
+  } @else {
+  <div class="divide-base-300 divide-y">
+    @for (run of runs(); track run.id) {
+    <div
+      class="hover:bg-base-200/40 flex flex-col gap-2 px-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-4"
+    >
+      <a [routerLink]="['/', owner(), repoName(), 'actions', 'runs', run.id]" class="min-w-0 flex-1 no-underline">
+        <div class="flex flex-wrap items-center gap-2">
+          <lucide-icon
+            [name]="statusIconName(run.status, run.conclusion)"
+            class="size-4 shrink-0"
+            [class]="statusIconClass(runDisplayStatus(run))"
+            [class.animate-spin]="statusIconSpinning(run.status, run.conclusion)"
+          ></lucide-icon>
+          <span class="text-base-content font-semibold">{{ run.workflowName }}</span>
+          <span class="text-base-content/50 text-sm">#{{ run.runNumber }}</span>
+          <span [class]="statusBadgeClass(runDisplayStatus(run))"> {{ statusLabel(runDisplayStatus(run)) }} </span>
+        </div>
+        <p class="text-base-content/50 mt-1 text-sm">
+          {{ run.triggerEvent }} @if (run.triggerRef) { · {{ run.triggerRef }} } · {{ run.createdAt | relativeTime }}
+        </p>
+      </a>
+      <div class="flex shrink-0 items-center gap-2">
+        @if (repoContext.canWriteActions() && isRunActive(run.status)) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs text-error gap-1"
+          [disabled]="cancelling() === run.id"
+          (click)="cancelRun(run, $event)"
+        >
+          @if (cancelling() === run.id) {
+          <span class="loading loading-spinner loading-xs"></span>
+          } @else {
+          <lucide-icon name="x" class="size-3"></lucide-icon>
+          } Cancel
+        </button>
+        }
+        <lucide-icon name="chevronRight" class="text-base-content/40 size-4"></lucide-icon>
+      </div>
+    </div>
+    }
+  </div>
+
+  @if (totalRunPages() > 1) {
+  <div class="border-base-300 flex items-center justify-between border-t px-3 py-3 sm:px-4">
+    <button type="button" class="btn btn-ghost btn-sm" [disabled]="runPage() === 0" (click)="prevRunPage()">
+      Previous
+    </button>
+    <span class="text-base-content/60 text-sm">Page {{ runPage() + 1 }} of {{ totalRunPages() }}</span>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm"
+      [disabled]="runPage() >= totalRunPages() - 1"
+      (click)="nextRunPage()"
+    >
+      Next
+    </button>
+  </div>
+  } } }
+</section>
+
+@if (pendingDispatchDetail()) {
+<app-workflow-dispatch-modal
+  [owner]="owner()"
+  [repo]="repoName()"
+  [defaultBranch]="pendingDispatchDetail()!.defaultBranch"
+  [dispatchInputs]="pendingDispatchDetail()!.dispatchInputs ?? []"
+  (confirmed)="onDispatchConfirmed($event)"
+  (closed)="closeDispatchModal()"
+></app-workflow-dispatch-modal>
+}

@@ -2,7 +2,7 @@ import './helpers/load-env';
 
 import { defineConfig } from '@playwright/test';
 
-const apiBaseURL = process.env.ORIGINHUB_API_BASE_URL ?? 'http://localhost:8080';
+const apiBaseURL = process.env.GITNODE_API_BASE_URL ?? 'http://localhost:8080';
 /** Set when running `pnpm test:e2e:scenario` so scenario does not wait for the api project. */
 const scenarioOnly = process.env.E2E_SCENARIO_ONLY === '1';
 /** Set when running `pnpm test:e2e:teardown` to delete users without re-running scenario. */

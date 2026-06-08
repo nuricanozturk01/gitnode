@@ -1,4 +1,4 @@
-name: Deploy | OriginHub
+name: Deploy | GitNode
 
 on:
   workflow_dispatch:
@@ -41,8 +41,8 @@ jobs:
           push: true
           platforms: linux/amd64,linux/arm64
           tags: |
-            repo.repsy.io/nuricanozturk/originhub/originhub-os:${{ inputs.version }}
-            repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
+            repo.repsy.io/nuricanozturk/gitnode/originhub-os:${{ inputs.version }}
+            repo.repsy.io/nuricanozturk/gitnode/originhub-os:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -54,8 +54,8 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            repo.repsy.io/nuricanozturk/originhub/originhub-os:${{ inputs.version }}-vps
-            repo.repsy.io/nuricanozturk/originhub/originhub-os:vps-latest
+            repo.repsy.io/nuricanozturk/gitnode/originhub-os:${{ inputs.version }}-vps
+            repo.repsy.io/nuricanozturk/gitnode/originhub-os:vps-latest
           build-args: |
             API_URL=https://originhub.nuricanozturk.com
             GIT_SSH_URL=git@originhub.nuricanozturk.com

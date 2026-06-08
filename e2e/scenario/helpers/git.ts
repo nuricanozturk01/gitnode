@@ -79,7 +79,7 @@ export function gitClone(remote: string, targetDir: string, expectFailure = fals
 }
 
 export function gitCommitAll(repoDir: string, message: string): void {
-  runGit(['-C', repoDir, 'config', 'user.email', 'e2e@originhub.test'], {});
+  runGit(['-C', repoDir, 'config', 'user.email', 'e2e@gitnode.test'], {});
   runGit(['-C', repoDir, 'config', 'user.name', 'E2E Scenario'], {});
   runGit(['-C', repoDir, 'add', '-A'], {});
   runGit(['-C', repoDir, 'commit', '-m', message], {});

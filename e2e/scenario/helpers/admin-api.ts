@@ -159,7 +159,7 @@ export async function configureOrganizationSso(
       idpMetadataUri: data.idpMetadataUri,
       emailAttribute: data.emailAttribute ?? 'email',
       usernameAttribute: null,
-      spEntityId: data.spEntityId ?? 'originhub',
+      spEntityId: data.spEntityId ?? 'gitnode',
     },
   });
 

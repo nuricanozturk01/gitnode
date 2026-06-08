@@ -1,0 +1,207 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package dev.gitnode.os.profile.services;
+
+import dev.gitnode.os.events.profile.TenantDeletedEvent;
+import dev.gitnode.os.events.profile.UsernameChangedEvent;
+import dev.gitnode.os.profile.dtos.ChangePasswordForm;
+import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
+import dev.gitnode.os.profile.dtos.UpdateDisplayNameForm;
+import dev.gitnode.os.profile.dtos.UpdateProfileForm;
+import dev.gitnode.os.profile.dtos.UpdateUsernameForm;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
+import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
+import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
+import dev.gitnode.os.shared.tenant.mappers.TenantMapper;
+import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import java.util.Locale;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Slf4j
+@Transactional(readOnly = true)
+@Service
+@RequiredArgsConstructor
+@NullMarked
+public class ProfileService {
+
+  private final TenantRepository tenantRepository;
+  private final TenantMapper tenantMapper;
+  private final ApplicationEventPublisher eventPublisher;
+  private static final String USER_NOT_FOUND = "userNotFound";
+
+  @Transactional
+  public TenantInfo updateUsername(final UUID tenantId, final UpdateUsernameForm form) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    final var oldUsername = tenant.getUsername().toLowerCase(Locale.getDefault());
+    final var newUsername = form.getUsername().toLowerCase(Locale.getDefault());
+
+    if (oldUsername.equals(newUsername)) {
+      return this.tenantMapper.toTenantInfo(tenant);
+    }
+
+    if (this.tenantRepository.existsByUsername(newUsername)) {
+      throw new ItemAlreadyExistsException("usernameTaken");
+    }
+
+    tenant.setUsername(newUsername);
+    final var saved = this.tenantRepository.save(tenant);
+
+    this.eventPublisher.publishEvent(new UsernameChangedEvent(oldUsername, newUsername));
+
+    return this.tenantMapper.toTenantInfo(saved);
+  }
+
+  @Transactional
+  public TenantInfo updateDisplayName(final UUID tenantId, final UpdateDisplayNameForm form) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    tenant.setDisplayName(
+        form.getDisplayName() != null && !form.getDisplayName().isBlank()
+            ? form.getDisplayName().trim()
+            : null);
+
+    final var saved = this.tenantRepository.save(tenant);
+
+    return this.tenantMapper.toTenantInfo(saved);
+  }
+
+  @Transactional
+  public void changePassword(final UUID tenantId, final ChangePasswordForm form) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    final var currentHash = DigestUtils.sha256Hex(form.getCurrentPassword() + tenant.getSalt());
+
+    if (tenant.getHash() != null && !currentHash.equals(tenant.getHash())) {
+      throw new BadRequestException("wrongPassword");
+    }
+
+    final var salt = RandomStringUtils.secure().nextAlphanumeric(16);
+    tenant.setHash(DigestUtils.sha256Hex(form.getNewPassword() + salt));
+    tenant.setSalt(salt);
+    this.tenantRepository.save(tenant);
+  }
+
+  @Transactional
+  public void deleteAccount(final UUID tenantId) {
+
+    final var tenantOpt = this.tenantRepository.findById(tenantId);
+
+    if (tenantOpt.isEmpty()) {
+      return;
+    }
+
+    final var tenant = tenantOpt.get();
+
+    this.tenantRepository.delete(tenant);
+
+    this.eventPublisher.publishEvent(new TenantDeletedEvent(tenant.getUsername()));
+
+    log.warn("User {} deleted account.", tenant.getUsername());
+  }
+
+  public TenantInfo getTenantInfo(final UUID tenantId) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    return this.tenantMapper.toTenantInfo(tenant);
+  }
+
+  @Transactional
+  public TenantInfo updateProfile(final UUID tenantId, final UpdateProfileForm form) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    tenant.setBio(trimOrNull(form.getBio()));
+    tenant.setWebsite(trimOrNull(form.getWebsite()));
+    tenant.setLocation(trimOrNull(form.getLocation()));
+    tenant.setProfileReadme(blankOrNull(form.getProfileReadme()));
+
+    final var saved = this.tenantRepository.save(tenant);
+
+    return this.tenantMapper.toTenantInfo(saved);
+  }
+
+  public TenantPublicProfileDto getPublicProfile(final String username) {
+
+    final var tenant =
+        this.tenantRepository
+            .findByUsername(username)
+            .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
+
+    final var displayName =
+        tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername();
+
+    final var avatarUrl = resolveAvatarUrl(tenant.getAvatarUrl(), tenant.getEmail());
+
+    return new TenantPublicProfileDto(
+        tenant.getUsername(),
+        displayName,
+        avatarUrl,
+        tenant.getBio(),
+        tenant.getWebsite(),
+        tenant.getLocation(),
+        tenant.getProfileReadme());
+  }
+
+  private static String resolveAvatarUrl(final @Nullable String storedUrl, final String email) {
+
+    if (storedUrl != null && !storedUrl.isBlank()) {
+      return storedUrl;
+    }
+
+    final var hash = DigestUtils.md5Hex(email.trim().toLowerCase(java.util.Locale.getDefault()));
+
+    return "https://www.gravatar.com/avatar/" + hash + "?d=identicon";
+  }
+
+  private static @Nullable String trimOrNull(final String value) {
+    return StringUtils.isNotBlank(value) ? value.trim() : null;
+  }
+
+  private static @Nullable String blankOrNull(final String value) {
+    return StringUtils.isNotBlank(value) ? value : null;
+  }
+}

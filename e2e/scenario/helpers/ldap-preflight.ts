@@ -1,7 +1,7 @@
 import net from 'node:net';
 
 export const LDAP_DOCKER_RUN_HINT =
-  'docker run -d --name originhub-ldap -p 389:10389 ghcr.io/rroemhild/docker-test-openldap:master';
+  'docker run -d --name gitnode-ldap -p 389:10389 ghcr.io/rroemhild/docker-test-openldap:master';
 
 export const LDAP_PORT_MAPPING_HINT =
   'Map host port 389 to container port 10389 (-p 389:10389). Mapping 389:389 will fail.';

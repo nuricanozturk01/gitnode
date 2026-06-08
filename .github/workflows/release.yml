@@ -1,4 +1,4 @@
-name: Release | OriginHub
+name: Release | GitNode
 
 on:
   workflow_dispatch:

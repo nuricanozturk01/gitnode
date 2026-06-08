@@ -25,7 +25,7 @@ export async function createSamlTestApp(options: CreateSamlTestAppOptions): Prom
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       spAcsUrl: options.spAcsUrl,
-      spEntityId: options.spEntityId ?? 'originhub',
+      spEntityId: options.spEntityId ?? 'gitnode',
       users: options.users,
     }),
   });

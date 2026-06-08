@@ -30,7 +30,7 @@ const secretsApi = (owner: string, repo: string) => `${actionsBase(owner, repo)}
 const secretApi = (owner: string, repo: string, name: string) =>
   `${secretsApi(owner, repo)}/${name}`;
 
-const DISPATCH_WORKFLOW_FILE = '.originhub/workflows/e2e-dispatch.yaml';
+const DISPATCH_WORKFLOW_FILE = '.gitnode/workflows/e2e-dispatch.yaml';
 const DISPATCH_WORKFLOW_YAML = `name: E2E Dispatch Test
 on:
   workflow_dispatch:

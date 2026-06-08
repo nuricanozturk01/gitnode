@@ -1,0 +1,2228 @@
+<main class="docs-layout prose-docs text-base-content min-h-screen">
+  <!-- Top bar -->
+  <header class="docs-topbar">
+    <div class="docs-topbar-inner">
+      <a routerLink="/" class="docs-topbar-brand">
+        <span class="docs-topbar-mark">
+          <lucide-icon name="bookOpen" class="size-3.5" aria-hidden="true"></lucide-icon>
+        </span>
+        GitNode Docs
+      </a>
+      <a routerLink="/" class="docs-topbar-back">
+        <lucide-icon name="arrowLeft" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+        Back to home
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="docs-hero" aria-labelledby="docs-hero-title">
+    <div class="docs-hero-accent" aria-hidden="true"></div>
+    <div class="docs-hero-inner">
+      <p class="docs-hero-eyebrow">Product documentation</p>
+      <h1 id="docs-hero-title" class="docs-hero-title">GitNode Documentation</h1>
+      <p class="docs-hero-lead">
+        Official guides for Git transport, CI/CD Actions, collaboration workflows, and enterprise authentication —
+        written for teams running GitNode on their own infrastructure.
+      </p>
+      <div class="docs-hero-meta">
+        <span class="docs-hero-meta-item">
+          <lucide-icon name="gitBranch" class="size-3.5" aria-hidden="true"></lucide-icon>
+          Smart HTTP &amp; SSH
+        </span>
+        <span class="docs-hero-meta-item">
+          <lucide-icon name="workflow" class="size-3.5" aria-hidden="true"></lucide-icon>
+          Actions CI/CD
+        </span>
+        <span class="docs-hero-meta-item">
+          <lucide-icon name="shieldCheck" class="size-3.5" aria-hidden="true"></lucide-icon>
+          SAML &amp; LDAP SSO
+        </span>
+        <span class="docs-hero-meta-item">
+          <lucide-icon name="server" class="size-3.5" aria-hidden="true"></lucide-icon>
+          Self-hosted
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tab bar -->
+  <div class="docs-tabs-bar">
+    <div class="docs-tabs-inner">
+      <button type="button" class="docs-tab" [class.docs-tab--active]="activeTab() === 'git'" (click)="setTab('git')">
+        <lucide-icon name="gitBranch" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Git Transport
+      </button>
+      <button
+        type="button"
+        class="docs-tab"
+        [class.docs-tab--active]="activeTab() === 'actions'"
+        (click)="setTab('actions')"
+      >
+        <lucide-icon name="workflow" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Actions (CI/CD)
+      </button>
+      <button
+        type="button"
+        class="docs-tab"
+        [class.docs-tab--active]="activeTab() === 'features'"
+        (click)="setTab('features')"
+      >
+        <lucide-icon name="layers" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Platform Features
+      </button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="docs-content">
+    <!-- ═══════════════════════════════════════ GIT TAB ═══════════════════════════════════════ -->
+    @if (activeTab() === 'git') {
+
+    <div class="docs-body">
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar-card">
+          <nav class="docs-sidebar-nav" aria-label="Git sections">
+            <p class="docs-sidebar-label">On this page</p>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('local-setup')">
+              <span class="docs-sidebar-index">01</span>
+              SSH keys
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('http-git')">
+              <span class="docs-sidebar-index">02</span>
+              HTTP / HTTPS
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('ssh-config')">
+              <span class="docs-sidebar-index">03</span>
+              SSH config
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('clone-push')">
+              <span class="docs-sidebar-index">04</span>
+              Clone &amp; push
+            </button>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="docs-main">
+        <nav class="docs-mobile-toc" aria-label="Git sections">
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('local-setup')">
+            <span class="docs-toc-chip-index">01</span> SSH keys
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('http-git')">
+            <span class="docs-toc-chip-index">02</span> HTTP / HTTPS
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('ssh-config')">
+            <span class="docs-toc-chip-index">03</span> SSH config
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('clone-push')">
+            <span class="docs-toc-chip-index">04</span> Clone &amp; push
+          </button>
+        </nav>
+
+        <div class="docs-sections">
+          <!-- 1 SSH keys -->
+          <section id="local-setup" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">1</span>
+              <div>
+                <h2 class="docs-section-title">SSH keys (Git over SSH)</h2>
+                <p class="docs-section-lead">
+                  To push and pull over SSH (port <code class="docs-inline-code">2222</code>), register a public key. If
+                  you only use
+                  <button type="button" class="docs-inline-link" (click)="scrollToSection('http-git')">
+                    HTTP / HTTPS</button
+                  >, you can skip this and use your account password with Git instead.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-5">
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 1 — Generate an SSH key</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  ED25519 is recommended. Skip if you already use a key pair.
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('keygen', sshKeygenCmd)"
+                  >
+                    @if (copiedId() === 'keygen') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ sshKeygenCmd }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 2 — Copy your public key</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Print the <code class="docs-inline-code">.pub</code> file and copy its contents.
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('cat', catPubCmd)"
+                  >
+                    @if (copiedId() === 'cat') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ catPubCmd }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 3 — Add the key in GitNode</h3>
+                <p class="text-base-content/65 text-sm leading-relaxed">
+                  Open <a routerLink="/settings" class="docs-inline-link font-medium">Settings</a> and paste the key
+                  under <strong class="text-base-content/80 font-medium">SSH Keys</strong>.
+                </p>
+              </div>
+
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 4 — Clone over SSH</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  SSH runs on port <code class="docs-inline-code">2222</code>. The clone URL in each repository's
+                  <strong class="text-base-content/80">Code</strong> dialog uses the
+                  <code class="docs-inline-code">ssh://</code> form (same as below). With an SSH config alias you can
+                  also use the shorter SCP-style host syntax shown in the next section.
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('ssh-clone', sshCloneLine())"
+                  >
+                    @if (copiedId() === 'ssh-clone') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ sshCloneLine() }}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 2 HTTP -->
+          <section id="http-git" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">2</span>
+              <div>
+                <h2 class="docs-section-title">HTTP / HTTPS Git</h2>
+                <p class="docs-section-lead">
+                  Smart Git is served on the same origin as the REST API under
+                  <code class="docs-inline-code">/git/&lt;owner&gt;/&lt;repo&gt;</code>. Git sends
+                  <strong class="text-base-content/85 font-medium">HTTP Basic</strong> auth: use your GitNode username
+                  and account password when prompted.
+                </p>
+              </div>
+            </header>
+
+            <div class="docs-callout mb-6">
+              <strong class="text-base-content font-medium">Path tip:</strong>
+              <span class="text-base-content/75">
+                Do not add a <code class="docs-inline-code">.git</code> suffix in the URL path — storage resolution
+                appends it on the server. With TLS in front of the app, use
+                <code class="docs-inline-code">https://</code> instead of <code class="docs-inline-code">http://</code>.
+              </span>
+            </div>
+
+            <div class="docs-code-wrap mb-6">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('https-clone', httpsCloneLine())"
+              >
+                @if (copiedId() === 'https-clone') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="docs-code-pre"><code>{{ httpsCloneLine() }}</code></pre>
+              </div>
+            </div>
+
+            <p class="text-base-content/60 text-sm leading-relaxed">
+              Smart HTTP can be turned off with
+              <code class="docs-inline-code text-xs">gitnode.http.enabled=false</code>
+              (env: <code class="docs-inline-code text-xs">GITNODE_HTTP_ENABLED=false</code>) on the server — then use
+              SSH only.
+            </p>
+          </section>
+
+          <!-- 3 SSH config -->
+          <section id="ssh-config" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">3</span>
+              <div>
+                <h2 class="docs-section-title">SSH config (optional)</h2>
+                <p class="docs-section-lead">
+                  Add a host alias in <code class="docs-inline-code">~/.ssh/config</code> to avoid typing the port and
+                  identity file on every command.
+                </p>
+              </div>
+            </header>
+
+            <div class="docs-code-wrap mb-5">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('ssh-config', sshConfigBlock)"
+              >
+                @if (copiedId() === 'ssh-config') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="docs-code-pre"><code>{{ sshConfigBlock }}</code></pre>
+              </div>
+            </div>
+
+            <p class="text-base-content/65 mb-3 text-sm">Then clone and push with the short host alias:</p>
+
+            <div class="docs-code-wrap">
+              <button
+                type="button"
+                class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                (click)="copySnippet('alias-flow', sshAliasFlow)"
+              >
+                @if (copiedId() === 'alias-flow') {
+                <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                } @else {
+                <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                }
+              </button>
+              <div class="code-block">
+                <pre class="docs-code-pre"><code>{{ sshAliasFlow }}</code></pre>
+              </div>
+            </div>
+          </section>
+
+          <!-- 4 Clone & push reference -->
+          <section id="clone-push" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">4</span>
+              <div>
+                <h2 class="docs-section-title">Clone &amp; push quick reference</h2>
+                <p class="docs-section-lead">
+                  Common commands once <code class="docs-inline-code">origin</code> is set.
+                </p>
+              </div>
+            </header>
+
+            <div class="docs-table-wrap">
+              <table class="docs-table table w-full">
+                <thead>
+                  <tr>
+                    <th scope="col">Action</th>
+                    <th scope="col">Command</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Clone (HTTP / HTTPS)</td>
+                    <td><code class="docs-table-code">{{ httpsCloneLine() }}</code></td>
+                  </tr>
+                  <tr>
+                    <td>Clone (SSH — port 2222)</td>
+                    <td><code class="docs-table-code">{{ sshCloneLine() }}</code></td>
+                  </tr>
+                  <tr>
+                    <td>Clone (SSH + config alias)</td>
+                    <td><code class="docs-table-code">git clone gitnode-local:owner/repo.git</code></td>
+                  </tr>
+                  <tr>
+                    <td>Push branch</td>
+                    <td><code class="docs-table-code">git push origin main</code></td>
+                  </tr>
+                  <tr>
+                    <td>Push new branch</td>
+                    <td><code class="docs-table-code">git push -u origin feature-branch</code></td>
+                  </tr>
+                  <tr>
+                    <td>Pull latest</td>
+                    <td><code class="docs-table-code">git pull origin main</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <!-- /git body -->
+    }
+
+    <!-- ══════════════════════════════════════ ACTIONS TAB ════════════════════════════════════ -->
+    @if (activeTab() === 'actions') {
+
+    <div class="docs-body">
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar-card">
+          <nav class="docs-sidebar-nav" aria-label="Actions sections">
+            <p class="docs-sidebar-label">On this page</p>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('actions-overview')">
+              <span class="docs-sidebar-index">05</span>
+              Overview
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('actions-quickstart')">
+              <span class="docs-sidebar-index">06</span>
+              Quick start
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('actions-yaml')">
+              <span class="docs-sidebar-index">07</span>
+              YAML reference
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('actions-dispatch')">
+              <span class="docs-sidebar-index">08</span>
+              Manual dispatch
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('actions-builtin')">
+              <span class="docs-sidebar-index">09</span>
+              Built-in actions
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('actions-runner')">
+              <span class="docs-sidebar-index">10</span>
+              Runners
+            </button>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="docs-main">
+        <nav class="docs-mobile-toc" aria-label="Actions sections">
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('actions-overview')">
+            <span class="docs-toc-chip-index">05</span> Overview
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('actions-quickstart')">
+            <span class="docs-toc-chip-index">06</span> Quick start
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('actions-yaml')">
+            <span class="docs-toc-chip-index">07</span> YAML reference
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('actions-dispatch')">
+            <span class="docs-toc-chip-index">08</span> Manual dispatch
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('actions-builtin')">
+            <span class="docs-toc-chip-index">09</span> Built-in actions
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('actions-runner')">
+            <span class="docs-toc-chip-index">10</span> Runners
+          </button>
+        </nav>
+
+        <div class="docs-sections">
+          <!-- 5 Actions overview -->
+          <section id="actions-overview" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">5</span>
+              <div>
+                <h2 class="docs-section-title">Actions — Overview</h2>
+                <p class="docs-section-lead">
+                  GitNode Actions is a CI/CD engine built into GitNode. Define workflows in
+                  <code class="docs-inline-code">{{ actionsWorkflowPath }}</code> files and they run automatically on
+                  push, pull request opened, or manual trigger. No external services — everything runs on runners you
+                  control.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Key differences from GitHub Actions</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Feature</th>
+                        <th scope="col">GitHub Actions</th>
+                        <th scope="col">GitNode Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Workflow location</td>
+                        <td><code class="docs-table-code">.github/workflows/</code></td>
+                        <td><code class="docs-table-code">.gitnode/workflows/</code></td>
+                      </tr>
+                      <tr>
+                        <td>Action marketplace</td>
+                        <td>Any action from marketplace</td>
+                        <td>Built-in actions only (no marketplace)</td>
+                      </tr>
+                      <tr>
+                        <td>Runners</td>
+                        <td>GitHub-hosted or self-hosted</td>
+                        <td>Self-hosted only (register your own)</td>
+                      </tr>
+                      <tr>
+                        <td>Composite / reusable workflows</td>
+                        <td>Supported</td>
+                        <td>Not supported</td>
+                      </tr>
+                      <tr>
+                        <td>Built-in context (<code class="docs-table-code">github.*</code>)</td>
+                        <td><code class="docs-table-code">${{'${{ github.sha }}'}}</code> in expressions and env</td>
+                        <td>
+                          <code class="docs-table-code">${{'${{ github.sha }}'}}</code> in expressions; shell env uses
+                          <code class="docs-table-code">GITNODE_*</code> vars
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Secrets syntax</td>
+                        <td><code class="docs-table-code">${{'${{ secrets.NAME }}'}}</code></td>
+                        <td><code class="docs-table-code">${{'${{ secrets.NAME }}'}}</code> (same)</td>
+                      </tr>
+                      <tr>
+                        <td>Matrix strategy</td>
+                        <td>Supported</td>
+                        <td>Supported</td>
+                      </tr>
+                      <tr>
+                        <td>Concurrency</td>
+                        <td>Supported</td>
+                        <td>Supported</td>
+                      </tr>
+                      <tr>
+                        <td>Artifacts</td>
+                        <td>Stored by GitHub</td>
+                        <td>Stored in GitNode backend</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Auto-injected environment variables</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Every job receives these shell environment variables when the run provides the underlying data. Use
+                  them in <code class="docs-inline-code">run:</code> scripts. Expression context (<code
+                    class="docs-inline-code"
+                    >${{'${{ github.sha }}'}}</code
+                  >, <code class="docs-inline-code">${{'${{ inputs.name }}'}}</code>) is resolved server-side before
+                  dispatch.
+                </p>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Variable</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_OWNER</code></td>
+                        <td>Repository owner username</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_REPO</code></td>
+                        <td>Repository name</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_SHA</code></td>
+                        <td>Commit SHA when the run recorded one (not set on every push trigger today)</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_REF</code></td>
+                        <td>Branch or tag ref (e.g. <code class="docs-table-code">refs/heads/main</code>)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Minimal workflow</h3>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('actions-minimal', actionsMinimalYaml)"
+                  >
+                    @if (copiedId() === 'actions-minimal') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsMinimalYaml }}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 6 Quick start -->
+          <section id="actions-quickstart" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">6</span>
+              <div>
+                <h2 class="docs-section-title">Quick start</h2>
+                <p class="docs-section-lead">Get your first workflow running in three steps.</p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 1 — Register a runner</h3>
+                <p class="text-base-content/65 mb-3 text-sm leading-relaxed">
+                  Open your account <a routerLink="/settings" class="docs-inline-link font-medium">Settings</a> →
+                  <strong class="text-base-content/80">Actions</strong> tab and generate a registration token. Then
+                  start the runner on any machine you control:
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('qs-runner', actionsRunnerCmd)"
+                  >
+                    @if (copiedId() === 'qs-runner') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsRunnerCmd }}</code></pre>
+                  </div>
+                </div>
+                <p class="text-base-content/55 mt-2 text-xs">
+                  The runner registers itself and stays connected via WebSocket. Keep it running.
+                </p>
+              </div>
+
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 2 — Create a workflow file</h3>
+                <p class="text-base-content/65 mb-3 text-sm leading-relaxed">
+                  Create <code class="docs-inline-code">{{ actionsWorkflowPath }}</code> in your repository:
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('qs-workflow', actionsMinimalYaml)"
+                  >
+                    @if (copiedId() === 'qs-workflow') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsMinimalYaml }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="docs-step">
+                <h3 class="docs-subheading">Step 3 — Push and watch</h3>
+                <p class="text-base-content/65 text-sm leading-relaxed">
+                  Commit and push to <code class="docs-inline-code">main</code>. Navigate to
+                  <strong class="text-base-content/80">Actions → All runs</strong> in your repository to see the run
+                  appear. Click a run to follow step-by-step logs in real time via SSE streaming.
+                </p>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">What the runner needs installed:</strong>
+                <span class="text-base-content/70">
+                  The <code class="docs-inline-code">actions/checkout@v1</code> step clones your repo via authenticated
+                  HTTP — no manual Git credential setup required. For language setup actions the corresponding runtime
+                  manager must be installed on the runner: <code class="docs-inline-code">fnm</code> or
+                  <code class="docs-inline-code">nvm</code> for Node, <code class="docs-inline-code">SDKMAN</code> for
+                  Java, <code class="docs-inline-code">pyenv</code> for Python, and
+                  <code class="docs-inline-code">goenv</code> (or system Go) for Go.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 7 YAML reference -->
+          <section id="actions-yaml" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">7</span>
+              <div>
+                <h2 class="docs-section-title">YAML reference</h2>
+                <p class="docs-section-lead">
+                  All supported top-level keys and their semantics. The format is intentionally close to GitHub Actions
+                  — only the keys listed here are processed; unknown keys are ignored.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-8">
+              <div>
+                <h3 class="docs-subheading">Triggers (<code class="docs-inline-code">on:</code>)</h3>
+                <div class="docs-table-wrap border-base-300/80 mb-4 overflow-hidden rounded-xl border">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Trigger</th>
+                        <th scope="col">Fires when</th>
+                        <th scope="col">Filter keys</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">push</code></td>
+                        <td>Commit pushed to a matching branch</td>
+                        <td>
+                          <code class="docs-table-code">branches</code>,
+                          <code class="docs-table-code">branches-ignore</code>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">pull_request</code></td>
+                        <td>Pull request opened (creation only)</td>
+                        <td>
+                          <code class="docs-table-code">branches</code>,
+                          <code class="docs-table-code">branches-ignore</code>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">workflow_dispatch</code></td>
+                        <td>Manual trigger from the Actions UI</td>
+                        <td><code class="docs-table-code">inputs</code> (optional form fields)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Job keys</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Key</th>
+                        <th scope="col">Type</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">name</code></td>
+                        <td>string</td>
+                        <td>Display name shown in the UI</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">runs-on</code></td>
+                        <td>string or list</td>
+                        <td>Runner label(s) to target</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">needs</code></td>
+                        <td>string or list</td>
+                        <td>Jobs that must succeed before this one starts</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">if</code></td>
+                        <td>expression</td>
+                        <td>Skip the job when the expression evaluates to false (evaluated server-side)</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">strategy.matrix</code></td>
+                        <td>map</td>
+                        <td>Expand job into multiple parallel runs</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">steps</code></td>
+                        <td>list</td>
+                        <td>Ordered list of steps (required)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Step keys</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Key</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">id</code></td>
+                        <td>Step identifier for referencing outputs in later steps</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">name</code></td>
+                        <td>Display name shown in the log viewer</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">uses</code></td>
+                        <td>
+                          Built-in action reference (e.g. <code class="docs-table-code">actions/checkout@v1</code>)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">run</code></td>
+                        <td>Shell commands (multi-line with <code class="docs-table-code">|</code>)</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">if</code></td>
+                        <td>Not evaluated yet — steps always run in order</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">with</code></td>
+                        <td>Input map for built-in actions</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">env</code></td>
+                        <td>
+                          Not applied to <code class="docs-table-code">run:</code> steps yet — use job-level shell vars
+                          or inline exports
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Full workflow example</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Push + PR + manual dispatch, matrix strategy, concurrency, artifacts, and secrets. Branch filters on
+                  <code class="docs-inline-code">push</code> and <code class="docs-inline-code">pull_request</code> are
+                  supported; path/tag filters are not evaluated yet.
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('actions-full', actionsFullYaml)"
+                  >
+                    @if (copiedId() === 'actions-full') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre leading-relaxed"><code>{{ actionsFullYaml }}</code></pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 8 Manual dispatch -->
+          <section id="actions-dispatch" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">8</span>
+              <div>
+                <h2 class="docs-section-title">Manual dispatch</h2>
+                <p class="docs-section-lead">
+                  Trigger a workflow on demand from the UI without pushing code. Add
+                  <code class="docs-inline-code">workflow_dispatch:</code> to your trigger list and optionally define
+                  typed input fields.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">How to trigger</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>Open your repository → <strong class="text-base-content/80">Actions → Workflows</strong>.</li>
+                  <li>Find the workflow and click <strong class="text-base-content/80">Run workflow</strong>.</li>
+                  <li>Choose the target branch and fill in any declared inputs.</li>
+                  <li>
+                    Click <strong class="text-base-content/80">Run workflow</strong> — the run appears in
+                    <em>All runs</em> immediately.
+                  </li>
+                </ol>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Supported input types</h3>
+                <div class="docs-table-wrap border-base-300/80 mb-4 overflow-hidden rounded-xl border">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Type</th>
+                        <th scope="col">UI control</th>
+                        <th scope="col">YAML value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">string</code> (default)</td>
+                        <td>Text field</td>
+                        <td>Any string</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">choice</code></td>
+                        <td>Dropdown from <code class="docs-table-code">options:</code> list</td>
+                        <td>One of the declared options</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">boolean</code></td>
+                        <td>Toggle switch</td>
+                        <td>
+                          <code class="docs-table-code">"true"</code> or <code class="docs-table-code">"false"</code>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('actions-dispatch-ex', actionsDispatchYaml)"
+                  >
+                    @if (copiedId() === 'actions-dispatch-ex') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsDispatchYaml }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Accessing inputs in steps</h3>
+                <p class="text-base-content/65 text-sm leading-relaxed">
+                  Use <code class="docs-inline-code">${{'${{ inputs.name }}'}}</code> in a step's
+                  <code class="docs-inline-code">run:</code>, <code class="docs-inline-code">with:</code>, or
+                  <code class="docs-inline-code">env:</code>. GitNode resolves these before sending the job to the
+                  runner — the raw <code class="docs-inline-code">${{'${{ }}'}}</code> syntax never reaches the shell.
+                  Inputs not provided resolve to their <code class="docs-inline-code">default:</code>
+                  or an empty string.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 9 Built-in actions -->
+          <section id="actions-builtin" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">9</span>
+              <div>
+                <h2 class="docs-section-title">Built-in actions</h2>
+                <p class="docs-section-lead">
+                  GitNode ships a set of built-in actions. There is no external marketplace — every
+                  <code class="docs-inline-code">uses:</code> reference must match one of these.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <div class="mb-3 flex flex-wrap items-center gap-2">
+                  <code class="docs-inline-code font-semibold">actions/checkout@v1</code>
+                  <span class="badge-pill badge-pill--primary">recommended first step</span>
+                </div>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Clones the repository into the job workspace using the authenticated runner token. Reads
+                  <code class="docs-inline-code">GITNODE_OWNER</code> and
+                  <code class="docs-inline-code">GITNODE_REPO</code> automatically.
+                </p>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th>Input</th>
+                        <th>Default</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">ref</code></td>
+                        <td><code class="docs-table-code">GITNODE_SHA</code> when set</td>
+                        <td>
+                          Ref to checkout (branch, tag, SHA). Falls back to empty when no SHA was recorded for the run.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">depth</code></td>
+                        <td><code class="docs-table-code">1</code></td>
+                        <td>Clone depth. Set to <code class="docs-table-code">0</code> for full history</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <h3 class="text-base-content mb-3 font-semibold">Runtime setup actions</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  All setup actions install the requested version using the tool manager on the runner (<code
+                    class="docs-inline-code"
+                    >fnm</code
+                  >
+                  / <code class="docs-inline-code">nvm</code> for Node, <code class="docs-inline-code">SDKMAN</code> for
+                  Java, <code class="docs-inline-code">pyenv</code> for Python,
+                  <code class="docs-inline-code">goenv</code> or system Go for Go).
+                </p>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th>Action</th>
+                        <th>Key input</th>
+                        <th>Default</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">actions/setup-node@v1</code></td>
+                        <td><code class="docs-table-code">node-version</code></td>
+                        <td><code class="docs-table-code">lts</code></td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">pnpm/action-setup@v1</code></td>
+                        <td><code class="docs-table-code">version</code></td>
+                        <td>latest</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">actions/setup-java@v1</code></td>
+                        <td>
+                          <code class="docs-table-code">java-version</code>,
+                          <code class="docs-table-code">distribution</code>
+                        </td>
+                        <td><code class="docs-table-code">21</code>, <code class="docs-table-code">temurin</code></td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">actions/setup-python@v1</code></td>
+                        <td><code class="docs-table-code">python-version</code></td>
+                        <td><code class="docs-table-code">3.12</code></td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">actions/setup-go@v1</code></td>
+                        <td><code class="docs-table-code">go-version</code></td>
+                        <td><code class="docs-table-code">1.24</code></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <div class="mb-3"><code class="docs-inline-code font-semibold">actions/cache@v1</code></div>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Stores and restores a directory in GitNode's cache store, scoped per repository.
+                </p>
+                <div class="docs-table-wrap border-base-300/80 mb-3 overflow-hidden rounded-xl border">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th>Input</th>
+                        <th>Required</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">key</code></td>
+                        <td>Yes</td>
+                        <td>
+                          Cache key — use a stable string you control (expressions like
+                          <code class="docs-table-code">hashFiles()</code> are not supported yet)
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">path</code></td>
+                        <td>Yes</td>
+                        <td>Directory to cache</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('actions-cache', actionsCacheYaml)"
+                  >
+                    @if (copiedId() === 'actions-cache') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsCacheYaml }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <div class="mb-3 flex flex-wrap gap-2">
+                  <code class="docs-inline-code font-semibold">actions/upload-artifact@v1</code>
+                  <code class="docs-inline-code font-semibold">actions/download-artifact@v1</code>
+                </div>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Upload build outputs from one job and download them in a later job. Scoped to the workflow run.
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('actions-artifact', actionsArtifactYaml)"
+                  >
+                    @if (copiedId() === 'actions-artifact') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsArtifactYaml }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <div class="mb-2"><code class="docs-inline-code font-semibold">docker/login-action@v1</code></div>
+                <p class="text-base-content/65 text-sm">
+                  Authenticates the Docker CLI. Inputs: <code class="docs-inline-code">registry</code> (default: Docker
+                  Hub), <code class="docs-inline-code">username</code>, <code class="docs-inline-code">password</code>.
+                </p>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Using secrets in steps</h3>
+                <p class="text-base-content/65 mb-3 text-sm leading-relaxed">
+                  Reference secrets with <code class="docs-inline-code">${{'${{ secrets.NAME }}'}}</code> in step
+                  definitions. GitNode resolves them before dispatching the job — values are decrypted server-side
+                  (AES-256-GCM) and masked in log output. Secrets require
+                  <code class="docs-inline-code">ACTIONS_ENCRYPTION_KEY</code> to be configured on the server.
+                </p>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('actions-secrets', actionsSecretsYaml)"
+                  >
+                    @if (copiedId() === 'actions-secrets') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsSecretsYaml }}</code></pre>
+                  </div>
+                </div>
+                <p class="text-base-content/55 mt-2 text-xs">
+                  Manage secrets at <strong>Repository → Settings → Actions</strong> (repo owner only). Each secret is
+                  stored encrypted; the value is never shown after creation.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 10 Runners -->
+          <section id="actions-runner" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">10</span>
+              <div>
+                <h2 class="docs-section-title">Self-hosted runners</h2>
+                <p class="docs-section-lead">
+                  Every job runs on a runner you register. Runners connect via WebSocket, receive jobs, and stream logs
+                  back in real time.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">How runners work</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>
+                    Generate a <strong class="text-base-content/85">registration token</strong> in your account
+                    <a routerLink="/settings" class="docs-inline-link font-medium">Settings → Actions</a> (runners are
+                    account-scoped, not per repository).
+                  </li>
+                  <li>
+                    Start the runner binary with <code class="docs-inline-code">--token</code> and
+                    <code class="docs-inline-code">--labels</code>. It registers itself and gets a long-lived JWT.
+                  </li>
+                  <li>The runner opens a persistent WebSocket to GitNode and sends heartbeats every 30 s.</li>
+                  <li>
+                    When a workflow triggers a job, GitNode picks the first idle runner whose labels match
+                    <code class="docs-inline-code">runs-on:</code> and dispatches the job.
+                  </li>
+                  <li>The runner executes steps in order, streams logs live, and reports completion.</li>
+                </ol>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Runner statuses</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th>Status</th>
+                        <th>Meaning</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><span class="badge-pill badge-pill--success">online</span></td>
+                        <td>Idle and ready to accept jobs</td>
+                      </tr>
+                      <tr>
+                        <td><span class="badge-pill badge-pill--warning">busy</span></td>
+                        <td>Currently executing a job</td>
+                      </tr>
+                      <tr>
+                        <td><span class="badge-pill badge-pill--neutral">offline</span></td>
+                        <td>Not connected or no heartbeat in 60 s</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Matching runners with <code class="docs-inline-code">runs-on:</code></h3>
+                <p class="text-base-content/65 text-sm leading-relaxed">
+                  A runner is selected when <em>all</em> labels in <code class="docs-inline-code">runs-on:</code> are
+                  present on the runner. Register multiple runners with different label sets to route jobs to specific
+                  machines (e.g. <code class="docs-inline-code">linux</code>, <code class="docs-inline-code">gpu</code>,
+                  <code class="docs-inline-code">arm64</code>).
+                </p>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Start command</h3>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('runner-cmd', actionsRunnerCmd)"
+                  >
+                    @if (copiedId() === 'runner-cmd') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ actionsRunnerCmd }}</code></pre>
+                  </div>
+                </div>
+                <p class="text-base-content/55 mt-3 text-xs leading-relaxed">
+                  <code class="docs-inline-code">--executor</code> can be
+                  <code class="docs-inline-code">shell</code> (default) or <code class="docs-inline-code">docker</code>.
+                  The registration token expires after 1 hour and is consumed on first registration; the same token can
+                  re-register an existing runner. The runner JWT it generates is valid for 1 year.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <!-- /actions body -->
+    }
+
+    <!-- ════════════════════════════════════ FEATURES TAB ════════════════════════════════════ -->
+    @if (activeTab() === 'features') {
+
+    <div class="docs-body">
+      <aside class="docs-sidebar">
+        <div class="docs-sidebar-card">
+          <nav class="docs-sidebar-nav" aria-label="Feature sections">
+            <p class="docs-sidebar-label">On this page</p>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('collaborators')">
+              <span class="docs-sidebar-index">11</span>
+              Collaborators
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('gh-migration')">
+              <span class="docs-sidebar-index">12</span>
+              GitHub Migration
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('issues')">
+              <span class="docs-sidebar-index">13</span>
+              Issues
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('kanban')">
+              <span class="docs-sidebar-index">14</span>
+              Project Boards
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('snippets')">
+              <span class="docs-sidebar-index">15</span>
+              Code Snippets
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('webhooks')">
+              <span class="docs-sidebar-index">16</span>
+              Webhooks
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('releases')">
+              <span class="docs-sidebar-index">17</span>
+              Tags &amp; Releases
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('forks')">
+              <span class="docs-sidebar-index">18</span>
+              Forks
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('admin-panel')">
+              <span class="docs-sidebar-index">19</span>
+              Admin Panel
+            </button>
+            <button type="button" class="docs-sidebar-link" (click)="scrollToSection('saml-ldap')">
+              <span class="docs-sidebar-index">20</span>
+              SSO
+            </button>
+          </nav>
+        </div>
+      </aside>
+
+      <div class="docs-main">
+        <nav class="docs-mobile-toc" aria-label="Feature sections">
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('collaborators')">
+            <span class="docs-toc-chip-index">11</span> Collaborators
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('gh-migration')">
+            <span class="docs-toc-chip-index">12</span> GitHub Migration
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('issues')">
+            <span class="docs-toc-chip-index">13</span> Issues
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('kanban')">
+            <span class="docs-toc-chip-index">14</span> Project Boards
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('snippets')">
+            <span class="docs-toc-chip-index">15</span> Code Snippets
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('webhooks')">
+            <span class="docs-toc-chip-index">16</span> Webhooks
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('releases')">
+            <span class="docs-toc-chip-index">17</span> Tags &amp; Releases
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('forks')">
+            <span class="docs-toc-chip-index">18</span> Forks
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('admin-panel')">
+            <span class="docs-toc-chip-index">19</span> Admin Panel
+          </button>
+          <button type="button" class="docs-toc-chip" (click)="scrollToSection('saml-ldap')">
+            <span class="docs-toc-chip-index">20</span> SSO
+          </button>
+        </nav>
+
+        <div class="docs-sections">
+          <!-- 11 Collaborators -->
+          <section id="collaborators" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">11</span>
+              <div>
+                <h2 class="docs-section-title">Collaborators</h2>
+                <p class="docs-section-lead">
+                  Invite other GitNode users with fine-grained per-permission roles — each permission toggled
+                  independently, so you grant exactly the access each person needs.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Available permissions</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Permission</th>
+                        <th scope="col">What it allows</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">READ</code></td>
+                        <td>Clone and view the repository (required for private repos)</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">PUSH</code></td>
+                        <td>Push commits and branches</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">PULL_REQUEST_CREATE</code></td>
+                        <td>Open pull requests</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">PULL_REQUEST_REVIEW</code></td>
+                        <td>Review and comment on pull requests</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">PULL_REQUEST_MERGE</code></td>
+                        <td>Merge and close pull requests</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">ISSUE_MANAGE</code></td>
+                        <td>
+                          Edit, close, and delete any issue or comment (including others' content). Creating issues and
+                          commenting only requires repo access.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">ACTIONS_WRITE</code></td>
+                        <td>Trigger manual workflow runs, cancel runs, and delete workflow runs</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">SETTINGS_READ</code></td>
+                        <td>View the repository Settings page</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">SETTINGS_WRITE</code></td>
+                        <td>Modify repository settings and webhooks. Actions secrets remain repo-owner-only.</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">ADMIN</code></td>
+                        <td>All of the above</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Inviting a collaborator</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>
+                    Open your repository → <strong class="text-base-content/80">Settings → Collaborators</strong>.
+                  </li>
+                  <li>
+                    Enter the invitee's existing GitNode username, toggle permissions, and click
+                    <strong class="text-base-content/80">Invite</strong>.
+                  </li>
+                  <li>
+                    For pending collaborators, click <strong class="text-base-content/80">Invite Link</strong> to
+                    generate a shareable URL (not created automatically on invite).
+                  </li>
+                  <li>The recipient opens the link and accepts — no approval from you required.</li>
+                </ol>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Notes:</strong>
+                <ul class="text-base-content/70 mt-1.5 ml-4 list-disc space-y-1">
+                  <li>
+                    Invite links expire after <strong class="text-base-content/80">7 days</strong> — generate a new one
+                    if it has expired.
+                  </li>
+                  <li>Private repositories remain private to everyone who is not a collaborator or owner.</li>
+                  <li>Revoke access at any time from Settings → Collaborators.</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <!-- 12 GitHub Migration -->
+          <section id="gh-migration" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">12</span>
+              <div>
+                <h2 class="docs-section-title">GitHub Repository Migration</h2>
+                <p class="docs-section-lead">
+                  Import a GitHub repository into your GitNode account — full commit history, and optionally pull
+                  requests and tags/releases — in a single form.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Migration options</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Repository</td>
+                        <td>Full commit history mirror-cloned from the GitHub HTTPS URL — always included</td>
+                      </tr>
+                      <tr>
+                        <td>Pull Requests (optional)</td>
+                        <td>
+                          Imported with titles, descriptions, and branch names. Open GitHub PRs stay open; closed GitHub
+                          PRs are closed locally.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Tags &amp; Releases (optional)</td>
+                        <td>Tags and release metadata imported from GitHub</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">How to migrate</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>
+                    Open the <strong class="text-base-content/80">Import repository</strong> page in GitNode (from the
+                    dashboard or new repository flow).
+                  </li>
+                  <li>
+                    Enter the full GitHub HTTPS URL, e.g.
+                    <code class="docs-inline-code">https://github.com/owner/repo</code>.
+                  </li>
+                  <li>
+                    Paste a GitHub Personal Access Token with <code class="docs-inline-code">repo</code> read access.
+                  </li>
+                  <li>
+                    Select which optional items to migrate (pull requests, tags &amp; releases), then click
+                    <strong class="text-base-content/80">Start migration</strong>.
+                  </li>
+                  <li>
+                    GitNode runs the import in the background and returns you to the
+                    <strong class="text-base-content/80">dashboard</strong>. Optional PR and tag/release imports may
+                    continue asynchronously after the job is marked complete.
+                  </li>
+                </ol>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Important:</strong>
+                <ul class="text-base-content/70 mt-1.5 ml-4 list-disc space-y-1">
+                  <li>Migration is a one-time snapshot — there is no ongoing sync with GitHub.</li>
+                  <li>Private GitHub repositories require a PAT with private repository read scope.</li>
+                  <li>
+                    The mirror clone sets the default branch to <code class="docs-inline-code">main</code> regardless of
+                    GitHub's default branch name.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <!-- 13 Issues -->
+          <section id="issues" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">13</span>
+              <div>
+                <h2 class="docs-section-title">Issues</h2>
+                <p class="docs-section-lead">
+                  Track bugs and feature requests per repository. Issues integrate with Kanban project boards and pull
+                  requests for a unified development workflow.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Capabilities</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Feature</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Comments</td>
+                        <td>Flat chronological discussion with Markdown support</td>
+                      </tr>
+                      <tr>
+                        <td>Assignees</td>
+                        <td>Assign an issue to a specific user</td>
+                      </tr>
+                      <tr>
+                        <td>Status</td>
+                        <td>Open / closed — reopen at any time</td>
+                      </tr>
+                      <tr>
+                        <td>Kanban link</td>
+                        <td>
+                          Link an issue to a task on a project board; linked issue status appears on the task detail
+                          page
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Integration with pull requests</h3>
+                <p class="text-base-content/65 text-sm leading-relaxed">
+                  Issues can be linked to a Kanban task (see
+                  <button type="button" class="docs-inline-link" (click)="scrollToSection('kanban')">
+                    Project Boards</button
+                  >). When a pull request linked to that task is <strong class="text-base-content/80">merged</strong>,
+                  the project's automation can mark the linked task as completed — it does not move the card to another
+                  column automatically.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <!-- 14 Kanban -->
+          <section id="kanban" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">14</span>
+              <div>
+                <h2 class="docs-section-title">Project Management (Kanban)</h2>
+                <p class="docs-section-lead">
+                  Organize work with Kanban boards linked to your repositories. Tasks connect directly to branches and
+                  pull requests for a seamless workflow.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Structure</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Level</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><strong class="text-base-content/80">Project</strong></td>
+                        <td>
+                          Top-level container with optional repository links (a project can link multiple repos); has
+                          its own settings and automation rules
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><strong class="text-base-content/80">Board</strong></td>
+                        <td>A view inside a project with configurable columns (e.g. To Do, In Progress, Done)</td>
+                      </tr>
+                      <tr>
+                        <td><strong class="text-base-content/80">Task</strong></td>
+                        <td>A unit of work with type, status, assignee, and ordering; can hold subtasks</td>
+                      </tr>
+                      <tr>
+                        <td><strong class="text-base-content/80">Subtask</strong></td>
+                        <td>A finer-grained step inside a task with its own status and assignee</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Branch and pull request integration</h3>
+                <ul class="text-base-content/70 ml-4 list-disc space-y-2 text-sm leading-relaxed">
+                  <li>
+                    <strong class="text-base-content/80">Create a branch from a task</strong> — GitNode generates a
+                    conventional branch name from the project's code prefix, task number, and title (e.g.
+                    <code class="docs-inline-code">PROJ-1-add-login-page</code>) and creates it in the linked
+                    repository.
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">Subtask branches</strong> use the format
+                    <code class="docs-inline-code">PROJ-1.SUB-1-fix-validation</code> (prefix comes from your project
+                    settings).
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">Link a PR to a task or subtask</strong> — the board shows a PR
+                    indicator; open/merged/closed status is visible on the task detail page.
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">PR merge → task auto-complete</strong> — enabled by default per
+                    project; toggle in <em>Project → Settings</em>. When a linked PR is merged, GitNode marks the task
+                    status as completed (the card stays in its current column).
+                  </li>
+                </ul>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Where to find projects:</strong>
+                <span class="text-base-content/70">
+                  Repository → <strong class="text-base-content/80">Projects</strong> tab or the top-level navigation.
+                  Columns are configured per project in <em>Project → Settings</em>.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 15 Code Snippets -->
+          <section id="snippets" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">15</span>
+              <div>
+                <h2 class="docs-section-title">Code Snippets</h2>
+                <p class="docs-section-lead">
+                  Gist-like code snippets — public or private, multi-file, with full revision history and forking.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div class="docs-table-wrap">
+                <table class="docs-table table w-full">
+                  <thead>
+                    <tr>
+                      <th scope="col">Feature</th>
+                      <th scope="col">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Visibility</td>
+                      <td>
+                        <strong class="text-base-content/80">Public</strong> snippets are visible to anyone;
+                        <strong class="text-base-content/80">private</strong> only to the owner
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>Multi-file</td>
+                      <td>Each snippet can contain multiple files with independent syntax highlighting</td>
+                    </tr>
+                    <tr>
+                      <td>Revision history</td>
+                      <td>Every edit creates a new revision — diff between any two revisions</td>
+                    </tr>
+                    <tr>
+                      <td>Fork</td>
+                      <td>Fork any public snippet into your own account and edit independently</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Where to find snippets:</strong>
+                <span class="text-base-content/70">
+                  Repository → <strong class="text-base-content/80">Snippets</strong> tab (per-repo), or the top-level
+                  <strong class="text-base-content/80">Snippets</strong> section in navigation (your personal snippets
+                  dashboard).
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 16 Webhooks -->
+          <section id="webhooks" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">16</span>
+              <div>
+                <h2 class="docs-section-title">Webhooks</h2>
+                <p class="docs-section-lead">
+                  Receive signed HTTP POST requests on repository events — pushes, branches, pull requests, issues,
+                  project tasks, snippets, and workflow runs. Includes automatic retries, a dead-letter queue, and
+                  per-host circuit breakers.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Delivery</h3>
+                <p class="text-base-content/65 mb-3 text-sm">
+                  Each delivery is a <code class="docs-inline-code">POST</code> with
+                  <code class="docs-inline-code">Content-Type: application/json</code>. When a webhook secret is set,
+                  GitNode adds an HMAC-SHA256 signature header. The event type and delivery metadata are in the JSON
+                  payload body.
+                </p>
+                <div class="docs-table-wrap border-base-300/80 mb-4 overflow-hidden rounded-xl border">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Header</th>
+                        <th scope="col">Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">Content-Type</code></td>
+                        <td><code class="docs-table-code">application/json</code></td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">X-Hub-Signature-256</code></td>
+                        <td>
+                          <code class="docs-table-code">sha256=&lt;HMAC-SHA256 hex&gt;</code> — only sent when a webhook
+                          secret is configured; verify this before processing the payload
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('wh-headers', webhookHeadersExample)"
+                  >
+                    @if (copiedId() === 'wh-headers') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ webhookHeadersExample }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Verifying the signature (Python)</h3>
+                <div class="docs-code-wrap">
+                  <button
+                    type="button"
+                    class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    (click)="copySnippet('wh-verify', webhookVerifyPython)"
+                  >
+                    @if (copiedId() === 'wh-verify') {
+                    <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                    }
+                  </button>
+                  <div class="code-block">
+                    <pre class="docs-code-pre"><code>{{ webhookVerifyPython }}</code></pre>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Reliability</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Feature</th>
+                        <th scope="col">Behaviour</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Automatic retries</td>
+                        <td>3 attempts with exponential back-off (1 s, 2 s, 4 s) on non-2xx or connection errors</td>
+                      </tr>
+                      <tr>
+                        <td>Dead-letter queue</td>
+                        <td>
+                          Permanently failed deliveries land in the DLQ and are retried on a schedule; platform admins
+                          can inspect and replay from the admin panel
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Circuit breaker</td>
+                        <td>
+                          Per-host Resilience4j circuit breaker — repeated failures open the circuit; deliveries go
+                          straight to DLQ until the endpoint recovers
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Setup:</strong>
+                <span class="text-base-content/70">
+                  Configure webhooks per repository in
+                  <strong class="text-base-content/80">Settings → Webhooks</strong>.</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <!-- 17 Tags & Releases -->
+          <section id="releases" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">17</span>
+              <div>
+                <h2 class="docs-section-title">Tags &amp; Releases</h2>
+                <p class="docs-section-lead">
+                  Tag any commit and publish a release with Markdown notes — all from the browser.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Tag types</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Type</th>
+                        <th scope="col">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Lightweight</td>
+                        <td>A pointer to a specific commit — no extra metadata</td>
+                      </tr>
+                      <tr>
+                        <td>Annotated</td>
+                        <td>Full Git object with tagger name, date, and message — recommended for releases</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Releases</h3>
+                <ul class="text-base-content/70 ml-4 list-disc space-y-2 text-sm leading-relaxed">
+                  <li>
+                    <strong class="text-base-content/80">Create</strong> a release tied to any existing tag with
+                    Markdown release notes.
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">Draft or publish</strong> — save as draft before making it
+                    public; mark as pre-release if needed.
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">Delete</strong> a release or tag from the UI — deleting a tag
+                    removes it from the underlying Git repository.
+                  </li>
+                  <li>
+                    The <strong class="text-base-content/80">latest published release</strong> is shown as a badge on
+                    the repository home page.
+                  </li>
+                </ul>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Where:</strong>
+                <span class="text-base-content/70">
+                  Repository → <strong class="text-base-content/80">Releases</strong> tab.</span
+                >
+              </div>
+            </div>
+          </section>
+
+          <!-- 18 Forks -->
+          <section id="forks" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">18</span>
+              <div>
+                <h2 class="docs-section-title">Repository Forks</h2>
+                <p class="docs-section-lead">
+                  Fork any public repository and work on it independently under your account. Pull requests are
+                  same-repository only — cross-repo PRs from a fork are not supported.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Fork workflow</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>
+                    Navigate to any public repository and click <strong class="text-base-content/80">Fork</strong> in
+                    the repository header.
+                  </li>
+                  <li>
+                    GitNode creates a copy under your account with the full commit history at the time of forking.
+                  </li>
+                  <li>Clone your fork, create a branch, make your changes, and push to your fork.</li>
+                  <li>
+                    To contribute upstream, open a pull request in the
+                    <strong class="text-base-content/80">upstream repository</strong> using branches that exist there,
+                    or ask the upstream owner to pull from your fork manually.
+                  </li>
+                </ol>
+              </div>
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Note:</strong>
+                <span class="text-base-content/70">
+                  Forks are not synced with upstream automatically — rebase or merge manually to pull in upstream
+                  changes.
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 19 Admin Panel -->
+          <section id="admin-panel" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">19</span>
+              <div>
+                <h2 class="docs-section-title">Admin Panel</h2>
+                <p class="docs-section-lead">
+                  A separate Angular application for platform administrators — manage users, organizations, SSO, webhook
+                  DLQ, and Actions across the entire deployment.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Deployment</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col">Detail</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Backend API</td>
+                        <td>Served by the main GitNode app at <code class="docs-table-code">/api/admin/**</code></td>
+                      </tr>
+                      <tr>
+                        <td>Admin UI (dev)</td>
+                        <td>
+                          <code class="docs-table-code">cd gitnode-admin-panel &amp;&amp; pnpm start</code> →
+                          <code class="docs-table-code">http://localhost:4300</code>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Bootstrap admin</td>
+                        <td>
+                          Set <code class="docs-table-code">GITNODE_BOOTSTRAP_ADMIN_USERNAME</code> and
+                          <code class="docs-table-code">GITNODE_BOOTSTRAP_ADMIN_PASSWORD</code> on first start
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Additional admins</td>
+                        <td>
+                          Comma-separated list in
+                          <code class="docs-table-code">GITNODE_PLATFORM_ADMIN_USERNAMES</code>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">Features</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Section</th>
+                        <th scope="col">Capabilities</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>Dashboard</td>
+                        <td>
+                          Platform-wide stats (users, repos, organizations, storage); daily/weekly activity; top
+                          contributors
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Users</td>
+                        <td>Search all accounts; enable or disable any account</td>
+                      </tr>
+                      <tr>
+                        <td>Organizations</td>
+                        <td>
+                          Create, edit, delete orgs; configure SAML or LDAP SSO per org; test connections before
+                          enabling
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Audit Logs</td>
+                        <td>
+                          Query paginated application audit events by actor and time window; optional pgAudit log viewer
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>Webhook DLQ</td>
+                        <td>Inspect failed deliveries; replay or dismiss individual entries</td>
+                      </tr>
+                      <tr>
+                        <td>Actions</td>
+                        <td>Platform-wide runner stats and workflow run counts</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- 20 SAML & LDAP SSO -->
+          <section id="saml-ldap" class="docs-section">
+            <header class="docs-section-header">
+              <span class="docs-section-index">20</span>
+              <div>
+                <h2 class="docs-section-title">Enterprise SSO — SAML &amp; LDAP</h2>
+                <p class="docs-section-lead">
+                  Map an organization's email domain to a SAML 2.0 IdP or corporate LDAP directory. Users sign in with
+                  their work email and are provisioned automatically on first login.
+                </p>
+              </div>
+            </header>
+
+            <div class="space-y-6">
+              <div>
+                <h3 class="docs-subheading">Global feature flags</h3>
+                <div class="docs-table-wrap">
+                  <table class="docs-table table w-full">
+                    <thead>
+                      <tr>
+                        <th scope="col">Environment variable</th>
+                        <th scope="col">Default</th>
+                        <th scope="col">Purpose</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_SSO_SAML_ENABLED</code></td>
+                        <td><code class="docs-table-code">false</code></td>
+                        <td>Enable the SAML 2.0 SP globally</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_SSO_LDAP_ENABLED</code></td>
+                        <td><code class="docs-table-code">false</code></td>
+                        <td>Enable LDAP authentication globally</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_SSO_SAML_SP_SIGNING_KEY_PATH</code></td>
+                        <td>—</td>
+                        <td>Path to SP signing private key (required for SAML)</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">GITNODE_SSO_SAML_SP_SIGNING_CERT_PATH</code></td>
+                        <td>—</td>
+                        <td>Path to SP signing certificate (required for SAML)</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">SAML 2.0 setup</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>
+                    Generate the SP key pair:
+                    <div class="docs-code-wrap mt-2">
+                      <button
+                        type="button"
+                        class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                        (click)="copySnippet('saml-keygen', samlKeygenCmd)"
+                      >
+                        @if (copiedId() === 'saml-keygen') {
+                        <lucide-icon name="checkCircle" class="text-success size-3.5" aria-hidden="true"></lucide-icon>
+                        } @else {
+                        <lucide-icon name="copy" class="size-3.5 opacity-70" aria-hidden="true"></lucide-icon>
+                        }
+                      </button>
+                      <div class="code-block">
+                        <pre class="docs-code-pre"><code>{{ samlKeygenCmd }}</code></pre>
+                      </div>
+                    </div>
+                  </li>
+                  <li>
+                    Set <code class="docs-inline-code">GITNODE_SSO_SAML_ENABLED=true</code> and point the key/cert env
+                    vars to the generated files.
+                  </li>
+                  <li>
+                    In <strong class="text-base-content/80">Admin Panel → Organizations</strong>, open the org, paste
+                    the IdP metadata URL or XML, test the connection, then enable.
+                  </li>
+                  <li>
+                    Set the org's <strong class="text-base-content/80">email domain</strong> — users who enter it on the
+                    login page will be routed to SAML.
+                  </li>
+                </ol>
+              </div>
+
+              <div>
+                <h3 class="docs-subheading">LDAP setup</h3>
+                <ol class="text-base-content/70 ml-4 list-decimal space-y-2 text-sm leading-relaxed">
+                  <li>Set <code class="docs-inline-code">GITNODE_SSO_LDAP_ENABLED=true</code>.</li>
+                  <li>
+                    In <strong class="text-base-content/80">Admin Panel → Organizations</strong>, configure the org's
+                    LDAP: server URL, manager bind DN and password, user search base, filter, and attribute mappings for
+                    email and display name.
+                  </li>
+                  <li>Click <strong class="text-base-content/80">Test connection</strong> before enabling.</li>
+                  <li>
+                    Set the org's <strong class="text-base-content/80">email domain</strong> so the login page routes
+                    matching addresses to LDAP.
+                  </li>
+                </ol>
+              </div>
+
+              <div class="docs-callout">
+                <strong class="text-base-content font-medium">Important rules:</strong>
+                <ul class="text-base-content/70 mt-1.5 ml-4 list-disc space-y-1">
+                  <li>
+                    SAML and LDAP are
+                    <strong class="text-base-content/80">mutually exclusive per organization</strong> — enable one or
+                    the other, not both.
+                  </li>
+                  <li>New accounts are provisioned automatically on first successful SSO login.</li>
+                  <li>
+                    Use <code class="docs-inline-code">make ldap-up</code> to start a test OpenLDAP container locally.
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <!-- /features body -->
+    }
+
+    <!-- Footer -->
+    <footer class="docs-footer">
+      <div class="docs-footer-inner">
+        <p class="docs-footer-text">
+          Clone URLs and SSH port follow your deployment configuration. Use the URLs shown in each repository's
+          <strong>Code</strong> dialog as the canonical source.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <a routerLink="/" class="btn btn-ghost btn-sm gap-2">
+            <lucide-icon name="home" class="size-4" aria-hidden="true"></lucide-icon>
+            Home
+          </a>
+          <a routerLink="/register" class="btn btn-primary btn-sm gap-2">
+            <lucide-icon name="plus" class="size-4" aria-hidden="true"></lucide-icon>
+            Get started
+          </a>
+        </div>
+      </div>
+    </footer>
+  </div>
+  <!-- /content -->
+</main>

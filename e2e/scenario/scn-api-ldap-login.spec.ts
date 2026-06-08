@@ -2,7 +2,7 @@
  * SCN-LDAP — Enterprise LDAP SSO via Docker test directory.
  *
  * Requires:
- * - Backend with originhub.sso.ldap.enabled=true
+ * - Backend with gitnode.sso.ldap.enabled=true
  * - Platform admin (bootstrap admin by default)
  * - Reachable LDAP server (default: ghcr.io/rroemhild/docker-test-openldap on localhost:389)
  * - E2E_LDAP_ENABLED=1

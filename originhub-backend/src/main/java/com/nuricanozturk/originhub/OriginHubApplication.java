@@ -20,24 +20,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.FilterType;
-import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 @Slf4j
 @SpringBootApplication
-@ComponentScan(
-    basePackages = "com.nuricanozturk.originhub",
-    excludeFilters =
-        @ComponentScan.Filter(
-            type = FilterType.REGEX,
-            pattern = "com\\.nuricanozturk\\.originhub\\.admin\\..*"))
-@EnableJpaRepositories(
-    basePackages = "com.nuricanozturk.originhub",
-    excludeFilters =
-        @ComponentScan.Filter(
-            type = FilterType.REGEX,
-            pattern = "com\\.nuricanozturk\\.originhub\\.admin\\.repositories\\..*"))
 @NullMarked
 public class OriginHubApplication {
 

@@ -21,8 +21,6 @@ originhub:
       password: ${ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD:}
       enabled: ${ORIGINHUB_BOOTSTRAP_ADMIN_ENABLED:true}
   admin:
-    # Master switch: when false, admin module beans (/api/admin/**) are not loaded at runtime.
-    enabled: ${ORIGINHUB_ADMIN_ENABLED:true}
     stats:
       # Statistics responses are cached in memory for this many seconds (overridable in admin Settings)
       cache-ttl-seconds: ${ORIGINHUB_ADMIN_STATS_CACHE_TTL_SECONDS:300}

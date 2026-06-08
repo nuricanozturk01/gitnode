@@ -2,7 +2,7 @@
 
 <br/>
 
-<img src="images/logo.png" alt="GitNode Logo" width="45%"/>
+<h1><img src="images/icon.png" width="50" valign="middle" /> &nbsp;<b>Git</b><span style="font-weight:400">Node</span></h1>
 
 <h3>A simple, self-hosted Git registry — your code, your server, your rules.</h3>
 

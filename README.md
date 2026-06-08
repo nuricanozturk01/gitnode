@@ -412,36 +412,6 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 
 ---
 
-## 🗺 Roadmap
-
-OriginHub is under active development. Here's what's planned:
-
-- [x] HTTPS Git support
-- [x] GitHub repo migration
-- [x] Project board (Kanban) integrated with repositories
-- [x] Code snippets (Gist-like)
-- [x] Repo issues
-- [x] Public repositories
-- [x] Public profile and README
-- [x] Webhooks
-- [x] Tags and releases
-- [x] Collaborators with fine-grained permissions and invite links
-- [x] Repository forks with cross-fork pull requests
-- [x] Repo access policies
-- [x] Enterprise SAML & LDAP SSO (per-organization)
-- [x] Platform admin panel (stats, users, organizations)
-- [x] Redis-backed rate limiting
-- [x] Prometheus & Grafana observability
-- [x] Application audit log + pgAudit PostgreSQL
-- [x] Webhook dead-letter queue (DLQ) with scheduled retry
-- [x] Circuit breakers (Resilience4j) for webhook delivery and SAML metadata
-- [x] JaCoCo CI coverage gate
-- [x] Actions — CI/CD (YAML workflows, WebSocket runner, SSE logs, secrets, artifacts, cache, matrix strategy)
-- [ ] [Repsy](https://github.com/repsyio/repsy) package management integration
-- [ ] Two-factor authentication (TOTP)
-
----
-
 ## 📄 License
 
 Distributed under the [MIT License](LICENSE.txt).

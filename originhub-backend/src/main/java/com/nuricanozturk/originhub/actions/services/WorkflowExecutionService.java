@@ -33,6 +33,7 @@ import com.nuricanozturk.originhub.events.actions.WorkflowJobCompletedEvent;
 import com.nuricanozturk.originhub.events.actions.WorkflowJobQueuedEvent;
 import com.nuricanozturk.originhub.events.actions.WorkflowJobStartedEvent;
 import com.nuricanozturk.originhub.events.actions.WorkflowRunCompletedEvent;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.time.Instant;
 import java.util.Set;
@@ -95,7 +96,7 @@ public class WorkflowExecutionService {
 
     final var step = this.stepRepository.findById(stepId).orElse(null);
     if (step == null) {
-      log.warn("STEP_STARTED for unknown stepId={}, ignoring", stepId);
+      log.debug("STEP_STARTED for unknown stepId={}, ignoring", stepId);
       return;
     }
     step.setStatus("running");
@@ -107,11 +108,13 @@ public class WorkflowExecutionService {
   public void handleStepCompleted(final UUID stepId, final String conclusion) {
 
     final var step = this.stepRepository.findById(stepId).orElse(null);
+
     if (step == null) {
       log.warn("STEP_COMPLETED for unknown stepId={}, ignoring", stepId);
       this.sseEmitterRegistry.complete(stepId);
       return;
     }
+
     step.setStatus("completed");
     step.setConclusion(conclusion);
     step.setCompletedAt(Instant.now());
@@ -125,6 +128,7 @@ public class WorkflowExecutionService {
 
     final var job = this.requireJob(jobId);
     final var status = conclusionToStatus(conclusion);
+
     job.setStatus(status);
     job.setConclusion(conclusion);
     job.setCompletedAt(Instant.now());
@@ -148,6 +152,11 @@ public class WorkflowExecutionService {
     log.info("Job completed: jobId={}, conclusion={}", jobId, conclusion);
   }
 
+  @Audited(
+      action = "ACTIONS_RUN_CANCEL",
+      entityType = "WORKFLOW_RUN",
+      entityIdSpEL = "#runId.toString()",
+      detailsSpEL = "'runId=' + #runId")
   @Transactional
   public void cancelRun(final UUID runId) {
 
@@ -182,6 +191,11 @@ public class WorkflowExecutionService {
     log.info("Run cancelled: runId={}", runId);
   }
 
+  @Audited(
+      action = "ACTIONS_RUN_DELETE",
+      entityType = "WORKFLOW_RUN",
+      entityIdSpEL = "#runId.toString()",
+      detailsSpEL = "'runId=' + #runId")
   @Transactional
   public void deleteRun(final UUID runId) {
 

@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public record AdminRunnerSummary(
     UUID id,
-    @Nullable UUID repoId,
+    @Nullable UUID tenantId,
     String name,
     List<String> labels,
     String status,

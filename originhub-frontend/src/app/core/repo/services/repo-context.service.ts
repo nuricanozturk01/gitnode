@@ -58,6 +58,9 @@ export class RepoContextService {
   /** Can change settings that require SETTINGS_WRITE (description, topics, PR options, webhooks). */
   readonly canWriteSettings = computed(() => this.canEdit() || this.hasPermission('SETTINGS_WRITE'));
 
+  /** Owner or collaborator with ACTIONS_WRITE — can dispatch, cancel, delete runs, enable/disable workflows. */
+  readonly canWriteActions = computed(() => this.canEdit() || this.hasPermission('ACTIONS_WRITE'));
+
   /** Accepted collaborator on this repo (not the owner). */
   readonly isCollaborator = computed(() => !this.canEdit() && this.collaboratorPermissions().length > 0);
 

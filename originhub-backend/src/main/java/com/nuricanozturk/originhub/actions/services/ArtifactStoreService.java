@@ -40,7 +40,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-/** Stores and retrieves workflow run artifacts on the local filesystem. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -150,8 +149,6 @@ public class ArtifactStoreService {
       log.info("Artifact retention: deleted {} expired artifacts", deleted);
     }
   }
-
-  // ── helpers ───────────────────────────────────────────────────────────────
 
   private String sanitizeName(final String name) {
     return name.replaceAll("[^a-zA-Z0-9._-]", "_");

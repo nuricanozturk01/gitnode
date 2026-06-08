@@ -31,7 +31,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.stereotype.Service;
 
-/** Issues and validates runner-specific JWTs, separate from user tokens. */
 @Slf4j
 @Service
 @NullMarked

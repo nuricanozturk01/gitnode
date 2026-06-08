@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -29,7 +28,6 @@ public class PullRequestMigrationListener {
   private final RestClient restClient;
   private final BranchProtocolService branchProtocolService;
 
-  @Async
   @EventListener
   public void onMigratePrRequested(final PullRequestMigrationRequestedEvent event) {
 

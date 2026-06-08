@@ -28,17 +28,24 @@ import { profileErrorMessage } from '../../shared/utils/api-error.utils';
 import { UserService } from '../../core/user/services/user.service';
 import { TokenService } from '../../core/auth/services/token.service';
 import { UserWebhookService } from '../../core/webhook/user-webhook.service';
+import { RunnerService } from '../../core/actions/services/runner.service';
+import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
+import { normalizeStatusKey, runnerStatusLabel } from '../../shared/utils/workflow-status.utils';
+import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 import type { SshKeyInfo } from '../../domain/ssh/models/ssh-key-info.model';
 import type { WebhookInfo } from '../../domain/webhook/webhook.model';
+import type { RunnerInfo, RegistrationToken } from '../../domain/actions/models/runner.model';
 import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
 import { parseUrlTab, replaceUrlFragment } from '../../shared/utils/url-tab.utils';
+import { environment } from '../../../environments/environment';
 
-type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'danger';
+type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'actions' | 'danger';
 const USER_SETTINGS_TABS = [
   'profile',
   'security',
   'ssh',
   'webhooks',
+  'actions',
   'danger',
 ] as const satisfies readonly UserSettingsTab[];
 const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
@@ -47,7 +54,7 @@ const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-settings',
   standalone: true,
-  imports: [LucideAngularModule, FormsModule, RouterLink, MarkdownPipe],
+  imports: [LucideAngularModule, FormsModule, RouterLink, MarkdownPipe, RelativeTimePipe],
   templateUrl: './user-settings.page.html',
   styleUrl: './user-settings.page.css',
 })
@@ -59,7 +66,30 @@ export class UserSettingsPage {
   private readonly toast = inject(ToastService);
   private readonly userService = inject(UserService);
   private readonly userWebhookService = inject(UserWebhookService);
+  private readonly runnerService = inject(RunnerService);
   readonly tokenService = inject(TokenService);
+
+  readonly serverUrl = environment.apiUrl;
+  statusLabel = runnerStatusLabel;
+
+  readonly runners = signal<RunnerInfo[]>([]);
+  readonly loadingRunners = signal(false);
+  readonly generatingToken = signal(false);
+  readonly registrationToken = signal<RegistrationToken | null>(null);
+
+  isRunnerOnline(status: string): boolean {
+    return normalizeStatusKey(status) === 'online';
+  }
+  isRunnerBusy(status: string): boolean {
+    return normalizeStatusKey(status) === 'busy';
+  }
+  isRunnerOffline(status: string): boolean {
+    return normalizeStatusKey(status) === 'offline';
+  }
+
+  runnerStartCommand(token: RegistrationToken): string {
+    return `./originhub-runner start \\\n  --server-url ${this.serverUrl} \\\n  --token ${token.token} \\\n  --name my-runner \\\n  --labels self-hosted,linux`;
+  }
 
   readonly activeTab = signal<UserSettingsTab>(DEFAULT_USER_SETTINGS_TAB);
 
@@ -149,6 +179,7 @@ export class UserSettingsPage {
     this.activeTab.set(t);
     if (t === 'ssh') this.loadSshKeys();
     if (t === 'webhooks') void this.loadWebhooks();
+    if (t === 'actions') void this.loadRunners();
     if (t === 'profile') {
       const u = this.tokenService.getUsername();
       if (u) this.username.set(u);
@@ -444,6 +475,68 @@ export class UserSettingsPage {
       if (this.editingWebhookId() === id) this.cancelEdit();
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Failed to delete webhook');
+    }
+  }
+
+  async loadRunners(): Promise<void> {
+    this.loadingRunners.set(true);
+    try {
+      this.runners.set(await this.runnerService.list());
+    } catch {
+      this.runners.set([]);
+    } finally {
+      this.loadingRunners.set(false);
+    }
+  }
+
+  async generateToken(): Promise<void> {
+    this.generatingToken.set(true);
+    try {
+      const token = await this.runnerService.createRegistrationToken();
+      this.registrationToken.set(token);
+      this.toast.success('Registration token generated');
+    } catch {
+      this.toast.error('Could not generate registration token');
+    } finally {
+      this.generatingToken.set(false);
+    }
+  }
+
+  async copyToken(): Promise<void> {
+    const token = this.registrationToken()?.token;
+    if (!token) return;
+    try {
+      await copyTextToClipboard(token);
+      this.toast.success('Token copied');
+    } catch {
+      this.toast.error('Could not copy token');
+    }
+  }
+
+  async copyStartCommand(): Promise<void> {
+    const token = this.registrationToken();
+    if (!token) return;
+    try {
+      await copyTextToClipboard(this.runnerStartCommand(token));
+      this.toast.success('Start command copied');
+    } catch {
+      this.toast.error('Could not copy start command');
+    }
+  }
+
+  async deleteRunner(runner: RunnerInfo): Promise<void> {
+    const confirmed = await this.confirmModal.confirm(
+      'Remove runner',
+      `Remove runner "${runner.name}"? It will stop receiving jobs.`,
+      { variant: 'danger' },
+    );
+    if (!confirmed) return;
+    try {
+      await this.runnerService.delete(runner.id);
+      this.runners.update((list) => list.filter((r) => r.id !== runner.id));
+      this.toast.success('Runner removed');
+    } catch {
+      this.toast.error('Could not remove runner');
     }
   }
 }

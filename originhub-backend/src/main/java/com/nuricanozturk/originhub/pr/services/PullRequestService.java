@@ -31,6 +31,7 @@ import com.nuricanozturk.originhub.pr.mappers.PrMapper;
 import com.nuricanozturk.originhub.pr.repositories.PrCommentRepository;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
 import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.commit.dtos.AuthorInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitInfo;
 import com.nuricanozturk.originhub.shared.commit.dtos.CommitStats;
@@ -73,6 +74,7 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -95,6 +97,7 @@ public class PullRequestService {
   private final PrMapper prMapper;
   private final ApplicationEventPublisher eventPublisher;
 
+  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "CREATE_PR",
       entityType = "PULL_REQUEST",
@@ -154,6 +157,7 @@ public class PullRequestService {
     return this.toDetail(this.prRepository.save(pr));
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "CLOSE_PR",
       entityType = "PULL_REQUEST",
@@ -181,6 +185,7 @@ public class PullRequestService {
             PrStatus.CLOSED.name()));
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "MERGE_PR",
       entityType = "PULL_REQUEST",

@@ -5,12 +5,12 @@
     "node": ">=24.0.0 <25.0.0"
   },
   "scripts": {
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --project=api --project=scenario --project=teardown",
     "test:e2e:api": "playwright test --project=api",
     "test:e2e:scenario": "E2E_SCENARIO_ONLY=1 playwright test --project=scenario --project=teardown",
     "test:e2e:scenario:only": "E2E_SCENARIO_ONLY=1 playwright test --project=scenario",
-    "test:e2e:saml": "E2E_SCENARIO_ONLY=1 E2E_SAML_ENABLED=1 playwright test --project=scenario scenario/scn-api-saml-login.spec.ts",
-    "test:e2e:ldap": "E2E_SCENARIO_ONLY=1 E2E_LDAP_ENABLED=1 playwright test --project=scenario scenario/scn-api-ldap-login.spec.ts",
+    "test:e2e:saml": "E2E_SAML_ENABLED=1 playwright test --project=saml",
+    "test:e2e:ldap": "E2E_LDAP_ENABLED=1 playwright test --project=ldap",
     "test:e2e:teardown": "E2E_TEARDOWN_ONLY=1 playwright test --project=teardown",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",

@@ -28,14 +28,17 @@ import com.nuricanozturk.originhub.actions.services.WorkflowExecutionService;
 import com.nuricanozturk.originhub.actions.services.WorkflowTriggerService;
 import com.nuricanozturk.originhub.actions.websocket.RunStatusSseRegistry;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
@@ -63,6 +66,7 @@ public class WorkflowRunController {
   private final WorkflowJobRepository jobRepository;
   private final WorkflowStepRepository stepRepository;
   private final RepoRepository repoRepository;
+  private final RepoService repoService;
   private final WorkflowTriggerService triggerService;
   private final WorkflowExecutionService executionService;
   private final RunStatusSseRegistry runStatusSseRegistry;
@@ -72,14 +76,16 @@ public class WorkflowRunController {
 
   @GetMapping("/runs")
   public ResponseEntity<PageResponse<WorkflowRunResponse>> listRuns(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestParam(required = false) final String triggerEvent,
-      @RequestParam(required = false) final String triggerRef,
+      @RequestParam(required = false) final @Nullable String triggerEvent,
+      @RequestParam(required = false) final @Nullable String triggerRef,
       @PageableDefault(size = 20) final Pageable pageable) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     final var repoId = this.requireRepoId(owner, repo);
 
     final var page =
@@ -99,12 +105,14 @@ public class WorkflowRunController {
 
   @GetMapping("/runs/{runId}")
   public ResponseEntity<WorkflowRunResponse> getRun(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final UUID runId) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     this.requireRepoId(owner, repo);
 
     final var run =
@@ -178,12 +186,14 @@ public class WorkflowRunController {
 
   @GetMapping(value = "/runs/{runId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
   public SseEmitter streamRunEvents(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final UUID runId) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     this.requireRepoId(owner, repo);
 
     final var run =
@@ -215,8 +225,9 @@ public class WorkflowRunController {
       @PathVariable final String repo,
       @PathVariable final UUID runId) {
 
-    this.jwtUtils.extractUserId(authHeader);
-    this.requireRepoId(owner, repo);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(
+        userId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
     this.executionService.cancelRun(runId);
     return ResponseEntity.noContent().build();
   }
@@ -228,8 +239,9 @@ public class WorkflowRunController {
       @PathVariable final String repo,
       @PathVariable final UUID runId) {
 
-    this.jwtUtils.extractUserId(authHeader);
-    this.requireRepoId(owner, repo);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(
+        userId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
     this.executionService.deleteRun(runId);
     return ResponseEntity.noContent().build();
   }
@@ -242,6 +254,8 @@ public class WorkflowRunController {
       @Valid @RequestBody final WorkflowDispatchRequest body) {
 
     final UUID actorId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(
+        actorId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
     final UUID repoId = this.requireRepoId(owner, repo);
     this.triggerService.triggerManual(repoId, body.filePath(), body.ref(), body.inputs(), actorId);
     return ResponseEntity.status(HttpStatus.NO_CONTENT).build();

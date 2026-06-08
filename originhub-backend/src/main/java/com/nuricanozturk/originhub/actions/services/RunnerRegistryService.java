@@ -60,14 +60,14 @@ public class RunnerRegistryService {
 
   @Transactional
   public RegistrationTokenResponse generateRegistrationToken(
-      final UUID repoId, final UUID createdBy) {
+      final UUID tenantId, final UUID createdBy) {
 
     final var raw = this.generateSecureToken();
     final var hash = DigestUtils.sha256Hex(raw);
     final var expiresAt = Instant.now().plus(REGISTRATION_TOKEN_TTL_HOURS, ChronoUnit.HOURS);
 
     final var entity = new RunnerRegistrationToken();
-    entity.setRepoId(repoId);
+    entity.setTenantId(tenantId);
     entity.setCreatedBy(createdBy);
     entity.setTokenHash(hash);
     entity.setExpiresAt(expiresAt);
@@ -99,16 +99,9 @@ public class RunnerRegistryService {
     final var runnerTokenHash = DigestUtils.sha256Hex(UUID.randomUUID().toString());
 
     final var runner = new Runner();
-    runner.setRepoId(regToken.getRepoId());
+    runner.setTenantId(regToken.getTenantId());
     runner.setName(request.name());
-    runner.setLabels(request.labels());
-    runner.setOs(request.os());
-    runner.setArch(request.arch());
-    runner.setVersion(request.version());
-    runner.setExecutorType(
-        ExecutorType.valueOf(request.executorType().toUpperCase(java.util.Locale.ROOT)));
-    runner.setStatus(RunnerStatus.ONLINE);
-    runner.setLastHeartbeat(Instant.now());
+    this.applyRequest(runner, request);
     runner.setTokenHash(runnerTokenHash);
     runner.setCreatedBy(regToken.getCreatedBy());
 
@@ -145,21 +138,23 @@ public class RunnerRegistryService {
   }
 
   @Transactional(readOnly = true)
-  public List<RunnerResponse> listByRepo(final UUID repoId) {
+  public List<RunnerResponse> listByTenant(final UUID tenantId) {
 
-    return this.runnerRepository.findAllByRepoId(repoId).stream().map(this::toResponse).toList();
+    return this.runnerRepository.findAllByTenantId(tenantId).stream()
+        .map(this::toResponse)
+        .toList();
   }
 
   @Transactional
-  public void delete(final UUID runnerId, final UUID requesterId, final UUID repoId) {
+  public void delete(final UUID runnerId, final UUID requesterId, final UUID tenantId) {
 
     final var runner =
         this.runnerRepository
             .findById(runnerId)
             .orElseThrow(() -> new ItemNotFoundException("Runner not found"));
 
-    if (!repoId.equals(runner.getRepoId())) {
-      throw new AccessNotAllowedException("Runner does not belong to this repository");
+    if (!tenantId.equals(runner.getTenantId())) {
+      throw new AccessNotAllowedException("Runner does not belong to this tenant");
     }
 
     this.runnerRepository.delete(runner);
@@ -194,14 +189,7 @@ public class RunnerRegistryService {
             .findById(runnerId)
             .orElseThrow(() -> new ItemNotFoundException("Runner not found"));
 
-    runner.setLabels(request.labels());
-    runner.setOs(request.os());
-    runner.setArch(request.arch());
-    runner.setVersion(request.version());
-    runner.setExecutorType(
-        ExecutorType.valueOf(request.executorType().toUpperCase(java.util.Locale.ROOT)));
-    runner.setStatus(RunnerStatus.ONLINE);
-    runner.setLastHeartbeat(Instant.now());
+    this.applyRequest(runner, request);
     runner.setTokenHash(DigestUtils.sha256Hex(UUID.randomUUID().toString()));
 
     final var saved = this.runnerRepository.save(runner);
@@ -210,6 +198,18 @@ public class RunnerRegistryService {
     log.info("Runner re-registered: id={}, name={}", saved.getId(), saved.getName());
 
     return new RunnerRegistrationResponse(saved.getId(), jwt, saved.getLabels());
+  }
+
+  private void applyRequest(final Runner runner, final RunnerRegistrationRequest request) {
+
+    runner.setLabels(request.labels());
+    runner.setOs(request.os());
+    runner.setArch(request.arch());
+    runner.setVersion(request.version());
+    runner.setExecutorType(
+        ExecutorType.valueOf(request.executorType().toUpperCase(java.util.Locale.ROOT)));
+    runner.setStatus(RunnerStatus.ONLINE);
+    runner.setLastHeartbeat(Instant.now());
   }
 
   private String generateSecureToken() {

@@ -26,6 +26,7 @@ import com.nuricanozturk.originhub.actions.model.WorkflowModel;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowDefinitionRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowRunRepository;
 import com.nuricanozturk.originhub.actions.services.WorkflowParserService.ParsedWorkflow;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import java.util.List;
@@ -179,6 +180,10 @@ public class WorkflowDefinitionService {
         .toList();
   }
 
+  @Audited(
+      action = "ACTIONS_WORKFLOW_SET_ENABLED",
+      entityType = "WORKFLOW_DEFINITION",
+      detailsSpEL = "'repoId=' + #repoId + ', workflow=' + #filePath + ', enabled=' + #enabled")
   @Transactional
   public void setEnabled(final UUID repoId, final String filePath, final boolean enabled) {
 

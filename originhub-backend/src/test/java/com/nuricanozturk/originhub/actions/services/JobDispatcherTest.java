@@ -25,6 +25,7 @@ import com.nuricanozturk.originhub.actions.entities.Runner;
 import com.nuricanozturk.originhub.actions.entities.RunnerStatus;
 import com.nuricanozturk.originhub.actions.entities.WorkflowJob;
 import com.nuricanozturk.originhub.actions.entities.WorkflowJobStatus;
+import com.nuricanozturk.originhub.actions.entities.WorkflowRun;
 import com.nuricanozturk.originhub.actions.repositories.RunnerRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowDefinitionRepository;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowJobRepository;
@@ -33,9 +34,11 @@ import com.nuricanozturk.originhub.actions.repositories.WorkflowStepRepository;
 import com.nuricanozturk.originhub.actions.websocket.RunnerSession;
 import com.nuricanozturk.originhub.actions.websocket.RunnerSessionRegistry;
 import com.nuricanozturk.originhub.actions.websocket.ServerMessage;
+import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -58,14 +61,17 @@ class JobDispatcherTest {
   @Mock private RunnerSessionRegistry sessionRegistry;
   @Mock private WorkflowParserService parserService;
   @Mock private RunnerSession runnerSession;
+  @Mock private RepoRepository repoRepository;
+  @Mock private SecretVaultService secretVaultService;
 
   private JobDispatcher dispatcher;
 
+  private static final UUID TENANT_ID = UUID.randomUUID();
+  private static final UUID OTHER_TENANT_ID = UUID.randomUUID();
   private static final UUID RUNNER_ID = UUID.randomUUID();
   private static final UUID JOB_ID = UUID.randomUUID();
   private static final UUID RUN_ID = UUID.randomUUID();
-
-  @Mock private com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository repoRepository;
+  private static final UUID REPO_ID = UUID.randomUUID();
 
   @BeforeEach
   void setUp() {
@@ -80,7 +86,8 @@ class JobDispatcherTest {
             this.sessionRegistry,
             this.parserService,
             this.repoRepository,
-            expressionEvaluator);
+            expressionEvaluator,
+            this.secretVaultService);
     ReflectionTestUtils.setField(this.dispatcher, "heartbeatTimeoutSeconds", 60);
   }
 
@@ -110,7 +117,9 @@ class JobDispatcherTest {
   @DisplayName("dispatch skips runner whose session is not connected")
   void dispatch_skipsRunner_whenNotConnected() {
     final var job = buildJob(List.of("self-hosted"));
-    final var runner = buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE);
+    final var runner = buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID);
+
+    stubRunToTenant(TENANT_ID);
 
     when(this.jobRepository.findAllQueued()).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
@@ -126,7 +135,9 @@ class JobDispatcherTest {
   @DisplayName("dispatch skips job when runner labels do not match")
   void dispatch_skipsJob_whenLabelMismatch() {
     final var job = buildJob(List.of("self-hosted", "docker"));
-    final var runner = buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE);
+    final var runner = buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID);
+
+    stubRunToTenant(TENANT_ID);
 
     when(this.jobRepository.findAllQueued()).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
@@ -138,10 +149,12 @@ class JobDispatcherTest {
   }
 
   @Test
-  @DisplayName("dispatch sends JOB_ASSIGNED and marks runner BUSY when labels match")
-  void dispatch_sendsJobAssigned_whenLabelsMatch() {
+  @DisplayName("dispatch sends JOB_ASSIGNED and marks runner BUSY when labels and tenant match")
+  void dispatch_sendsJobAssigned_whenLabelsAndTenantMatch() {
     final var job = buildJob(List.of("self-hosted"));
-    final var runner = buildRunner(List.of("self-hosted", "linux"), RunnerStatus.ONLINE);
+    final var runner = buildRunner(List.of("self-hosted", "linux"), RunnerStatus.ONLINE, TENANT_ID);
+
+    stubRunToTenant(TENANT_ID);
 
     when(this.jobRepository.findAllQueued()).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
@@ -161,6 +174,47 @@ class JobDispatcherTest {
   }
 
   @Test
+  @DisplayName("dispatch does NOT assign runner belonging to a different tenant")
+  void dispatch_skipsJob_whenRunnerBelongsToDifferentTenant() {
+    final var job = buildJob(List.of("self-hosted"));
+    final var runner =
+        buildRunner(List.of("self-hosted", "linux"), RunnerStatus.ONLINE, OTHER_TENANT_ID);
+
+    stubRunToTenant(TENANT_ID);
+
+    when(this.jobRepository.findAllQueued()).thenReturn(List.of(job));
+    when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
+    when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
+
+    this.dispatcher.dispatch();
+
+    verify(this.sessionRegistry, never()).get(any());
+    verify(this.runnerRepository, never()).save(runner);
+  }
+
+  @Test
+  @DisplayName("dispatch skips job when run has no matching repo")
+  @SuppressWarnings("unchecked")
+  void dispatch_skipsJob_whenRepoNotFound() {
+    final var job = buildJob(List.of("self-hosted"));
+    final var run = new WorkflowRun();
+    run.setId(RUN_ID);
+    run.setRepoId(REPO_ID);
+
+    final List<Object[]> emptyOwners = List.of();
+    when(this.jobRepository.findAllQueued()).thenReturn(List.of(job));
+    when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE))
+        .thenReturn(List.of(buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID)));
+    when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
+    when(this.repoRepository.findOwnerIdsByRepoIds(Set.of(REPO_ID))).thenReturn(emptyOwners);
+    when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
+
+    this.dispatcher.dispatch();
+
+    verify(this.sessionRegistry, never()).get(any());
+  }
+
+  @Test
   @DisplayName("dispatch marks stale runners offline")
   void dispatch_marksStaleRunnersOffline() {
     when(this.jobRepository.findAllQueued()).thenReturn(List.of());
@@ -173,6 +227,16 @@ class JobDispatcherTest {
 
   // ── helpers ───────────────────────────────────────────────────────────────
 
+  private void stubRunToTenant(final UUID tenantId) {
+    final var run = new WorkflowRun();
+    run.setId(RUN_ID);
+    run.setRepoId(REPO_ID);
+    when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
+    final List<Object[]> ownerRow = new java.util.ArrayList<>();
+    ownerRow.add(new Object[] {REPO_ID, tenantId});
+    when(this.repoRepository.findOwnerIdsByRepoIds(Set.of(REPO_ID))).thenReturn(ownerRow);
+  }
+
   private static WorkflowJob buildJob(final List<String> requiredLabels) {
     final var job = new WorkflowJob();
     job.setId(JOB_ID);
@@ -183,12 +247,14 @@ class JobDispatcherTest {
     return job;
   }
 
-  private static Runner buildRunner(final List<String> labels, final RunnerStatus status) {
+  private static Runner buildRunner(
+      final List<String> labels, final RunnerStatus status, final UUID tenantId) {
     final var runner = new Runner();
     runner.setId(RUNNER_ID);
     runner.setName("test-runner");
     runner.setLabels(labels);
     runner.setStatus(status);
+    runner.setTenantId(tenantId);
     runner.setLastHeartbeat(Instant.now());
     runner.setTokenHash("hash");
     return runner;

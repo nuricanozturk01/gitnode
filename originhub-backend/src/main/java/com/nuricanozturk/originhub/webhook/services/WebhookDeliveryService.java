@@ -169,7 +169,7 @@ public class WebhookDeliveryService {
       }
     }
 
-    log.error(
+    log.debug(
         "{} delivery permanently failed after {} attempts id={} url={}, routing to DLQ",
         logLabel,
         MAX_ATTEMPTS,

@@ -16,7 +16,6 @@
 package com.nuricanozturk.originhub.actions.repositories;
 
 import com.nuricanozturk.originhub.actions.entities.RunnerGroup;
-import java.util.Optional;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,8 +27,6 @@ import org.springframework.stereotype.Repository;
 public interface RunnerGroupRepository extends JpaRepository<RunnerGroup, Long> {
 
   Page<RunnerGroup> findAllByOrgId(Long orgId, Pageable pageable);
-
-  Optional<RunnerGroup> findByOrgIdAndName(Long orgId, String name);
 
   boolean existsByOrgIdAndName(Long orgId, String name);
 }

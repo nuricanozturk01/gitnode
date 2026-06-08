@@ -24,6 +24,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
@@ -49,10 +50,6 @@ public class WorkflowParserService {
   @Value("${originhub.git.repo-root}")
   private String repoRoot;
 
-  /**
-   * Reads and parses all workflow YAML files from the given branch of a bare git repository.
-   * Returns only successfully parsed workflows; skips files with syntax errors.
-   */
   public List<ParsedWorkflow> parseWorkflows(
       final String ownerUsername, final String repoName, final String branchRef) {
 
@@ -103,7 +100,7 @@ public class WorkflowParserService {
     return List.copyOf(result);
   }
 
-  private java.util.Optional<WorkflowModel> parseYaml(final String path, final String content) {
+  private Optional<WorkflowModel> parseYaml(final String path, final String content) {
 
     try {
       return java.util.Optional.of(YAML_MAPPER.readValue(content, WorkflowModel.class));

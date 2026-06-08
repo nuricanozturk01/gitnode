@@ -21,6 +21,7 @@ export type CollaboratorPermission =
   | 'PULL_REQUEST_REVIEW'
   | 'PULL_REQUEST_MERGE'
   | 'ISSUE_MANAGE'
+  | 'ACTIONS_WRITE'
   | 'SETTINGS_READ'
   | 'SETTINGS_WRITE'
   | 'ADMIN';
@@ -105,6 +106,13 @@ export const COLLABORATOR_PERMISSION_GROUPS: CollaboratorPermissionGroup[] = [
     permissions: ['ISSUE_MANAGE'],
   },
   {
+    id: 'actions',
+    title: 'Actions',
+    summary: 'Trigger workflows, cancel and delete runs',
+    icon: 'workflow',
+    permissions: ['ACTIONS_WRITE'],
+  },
+  {
     id: 'settings',
     title: 'Settings',
     summary: 'View or change repository settings and webhooks',
@@ -127,6 +135,7 @@ export const ALL_PERMISSIONS: { value: CollaboratorPermission; label: string; de
   { value: 'PULL_REQUEST_REVIEW', label: 'Review PRs', description: 'Review and approve pull requests' },
   { value: 'PULL_REQUEST_MERGE', label: 'Merge PRs', description: 'Merge pull requests' },
   { value: 'ISSUE_MANAGE', label: 'Manage Issues', description: 'Create, edit, and close any issue' },
+  { value: 'ACTIONS_WRITE', label: 'Actions Write', description: 'Trigger workflows, cancel and delete runs' },
   { value: 'SETTINGS_READ', label: 'Read Settings', description: 'View repository settings' },
   { value: 'SETTINGS_WRITE', label: 'Write Settings', description: 'Modify repository settings' },
   { value: 'ADMIN', label: 'Admin', description: 'Full access including collaborator management' },

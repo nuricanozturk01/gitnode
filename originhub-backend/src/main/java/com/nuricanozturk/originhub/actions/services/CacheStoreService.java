@@ -38,11 +38,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-/**
- * Stores and retrieves build caches on the local filesystem.
- *
- * <p>Restore strategy: exact key match first, then first prefix (restore-key) match.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -59,11 +54,6 @@ public class CacheStoreService {
 
   private final WorkflowCacheRepository cacheRepository;
 
-  /**
-   * Stores a cache archive for the given key. If the key already exists the file is replaced.
-   *
-   * @param restoreKeys optional prefix keys used as fallback during restore
-   */
   @Transactional
   public WorkflowCache put(
       final UUID repoId,
@@ -99,13 +89,6 @@ public class CacheStoreService {
     return saved;
   }
 
-  /**
-   * Retrieves the best cache hit as a {@link Resource}. Returns {@link Optional#empty()} when no
-   * match is found.
-   *
-   * @param key exact cache key
-   * @param restoreKeys fallback prefix keys (tried in order)
-   */
   @Transactional
   public Optional<Resource> get(
       final UUID repoId, final String key, final @Nullable List<String> restoreKeys) {
@@ -180,8 +163,6 @@ public class CacheStoreService {
     }
     return new long[] {evicted, totalBytes};
   }
-
-  // ── helpers ───────────────────────────────────────────────────────────────
 
   private Optional<Resource> touchAndReturn(final WorkflowCache entry) {
     final Path path = Path.of(entry.getFilePath());

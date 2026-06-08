@@ -38,7 +38,7 @@
             } · {{ run()!.createdAt | relativeTime }}
           </p>
         </div>
-        @if (repoContext.canEdit() && isLive()) {
+        @if (repoContext.canWriteActions() && isLive()) {
         <div class="flex shrink-0 items-center gap-2 self-start">
           <button
             type="button"

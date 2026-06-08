@@ -26,6 +26,7 @@ import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -67,10 +68,11 @@ public class LogStreamController {
 
   @GetMapping("/{stepId}/logs")
   public SseEmitter streamLogs(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final UUID stepId) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    this.jwtUtils.tryExtractUserId(authHeader);
 
     final var emitter = this.sseEmitterRegistry.subscribe(stepId);
 

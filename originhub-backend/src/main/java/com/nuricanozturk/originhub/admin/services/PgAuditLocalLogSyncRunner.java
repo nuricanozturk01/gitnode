@@ -21,6 +21,7 @@ import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Profile;
@@ -35,7 +36,7 @@ public class PgAuditLocalLogSyncRunner {
 
   private static final String DEFAULT_CONTAINER = "originhub-postgres";
 
-  private final @org.jspecify.annotations.Nullable String logDirectory;
+  private final @Nullable String logDirectory;
   private final String postgresContainer;
   private final boolean syncOnStartup;
 

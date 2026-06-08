@@ -19,7 +19,6 @@ import com.nuricanozturk.originhub.actions.entities.Runner;
 import com.nuricanozturk.originhub.actions.entities.RunnerStatus;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -32,11 +31,7 @@ import org.springframework.stereotype.Repository;
 @NullMarked
 public interface RunnerRepository extends JpaRepository<Runner, UUID> {
 
-  Optional<Runner> findByTokenHash(String tokenHash);
-
-  List<Runner> findAllByRepoId(UUID repoId);
-
-  List<Runner> findAllByRepoIdAndStatus(UUID repoId, RunnerStatus status);
+  List<Runner> findAllByTenantId(UUID tenantId);
 
   List<Runner> findAllByStatus(RunnerStatus status);
 

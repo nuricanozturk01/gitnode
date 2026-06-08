@@ -23,9 +23,6 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 public interface WorkflowArtifactRepository extends JpaRepository<WorkflowArtifact, UUID> {
 
@@ -34,8 +31,4 @@ public interface WorkflowArtifactRepository extends JpaRepository<WorkflowArtifa
   Optional<WorkflowArtifact> findByRunIdAndName(UUID runId, String name);
 
   List<WorkflowArtifact> findAllByExpiresAtBefore(Instant threshold, Pageable pageable);
-
-  @Modifying
-  @Query("DELETE FROM WorkflowArtifact a WHERE a.expiresAt < :threshold")
-  int deleteExpiredArtifacts(@Param("threshold") Instant threshold);
 }

@@ -8,19 +8,17 @@ import type { RegistrationToken, RunnerInfo } from '../../../domain/actions/mode
 export class RunnerService {
   private readonly http = inject(HttpClient);
 
-  private base(owner: string, repo: string): string {
-    return `${environment.apiUrl}/api/repos/${owner}/${repo}/actions/runners`;
+  private readonly base = `${environment.apiUrl}/api/actions/runners`;
+
+  list(): Promise<RunnerInfo[]> {
+    return firstValueFrom(this.http.get<RunnerInfo[]>(this.base));
   }
 
-  list(owner: string, repo: string): Promise<RunnerInfo[]> {
-    return firstValueFrom(this.http.get<RunnerInfo[]>(this.base(owner, repo)));
+  createRegistrationToken(): Promise<RegistrationToken> {
+    return firstValueFrom(this.http.post<RegistrationToken>(`${this.base}/registration-token`, null));
   }
 
-  createRegistrationToken(owner: string, repo: string): Promise<RegistrationToken> {
-    return firstValueFrom(this.http.post<RegistrationToken>(`${this.base(owner, repo)}/registration-token`, null));
-  }
-
-  delete(owner: string, repo: string, runnerId: string): Promise<void> {
-    return firstValueFrom(this.http.delete<void>(`${this.base(owner, repo)}/${runnerId}`));
+  delete(runnerId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.base}/${runnerId}`));
   }
 }

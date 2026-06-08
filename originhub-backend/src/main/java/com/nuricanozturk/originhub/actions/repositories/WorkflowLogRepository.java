@@ -20,8 +20,6 @@ import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -29,7 +27,4 @@ import org.springframework.stereotype.Repository;
 public interface WorkflowLogRepository extends JpaRepository<WorkflowLog, Long> {
 
   List<WorkflowLog> findAllByStepIdOrderByLineNumberAsc(UUID stepId);
-
-  @Query("SELECT COALESCE(MAX(l.lineNumber), 0) FROM WorkflowLog l WHERE l.stepId = :stepId")
-  int maxLineNumber(@Param("stepId") UUID stepId);
 }

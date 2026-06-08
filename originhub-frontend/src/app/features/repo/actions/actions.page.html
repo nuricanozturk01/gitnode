@@ -90,7 +90,7 @@
         <p class="text-base-content/50 mt-1 font-mono text-xs">{{ workflow.filePath }}</p>
       </a>
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        @if (workflow.dispatchable && repoContext.canEdit()) {
+        @if (workflow.dispatchable && repoContext.canWriteActions()) {
         <button
           type="button"
           class="btn btn-primary btn-sm gap-1.5"
@@ -103,7 +103,7 @@
           <lucide-icon name="play" class="size-3.5"></lucide-icon>
           } Run workflow
         </button>
-        } @if (repoContext.canWriteSettings()) {
+        } @if (repoContext.canWriteActions()) {
         <button type="button" class="btn btn-outline btn-sm" (click)="toggleEnabled(workflow)">
           {{ workflow.enabled ? 'Disable' : 'Enable' }}
         </button>
@@ -141,7 +141,7 @@
         </p>
       </a>
       <div class="flex shrink-0 items-center gap-2">
-        @if (repoContext.canEdit() && isRunActive(run.status)) {
+        @if (repoContext.canWriteActions() && isRunActive(run.status)) {
         <button
           type="button"
           class="btn btn-ghost btn-xs text-error gap-1"

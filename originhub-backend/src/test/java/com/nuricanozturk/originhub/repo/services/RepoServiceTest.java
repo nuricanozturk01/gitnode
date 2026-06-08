@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,7 +65,26 @@ class RepoServiceTest {
   @Mock private RepoStorageService repoStorageService;
   @Mock private CollaboratorAccessPort collaboratorAccessPort;
 
+  /** Holds the value that the injected RepoInfoCache mock returns from {@code fetch()}. */
+  private RepoInfo cacheResult;
+
   @InjectMocks private RepoService repoService;
+
+  @BeforeEach
+  void injectRepoInfoCache() throws Exception {
+    final var field = RepoService.class.getDeclaredField("repoInfoCache");
+    field.setAccessible(true);
+    final var cacheMock =
+        org.mockito.Mockito.mock(
+            field.getType(),
+            invocation -> {
+              if ("fetch".equals(invocation.getMethod().getName())) {
+                return cacheResult;
+              }
+              return null;
+            });
+    field.set(repoService, cacheMock);
+  }
 
   @Test
   @DisplayName("create throws ItemNotFoundException when tenant not found")
@@ -363,7 +383,7 @@ class RepoServiceTest {
     RepoInfo expected = createRepoInfo(repo.getId(), "my-repo");
     when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
         .thenReturn(Optional.of(repo));
-    when(repoMapper.toDto(repo)).thenReturn(expected);
+    cacheResult = expected;
 
     RepoInfo result = repoService.findByOwnerAndName("owner", "my-repo", null);
 
@@ -402,7 +422,7 @@ class RepoServiceTest {
     when(repoRepository.findByOwnerUsernameAndName("owner", "private-repo"))
         .thenReturn(Optional.of(repo));
     when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
-    when(repoMapper.toDto(repo)).thenReturn(expected);
+    cacheResult = expected;
 
     RepoInfo result = repoService.findByOwnerAndName("owner", "private-repo", ownerId);
 

@@ -76,6 +76,19 @@
       <button
         type="button"
         role="tab"
+        id="settings-tab-actions"
+        class="tab gap-2 rounded-md"
+        [class.tab-active]="activeTab() === 'actions'"
+        [attr.aria-selected]="activeTab() === 'actions'"
+        aria-controls="settings-panel-actions"
+        (click)="setTab('actions')"
+      >
+        <lucide-icon name="server" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Actions
+      </button>
+      <button
+        type="button"
+        role="tab"
         id="settings-tab-danger"
         class="tab text-error gap-2 rounded-md"
         [class.tab-active]="activeTab() === 'danger'"
@@ -641,6 +654,136 @@
             </div>
           </div>
           } }
+        </div>
+      </section>
+    </div>
+    } @if (activeTab() === 'actions') {
+    <div
+      id="settings-panel-actions"
+      role="tabpanel"
+      aria-labelledby="settings-tab-actions"
+      class="settings-panels space-y-6"
+    >
+      <section class="repo-panel settings-section relative overflow-hidden">
+        <div
+          class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+        ></div>
+        <div class="p-5 sm:p-6">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+                <lucide-icon name="server" class="text-primary size-5 shrink-0"></lucide-icon>
+                Self-hosted runners
+              </h2>
+              <p class="text-base-content/65 mt-1 max-w-2xl text-sm">
+                Runners are shared across all your repositories. Generate a registration token, install the runner
+                agent, and it will execute jobs for any of your workflows.
+              </p>
+            </div>
+            <button
+              type="button"
+              class="btn btn-primary btn-sm shrink-0 gap-1.5 self-start"
+              [disabled]="generatingToken()"
+              (click)="generateToken()"
+            >
+              @if (generatingToken()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              } @else {
+              <lucide-icon name="keyRound" class="size-4"></lucide-icon>
+              } New registration token
+            </button>
+          </div>
+
+          @if (registrationToken(); as token) {
+          <div class="border-base-200 bg-base-200/30 mt-6 rounded-xl border p-4 sm:p-5">
+            <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-base-content text-sm font-semibold">Registration token</p>
+                <p class="text-base-content/55 text-xs">Expires {{ token.expiresAt | relativeTime }} · single use</p>
+              </div>
+              <button type="button" class="btn btn-outline btn-sm mt-2 shrink-0 sm:mt-0" (click)="copyToken()">
+                <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+                Copy token
+              </button>
+            </div>
+            <code
+              class="bg-base-100 border-base-300 mt-3 block overflow-x-auto rounded-lg border px-3 py-2.5 font-mono text-xs leading-relaxed break-all"
+            >
+              {{ token.token }}
+            </code>
+            <div class="mt-4">
+              <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <p class="settings-label mb-0">Start command</p>
+                <button type="button" class="btn btn-outline btn-sm mt-2 shrink-0 sm:mt-0" (click)="copyStartCommand()">
+                  <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+                  Copy command
+                </button>
+              </div>
+              <pre
+                class="bg-base-100 border-base-300 mt-2 overflow-x-auto rounded-lg border p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap"
+              ><code>{{ runnerStartCommand(token) }}</code></pre>
+            </div>
+          </div>
+          } @if (loadingRunners()) {
+          <div class="mt-6 flex justify-center py-10">
+            <span class="loading loading-spinner loading-md text-primary"></span>
+          </div>
+          } @else if (runners().length === 0) {
+          <div class="border-base-200 mt-6 rounded-xl border border-dashed px-4 py-10 text-center">
+            <lucide-icon name="server" class="text-base-content/25 mx-auto size-10"></lucide-icon>
+            <p class="text-base-content mt-3 text-sm font-medium">No runners yet</p>
+            <p class="text-base-content/55 mx-auto mt-1 max-w-md text-xs">
+              Generate a registration token above, then start the runner on a machine with network access to this
+              OriginHub instance. Once registered, it will execute jobs from any of your repositories.
+            </p>
+          </div>
+          } @else {
+          <div class="mt-6 space-y-3">
+            @for (runner of runners(); track runner.id) {
+            <div class="border-base-200 rounded-xl border p-4">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    @if (isRunnerOnline(runner.status)) {
+                    <lucide-icon name="checkCircle" class="text-success size-4 shrink-0"></lucide-icon>
+                    } @else if (isRunnerBusy(runner.status)) {
+                    <lucide-icon name="loader2" class="text-warning size-4 shrink-0 animate-spin"></lucide-icon>
+                    } @else {
+                    <lucide-icon name="circleAlert" class="text-error size-4 shrink-0"></lucide-icon>
+                    }
+                    <span class="text-base-content font-semibold">{{ runner.name }}</span>
+                    <span
+                      class="runner-status-badge"
+                      [class.runner-status-badge--online]="isRunnerOnline(runner.status)"
+                      [class.runner-status-badge--busy]="isRunnerBusy(runner.status)"
+                      [class.runner-status-badge--offline]="isRunnerOffline(runner.status)"
+                      [class.runner-status-badge--unknown]="!isRunnerOnline(runner.status) && !isRunnerBusy(runner.status) && !isRunnerOffline(runner.status)"
+                      >{{ statusLabel(runner.status) }}</span
+                    >
+                  </div>
+                  <p class="text-base-content/60 mt-1 text-sm">
+                    <span class="font-medium">Labels:</span> {{ runner.labels.join(', ') }}
+                  </p>
+                  <p class="text-base-content/50 mt-0.5 text-xs">
+                    {{ runner.executorType }} @if (runner.os) { · {{ runner.os }}/{{ runner.arch }} } @if
+                    (runner.version) { · v{{ runner.version }} }
+                  </p>
+                  @if (runner.lastHeartbeat) {
+                  <p class="text-base-content/45 mt-1 text-xs">Last seen {{ runner.lastHeartbeat | relativeTime }}</p>
+                  }
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm text-error shrink-0 self-start"
+                  (click)="deleteRunner(runner)"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+            }
+          </div>
+          }
         </div>
       </section>
     </div>

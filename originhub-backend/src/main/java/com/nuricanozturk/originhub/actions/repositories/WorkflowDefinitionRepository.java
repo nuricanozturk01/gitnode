@@ -27,8 +27,6 @@ import org.springframework.stereotype.Repository;
 @NullMarked
 public interface WorkflowDefinitionRepository extends JpaRepository<WorkflowDefinition, UUID> {
 
-  List<WorkflowDefinition> findAllByRepoIdAndEnabledTrue(UUID repoId);
-
   List<WorkflowDefinition> findAllByRepoIdOrderByFilePathAsc(UUID repoId);
 
   Optional<WorkflowDefinition> findByRepoIdAndFilePath(UUID repoId, String filePath);

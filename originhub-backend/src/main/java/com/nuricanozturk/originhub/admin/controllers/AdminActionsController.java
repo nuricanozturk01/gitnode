@@ -44,7 +44,7 @@ public class AdminActionsController {
                 r ->
                     new AdminRunnerSummary(
                         r.id(),
-                        r.repoId(),
+                        r.tenantId(),
                         r.name(),
                         r.labels(),
                         r.status(),

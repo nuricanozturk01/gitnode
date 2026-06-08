@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.actions.services;
 import com.nuricanozturk.originhub.actions.entities.Runner;
 import com.nuricanozturk.originhub.actions.entities.RunnerStatus;
 import com.nuricanozturk.originhub.actions.entities.WorkflowJob;
+import com.nuricanozturk.originhub.actions.entities.WorkflowRun;
 import com.nuricanozturk.originhub.actions.entities.WorkflowStep;
 import com.nuricanozturk.originhub.actions.model.JobModel;
 import com.nuricanozturk.originhub.actions.model.ServiceModel;
@@ -35,10 +36,12 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -47,6 +50,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Component
@@ -63,6 +68,7 @@ public class JobDispatcher {
   private final WorkflowParserService parserService;
   private final RepoRepository repoRepository;
   private final ExpressionEvaluator expressionEvaluator;
+  private final SecretVaultService secretVaultService;
 
   @Value("${originhub.actions.runner.heartbeat-timeout-seconds:60}")
   private int heartbeatTimeoutSeconds;
@@ -90,8 +96,37 @@ public class JobDispatcher {
       return;
     }
 
+    final var runIds = queuedJobs.stream().map(WorkflowJob::getRunId).collect(Collectors.toSet());
+    final var repoIdByRunId =
+        this.runRepository.findAllById(runIds).stream()
+            .collect(Collectors.toMap(WorkflowRun::getId, WorkflowRun::getRepoId));
+
+    final var repoIds = new java.util.HashSet<>(repoIdByRunId.values());
+    final var tenantIdByRepoId =
+        this.repoRepository.findOwnerIdsByRepoIds(repoIds).stream()
+            .collect(Collectors.toMap(row -> (UUID) row[0], row -> (UUID) row[1]));
+
+    this.assignJobs(queuedJobs, onlineRunners, repoIdByRunId, tenantIdByRepoId);
+  }
+
+  private void assignJobs(
+      final List<WorkflowJob> queuedJobs,
+      final List<Runner> onlineRunners,
+      final Map<UUID, UUID> repoIdByRunId,
+      final Map<UUID, UUID> tenantIdByRepoId) {
+
     for (final var job : queuedJobs) {
-      final var runner = this.findMatchingRunner(job, onlineRunners);
+      final var repoId = repoIdByRunId.get(job.getRunId());
+      if (repoId == null) {
+        continue;
+      }
+
+      final var tenantId = tenantIdByRepoId.get(repoId);
+      if (tenantId == null) {
+        continue;
+      }
+
+      final var runner = this.findMatchingRunner(job, onlineRunners, tenantId);
       if (runner == null) {
         continue;
       }
@@ -114,10 +149,6 @@ public class JobDispatcher {
               : Collections.<WorkflowStep>emptyList();
       final var payload = this.buildJobPayload(job, steps, ctx);
 
-      this.sessionRegistry
-          .get(runner.getId())
-          .ifPresent(session -> session.send(ServerMessage.jobAssigned(payload)));
-
       job.setRunnerId(runner.getId());
       job.setStatus(com.nuricanozturk.originhub.actions.entities.WorkflowJobStatus.IN_PROGRESS);
       job.setStartedAt(java.time.Instant.now());
@@ -125,11 +156,28 @@ public class JobDispatcher {
       runner.setStatus(RunnerStatus.BUSY);
       this.runnerRepository.save(runner);
 
-      log.info(
-          "Job dispatched: jobId={}, runnerId={}, steps={}",
-          job.getId(),
-          runner.getId(),
-          steps.size());
+      final var runnerId = runner.getId();
+      final var jobId = job.getId();
+      final var stepCount = steps.size();
+      final Runnable send =
+          () -> {
+            this.sessionRegistry
+                .get(runnerId)
+                .ifPresent(session -> session.send(ServerMessage.jobAssigned(payload)));
+            log.info("Job dispatched: jobId={}, runnerId={}, steps={}", jobId, runnerId, stepCount);
+          };
+
+      if (TransactionSynchronizationManager.isSynchronizationActive()) {
+        TransactionSynchronizationManager.registerSynchronization(
+            new TransactionSynchronization() {
+              @Override
+              public void afterCommit() {
+                send.run();
+              }
+            });
+      } else {
+        send.run();
+      }
 
     } catch (final Exception ex) {
       log.error("Failed to dispatch job {}", job.getId(), ex);
@@ -204,8 +252,16 @@ public class JobDispatcher {
             .map(com.nuricanozturk.originhub.actions.model.JobModel::steps)
             .orElse(List.of());
 
-    final var exprCtx = buildExpressionContext(run, job);
-    final var stepPayloads = this.buildStepPayloads(steps, stepModels, exprCtx);
+    final var secrets =
+        run != null
+            ? this.secretVaultService.resolveSecrets(run.getRepoId())
+            : Map.<String, String>of();
+
+    final var baseCtx = buildExpressionContext(run, job);
+    final var exprCtx = new java.util.LinkedHashMap<>(baseCtx);
+    secrets.forEach((k, v) -> exprCtx.put("secrets." + k, v));
+    final var stepPayloads =
+        this.buildStepPayloads(steps, stepModels, java.util.Collections.unmodifiableMap(exprCtx));
     final var services =
         buildServicesPayload(
             java.util.Optional.ofNullable(jobModel)
@@ -224,7 +280,7 @@ public class JobDispatcher {
         stepPayloads,
         services,
         env,
-        Map.of(),
+        secrets,
         java.util.Optional.ofNullable(job.getMatrixValues()).orElse(Map.of()),
         java.util.Optional.ofNullable(job.getNeeds()).orElse(List.of()),
         DEFAULT_JOB_TIMEOUT_MINUTES);
@@ -389,20 +445,22 @@ public class JobDispatcher {
   }
 
   private @Nullable Runner findMatchingRunner(
-      final WorkflowJob job, final List<Runner> onlineRunners) {
+      final WorkflowJob job, final List<Runner> onlineRunners, final UUID tenantId) {
 
     final var required = job.getRunnerLabels();
     for (final var runner : onlineRunners) {
-      if (this.runnerMatches(runner, required)) {
+      if (this.runnerMatches(runner, required, tenantId)) {
         return runner;
       }
     }
     return null;
   }
 
-  private boolean runnerMatches(final Runner runner, final List<String> required) {
+  private boolean runnerMatches(
+      final Runner runner, final List<String> required, final UUID tenantId) {
     return runner.getStatus() == RunnerStatus.ONLINE
-        && runner.getLabels().containsAll(required)
+        && tenantId.equals(runner.getTenantId())
+        && new HashSet<>(runner.getLabels()).containsAll(required)
         && this.sessionRegistry.isConnected(runner.getId());
   }
 

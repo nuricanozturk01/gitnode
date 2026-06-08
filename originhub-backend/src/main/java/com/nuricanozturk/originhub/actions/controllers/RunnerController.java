@@ -22,10 +22,7 @@ import com.nuricanozturk.originhub.actions.dtos.response.RunnerRegistrationRespo
 import com.nuricanozturk.originhub.actions.dtos.response.RunnerResponse;
 import com.nuricanozturk.originhub.actions.services.RunnerRegistryService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
-import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.ratelimit.RateLimit;
-import com.nuricanozturk.originhub.shared.repo.entities.Repo;
-import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -51,23 +48,17 @@ public class RunnerController {
 
   private final RunnerRegistryService runnerRegistryService;
   private final JwtUtils jwtUtils;
-  private final RepoRepository repoRepository;
 
-  /** Generate a one-time registration token (requires repo owner auth). */
-  @PostMapping("/repos/{owner}/{repo}/actions/runners/registration-token")
+  @PostMapping("/actions/runners/registration-token")
   @RateLimit(limit = 10, windowSeconds = 3600, key = "runner.reg-token")
   public ResponseEntity<RegistrationTokenResponse> createRegistrationToken(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
-      @PathVariable final String owner,
-      @PathVariable final String repo) {
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
 
-    final var requesterId = this.jwtUtils.extractUserId(authHeader);
-    final var repoId = this.requireRepoId(owner, repo);
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.ok(
-        this.runnerRegistryService.generateRegistrationToken(repoId, requesterId));
+        this.runnerRegistryService.generateRegistrationToken(tenantId, tenantId));
   }
 
-  /** Register a runner using a one-time registration token. No user auth required. */
   @PostMapping("/actions/runners/register")
   @RateLimit(limit = 20, windowSeconds = 3600, key = "runner.register")
   public ResponseEntity<RunnerRegistrationResponse> register(
@@ -77,7 +68,6 @@ public class RunnerController {
         .body(this.runnerRegistryService.register(request));
   }
 
-  /** Heartbeat — called by runner agent periodically. Auth via runner JWT. */
   @PostMapping("/actions/runners/{runnerId}/heartbeat")
   public ResponseEntity<Void> heartbeat(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
@@ -89,38 +79,21 @@ public class RunnerController {
     return ResponseEntity.noContent().build();
   }
 
-  /** List runners for a repository (requires user auth). */
-  @GetMapping("/repos/{owner}/{repo}/actions/runners")
+  @GetMapping("/actions/runners")
   public ResponseEntity<List<RunnerResponse>> list(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
-      @PathVariable final String owner,
-      @PathVariable final String repo) {
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
 
-    this.jwtUtils.extractUserId(authHeader);
-    final var repoId = this.requireRepoId(owner, repo);
-    return ResponseEntity.ok(this.runnerRegistryService.listByRepo(repoId));
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
+    return ResponseEntity.ok(this.runnerRegistryService.listByTenant(tenantId));
   }
 
-  /** Delete a runner (requires user auth). */
-  @DeleteMapping("/repos/{owner}/{repo}/actions/runners/{runnerId}")
+  @DeleteMapping("/actions/runners/{runnerId}")
   public ResponseEntity<Void> delete(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
-      @PathVariable final String owner,
-      @PathVariable final String repo,
       @PathVariable final UUID runnerId) {
 
-    final var requesterId = this.jwtUtils.extractUserId(authHeader);
-    final var repoId = this.requireRepoId(owner, repo);
-    this.runnerRegistryService.delete(runnerId, requesterId, repoId);
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
+    this.runnerRegistryService.delete(runnerId, tenantId, tenantId);
     return ResponseEntity.noContent().build();
-  }
-
-  private UUID requireRepoId(final String owner, final String repo) {
-
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repo)
-        .map(Repo::getId)
-        .orElseThrow(
-            () -> new ItemNotFoundException("Repository not found: " + owner + "/" + repo));
   }
 }

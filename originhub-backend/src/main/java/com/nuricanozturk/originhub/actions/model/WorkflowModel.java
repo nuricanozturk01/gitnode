@@ -24,10 +24,6 @@ import org.jspecify.annotations.Nullable;
 @NullMarked
 public record WorkflowModel(
     @Nullable String name,
-    /*
-     * YAML "on:" key — SnakeYAML (YAML 1.1) may resolve bare "on" as boolean true.
-     * @JsonAlias("true") handles that edge case when the key arrives as string "true".
-     */
     @JsonProperty("on") @JsonAlias("true") @Nullable OnTriggerModel on,
     @Nullable Map<String, String> env,
     @Nullable ConcurrencyModel concurrency,

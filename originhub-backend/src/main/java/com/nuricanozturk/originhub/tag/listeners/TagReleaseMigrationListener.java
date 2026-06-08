@@ -26,7 +26,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -44,7 +43,6 @@ public class TagReleaseMigrationListener {
   private final TagNonTxService tagNonTxService;
   private final RestClient restClient;
 
-  @Async
   @EventListener
   public void onMigrateTagsRequested(final TagReleaseMigrationRequestedEvent event) {
 
@@ -72,9 +70,8 @@ public class TagReleaseMigrationListener {
 
     final var tenantUsername = event.getTenantUsername();
 
-    for (final var release : releases) {
-      this.createRelease(release, event, tenantUsername, repoName);
-    }
+    releases.parallelStream()
+        .forEach(release -> this.createRelease(release, event, tenantUsername, repoName));
   }
 
   private void createRelease(

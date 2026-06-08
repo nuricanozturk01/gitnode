@@ -1,24 +1,24 @@
 <!doctype html>
-<html lang="en" data-theme="originhub-light">
+<html lang="en" data-theme="originhub">
   <head>
     <meta charset="utf-8" />
     <script>
       (function () {
         var k = 'originhub-admin-theme';
         var allowed = { originhub: 1, 'originhub-light': 1 };
-        var light = 'originhub-light';
+        var dark = 'originhub';
         try {
           var t = localStorage.getItem(k);
           if (t && allowed[t]) {
             document.documentElement.setAttribute('data-theme', t);
-            document.documentElement.style.colorScheme = t === light ? 'light' : 'dark';
+            document.documentElement.style.colorScheme = t === dark ? 'dark' : 'light';
           } else {
-            document.documentElement.setAttribute('data-theme', light);
-            document.documentElement.style.colorScheme = 'light';
+            document.documentElement.setAttribute('data-theme', dark);
+            document.documentElement.style.colorScheme = 'dark';
           }
         } catch (e) {
-          document.documentElement.setAttribute('data-theme', light);
-          document.documentElement.style.colorScheme = 'light';
+          document.documentElement.setAttribute('data-theme', dark);
+          document.documentElement.style.colorScheme = 'dark';
         }
       })();
     </script>

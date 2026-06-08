@@ -44,11 +44,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-/**
- * Internal endpoints used by the runner agent for artifact and cache operations.
- *
- * <p>Frontend-facing artifact listing is served via {@link WorkflowRunController}.
- */
 @RestController
 @RequiredArgsConstructor
 @NullMarked
@@ -57,8 +52,6 @@ public class ArtifactController {
   private final ArtifactStoreService artifactStoreService;
   private final CacheStoreService cacheStoreService;
   private final JwtUtils jwtUtils;
-
-  // ── Artifacts ─────────────────────────────────────────────────────────────
 
   @PostMapping("/api/actions/artifacts/upload")
   public ResponseEntity<ArtifactResponse> upload(
@@ -112,8 +105,6 @@ public class ArtifactController {
             page.getSize()));
   }
 
-  // ── Cache ─────────────────────────────────────────────────────────────────
-
   @GetMapping("/api/actions/cache")
   public ResponseEntity<Resource> getCache(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
@@ -140,8 +131,6 @@ public class ArtifactController {
     this.cacheStoreService.put(repoId, key, restoreKeys, file);
     return ResponseEntity.noContent().build();
   }
-
-  // ── helpers ───────────────────────────────────────────────────────────────
 
   private ArtifactResponse toResponse(final WorkflowArtifact a) {
     return new ArtifactResponse(

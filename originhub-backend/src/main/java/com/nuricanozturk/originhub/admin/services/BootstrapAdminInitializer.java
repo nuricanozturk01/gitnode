@@ -83,7 +83,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
     }
     try {
       this.transactionTemplate.execute(
-          status -> {
+          _ -> {
             final var normalizedUsername = this.username.toLowerCase(Locale.getDefault());
             if (this.tenantRepository.existsByUsername(normalizedUsername)) {
               log.info("Bootstrap admin already exists, skipping");

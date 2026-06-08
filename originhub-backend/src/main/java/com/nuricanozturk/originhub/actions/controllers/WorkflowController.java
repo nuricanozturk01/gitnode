@@ -19,13 +19,16 @@ import com.nuricanozturk.originhub.actions.dtos.response.WorkflowDetailResponse;
 import com.nuricanozturk.originhub.actions.dtos.response.WorkflowSummaryResponse;
 import com.nuricanozturk.originhub.actions.services.WorkflowDefinitionService;
 import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
+import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,27 +47,32 @@ public class WorkflowController {
 
   private final WorkflowDefinitionService definitionService;
   private final RepoRepository repoRepository;
+  private final RepoService repoService;
   private final JwtUtils jwtUtils;
 
   @GetMapping("/workflows")
   public ResponseEntity<List<WorkflowSummaryResponse>> list(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     final UUID repoId = this.requireRepoId(owner, repo);
     return ResponseEntity.ok(this.definitionService.listForRepo(repoId));
   }
 
   @GetMapping("/workflows/detail")
   public ResponseEntity<WorkflowDetailResponse> detail(
-      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
       @RequestParam final String filePath) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     final UUID repoId = this.requireRepoId(owner, repo);
     return ResponseEntity.ok(this.definitionService.getDetail(repoId, filePath));
   }
@@ -76,7 +84,9 @@ public class WorkflowController {
       @PathVariable final String repo,
       @RequestParam final String filePath) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(
+        userId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
     this.definitionService.setEnabled(this.requireRepoId(owner, repo), filePath, true);
     return ResponseEntity.noContent().build();
   }
@@ -88,7 +98,9 @@ public class WorkflowController {
       @PathVariable final String repo,
       @RequestParam final String filePath) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(
+        userId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
     this.definitionService.setEnabled(this.requireRepoId(owner, repo), filePath, false);
     return ResponseEntity.noContent().build();
   }

@@ -255,7 +255,7 @@ public class PgAuditLogReaderService {
               file,
               this.maxScanLines - scannedLines,
               record -> {
-                final @Nullable PgAuditLogEntry entry = parseLine(record);
+                final var entry = parseLine(record);
                 if (entry == null || !matchesFilters(entry, q, dbUser, category, from, to)) {
                   return;
                 }
@@ -415,9 +415,9 @@ public class PgAuditLogReaderService {
     final String payload = trimmed.substring(auditIndex + "AUDIT:".length()).trim();
     final ParsedPayload parsed = parsePayload(payload);
 
-    @Nullable String user = null;
-    @Nullable String db = null;
-    @Nullable String client = null;
+    String user = null;
+    String db = null;
+    String client = null;
     final Matcher connectionMatcher = PG_CONNECTION_INFO.matcher(trimmed);
     if (connectionMatcher.find()) {
       user = blankToNull(connectionMatcher.group("user"));
@@ -462,15 +462,14 @@ public class PgAuditLogReaderService {
 
   private static ParsedPayload parsePayload(final String payload) {
 
-    final Matcher categoryMatcher = CATEGORY.matcher(payload);
-    final @Nullable String category =
-        categoryMatcher.find() ? categoryMatcher.group("category") : null;
+    final var categoryMatcher = CATEGORY.matcher(payload);
 
-    final List<String> parts = splitCsv(payload);
-    final @Nullable String command = parts.size() > 4 ? blankToNull(parts.get(4)) : null;
-    final @Nullable String objectType = parts.size() > 5 ? blankToNull(parts.get(5)) : null;
-    final @Nullable String objectName = parts.size() > 6 ? blankToNull(parts.get(6)) : null;
-    final @Nullable String statement = parts.size() > 7 ? blankToNull(unquote(parts.get(7))) : null;
+    final var category = categoryMatcher.find() ? categoryMatcher.group("category") : null;
+    final var parts = splitCsv(payload);
+    final var command = parts.size() > 4 ? blankToNull(parts.get(4)) : null;
+    final var objectType = parts.size() > 5 ? blankToNull(parts.get(5)) : null;
+    final var objectName = parts.size() > 6 ? blankToNull(parts.get(6)) : null;
+    final var statement = parts.size() > 7 ? blankToNull(unquote(parts.get(7))) : null;
 
     return new ParsedPayload(category, command, objectType, objectName, statement);
   }
@@ -547,10 +546,8 @@ public class PgAuditLogReaderService {
     if (from != null && entry.occurredAt().isBefore(from)) {
       return false;
     }
-    if (to != null && entry.occurredAt().isAfter(to)) {
-      return false;
-    }
-    return true;
+
+    return to == null || !entry.occurredAt().isAfter(to);
   }
 
   private static boolean matchesQuery(final PgAuditLogEntry entry, final @Nullable String q) {

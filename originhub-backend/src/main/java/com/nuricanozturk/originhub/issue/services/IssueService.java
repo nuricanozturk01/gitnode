@@ -23,6 +23,7 @@ import com.nuricanozturk.originhub.issue.mappers.IssueMapper;
 import com.nuricanozturk.originhub.issue.repositories.IssueCommentRepository;
 import com.nuricanozturk.originhub.issue.repositories.IssueRepository;
 import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -39,6 +40,8 @@ import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -64,6 +67,16 @@ public class IssueService implements IssueQueryService {
   private final ApplicationEventPublisher eventPublisher;
   private final CollaboratorAccessPort collaboratorAccessPort;
 
+  @Cacheable(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
+  public int countOpenIssues(final String owner, final String repoName) {
+    final var repo =
+        this.repoRepository
+            .findByOwnerUsernameAndName(owner, repoName)
+            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
+    return this.issueRepository.countByRepoIdAndStatus(repo.getId(), IssueStatus.OPEN.name());
+  }
+
+  @CacheEvict(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "CREATE_ISSUE",
       entityType = "ISSUE",
@@ -166,6 +179,10 @@ public class IssueService implements IssueQueryService {
             .map(this.issueMapper::toCommentInfo));
   }
 
+  @CacheEvict(
+      cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT,
+      key = "#owner + ':' + #repoName",
+      condition = "#form.status != null")
   @Transactional
   public IssueDetail update(
       final String owner,
@@ -229,6 +246,7 @@ public class IssueService implements IssueQueryService {
     }
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "DELETE_ISSUE",
       entityType = "ISSUE",

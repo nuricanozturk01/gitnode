@@ -41,6 +41,9 @@ import tools.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 @EnableCaching
 public class CacheConfig implements CachingConfigurer {
 
+  private static final Duration REPO_META_TTL = Duration.ofMinutes(5);
+  private static final Duration REPO_PR_OPEN_COUNT_TTL = Duration.ofMinutes(2);
+  private static final Duration REPO_ISSUE_OPEN_COUNT_TTL = Duration.ofMinutes(2);
   private static final Duration BRANCH_TTL = Duration.ofMinutes(5);
   private static final Duration TAG_TTL = Duration.ofMinutes(10);
   private static final Duration TREE_TTL = Duration.ofMinutes(10);
@@ -76,6 +79,12 @@ public class CacheConfig implements CachingConfigurer {
 
     final Map<String, RedisCacheConfiguration> perRegion =
         Map.ofEntries(
+            Map.entry(CacheNames.REPO_META, defaultConfig.entryTtl(REPO_META_TTL)),
+            Map.entry(
+                CacheNames.REPO_PR_OPEN_COUNT, defaultConfig.entryTtl(REPO_PR_OPEN_COUNT_TTL)),
+            Map.entry(
+                CacheNames.REPO_ISSUE_OPEN_COUNT,
+                defaultConfig.entryTtl(REPO_ISSUE_OPEN_COUNT_TTL)),
             Map.entry(CacheNames.BRANCHES, defaultConfig.entryTtl(BRANCH_TTL)),
             Map.entry(CacheNames.TAGS, defaultConfig.entryTtl(TAG_TTL)),
             Map.entry(CacheNames.TREE, defaultConfig.entryTtl(TREE_TTL)),

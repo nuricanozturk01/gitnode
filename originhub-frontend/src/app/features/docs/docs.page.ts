@@ -21,6 +21,8 @@ import { environment } from '../../../environments/environment';
 import { ToastService } from '../../core/toast/toast.service';
 import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 
+type DocsTab = 'git' | 'actions' | 'features';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-docs',
@@ -34,12 +36,40 @@ export class DocsPage implements OnDestroy {
   readonly copiedId = signal<string | null>(null);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
+  readonly activeTab = signal<DocsTab>('git');
+
+  private readonly sectionTabMap: Record<string, DocsTab> = {
+    'local-setup': 'git',
+    'http-git': 'git',
+    'ssh-config': 'git',
+    'clone-push': 'git',
+    'actions-overview': 'actions',
+    'actions-quickstart': 'actions',
+    'actions-yaml': 'actions',
+    'actions-dispatch': 'actions',
+    'actions-builtin': 'actions',
+    'actions-runner': 'actions',
+    collaborators: 'features',
+    'gh-migration': 'features',
+    issues: 'features',
+    kanban: 'features',
+    snippets: 'features',
+    webhooks: 'features',
+    releases: 'features',
+    forks: 'features',
+    'admin-panel': 'features',
+    'saml-ldap': 'features',
+  };
+
   readonly httpsCloneLine = computed(() => {
     const base = environment.apiUrl.replace(/\/$/, '');
     return `git clone ${base}/git/owner/repo`;
   });
 
-  readonly sshCloneLine = computed(() => `git clone ssh://${environment.gitUrl}/owner/repo.git`);
+  readonly sshCloneLine = computed(() => {
+    const host = environment.gitUrl.replace(/\/$/, '');
+    return `git clone ssh://${host}/owner/repo.git`;
+  });
 
   readonly sshKeygenCmd = 'ssh-keygen -t ed25519 -C "your-email@example.com"';
   readonly catPubCmd = 'cat ~/.ssh/id_ed25519.pub';
@@ -48,11 +78,11 @@ export class DocsPage implements OnDestroy {
     Port 2222
     User git
     IdentityFile ~/.ssh/id_ed25519`;
-  readonly sshAliasFlow = `git clone originhub-local:username/repo-name.git
-cd repo-name
+  readonly sshAliasFlow = `git clone originhub-local:owner/repo.git
+cd repo
 git push origin main`;
 
-  // Actions docs snippets
+  // Actions snippets
   readonly actionsWorkflowPath = '.originhub/workflows/ci.yaml';
 
   readonly actionsMinimalYaml = `name: CI
@@ -74,7 +104,6 @@ jobs:
 on:
   push:
     branches: [main, develop]
-    paths-ignore: ['**.md']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -89,7 +118,7 @@ env:
   NODE_ENV: production
 
 concurrency:
-  group: ci-\${{ env.ORIGINHUB_REF }}
+  group: build-\${{ inputs.environment }}
   cancel-in-progress: true
 
 jobs:
@@ -147,7 +176,7 @@ jobs:
 
   readonly actionsCacheYaml = `- uses: actions/cache@v1
   with:
-    key: npm-\${{ hashFiles('package-lock.json') }}
+    key: npm-deps-v1
     path: node_modules`;
 
   readonly actionsArtifactYaml = `# Upload
@@ -169,16 +198,68 @@ jobs:
   --labels self-hosted,linux \\
   --executor shell`;
 
+  readonly actionsSecretsYaml = `jobs:
+  deploy:
+    runs-on: [self-hosted]
+    steps:
+      - uses: actions/checkout@v1
+      - name: Push Docker image
+        env:
+          REGISTRY_PASSWORD: \${{ secrets.REGISTRY_PASSWORD }}
+          DATABASE_URL: \${{ secrets.DATABASE_URL }}
+        run: |
+          echo "$REGISTRY_PASSWORD" | docker login -u myuser --password-stdin
+          ./deploy.sh`;
+
+  readonly webhookHeadersExample = `POST https://your-server.example.com/hook
+Content-Type: application/json
+X-Hub-Signature-256: sha256=a1b2c3d4e5f6...
+
+{
+  "event": "repo.pushed",
+  "timestamp": "2026-06-08T10:30:00Z",
+  "repoId": "uuid...",
+  "data": {
+    "branchName": "main",
+    "pusher": "alice"
+  }
+}`;
+
+  readonly webhookVerifyPython = `import hmac, hashlib
+
+secret = b"your-webhook-secret"
+payload = request.body          # raw bytes
+
+sig = request.headers.get("X-Hub-Signature-256", "")
+expected = "sha256=" + hmac.new(secret, payload, hashlib.sha256).hexdigest()
+
+if not hmac.compare_digest(sig, expected):
+    abort(401)`;
+
+  readonly samlKeygenCmd = 'make saml-keygen   # writes key + cert to ~/.originhub/saml/';
+
+  setTab(tab: DocsTab): void {
+    this.activeTab.set(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  scrollToSection(sectionId: string): void {
+    const tab = this.sectionTabMap[sectionId];
+    if (tab && tab !== this.activeTab()) {
+      this.activeTab.set(tab);
+      setTimeout(() => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    } else {
+      document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
   ngOnDestroy(): void {
     if (this.copiedTimer !== null) {
       clearTimeout(this.copiedTimer);
       this.copiedTimer = null;
     }
-  }
-
-  scrollToSection(sectionId: string): void {
-    const el = document.getElementById(sectionId);
-    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   copySnippet(id: string, text: string): void {

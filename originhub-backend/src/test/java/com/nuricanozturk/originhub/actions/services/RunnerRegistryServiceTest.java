@@ -55,7 +55,7 @@ class RunnerRegistryServiceTest {
 
   @InjectMocks private RunnerRegistryService service;
 
-  private static final UUID REPO_ID = UUID.randomUUID();
+  private static final UUID TENANT_ID = UUID.randomUUID();
   private static final UUID USER_ID = UUID.randomUUID();
   private static final UUID RUNNER_ID = UUID.randomUUID();
 
@@ -64,11 +64,24 @@ class RunnerRegistryServiceTest {
   void generateRegistrationToken_savesAndReturnsToken() {
     when(registrationTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-    final var result = service.generateRegistrationToken(REPO_ID, USER_ID);
+    final var result = service.generateRegistrationToken(TENANT_ID, USER_ID);
 
     assertThat(result.token()).startsWith("ghrt_");
     assertThat(result.expiresAt()).isAfter(Instant.now());
     verify(registrationTokenRepository).save(any());
+  }
+
+  @Test
+  @DisplayName("generateRegistrationToken stores tenantId in token entity")
+  void generateRegistrationToken_storesTenantId() {
+    when(registrationTokenRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    service.generateRegistrationToken(TENANT_ID, USER_ID);
+
+    verify(registrationTokenRepository)
+        .save(
+            org.mockito.ArgumentMatchers.argThat(
+                t -> TENANT_ID.equals(((RunnerRegistrationToken) t).getTenantId())));
   }
 
   @Test
@@ -84,7 +97,7 @@ class RunnerRegistryServiceTest {
   }
 
   @Test
-  @DisplayName("register throws when token already used")
+  @DisplayName("register throws when token already used and no runnerId")
   void register_throws_whenTokenUsed() {
     final var token = buildToken(false, false);
     token.setUsed(true);
@@ -107,7 +120,7 @@ class RunnerRegistryServiceTest {
   }
 
   @Test
-  @DisplayName("register creates runner and returns JWT on valid token")
+  @DisplayName("register creates runner scoped to tenant and returns JWT on valid token")
   void register_succeeds_onValidToken() {
     final var regToken = buildToken(false, false);
     when(registrationTokenRepository.findByTokenHash(any())).thenReturn(Optional.of(regToken));
@@ -127,7 +140,10 @@ class RunnerRegistryServiceTest {
     assertThat(result.token()).isEqualTo("runner.jwt.token");
     assertThat(result.labels()).containsExactly("self-hosted", "linux");
     verify(registrationTokenRepository).save(any());
-    verify(runnerRepository).save(any());
+    verify(runnerRepository)
+        .save(
+            org.mockito.ArgumentMatchers.argThat(
+                r -> TENANT_ID.equals(((Runner) r).getTenantId())));
   }
 
   @Test
@@ -169,29 +185,50 @@ class RunnerRegistryServiceTest {
   }
 
   @Test
-  @DisplayName("delete throws when runner belongs to different repo")
-  void delete_throws_whenRepoMismatch() {
+  @DisplayName("delete throws when runner belongs to different tenant")
+  void delete_throws_whenTenantMismatch() {
     final var runner = new Runner();
     runner.setId(RUNNER_ID);
-    runner.setRepoId(UUID.randomUUID());
+    runner.setTenantId(UUID.randomUUID());
     when(runnerRepository.findById(RUNNER_ID)).thenReturn(Optional.of(runner));
 
-    assertThatThrownBy(() -> service.delete(RUNNER_ID, USER_ID, REPO_ID))
+    assertThatThrownBy(() -> service.delete(RUNNER_ID, USER_ID, TENANT_ID))
         .isInstanceOf(AccessNotAllowedException.class)
         .hasMessageContaining("does not belong");
   }
 
   @Test
-  @DisplayName("delete removes runner when scoped correctly")
-  void delete_removesRunner() {
+  @DisplayName("delete removes runner when scoped to correct tenant")
+  void delete_removesRunner_whenTenantMatches() {
     final var runner = new Runner();
     runner.setId(RUNNER_ID);
-    runner.setRepoId(REPO_ID);
+    runner.setTenantId(TENANT_ID);
     when(runnerRepository.findById(RUNNER_ID)).thenReturn(Optional.of(runner));
 
-    service.delete(RUNNER_ID, USER_ID, REPO_ID);
+    service.delete(RUNNER_ID, USER_ID, TENANT_ID);
 
     verify(runnerRepository).delete(runner);
+  }
+
+  @Test
+  @DisplayName("listByTenant returns runners for that tenant only")
+  void listByTenant_returnsRunnersForTenant() {
+    Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+
+    final var runner = new Runner();
+    runner.setId(RUNNER_ID);
+    runner.setTenantId(TENANT_ID);
+    runner.setName("my-runner");
+    runner.setStatus(RunnerStatus.ONLINE);
+    runner.setExecutorType(ExecutorType.SHELL);
+    runner.setCreatedAt(Instant.now());
+    when(runnerRepository.findAllByTenantId(TENANT_ID)).thenReturn(List.of(runner));
+
+    final var result = service.listByTenant(TENANT_ID);
+
+    assertThat(result).hasSize(1);
+    assertThat(result.getFirst().status()).isEqualTo("online");
+    assertThat(result.getFirst().executorType()).isEqualTo("shell");
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
@@ -199,7 +236,7 @@ class RunnerRegistryServiceTest {
   private static RunnerRegistrationToken buildToken(final boolean used, final boolean expired) {
     final var t = new RunnerRegistrationToken();
     t.setId(UUID.randomUUID());
-    t.setRepoId(REPO_ID);
+    t.setTenantId(TENANT_ID);
     t.setCreatedBy(USER_ID);
     t.setUsed(used);
     t.setTokenHash(DigestUtils.sha256Hex("ghrt_some"));
@@ -208,27 +245,6 @@ class RunnerRegistryServiceTest {
             ? Instant.now().minus(1, ChronoUnit.HOURS)
             : Instant.now().plus(1, ChronoUnit.HOURS));
     return t;
-  }
-
-  @Test
-  @DisplayName("listByRepo serializes runner status with ASCII lowercase under Turkish locale")
-  void listByRepo_statusUsesRootLocale() {
-    Locale.setDefault(Locale.forLanguageTag("tr-TR"));
-
-    final var runner = new Runner();
-    runner.setId(RUNNER_ID);
-    runner.setRepoId(REPO_ID);
-    runner.setName("my-runner");
-    runner.setStatus(RunnerStatus.ONLINE);
-    runner.setExecutorType(ExecutorType.SHELL);
-    runner.setCreatedAt(Instant.now());
-    when(runnerRepository.findAllByRepoId(REPO_ID)).thenReturn(List.of(runner));
-
-    final var result = service.listByRepo(REPO_ID);
-
-    assertThat(result).hasSize(1);
-    assertThat(result.getFirst().status()).isEqualTo("online");
-    assertThat(result.getFirst().executorType()).isEqualTo("shell");
   }
 
   private static RunnerRegistrationRequest regRequest(final String token) {

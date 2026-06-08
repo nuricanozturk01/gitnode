@@ -95,6 +95,9 @@ import {
   BarChart3,
   ScrollText,
   Zap,
+  Terminal,
+  Network,
+  Unlock,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -178,4 +181,7 @@ export const LUCIDE_ICONS = {
   BarChart3,
   ScrollText,
   Zap,
+  Terminal,
+  Network,
+  Unlock,
 };

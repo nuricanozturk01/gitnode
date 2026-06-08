@@ -8,6 +8,9 @@ const scenarioOnly = process.env.E2E_SCENARIO_ONLY === '1';
 /** Set when running `pnpm test:e2e:teardown` to delete users without re-running scenario. */
 const teardownOnly = process.env.E2E_TEARDOWN_ONLY === '1';
 
+/** Admin/SSO specs — excluded from default runs; only executed via dedicated scripts. */
+const ADMIN_SPECS = ['**/scn-api-saml-login.spec.ts', '**/scn-api-ldap-login.spec.ts'];
+
 export default defineConfig({
   globalSetup: require.resolve('./global-setup'),
   globalTeardown: require.resolve('./global-teardown'),
@@ -30,9 +33,30 @@ export default defineConfig({
       name: 'scenario',
       testDir: './scenario',
       testMatch: '**/*.spec.ts',
+      testIgnore: ADMIN_SPECS,
       dependencies: scenarioOnly ? [] : ['api'],
       fullyParallel: true,
       workers: process.env.CI ? 2 : 4,
+      use: {
+        baseURL: apiBaseURL,
+      },
+    },
+    {
+      name: 'saml',
+      testDir: './scenario',
+      testMatch: '**/scn-api-saml-login.spec.ts',
+      fullyParallel: false,
+      workers: 1,
+      use: {
+        baseURL: apiBaseURL,
+      },
+    },
+    {
+      name: 'ldap',
+      testDir: './scenario',
+      testMatch: '**/scn-api-ldap-login.spec.ts',
+      fullyParallel: false,
+      workers: 1,
       use: {
         baseURL: apiBaseURL,
       },

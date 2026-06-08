@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.pr.services;
 
 import com.nuricanozturk.originhub.pr.entities.PullRequest;
 import com.nuricanozturk.originhub.pr.repositories.PrRepository;
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
@@ -25,6 +26,7 @@ import com.nuricanozturk.originhub.shared.tenant.repositories.TenantRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -52,5 +54,11 @@ class PrFinder {
     return this.tenantRepository
         .findById(id)
         .orElseThrow(() -> new ItemNotFoundException("User not found"));
+  }
+
+  @Cacheable(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
+  long countOpen(final String owner, final String repoName) {
+    final var repo = this.findRepo(owner, repoName);
+    return this.prRepository.countByRepoIdAndStatus(repo.getId(), "OPEN");
   }
 }

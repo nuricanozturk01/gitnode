@@ -15,13 +15,41 @@ Needs **git** on PATH for scenario tests.
 
 ## Commands
 
-| Command | Runs |
-|---------|------|
-| `pnpm test:e2e` | Full suite |
-| `pnpm test:e2e:api` | REST tests only |
-| `pnpm test:e2e:scenario` | Git clone/push flows |
-| `pnpm test:e2e:saml` | SAML SSO (local, optional) |
-| `pnpm test:e2e:ldap` | LDAP SSO (local, optional) |
+| Command                  | Runs                                    |
+| ------------------------ | --------------------------------------- |
+| `pnpm test:e2e`          | Full suite (api → scenario → teardown)  |
+| `pnpm test:e2e:api`      | REST tests only                         |
+| `pnpm test:e2e:scenario` | Scenario + permission enforcement tests |
+| `pnpm test:e2e:teardown` | Teardown only                           |
+
+SAML and LDAP tests are **not part of the default workflow**. Run them explicitly:
+
+| Command              | Requires                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------ |
+| `pnpm test:e2e:saml` | Backend with SAML enabled + SP signing key, see [scenario/README.md](scenario/README.md#optional-saml) |
+| `pnpm test:e2e:ldap` | `make ldap-up` + backend with LDAP enabled, see [scenario/README.md](scenario/README.md#optional-ldap) |
+
+## Coverage
+
+| Area                                        | API tests | Scenario tests |
+| ------------------------------------------- | --------- | -------------- |
+| Auth (login, refresh, SSH keys)             | ✓         | —              |
+| Repository CRUD                             | ✓         | ✓              |
+| Branch operations                           | ✓         | ✓              |
+| Commits / tree / blob                       | ✓         | —              |
+| Pull requests                               | ✓         | ✓              |
+| Issues                                      | ✓         | ✓              |
+| Tasks / Kanban                              | ✓         | ✓              |
+| Snippets                                    | ✓         | —              |
+| Tags / releases                             | ✓         | —              |
+| Webhooks                                    | ✓         | ✓              |
+| Actions (runners, workflows, runs, secrets) | ✓         | ✓              |
+| Collaborator access & permissions           | ✓         | ✓              |
+| Migration (GitHub import)                   | ✓         | —              |
+| SSH key auth                                | ✓         | —              |
+| Git HTTP (clone/push)                       | —         | ✓              |
+| SAML SSO                                    | —         | ✓ _(optional)_ |
+| LDAP SSO                                    | —         | ✓ _(optional)_ |
 
 ## Docs
 

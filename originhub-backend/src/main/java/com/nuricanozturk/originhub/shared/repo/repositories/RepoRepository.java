@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
@@ -68,6 +69,9 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
       @Param("ownerUsername") String ownerUsername,
       @Param("collaboratorRepoIds") Collection<UUID> collaboratorRepoIds,
       Pageable pageable);
+
+  @Query("SELECT r.id, r.owner.id FROM Repo r WHERE r.id IN :ids")
+  List<Object[]> findOwnerIdsByRepoIds(@Param("ids") Set<UUID> ids);
 
   long countByCreatedAtAfter(Instant since);
 

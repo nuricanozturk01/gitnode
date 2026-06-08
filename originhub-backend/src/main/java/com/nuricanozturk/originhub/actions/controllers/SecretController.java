@@ -21,6 +21,7 @@ import com.nuricanozturk.originhub.shared.auth.services.JwtUtils;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.entities.Repo;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
+import com.nuricanozturk.originhub.shared.repo.services.RepoService;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +49,7 @@ public class SecretController {
 
   private final SecretVaultService secretVaultService;
   private final RepoRepository repoRepository;
+  private final RepoService repoService;
   private final JwtUtils jwtUtils;
 
   @GetMapping
@@ -56,7 +58,8 @@ public class SecretController {
       @PathVariable final String owner,
       @PathVariable final String repo) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertIsRepoOwner(userId, owner, repo);
     final UUID repoId = this.requireRepoId(owner, repo);
     final var names = this.secretVaultService.listNames(repoId);
     return ResponseEntity.ok(names.stream().map(SecretResponse::new).toList());
@@ -70,7 +73,8 @@ public class SecretController {
       @PathVariable final String name,
       @RequestBody final Map<String, @NotBlank String> body) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertIsRepoOwner(userId, owner, repo);
     final UUID repoId = this.requireRepoId(owner, repo);
     this.secretVaultService.createOrUpdate(repoId, name, body.get("value"));
     return ResponseEntity.noContent().build();
@@ -83,7 +87,8 @@ public class SecretController {
       @PathVariable final String repo,
       @PathVariable final String name) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertIsRepoOwner(userId, owner, repo);
     final UUID repoId = this.requireRepoId(owner, repo);
     this.secretVaultService.delete(repoId, name);
     return ResponseEntity.noContent().build();

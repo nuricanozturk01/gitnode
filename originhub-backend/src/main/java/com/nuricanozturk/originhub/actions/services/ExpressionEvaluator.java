@@ -22,27 +22,12 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
-/**
- * Evaluates {@code ${{ expression }}} syntax used in workflow YAML.
- *
- * <p>Supported contexts: {@code github.*}, {@code env.*}, {@code secrets.*}, {@code
- * steps.<id>.outputs.<name>}, {@code inputs.*}, {@code matrix.*}, {@code job.status}.
- *
- * <p>Also evaluates simple boolean {@code if:} conditions ({@code ==} and {@code !=}).
- */
 @Service
 @NullMarked
 public class ExpressionEvaluator {
 
   private static final Pattern EXPR_PATTERN = Pattern.compile("\\$\\{\\{\\s*(.+?)\\s*\\}\\}");
 
-  /**
-   * Interpolates all {@code ${{ }}} expressions in the template string.
-   *
-   * @param template raw workflow string (may contain multiple expressions)
-   * @param ctx flat context map; keys use dot notation (e.g. {@code "github.sha"})
-   * @return fully interpolated string; unresolved expressions kept as-is
-   */
   public String evaluate(final String template, final Map<String, String> ctx) {
     final Matcher m = EXPR_PATTERN.matcher(template);
     final StringBuilder sb = new StringBuilder();
@@ -55,20 +40,6 @@ public class ExpressionEvaluator {
     return sb.toString();
   }
 
-  /**
-   * Evaluates an {@code if:} condition string to a boolean.
-   *
-   * <p>Supports: {@code a == b}, {@code a != b}, {@code always()}, {@code failure()}, {@code
-   * success()}, simple non-empty truthy values.
-   *
-   * <p>Handles both raw expressions and {@code ${{ expr }}} wrapped forms. Operands on either side
-   * of a comparison are resolved individually so that {@code ${{ inputs.X != 'true' }}} correctly
-   * resolves {@code inputs.X} from context rather than treating the whole expression as a key.
-   *
-   * @param condition the condition expression (already interpolated or raw)
-   * @param ctx flat context map
-   * @param jobStatus current job status ("success", "failure", "cancelled")
-   */
   public boolean evaluateCondition(
       final String condition, final Map<String, String> ctx, final String jobStatus) {
 
@@ -122,16 +93,10 @@ public class ExpressionEvaluator {
     return !resolved.isEmpty() && !"false".equalsIgnoreCase(resolved);
   }
 
-  /**
-   * Resolves a single operand: tries context lookup first, falls back to treating it as a string
-   * literal (stripping surrounding quotes).
-   */
   private String resolveOperand(final String operand, final Map<String, String> ctx) {
     final String resolved = this.resolveExpr(operand, ctx);
     return resolved != null ? resolved : this.normalize(operand);
   }
-
-  // ── private ──────────────────────────────────────────────────────────────
 
   @Nullable
   private String resolveExpr(final String expr, final Map<String, String> ctx) {
@@ -147,11 +112,8 @@ public class ExpressionEvaluator {
     return null;
   }
 
-  /**
-   * Returns true for inputs.* and matrix.* refs that are plain lookups (no comparison operators).
-   */
   private static boolean isSimpleContextRef(final String expr) {
-    return (expr.startsWith("inputs.") || expr.startsWith("matrix."))
+    return (expr.startsWith("inputs.") || expr.startsWith("matrix.") || expr.startsWith("secrets."))
         && !expr.contains("==")
         && !expr.contains("!=");
   }

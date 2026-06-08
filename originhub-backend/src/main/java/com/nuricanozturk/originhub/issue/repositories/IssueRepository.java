@@ -36,4 +36,6 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
   @Query("SELECT COALESCE(MAX(i.number), 0) FROM Issue i WHERE i.repo.id = :repoId")
   int findMaxNumberByRepoId(UUID repoId);
+
+  int countByRepoIdAndStatus(UUID repoId, String status);
 }

@@ -43,9 +43,9 @@ public class Runner {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @Column(name = "repo_id")
+  @Column(name = "tenant_id")
   @Nullable
-  private UUID repoId;
+  private UUID tenantId;
 
   @Column(name = "name", nullable = false, length = 128)
   private String name;

@@ -30,6 +30,7 @@ import com.nuricanozturk.originhub.actions.repositories.WorkflowRunRepository;
 import com.nuricanozturk.originhub.actions.services.WorkflowParserService.ParsedWorkflow;
 import com.nuricanozturk.originhub.events.actions.WorkflowJobQueuedEvent;
 import com.nuricanozturk.originhub.events.actions.WorkflowRunQueuedEvent;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import com.nuricanozturk.originhub.shared.repo.repositories.RepoRepository;
 import java.util.HashMap;
@@ -133,6 +134,10 @@ public class WorkflowTriggerService {
     }
   }
 
+  @Audited(
+      action = "ACTIONS_WORKFLOW_DISPATCH",
+      entityType = "WORKFLOW_RUN",
+      detailsSpEL = "'repoId=' + #repoId + ', workflow=' + #workflowFilePath + ', ref=' + #ref")
   @Transactional
   public void triggerManual(
       final UUID repoId,
@@ -152,9 +157,7 @@ public class WorkflowTriggerService {
     final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, ref);
 
     for (final var parsed : workflows) {
-      if (!workflowFilePath.isBlank()
-          && !parsed.filePath().endsWith(workflowFilePath)
-          && !parsed.filePath().equals(workflowFilePath)) {
+      if (!workflowFilePath.isBlank() && !parsed.filePath().endsWith(workflowFilePath)) {
         continue;
       }
       final boolean hasDispatchTrigger =

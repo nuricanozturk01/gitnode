@@ -286,7 +286,10 @@ export class AuditLogsListPage implements OnInit {
       normalized.includes('CHANGED') ||
       normalized.includes('RENAMED') ||
       normalized.includes('MIGRAT') ||
-      normalized.includes('TEST')
+      normalized.includes('TEST') ||
+      normalized.includes('CANCEL') ||
+      normalized.includes('DISPATCH') ||
+      normalized.includes('UPSERT')
     ) {
       return 'badge-pill badge-pill--warning audit-action';
     }

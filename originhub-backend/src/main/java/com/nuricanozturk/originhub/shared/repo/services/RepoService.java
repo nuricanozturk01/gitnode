@@ -18,6 +18,7 @@ package com.nuricanozturk.originhub.shared.repo.services;
 import com.nuricanozturk.originhub.events.repo.RepoCreatedEvent;
 import com.nuricanozturk.originhub.events.repo.RepoDeletedEvent;
 import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
+import com.nuricanozturk.originhub.shared.cache.CacheNames;
 import com.nuricanozturk.originhub.shared.collaborator.dtos.CollaboratorPermission;
 import com.nuricanozturk.originhub.shared.collaborator.services.CollaboratorAccessPort;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -34,6 +35,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,6 +58,7 @@ public class RepoService {
   private final ApplicationEventPublisher eventPublisher;
   private final RepoStorageService repoStorageService;
   private final CollaboratorAccessPort collaboratorAccessPort;
+  private final RepoInfoCache repoInfoCache;
 
   @Audited(
       action = "CREATE_REPO",
@@ -88,6 +91,7 @@ public class RepoService {
     return this.repoMapper.toDto(repo);
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#owner + ':' + #repoName")
   @Transactional
   public RepoInfo update(
       final UUID tenantId, final String owner, final String repoName, final RepoForm form) {
@@ -160,6 +164,7 @@ public class RepoService {
     }
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#repoOwner + ':' + #repoName")
   @Transactional
   public void delete(final String repoOwner, final String repoName) {
 
@@ -168,6 +173,7 @@ public class RepoService {
     this.repoRepository.deleteById(repo.getId());
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#owner + ':' + #newName")
   @Transactional
   public void rollbackRepoName(final String owner, final String oldName, final String newName) {
 
@@ -178,6 +184,7 @@ public class RepoService {
     this.repoRepository.save(repo);
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#owner + ':' + #repoName")
   @Audited(
       action = "DELETE_REPO",
       entityType = "REPO",
@@ -200,11 +207,13 @@ public class RepoService {
     this.repoRepository.deleteById(repo.getId());
     if (forkedFrom != null) {
       this.repoRepository.decrementForkCount(forkedFrom.getId());
+      this.repoInfoCache.evict(forkedFrom.getOwner().getUsername(), forkedFrom.getName());
     }
 
     this.eventPublisher.publishEvent(new RepoDeletedEvent(owner, repoName));
   }
 
+  @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#sourceOwner + ':' + #sourceRepoName")
   @Transactional
   public RepoInfo fork(final UUID tenantId, final String sourceOwner, final String sourceRepoName) {
 
@@ -285,7 +294,7 @@ public class RepoService {
     final var repo = this.findByOwnerUsernameAndName(owner, repoName);
 
     if (!repo.isPrivate()) { // Public Repo
-      return this.repoMapper.toDto(repo);
+      return this.repoInfoCache.fetch(owner, repoName);
     }
 
     final var ownerTenant = this.tenantRepository.findByUsername(owner);
@@ -296,7 +305,7 @@ public class RepoService {
             && ownerTenant.get().getId().equals(requesterId);
 
     if (isOwner) {
-      return this.repoMapper.toDto(repo);
+      return this.repoInfoCache.fetch(owner, repoName);
     }
 
     final boolean isCollaborator =
@@ -307,7 +316,15 @@ public class RepoService {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 
-    return this.repoMapper.toDto(repo);
+    return this.repoInfoCache.fetch(owner, repoName);
+  }
+
+  public void assertIsRepoOwner(final UUID tenantId, final String owner, final String repoName) {
+
+    final var ownerTenant = this.getTenantByUsername(owner);
+    if (!ownerTenant.getId().equals(tenantId)) {
+      throw new AccessNotAllowedException("insufficientPermissions");
+    }
   }
 
   public void assertUserHasPermission(

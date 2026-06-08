@@ -40,9 +40,9 @@ public class RunnerRegistrationToken {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @Column(name = "repo_id")
+  @Column(name = "tenant_id")
   @Nullable
-  private UUID repoId;
+  private UUID tenantId;
 
   @Column(name = "token_hash", nullable = false, length = 64, unique = true)
   private String tokenHash;

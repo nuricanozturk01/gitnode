@@ -22,7 +22,7 @@
 
 <br/>
 
-[✨ Features](#-features) · [🎬 Demo](#-demo) · [🛠 Tech Stack](#-tech-stack) · [🚀 Getting Started](#-getting-started) · [🗺 Roadmap](#-roadmap) · [📄 License](#-license)
+[✨ Features](#-features) · [🛠 Tech Stack](#-tech-stack) · [🚀 Getting Started](#-getting-started) · [🗺 Roadmap](#-roadmap) · [📄 License](#-license)
 
 <br/>
 
@@ -32,29 +32,36 @@
 
 ## 🔍 What is OriginHub?
 
-OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your repositories, pull requests, and CI/CD pipelines (YAML workflows + self-hosted runner agent) — running entirely on your own infrastructure, with zero dependency on third-party platforms.
+OriginHub is a simple, open-source, self-hosted Git registry inspired by GitHub. It gives you full control over your
+repositories, pull requests, and CI/CD pipelines (YAML workflows + self-hosted runner agent) — running entirely on your
+own infrastructure, with zero dependency on third-party platforms.
 
 No subscriptions. No data leaving your servers. No vendor lock-in. Just Git, hosted your way.
 
-OriginHub is built for developers and teams who care about ownership — whether you're an indie developer running it on a VPS, or an enterprise team deploying it on private infrastructure. If you've ever thought *"I wish GitHub ran on my own server"*, OriginHub is for you.
+OriginHub is built for developers and teams who care about ownership — whether you're an indie developer running it on a
+VPS, or an enterprise team deploying it on private infrastructure. If you've ever thought *"I wish GitHub ran on my own
+server"*, OriginHub is for you.
 
 ---
 
 ## ✨ Features
 
-OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **enterprise SAML/LDAP SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all on your own infrastructure.
+OriginHub covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code
+snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **enterprise SAML/LDAP
+SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all
+on your own infrastructure.
 
 <div align="center">
 
-| | | |
-|:---:|:---:|:---:|
-| 📁 [Repository Management](#-repository-management) | 👤 [Public Profiles](#-public-profile) | 📥 [GitHub Migration](#-github-repository-migration) |
-| 🗂 [Code Browsing](#-code-browsing) | 🔀 [Pull Requests](#-pull-requests) | 🐛 [Issues](#-issues) |
-| 📋 [Project Boards](#-project-management-kanban) | 📝 [Code Snippets](#-code-snippets-gist-like) | 🏷 [Tags & Releases](#-tags--releases) |
-| 🔔 [Webhooks](#-webhooks) | 🔐 [Authentication](#-authentication) | 👥 [Collaborators](#-collaborators) |
-| 🍴 [Repository Forks](#-repository-forks) | 🛡 [Access Policies](#-repo-access-policies) | 🏢 [Enterprise SSO](#-enterprise-saml--ldap-sso) |
-| 📊 [Admin Panel](#-admin-panel) | ⚡ [Rate Limiting](#-rate-limiting) | 📈 [Observability](#-prometheus--grafana-observability) |
-| 📜 [Audit Logging](#-audit-logging) | ⚡ [Actions](#-actions--cicd) | |
+|                                                     |                                               |                                                         |
+|:---------------------------------------------------:|:---------------------------------------------:|:-------------------------------------------------------:|
+| 📁 [Repository Management](#-repository-management) |    👤 [Public Profiles](#-public-profile)     |  📥 [GitHub Migration](#-github-repository-migration)   |
+|         🗂 [Code Browsing](#-code-browsing)         |      🔀 [Pull Requests](#-pull-requests)      |                  🐛 [Issues](#-issues)                  |
+|  📋 [Project Boards](#-project-management-kanban)   | 📝 [Code Snippets](#-code-snippets-gist-like) |         🏷 [Tags & Releases](#-tags--releases)          |
+|              🔔 [Webhooks](#-webhooks)              |     🔐 [Authentication](#-authentication)     |           👥 [Collaborators](#-collaborators)           |
+|      🍴 [Repository Forks](#-repository-forks)      | 🛡 [Access Policies](#-repo-access-policies)  |    🏢 [Enterprise SSO](#-enterprise-saml--ldap-sso)     |
+|           📊 [Admin Panel](#-admin-panel)           |      ⚡ [Rate Limiting](#-rate-limiting)       | 📈 [Observability](#-prometheus--grafana-observability) |
+|         📜 [Audit Logging](#-audit-logging)         |         ⚡ [Actions](#-actions--cicd)          |                                                         |
 
 </div>
 
@@ -64,7 +71,8 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 
 - Create, clone, push, and pull repositories
 - **Public and private** repositories, descriptions, and **topics**
-- **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your OriginHub host
+- **Git over HTTP and HTTPS (TLS)**: smart HTTP backend at `/git/…` — use `http://` or `https://` remote URLs with your
+  OriginHub host
 - **SSH** Git on a configurable port (default **2222** in Docker)
 - Per-repo **Settings**: general metadata, optional **auto-delete head branch** after PR merge or close
 
@@ -121,8 +129,10 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 
 - **Signed HTTP delivery** (`X-Hub-Signature-256`) to your services for pushes, PR events, and more
 - **Automatic retries** (3 attempts, exponential back-off) on delivery failure
-- **Dead-letter queue (DLQ)** — permanently failed deliveries are queued and retried on a schedule; admin can inspect and replay from the admin panel
-- **Per-host circuit breaker** (Resilience4j) — when a target endpoint fails repeatedly the circuit opens; subsequent deliveries go straight to the DLQ instead of burning retries; circuit auto-recovers when the endpoint comes back
+- **Dead-letter queue (DLQ)** — permanently failed deliveries are queued and retried on a schedule; admin can inspect
+  and replay from the admin panel
+- **Per-host circuit breaker** (Resilience4j) — when a target endpoint fails repeatedly the circuit opens; subsequent
+  deliveries go straight to the DLQ instead of burning retries; circuit auto-recovers when the endpoint comes back
 - Configured per-repository in **Settings → Webhooks**
 
 ### 🏷 Tags & Releases
@@ -137,11 +147,13 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 ### 👥 Collaborators
 
 - Invite other OriginHub users to your repository with **fine-grained per-permission roles**
-- Available permissions (each toggled independently): **Push**, **Pull Request management**, **Issue management**, **Settings access**, **Admin** (all permissions)
+- Available permissions (each toggled independently): **Push**, **Pull Request management**, **Issue management**, *
+  *Settings access**, **Admin** (all permissions)
 - Share an **invite link** with a configurable expiry — recipient accepts via the link, no admin approval needed
 - Manage active collaborators and revoke access at any time from **Settings → Collaborators**
 - Collaborators inherit the base repo visibility — private repos remain private to non-collaborators
-- **How to invite:** go to your repository → Settings → Collaborators → *Invite* → pick permissions → copy the generated link and send it to the person you want to add
+- **How to invite:** go to your repository → Settings → Collaborators → *Invite* → pick permissions → copy the generated
+  link and send it to the person you want to add
 
 ### 🍴 Repository Forks
 
@@ -154,20 +166,25 @@ OriginHub covers the full Git hosting loop — repos, review, browsing, issues, 
 ### 🛡 Repo Access Policies
 
 - Define **access rules** per repository that apply on top of base visibility
-- Policies control what authenticated (non-owner, non-collaborator) users can do — e.g. **allow public read but restrict push**, or **allow fork but restrict issue creation**
+- Policies control what authenticated (non-owner, non-collaborator) users can do — e.g. **allow public read but restrict
+  push**, or **allow fork but restrict issue creation**
 - Useful for organizations that want open-source-style read access without enabling arbitrary contributions
 - Configured in **Settings → Access Policies**; changes take effect immediately for all subsequent requests
 
 ### ⚡ Actions — CI/CD
 
-- **YAML workflow definitions** checked in at `.originhub/workflows/*.yml` — `push`, `pull_request`, and `workflow_dispatch` triggers
+- **YAML workflow definitions** checked in at `.originhub/workflows/*.yml` — `push`, `pull_request`, and
+  `workflow_dispatch` triggers
 - **Job graph** with matrix strategy expansion and `needs` dependency ordering; `concurrency` groups with cancellation
-- **Runner protocol**: runners register via token, receive jobs over **WebSocket**, report step logs and status back to the server
-- **Shell and Docker executors** — built-in `actions/checkout@v1` step; custom `run` steps execute in a per-job workspace
+- **Runner protocol**: runners register via token, receive jobs over **WebSocket**, report step logs and status back to
+  the server
+- **Shell and Docker executors** — built-in `actions/checkout@v1` step; custom `run` steps execute in a per-job
+  workspace
 - **Secrets vault** — AES-256-GCM encrypted secrets per repo; injected as env vars at job runtime (masked in logs)
 - **Artifact store** — upload/download artifacts by run + name; retained per run
 - **Cache store** — key-based cache for workflow dependencies
-- **SSE log streaming** — real-time step logs via Server-Sent Events (`GET /api/repos/{owner}/{repo}/actions/runs/{runId}/events`)
+- **SSE log streaming** — real-time step logs via Server-Sent Events (
+  `GET /api/repos/{owner}/{repo}/actions/runs/{runId}/events`)
 - **Run history** — list, cancel, and re-run workflows from the UI
 - **Runner management** — register, list, delete runners per repo; runner groups per org
 - **Admin panel Actions tab** — platform-wide runner stats, workflow run counts
@@ -191,14 +208,17 @@ make build-all     # Linux amd64/arm64, macOS arm64, Windows amd64
   --concurrent-jobs 2
 ```
 
-Config file (`~/.originhub-runner/config.yml`) is written automatically after first registration — subsequent starts use `runner_token` from that file.
+Config file (`~/.originhub-runner/config.yml`) is written automatically after first registration — subsequent starts use
+`runner_token` from that file.
 
 ### 🏢 Enterprise SAML & LDAP SSO
 
 - **Per-organization identity** — map email domains to a SAML 2.0 IdP or corporate LDAP directory
 - **SAML 2.0 service provider** — metadata URI, connection test, cached IdP XML, SP entity ID override
-- **LDAP directory auth** — manager bind, user search base/filter, email and display-name attributes, optional group mapping
-- **Work-email login flow** — users enter work email on the login page; OriginHub routes to the correct org and provisions accounts on first successful sign-in
+- **LDAP directory auth** — manager bind, user search base/filter, email and display-name attributes, optional group
+  mapping
+- **Work-email login flow** — users enter work email on the login page; OriginHub routes to the correct org and
+  provisions accounts on first successful sign-in
 - **Mutually exclusive per org** — SAML and LDAP cannot both be enabled on the same organization
 - Configure in the **admin panel** (`originhub-admin-panel`, port **4300** in local dev)
 
@@ -206,23 +226,25 @@ Config file (`~/.originhub-runner/config.yml`) is written automatically after fi
 
 **Optional.** Separate Angular app — not started with core stack.
 
-- Backend on by default — disable with `ORIGINHUB_ADMIN_ENABLED=false` (admin module not loaded when `false`)
 - Dev: `cd originhub-admin-panel && pnpm start` → http://localhost:4300
 - See [originhub-admin-panel/README.md](originhub-admin-panel/README.md)
 
 Features when enabled:
 
-- **Dashboard** — users, repositories, organizations, storage; activity tables (daily/weekly); top contributors; cached stats
+- **Dashboard** — users, repositories, organizations, storage; activity tables (daily/weekly); top contributors; cached
+  stats
 - **Users** — search, enable/disable accounts
 - **Organizations** — create, edit, delete; configure **SAML** or **LDAP** per org; test connections before enabling
 - **Audit log API** — query application audit events (`GET /api/admin/audit-logs`)
 
-See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for setup. Platform admin access needs bootstrap credentials (see Environment Variables in README).
+See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for setup. Platform admin access needs
+bootstrap credentials (see Environment Variables in README).
 
 ### ⚡ Rate Limiting
 
 - Redis-backed sliding-window limits on sensitive endpoints
-- Covers authentication (login, register, password recovery), repo/PR/issue creation, webhooks, tags, snippets, and SSO/LDAP discovery
+- Covers authentication (login, register, password recovery), repo/PR/issue creation, webhooks, tags, snippets, and
+  SSO/LDAP discovery
 - Returns **429** with `rateLimitExceeded` when limits are hit
 
 ### 📈 Prometheus & Grafana Observability
@@ -233,13 +255,16 @@ See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for set
 - **Docker Compose profile `monitoring`** — Prometheus (**9090**) and Grafana (**3000**, admin / admin)
 - See [monitoring/README.md](monitoring/README.md) for setup
 - Scrape targets: app container (`originhub:8080`) or host-run backend (`host.docker.internal:8080`)
-- **Circuit breaker health** at `/actuator/circuitbreakers` — real-time `CLOSED / OPEN / HALF_OPEN` state for webhook delivery and SAML metadata circuit breakers; included in `/actuator/health` details
+- **Circuit breaker health** at `/actuator/circuitbreakers` — real-time `CLOSED / OPEN / HALF_OPEN` state for webhook
+  delivery and SAML metadata circuit breakers; included in `/actuator/health` details
 
 ### 📜 Audit Logging
 
 - **Application audit log** — `@Audited` actions persisted to partitioned `audit_logs` tables (append-only triggers)
 - **Admin API** — paginated queries by actor and recent window
-- **pgAudit** — Postgres image logs write, DDL, and role operations (`shared_preload_libraries=pgaudit`). Admin log viewer is **off by default** — set `ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true` and mount the Postgres log volume into the app container.
+- **pgAudit** — Postgres image logs write, DDL, and role operations (`shared_preload_libraries=pgaudit`). Admin log
+  viewer is **off by default** — set `ORIGINHUB_ADMIN_PGAUDIT_ENABLED=true` and mount the Postgres log volume into the
+  app container.
 - Toggle application audit with `ORIGINHUB_AUDIT_ENABLED` (default `true`)
 
 ### 🔐 Authentication
@@ -254,30 +279,30 @@ See [`originhub-admin-panel/README.md`](originhub-admin-panel/README.md) for set
 
 ## 🛠 Tech Stack
 
-| Layer       | Technology                                       |
-|-------------|--------------------------------------------------|
-| Language    | Java 25                                          |
-| Framework   | Spring Boot 4, Spring Security, Spring Data JPA  |
-| Git Engine  | Eclipse JGit                                     |
-| SSH Server  | Apache MINA SSHD                                 |
-| Auth        | JWT, OAuth2 (Google · GitHub · GitLab), SAML 2.0, LDAP |
-| Database    | PostgreSQL 17 + Flyway, pgAudit                |
-| Cache       | Redis (cache + rate limiting)                    |
-| Observability | Micrometer, Prometheus, Grafana              |
-| Resilience  | Resilience4j circuit breakers (webhook delivery, SAML metadata) |
-| Audit       | Application audit log (partitioned PostgreSQL)   |
-| CI/CD Engine | Spring Boot `actions` module — WebSocket runner protocol, SSE log streaming, secrets vault (AES-256-GCM), artifact/cache store |
-| Runner Agent | Go 1.24 (`originhub-runner`) — shell + Docker executors, single static binary |
-| Frontend    | Angular 21, TypeScript 5                         |
-| Admin UI    | Angular 21 (`originhub-admin-panel`)             |
-| Styling     | Tailwind CSS 4, DaisyUI 5                        |
-| Container   | Docker (multi-stage build, single image)         |
+| Layer         | Technology                                                                                                                     |
+|---------------|--------------------------------------------------------------------------------------------------------------------------------|
+| Language      | Java 25                                                                                                                        |
+| Framework     | Spring Boot 4, Spring Security, Spring Data JPA                                                                                |
+| Git Engine    | Eclipse JGit                                                                                                                   |
+| SSH Server    | Apache MINA SSHD                                                                                                               |
+| Auth          | JWT, OAuth2 (Google · GitHub · GitLab), SAML 2.0, LDAP                                                                         |
+| Database      | PostgreSQL 17 + Flyway, pgAudit                                                                                                |
+| Cache         | Redis (cache + rate limiting)                                                                                                  |
+| Observability | Micrometer, Prometheus, Grafana                                                                                                |
+| Resilience    | Resilience4j circuit breakers (webhook delivery, SAML metadata)                                                                |
+| Audit         | Application audit log (partitioned PostgreSQL)                                                                                 |
+| CI/CD Engine  | Spring Boot `actions` module — WebSocket runner protocol, SSE log streaming, secrets vault (AES-256-GCM), artifact/cache store |
+| Runner Agent  | Go 1.24 (`originhub-runner`) — shell + Docker executors, single static binary                                                  |
+| Frontend      | Angular 21, TypeScript 5                                                                                                       |
+| Admin UI      | Angular 21 (`originhub-admin-panel`)                                                                                           |
+| Styling       | Tailwind CSS 4, DaisyUI 5                                                                                                      |
+| Container     | Docker (multi-stage build, single image)                                                                                       |
 
 ---
 
 ## 🚀 Getting Started
 
-> 📖 Full documentation: **[originhub.nuricanozturk.com/docs](https://originhub.nuricanozturk.com/docs)** *(documentation only — not deployed to cloud)*
+> 📖 Documentation is available in-app at **`/docs`** once OriginHub is running.
 
 ### Developing locally
 
@@ -325,14 +350,11 @@ docker run -d \
   -e SPRING_PROFILES_ACTIVE=os \
   -e ORIGINHUB_OBSERVABILITY_ENABLED=true \
   -e ORIGINHUB_AUDIT_ENABLED=true \
-  -e ORIGINHUB_ADMIN_ENABLED=true \
   -e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
   -e ORIGINHUB_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300 \
   -v originhub-repos:/data/repos \
   repo.repsy.io/nuricanozturk/originhub/originhub-os:latest
 ```
-
-**Admin API:** `-e ORIGINHUB_ADMIN_ENABLED=true` (default) loads `/api/admin/**`. Disable: `-e ORIGINHUB_ADMIN_ENABLED=false` — admin module not loaded at runtime.
 
 ### Option 2 — Makefile (recommended)
 
@@ -349,52 +371,44 @@ make monitoring                  # Prometheus + Grafana
 cd originhub-admin-panel && pnpm start   # admin UI → :4300 (API on by default)
 ```
 
-Disable admin API on Docker:
-
-```bash
-ADMIN_ENABLED=false make up      # first start
-# already running: make app-stop && ADMIN_ENABLED=false make app
-```
-
 All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 
-| Service | URL | Default |
-|---------|-----|---------|
-| App | http://localhost:8080 | ✅ |
-| SSH Git | localhost:2222 | ✅ |
-| Frontend (dev) | http://localhost:4200 | manual — `pnpm start` |
-| Admin panel | http://localhost:4300 | optional |
-| Prometheus | http://localhost:9090 | optional — `make monitoring` |
-| Grafana | http://localhost:3000 | optional — `make monitoring` |
+| Service        | URL                   | Default                      |
+|----------------|-----------------------|------------------------------|
+| App            | http://localhost:8080 | ✅                            |
+| SSH Git        | localhost:2222        | ✅                            |
+| Frontend (dev) | http://localhost:4200 | manual — `pnpm start`        |
+| Admin panel    | http://localhost:4300 | optional                     |
+| Prometheus     | http://localhost:9090 | optional — `make monitoring` |
+| Grafana        | http://localhost:3000 | optional — `make monitoring` |
 
 ### Environment Variables
 
-| Variable                       | Required | Default               | Description                          |
-|--------------------------------|----------|-----------------------|--------------------------------------|
-| `ORIGINHUB_ADMIN_ENABLED`      |          | `true`                | Load admin module (`/api/admin/**`) |
-| `ORIGINHUB_ADMIN_PGAUDIT_ENABLED` |       | `false`               | Admin panel pgAudit log viewer |
-| `ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY` | | —                 | Postgres log dir in app container (enable viewer) |
-| `ORIGINHUB_JWT_SECRET`         | ✅        | —                     | Min 32-char secret for JWT signing   |
-| `ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME` |   | `admin`               | First-start platform admin username  |
-| `ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD` | ✅ prod | —                 | Bootstrap admin password (empty skips) |
-| `ORIGINHUB_PLATFORM_ADMIN_USERNAMES` |   | —                     | Comma-separated platform admin usernames |
-| `ORIGINHUB_GIT_REPO__ROOT`     |          | `/data/repos`         | Git repository storage path          |
-| `ORIGINHUB_FRONTEND_BASE_URL`  |          | `http://localhost:8080` | Public base URL                    |
-| `ORIGINHUB_CORS_ALLOWED_ORIGINS` |       | `http://localhost:4200,http://localhost:4300` | CORS origins (add admin panel URL) |
-| `ORIGINHUB_AUDIT_ENABLED`      |          | `true`                | Application audit log                |
-| `ORIGINHUB_OBSERVABILITY_ENABLED` |       | `true`                | Prometheus `/actuator/prometheus`    |
-| `ORIGINHUB_SSO_SAML_ENABLED`   |          | `false`               | Global SAML feature flag             |
-| `ORIGINHUB_SSO_LDAP_ENABLED`   |          | `false`               | Global LDAP feature flag             |
-| `ORIGINHUB_SSO_SAML_SP_SIGNING_KEY_PATH` | | —                   | SP signing private key (SAML)        |
-| `ORIGINHUB_SSO_SAML_SP_SIGNING_CERT_PATH` | | —                   | SP signing certificate (SAML)        |
-| `SPRING_DATA_REDIS_HOST`       |          | `originhub-redis`     | Redis hostname                       |
-| `SPRING_DATA_REDIS_PORT`       |          | `6379`                | Redis port                           |
-| `OAUTH2_GOOGLE_CLIENT_ID`      |          | —                     | Google OAuth2 client ID              |
-| `OAUTH2_GOOGLE_CLIENT_SECRET`  |          | —                     | Google OAuth2 client secret          |
-| `OAUTH2_GITHUB_CLIENT_ID`      |          | —                     | GitHub OAuth2 client ID              |
-| `OAUTH2_GITHUB_CLIENT_SECRET`  |          | —                     | GitHub OAuth2 client secret          |
-| `OAUTH2_GITLAB_CLIENT_ID`      |          | —                     | GitLab OAuth2 client ID              |
-| `OAUTH2_GITLAB_CLIENT_SECRET`  |          | —                     | GitLab OAuth2 client secret          |
+| Variable                                  | Required | Default                                       | Description                                       |
+|-------------------------------------------|----------|-----------------------------------------------|---------------------------------------------------|
+| `ORIGINHUB_ADMIN_PGAUDIT_ENABLED`         |          | `false`                                       | Admin panel pgAudit log viewer                    |
+| `ORIGINHUB_ADMIN_PGAUDIT_LOG_DIRECTORY`   |          | —                                             | Postgres log dir in app container (enable viewer) |
+| `ORIGINHUB_JWT_SECRET`                    | ✅        | —                                             | Min 32-char secret for JWT signing                |
+| `ORIGINHUB_BOOTSTRAP_ADMIN_USERNAME`      |          | `admin`                                       | First-start platform admin username               |
+| `ORIGINHUB_BOOTSTRAP_ADMIN_PASSWORD`      | ✅ prod   | —                                             | Bootstrap admin password (empty skips)            |
+| `ORIGINHUB_PLATFORM_ADMIN_USERNAMES`      |          | —                                             | Comma-separated platform admin usernames          |
+| `ORIGINHUB_GIT_REPO__ROOT`                |          | `/data/repos`                                 | Git repository storage path                       |
+| `ORIGINHUB_FRONTEND_BASE_URL`             |          | `http://localhost:8080`                       | Public base URL                                   |
+| `ORIGINHUB_CORS_ALLOWED_ORIGINS`          |          | `http://localhost:4200,http://localhost:4300` | CORS origins (add admin panel URL)                |
+| `ORIGINHUB_AUDIT_ENABLED`                 |          | `true`                                        | Application audit log                             |
+| `ORIGINHUB_OBSERVABILITY_ENABLED`         |          | `true`                                        | Prometheus `/actuator/prometheus`                 |
+| `ORIGINHUB_SSO_SAML_ENABLED`              |          | `false`                                       | Global SAML feature flag                          |
+| `ORIGINHUB_SSO_LDAP_ENABLED`              |          | `false`                                       | Global LDAP feature flag                          |
+| `ORIGINHUB_SSO_SAML_SP_SIGNING_KEY_PATH`  |          | —                                             | SP signing private key (SAML)                     |
+| `ORIGINHUB_SSO_SAML_SP_SIGNING_CERT_PATH` |          | —                                             | SP signing certificate (SAML)                     |
+| `SPRING_DATA_REDIS_HOST`                  |          | `originhub-redis`                             | Redis hostname                                    |
+| `SPRING_DATA_REDIS_PORT`                  |          | `6379`                                        | Redis port                                        |
+| `OAUTH2_GOOGLE_CLIENT_ID`                 |          | —                                             | Google OAuth2 client ID                           |
+| `OAUTH2_GOOGLE_CLIENT_SECRET`             |          | —                                             | Google OAuth2 client secret                       |
+| `OAUTH2_GITHUB_CLIENT_ID`                 |          | —                                             | GitHub OAuth2 client ID                           |
+| `OAUTH2_GITHUB_CLIENT_SECRET`             |          | —                                             | GitHub OAuth2 client secret                       |
+| `OAUTH2_GITLAB_CLIENT_ID`                 |          | —                                             | GitLab OAuth2 client ID                           |
+| `OAUTH2_GITLAB_CLIENT_SECRET`             |          | —                                             | GitLab OAuth2 client secret                       |
 
 ---
 
@@ -438,7 +452,8 @@ Distributed under the [MIT License](LICENSE.txt).
 
 <div align="center">
 
-If OriginHub saves you time or you just want to say thanks, consider buying me a coffee. It keeps the project alive and the commits coming.
+If OriginHub saves you time or you just want to say thanks, consider buying me a coffee. It keeps the project alive and
+the commits coming.
 
 <a href="https://www.buymeacoffee.com/nuricanozturk" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />

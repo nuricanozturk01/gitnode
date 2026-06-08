@@ -44,7 +44,7 @@ public class ActionsAdminService implements ActionsAdminPort {
             r ->
                 new RunnerAdminData(
                     r.getId(),
-                    r.getRepoId(),
+                    r.getTenantId(),
                     r.getName(),
                     r.getLabels(),
                     r.getStatus().name(),

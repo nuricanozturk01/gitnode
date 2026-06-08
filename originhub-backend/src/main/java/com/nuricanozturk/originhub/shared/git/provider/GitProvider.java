@@ -49,7 +49,7 @@ public class GitProvider {
     final var path = Path.of(this.repoRoot, owner, repoName + ".git");
 
     if (!Files.exists(path)) {
-      log.warn("Repo Not found in storage while opening.");
+      log.debug("Repo Not found in storage while opening.");
       throw new ItemNotFoundException("repoNotFound in storage.");
     }
 

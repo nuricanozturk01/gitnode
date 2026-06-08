@@ -110,6 +110,11 @@ func (c *Client) connect(ctx context.Context) error {
 		c.cmu.Unlock()
 	}()
 
+	go func() {
+		<-ctx.Done()
+		_ = conn.Close()
+	}()
+
 	c.log.Info("connected", zap.String("url", wsURL))
 
 	if err := c.write(conn, protocol.OutboundMessage{

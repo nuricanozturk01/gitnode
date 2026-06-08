@@ -17,6 +17,7 @@ package com.nuricanozturk.originhub.actions.services;
 
 import com.nuricanozturk.originhub.actions.entities.WorkflowSecret;
 import com.nuricanozturk.originhub.actions.repositories.WorkflowSecretRepository;
+import com.nuricanozturk.originhub.shared.audit.annotations.Audited;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ErrorOccurredException;
 import com.nuricanozturk.originhub.shared.errorhandling.exceptions.ItemNotFoundException;
 import jakarta.annotation.PostConstruct;
@@ -33,11 +34,11 @@ import javax.crypto.spec.SecretKeySpec;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** Stores and retrieves AES-256-GCM encrypted workflow secrets. */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -55,11 +56,11 @@ public class SecretVaultService {
   private final WorkflowSecretRepository secretRepository;
   private final SecureRandom secureRandom = new SecureRandom();
 
-  private SecretKey aesKey;
+  private @Nullable SecretKey aesKey;
 
   @PostConstruct
   void init() {
-    if (this.encryptionKeyBase64 == null || this.encryptionKeyBase64.isBlank()) {
+    if (this.encryptionKeyBase64.isBlank()) {
       this.aesKey = null;
       log.warn(
           "originhub.actions.secrets.encryption-key not set — secrets vault is disabled."
@@ -74,6 +75,10 @@ public class SecretVaultService {
     this.aesKey = new SecretKeySpec(keyBytes, "AES");
   }
 
+  @Audited(
+      action = "ACTIONS_SECRET_UPSERT",
+      entityType = "ACTIONS_SECRET",
+      detailsSpEL = "'repoId=' + #repoId + ', name=' + #name")
   @Transactional
   public void createOrUpdate(final UUID repoId, final String name, final String plaintext) {
     this.requireKey();
@@ -93,6 +98,10 @@ public class SecretVaultService {
     log.info("Secret saved: repo={} name={}", repoId, name);
   }
 
+  @Audited(
+      action = "ACTIONS_SECRET_DELETE",
+      entityType = "ACTIONS_SECRET",
+      detailsSpEL = "'repoId=' + #repoId + ', name=' + #name")
   @Transactional
   public void delete(final UUID repoId, final String name) {
     final var secret =
@@ -110,10 +119,6 @@ public class SecretVaultService {
         .toList();
   }
 
-  /**
-   * Returns all decrypted secrets for the given repo. Used by {@code JobDispatcher} when building
-   * the job payload sent to the runner.
-   */
   @Transactional(readOnly = true)
   public Map<String, String> resolveSecrets(final UUID repoId) {
     if (this.aesKey == null) {
@@ -124,8 +129,6 @@ public class SecretVaultService {
             Collectors.toMap(
                 WorkflowSecret::getName, s -> this.decrypt(s.getEncryptedValue(), s.getIv())));
   }
-
-  // ── crypto helpers ────────────────────────────────────────────────────────
 
   private String encrypt(final String plaintext, final byte[] iv) {
     try {

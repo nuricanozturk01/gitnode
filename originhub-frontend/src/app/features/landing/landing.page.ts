@@ -32,6 +32,7 @@ import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 export class LandingPage implements OnDestroy {
   private readonly toast = inject(ToastService);
   readonly copied = signal<'https' | 'ssh' | null>(null);
+  readonly cloneTab = signal<'https' | 'ssh'>('https');
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** Public source repository (releases & clone). */
@@ -51,6 +52,10 @@ export class LandingPage implements OnDestroy {
       clearTimeout(this.copiedTimer);
       this.copiedTimer = null;
     }
+  }
+
+  setCloneTab(tab: 'https' | 'ssh'): void {
+    this.cloneTab.set(tab);
   }
 
   copyCloneCommand(value: string, kind: 'https' | 'ssh'): void {

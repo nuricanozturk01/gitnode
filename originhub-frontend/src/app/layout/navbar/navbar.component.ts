@@ -14,7 +14,16 @@
 /// limitations under the License.
 ///
 
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  DestroyRef,
+  afterNextRender,
+  inject,
+  signal,
+  computed,
+  effect,
+} from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
@@ -36,7 +45,12 @@ export class NavbarComponent {
   private readonly authService = inject(AuthService);
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly theme = inject(ThemeService);
+
+  /** 0 at page top, 1 after ~72px scroll — drives glass + compact sizing. */
+  readonly scrollProgress = signal(0);
+  readonly isCompact = computed(() => this.scrollProgress() > 0.08);
 
   readonly isLoggedIn = this.tokenService.isLoggedIn;
 
@@ -46,6 +60,17 @@ export class NavbarComponent {
   readonly userEmail = computed(() => this.user()?.email ?? '');
 
   constructor() {
+    afterNextRender(() => {
+      const updateScroll = (): void => {
+        const progress = Math.min(1, Math.max(0, window.scrollY / 72));
+        this.scrollProgress.set(progress);
+      };
+
+      updateScroll();
+      window.addEventListener('scroll', updateScroll, { passive: true });
+      this.destroyRef.onDestroy(() => window.removeEventListener('scroll', updateScroll));
+    });
+
     effect(() => {
       if (this.tokenService.isLoggedIn()) {
         this.loadUser();

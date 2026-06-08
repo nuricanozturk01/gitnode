@@ -1,18 +1,20 @@
 <main class="landing text-base-content relative min-h-screen w-full min-w-0 overflow-x-hidden">
   <!-- Hero -->
-  <section class="landing-hero-surface relative overflow-x-hidden pt-12 pb-12 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28">
+  <section class="landing-hero-surface relative pt-10 pb-14 sm:pt-16 sm:pb-20 lg:pt-20 lg:pb-24">
+    <div class="landing-hero-accent pointer-events-none absolute inset-0" aria-hidden="true"></div>
     <div class="landing-hero-grid pointer-events-none absolute inset-0 opacity-[0.35]"></div>
     <div class="hero-gradient pointer-events-none absolute inset-0"></div>
     <div
-      class="landing-hero-ray pointer-events-none absolute top-0 h-[min(60vh,420px)] w-[min(100vw,420px)] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2 sm:right-0 sm:left-auto sm:h-[min(70vh,520px)] sm:w-[min(90vw,640px)] sm:translate-x-0"
+      class="landing-hero-ray landing-hero-ray--left pointer-events-none absolute bottom-0 left-0 hidden lg:block"
     ></div>
+    <div class="landing-hero-ray landing-hero-ray--right pointer-events-none absolute top-0 right-0"></div>
 
     <div class="relative mx-auto max-w-7xl min-w-0 px-3 sm:px-6 lg:px-8">
-      <div class="grid min-w-0 items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-16">
+      <div class="grid min-w-0 items-center gap-10 sm:gap-12 lg:grid-cols-2 lg:gap-16">
         <div class="max-w-full min-w-0 lg:max-w-none">
           <a
             routerLink="/"
-            class="mb-4 flex max-w-full min-w-0 flex-wrap items-center gap-2.5 no-underline outline-offset-4 transition-opacity hover:opacity-90 focus-visible:opacity-100 sm:mb-5 sm:inline-flex sm:flex-nowrap sm:gap-3"
+            class="mb-5 flex max-w-full min-w-0 items-center gap-2.5 no-underline outline-offset-4 transition-opacity hover:opacity-90 focus-visible:opacity-100 sm:mb-6 sm:gap-3"
             aria-label="OriginHub home"
           >
             <img
@@ -20,28 +22,30 @@
               alt=""
               width="56"
               height="56"
-              class="size-11 shrink-0 object-contain sm:size-14"
+              class="size-10 shrink-0 object-contain sm:size-12"
               decoding="async"
             />
-            <span class="originhub-mark min-w-0 text-2xl leading-none sm:text-3xl sm:leading-none md:text-4xl">
+            <span class="originhub-mark min-w-0 text-xl leading-none sm:text-2xl sm:leading-none md:text-3xl">
               <span class="originhub-mark__origin">Origin</span><span class="originhub-mark__hub">Hub</span>
             </span>
           </a>
 
-          <div
-            class="border-base-300/80 bg-base-100/60 text-base-content/80 mb-5 inline-flex max-w-full flex-wrap items-center gap-2 rounded-full border px-2.5 py-1 text-[11px] font-medium backdrop-blur-sm sm:mb-6 sm:px-3 sm:text-xs md:text-sm"
-          >
+          <p class="landing-section-eyebrow mb-3 sm:mb-4">Open-source · self-hosted</p>
+
+          <div class="landing-hero-chip mb-5 inline-flex max-w-full flex-wrap items-center gap-2 sm:mb-6">
             <lucide-icon
               name="sparkles"
               class="text-primary size-3.5 shrink-0 sm:size-4"
               aria-hidden="true"
             ></lucide-icon>
-            <span class="min-w-0 leading-snug">Self-hosted Git · CI/CD Actions · Enterprise SSO</span>
+            <span class="min-w-0 leading-snug">Git hosting · CI/CD Actions · Enterprise SSO</span>
           </div>
 
-          <h1 class="text-3xl leading-[1.1] font-bold tracking-tight text-balance sm:text-5xl lg:text-6xl">
+          <h1
+            class="text-3xl leading-[1.08] font-bold tracking-tight text-balance sm:text-5xl lg:text-[3.35rem] lg:leading-[1.05]"
+          >
             Your code.
-            <span class="text-primary"> Your infrastructure.</span>
+            <span class="landing-headline-accent"> Your infrastructure.</span>
           </h1>
 
           <p
@@ -63,7 +67,7 @@
             </a>
             <a
               routerLink="/login"
-              class="btn btn-lg hero-btn-outline bg-base-100/40 w-full shrink-0 gap-2 border px-6 backdrop-blur-sm sm:w-auto sm:min-w-[8.5rem]"
+              class="btn btn-lg hero-btn-outline w-full shrink-0 gap-2 border px-6 sm:w-auto sm:min-w-[8.5rem]"
             >
               Sign in
             </a>
@@ -80,7 +84,7 @@
             [href]="githubRepoUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="landing-github-cta group border-base-300/70 from-base-100/90 to-base-200/30 text-base-content mt-6 flex max-w-full min-w-0 items-center gap-4 rounded-2xl border bg-gradient-to-br p-4 no-underline shadow-lg ring-1 ring-black/5 transition-[box-shadow,transform,border-color] duration-200 sm:mt-7 sm:max-w-lg sm:gap-5 sm:p-5 dark:ring-white/10"
+            class="landing-github-cta group landing-surface-card text-base-content mt-6 flex max-w-full min-w-0 items-center gap-4 rounded-2xl p-4 no-underline sm:mt-7 sm:max-w-lg sm:gap-5 sm:p-5"
           >
             <span
               class="landing-github-cta__icon flex size-12 shrink-0 items-center justify-center rounded-xl sm:size-14"
@@ -108,24 +112,27 @@
             ></lucide-icon>
           </a>
 
-          <dl
-            class="border-base-300/60 mt-8 grid max-w-full min-w-0 grid-cols-3 gap-2 border-t pt-6 text-center sm:mt-10 sm:max-w-lg sm:gap-4 sm:pt-8 sm:text-left"
-          >
-            <div class="sm:border-base-300/50 sm:pr-4 sm:first:pl-0">
-              <dt class="text-base-content/50 text-[10px] font-semibold tracking-wider uppercase sm:text-xs">
+          <dl class="mt-8 grid max-w-full min-w-0 grid-cols-3 gap-2 sm:mt-10 sm:max-w-lg sm:gap-3">
+            <div class="landing-stat-card">
+              <dt class="landing-stat-card__label">
+                <lucide-icon name="network" class="size-3.5 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
                 Transport
               </dt>
-              <dd class="mt-1 text-xs font-medium sm:text-sm">HTTP(S) + SSH</dd>
+              <dd class="landing-stat-card__value">HTTP(S) + SSH</dd>
             </div>
-            <div class="sm:border-base-300/50 sm:border-l sm:px-4">
-              <dt class="text-base-content/50 text-[10px] font-semibold tracking-wider uppercase sm:text-xs">
+            <div class="landing-stat-card">
+              <dt class="landing-stat-card__label">
+                <lucide-icon name="server" class="size-3.5 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
                 Hosting
               </dt>
-              <dd class="mt-1 text-xs font-medium sm:text-sm">Your servers</dd>
+              <dd class="landing-stat-card__value">Your servers</dd>
             </div>
-            <div class="sm:border-base-300/50 sm:border-l sm:pl-4">
-              <dt class="text-base-content/50 text-[10px] font-semibold tracking-wider uppercase sm:text-xs">Model</dt>
-              <dd class="mt-1 text-xs font-medium sm:text-sm">Open &amp; in-house</dd>
+            <div class="landing-stat-card">
+              <dt class="landing-stat-card__label">
+                <lucide-icon name="unlock" class="size-3.5 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
+                Model
+              </dt>
+              <dd class="landing-stat-card__value">Open &amp; in-house</dd>
             </div>
           </dl>
         </div>
@@ -133,7 +140,25 @@
         <!-- Hero preview -->
         <div class="landing-hero-preview relative w-full max-w-full min-w-0 lg:max-w-none lg:justify-self-end">
           <div
-            class="border-base-300/70 from-base-100/90 to-base-200/40 relative mx-auto w-full max-w-full overflow-hidden rounded-2xl border bg-gradient-to-br p-1 shadow-2xl ring-1 ring-black/5 backdrop-blur-md dark:ring-white/10"
+            class="landing-hero-float pointer-events-none absolute top-0 left-2 z-10 hidden sm:block"
+            aria-hidden="true"
+          >
+            <span class="landing-float-badge landing-float-badge--success">
+              <lucide-icon name="checkCircle" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+              Actions passed
+            </span>
+          </div>
+          <div
+            class="landing-hero-float landing-hero-float--delayed pointer-events-none absolute right-2 bottom-0 z-10 hidden sm:block"
+            aria-hidden="true"
+          >
+            <span class="landing-float-badge">
+              <lucide-icon name="gitPullRequest" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+              PR #42 merged
+            </span>
+          </div>
+          <div
+            class="landing-hero-terminal landing-surface-card relative mx-auto w-full max-w-full overflow-hidden rounded-2xl p-1"
           >
             <div
               class="border-base-300/60 bg-base-200/30 flex min-w-0 items-center gap-2 rounded-t-xl border-b px-3 py-2.5 sm:px-4 sm:py-3"
@@ -149,7 +174,7 @@
                 >originhub — quick clone</span
               >
             </div>
-            <div class="space-y-3 p-3 sm:space-y-4 sm:p-5">
+            <div class="space-y-3 overflow-hidden p-3 sm:space-y-4 sm:p-5">
               <div>
                 <div class="mb-1.5 flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <span class="text-base-content/55 shrink-0 text-[10px] font-semibold tracking-wider uppercase"
@@ -158,7 +183,7 @@
                   <span class="badge badge-ghost badge-xs shrink-0 font-normal opacity-80">Basic auth</span>
                 </div>
                 <p
-                  class="code-snippet border-base-300/80 bg-base-300/25 text-base-content/90 rounded-lg border px-2.5 py-2 font-mono text-[10px] leading-relaxed break-words sm:px-3 sm:py-2.5 sm:text-[11px] sm:leading-relaxed md:text-xs"
+                  class="code-snippet landing-hero-code border-base-300/80 bg-base-300/25 text-base-content/90 rounded-lg border px-2.5 py-2 font-mono text-[10px] leading-relaxed sm:px-3 sm:py-2.5 sm:text-[11px] sm:leading-relaxed md:text-xs"
                 >
                   {{ httpsCloneCommand() }}
                 </p>
@@ -171,7 +196,7 @@
                   <span class="badge badge-ghost badge-xs shrink-0 font-normal opacity-80">Deploy keys</span>
                 </div>
                 <p
-                  class="code-snippet border-base-300/80 bg-base-300/25 text-base-content/90 rounded-lg border px-2.5 py-2 font-mono text-[10px] leading-relaxed break-words sm:px-3 sm:py-2.5 sm:text-[11px] sm:leading-relaxed md:text-xs"
+                  class="code-snippet landing-hero-code border-base-300/80 bg-base-300/25 text-base-content/90 rounded-lg border px-2.5 py-2 font-mono text-[10px] leading-relaxed sm:px-3 sm:py-2.5 sm:text-[11px] sm:leading-relaxed md:text-xs"
                 >
                   {{ sshCloneCommand() }}
                 </p>
@@ -187,14 +212,61 @@
     </div>
   </section>
 
+  <!-- Tech stack -->
+  <section class="landing-built-with" aria-labelledby="landing-built-with-heading">
+    <div class="relative mx-auto max-w-5xl min-w-0 px-3 sm:px-6 lg:px-8">
+      <div class="text-center">
+        <p class="landing-section-eyebrow mb-2">Built with</p>
+        <h2 id="landing-built-with-heading" class="text-base font-semibold tracking-tight sm:text-lg">
+          Production stack, fully self-hosted
+        </h2>
+      </div>
+
+      <div class="landing-tech-panel landing-surface-panel mt-6 sm:mt-8">
+        <dl class="landing-tech-list">
+          <div class="landing-tech-item">
+            <dt>Spring Boot</dt>
+            <dd>Backend API</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>PostgreSQL</dt>
+            <dd>Primary store</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>Redis</dt>
+            <dd>Cache &amp; rate limits</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>Angular</dt>
+            <dd>Web UI</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>Go</dt>
+            <dd>CI runner agent</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>JGit</dt>
+            <dd>Git engine</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>Prometheus</dt>
+            <dd>Metrics collection</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>Grafana</dt>
+            <dd>Observability dashboards</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
   <!-- Quick start -->
-  <section
-    class="border-base-300/50 bg-base-200/40 relative border-y py-10 sm:py-16"
-    aria-labelledby="landing-quickstart-heading"
-  >
+  <section class="landing-section landing-section--alt py-10 sm:py-16" aria-labelledby="landing-quickstart-heading">
     <div class="mx-auto max-w-4xl min-w-0 px-3 sm:px-6 lg:px-8">
       <div class="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
+          <p class="landing-section-eyebrow mb-2">Quick start</p>
           <h2 id="landing-quickstart-heading" class="text-2xl font-bold tracking-tight sm:text-3xl">
             Clone in one step
           </h2>
@@ -208,69 +280,90 @@
         </a>
       </div>
 
-      <div
-        class="landing-code-shell border-base-300/80 bg-base-100 max-w-full overflow-hidden rounded-2xl border shadow-xl"
-      >
+      <div class="landing-code-shell landing-surface-panel max-w-full overflow-hidden rounded-2xl">
         <div
           class="border-base-300/60 bg-base-200/40 flex min-w-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-3 sm:px-4"
         >
-          <span class="text-base-content/50 flex items-center gap-2 text-xs font-medium">
-            <lucide-icon name="server" class="size-3.5 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
-            Terminal
-          </span>
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="text-base-content/50 flex items-center gap-2 text-xs font-medium">
+              <lucide-icon name="terminal" class="size-3.5 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
+              Terminal
+            </span>
+            <div class="landing-clone-tabs" role="tablist" aria-label="Clone transport">
+              <button
+                type="button"
+                role="tab"
+                class="landing-clone-tab"
+                [class.landing-clone-tab--active]="cloneTab() === 'https'"
+                [attr.aria-selected]="cloneTab() === 'https'"
+                (click)="setCloneTab('https')"
+              >
+                HTTPS
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="landing-clone-tab"
+                [class.landing-clone-tab--active]="cloneTab() === 'ssh'"
+                [attr.aria-selected]="cloneTab() === 'ssh'"
+                (click)="setCloneTab('ssh')"
+              >
+                SSH
+              </button>
+            </div>
+          </div>
           <span class="text-base-content/40 font-mono text-[10px] sm:text-xs">example · replace owner/repo</span>
         </div>
-        <ul class="divide-base-300/60 min-w-0 divide-y font-mono text-xs sm:text-sm">
-          <li
-            class="landing-code-row flex min-w-0 flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+        <div
+          class="landing-code-row flex min-w-0 flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+        >
+          @if (cloneTab() === 'https') {
+          <code class="code-snippet text-primary/90 order-2 max-w-full min-w-0 break-all sm:order-1"
+            >{{ httpsCloneCommand() }}</code
           >
-            <code class="code-snippet text-primary/90 order-2 max-w-full min-w-0 break-all sm:order-1"
-              >{{ httpsCloneCommand() }}</code
-            >
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm order-1 shrink-0 gap-1.5 self-end sm:order-2 sm:self-auto"
-              (click)="copyCloneCommand(httpsCloneCommand(), 'https')"
-            >
-              @if (copied() === 'https') {
-              <lucide-icon name="checkCircle" class="text-success size-4" aria-hidden="true"></lucide-icon>
-              Copied } @else {
-              <lucide-icon name="copy" class="size-4 opacity-70" aria-hidden="true"></lucide-icon>
-              Copy }
-            </button>
-          </li>
-          <li
-            class="landing-code-row flex min-w-0 flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm order-1 shrink-0 gap-1.5 self-end sm:order-2 sm:self-auto"
+            (click)="copyCloneCommand(httpsCloneCommand(), 'https')"
           >
-            <code class="code-snippet text-base-content/85 order-2 max-w-full min-w-0 break-all sm:order-1"
-              >{{ sshCloneCommand() }}</code
-            >
-            <button
-              type="button"
-              class="btn btn-ghost btn-sm order-1 shrink-0 gap-1.5 self-end sm:order-2 sm:self-auto"
-              (click)="copyCloneCommand(sshCloneCommand(), 'ssh')"
-            >
-              @if (copied() === 'ssh') {
-              <lucide-icon name="checkCircle" class="text-success size-4" aria-hidden="true"></lucide-icon>
-              Copied } @else {
-              <lucide-icon name="copy" class="size-4 opacity-70" aria-hidden="true"></lucide-icon>
-              Copy }
-            </button>
-          </li>
-        </ul>
+            @if (copied() === 'https') {
+            <lucide-icon name="checkCircle" class="text-success size-4" aria-hidden="true"></lucide-icon>
+            Copied } @else {
+            <lucide-icon name="copy" class="size-4 opacity-70" aria-hidden="true"></lucide-icon>
+            Copy }
+          </button>
+          } @else {
+          <code class="code-snippet text-base-content/85 order-2 max-w-full min-w-0 break-all sm:order-1"
+            >{{ sshCloneCommand() }}</code
+          >
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm order-1 shrink-0 gap-1.5 self-end sm:order-2 sm:self-auto"
+            (click)="copyCloneCommand(sshCloneCommand(), 'ssh')"
+          >
+            @if (copied() === 'ssh') {
+            <lucide-icon name="checkCircle" class="text-success size-4" aria-hidden="true"></lucide-icon>
+            Copied } @else {
+            <lucide-icon name="copy" class="size-4 opacity-70" aria-hidden="true"></lucide-icon>
+            Copy }
+          </button>
+          }
+        </div>
         <div
           class="border-base-300/50 bg-base-200/25 text-base-content/55 border-t px-3 py-3 text-center text-[11px] leading-snug sm:px-4 sm:text-xs"
         >
-          HTTPS: use your OriginHub username and password when Git prompts. SSH: add a public key under Settings.
+          @if (cloneTab() === 'https') { HTTPS: use your OriginHub username and password when Git prompts. } @else {
+          SSH: add a public key under Settings, then clone with deploy keys or your account key. }
         </div>
       </div>
     </div>
   </section>
 
   <!-- Features -->
-  <section class="py-16 sm:py-28" aria-labelledby="landing-features-heading">
+  <section class="landing-section py-16 sm:py-28" aria-labelledby="landing-features-heading">
     <div class="mx-auto max-w-7xl min-w-0 px-3 sm:px-6 lg:px-8">
       <div class="mx-auto mb-12 max-w-2xl text-center sm:mb-16 lg:mb-20">
+        <p class="landing-section-eyebrow mb-3">Platform</p>
         <h2 id="landing-features-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">Everything you need</h2>
         <p class="text-base-content/65 mt-3 text-sm text-pretty sm:text-base sm:text-lg">
           Git hosting, CI/CD Actions, enterprise SSO, admin tooling, observability, and audit — a cohesive experience
@@ -775,47 +868,47 @@
   </section>
 
   <!-- CTA -->
-  <section class="border-base-300/40 relative border-t py-12 sm:py-24" aria-labelledby="landing-cta-heading">
+  <section class="landing-section landing-section--alt border-t py-12 sm:py-20" aria-labelledby="landing-cta-heading">
     <div class="landing-cta-glow pointer-events-none absolute inset-0 opacity-40"></div>
-    <div class="relative mx-auto max-w-3xl min-w-0 px-3 text-center sm:px-6">
-      <h2 id="landing-cta-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">
-        Ready to host your own Git?
-      </h2>
-      <p class="text-base-content/65 mx-auto mt-4 max-w-lg text-sm text-pretty sm:text-base sm:text-lg">
-        Deploy OriginHub where you already run services. No per-seat tax — capacity is yours to size.
-      </p>
-      <div
-        class="mt-8 flex w-full min-w-0 flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3"
-      >
-        <a
-          routerLink="/register"
-          class="btn btn-primary btn-lg glow w-full shrink-0 gap-2 px-8 shadow-lg sm:w-auto sm:min-w-[12rem]"
+    <div class="relative mx-auto max-w-3xl min-w-0 px-3 sm:px-6">
+      <div class="landing-cta-panel landing-surface-panel px-5 py-10 text-center sm:px-10 sm:py-14">
+        <p class="landing-section-eyebrow mb-3">Get started</p>
+        <h2 id="landing-cta-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">
+          Ready to host your own Git?
+        </h2>
+        <p class="text-base-content/65 mx-auto mt-4 max-w-lg text-sm text-pretty sm:text-base sm:text-lg">
+          Deploy OriginHub where you already run services. No per-seat tax — capacity is yours to size.
+        </p>
+        <div
+          class="mt-8 flex w-full min-w-0 flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3"
         >
-          <lucide-icon name="plus" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
-          Create your account
-        </a>
-        <a
-          routerLink="/login"
-          class="btn btn-lg hero-btn-outline bg-base-100/50 w-full shrink-0 gap-2 border px-8 backdrop-blur-sm sm:w-auto"
-        >
-          I already have an account
-        </a>
-        <a
-          [href]="githubRepoUrl"
-          target="_blank"
-          rel="noopener noreferrer"
-          class="btn btn-lg hero-btn-outline bg-base-100/50 text-base-content hover:border-primary/35 hover:bg-primary/5 w-full shrink-0 gap-2 border px-8 backdrop-blur-sm sm:w-auto"
-        >
-          <lucide-icon name="github" class="size-5 shrink-0 opacity-90" aria-hidden="true"></lucide-icon>
-          Download on GitHub
-        </a>
+          <a
+            routerLink="/register"
+            class="btn btn-primary btn-lg glow w-full shrink-0 gap-2 px-8 shadow-lg sm:w-auto sm:min-w-[12rem]"
+          >
+            <lucide-icon name="plus" class="size-5 shrink-0" aria-hidden="true"></lucide-icon>
+            Create your account
+          </a>
+          <a routerLink="/login" class="btn btn-lg hero-btn-outline w-full shrink-0 gap-2 border px-8 sm:w-auto">
+            I already have an account
+          </a>
+          <a
+            [href]="githubRepoUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="btn btn-lg hero-btn-outline text-base-content w-full shrink-0 gap-2 border px-8 sm:w-auto"
+          >
+            <lucide-icon name="github" class="size-5 shrink-0 opacity-90" aria-hidden="true"></lucide-icon>
+            Download on GitHub
+          </a>
+        </div>
+        <p class="text-base-content/50 mt-6 text-center text-xs sm:text-sm">
+          Open source ·
+          <a [href]="githubRepoUrl" target="_blank" rel="noopener noreferrer" class="link link-hover font-mono text-xs">
+            github.com/nuricanozturk01/originhub
+          </a>
+        </p>
       </div>
-      <p class="text-base-content/50 mt-6 text-center text-xs sm:text-sm">
-        Open source ·
-        <a [href]="githubRepoUrl" target="_blank" rel="noopener noreferrer" class="link link-hover font-mono text-xs">
-          github.com/nuricanozturk01/originhub
-        </a>
-      </p>
     </div>
   </section>
 </main>

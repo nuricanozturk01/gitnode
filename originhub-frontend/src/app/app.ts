@@ -14,8 +14,10 @@
 /// limitations under the License.
 ///
 
-import { Component, ChangeDetectionStrategy } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, ChangeDetectionStrategy, computed, inject } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
+import { filter, map, startWith } from 'rxjs';
 import { NavbarComponent } from './layout/navbar/navbar.component';
 import { FooterComponent } from './layout/footer/footer.component';
 import { ConfirmModalHostComponent } from './core/confirm-modal/confirm-modal-host.component';
@@ -36,4 +38,20 @@ import { LucideAngularModule } from 'lucide-angular';
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
-export class App {}
+export class App {
+  private readonly router = inject(Router);
+
+  private readonly currentPath = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map(() => this.router.url.split('?')[0] ?? '/'),
+      startWith(this.router.url.split('?')[0] ?? '/'),
+    ),
+    { initialValue: this.router.url.split('?')[0] ?? '/' },
+  );
+
+  readonly showFooter = computed(() => {
+    const path = this.currentPath();
+    return path !== '/login' && path !== '/register';
+  });
+}

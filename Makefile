@@ -36,8 +36,6 @@ GITHUB_CLIENT_SECRET := YOUR_SECRET
 GITLAB_CLIENT_ID     := YOUR_CLIENT
 GITLAB_CLIENT_SECRET := YOUR_SECRET
 
-ADMIN_ENABLED  ?= true
-
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: all up down start stop restart \
   infra infra-down infra-stop infra-start \
@@ -63,7 +61,6 @@ up: infra app
 	@echo "  OriginHub stack is up"
 	@echo "  App         → http://localhost:$(HTTP_PORT)"
 	@echo "  SSH         → localhost:$(SSH_PORT)"
-	@echo "  Admin API   → $(if $(filter false,$(ADMIN_ENABLED)),disabled — ADMIN_ENABLED=false,enabled (default))"
 	@echo "  Monitoring  → optional: make monitoring"
 	@echo ""
 
@@ -112,14 +109,14 @@ monitoring-down:
 ACTIONS_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.originhub/actions-encryption-key 2>/dev/null)
 
 app:
-	@docker ps -a --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
-		&& echo "$(APP_NAME) already exists – skipping." \
-		|| docker run -d \
+	@docker ps --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
+		&& echo "$(APP_NAME) already running – skipping." \
+		|| (docker rm -f $(APP_NAME) 2>/dev/null; docker run -d \
 			--name $(APP_NAME) \
 			--network $(NETWORK) \
 			-p $(HTTP_PORT):8080 \
 			-p $(SSH_PORT):2222 \
-			-e JAVA_TOOL_OPTIONS="-Xms256m -Xmx768m -XX:+UseG1GC -XX:MaxGCPauseMillis=100" \
+			-e JAVA_TOOL_OPTIONS="-Xms256m -Xmx768m" \
 			-e SPRING_DATASOURCE_URL=jdbc:postgresql://$(POSTGRES_NAME):5432/$(POSTGRES_DB) \
 			-e SPRING_DATASOURCE_USERNAME=$(POSTGRES_USER) \
 			-e SPRING_DATASOURCE_PASSWORD=$(POSTGRES_PASS) \
@@ -129,7 +126,6 @@ app:
 			-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
 			-e ORIGINHUB_ADMIN_MODULITH_EVENTS_ENABLED=true \
-			-e ORIGINHUB_ADMIN_ENABLED=$(ADMIN_ENABLED) \
 			$(if $(ACTIONS_ENCRYPTION_KEY),-e ACTIONS_ENCRYPTION_KEY=$(ACTIONS_ENCRYPTION_KEY),) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
@@ -138,7 +134,7 @@ app:
 			-e OAUTH2_GITLAB_CLIENT_ID=$(GITLAB_CLIENT_ID) \
 			-e OAUTH2_GITLAB_CLIENT_SECRET=$(GITLAB_CLIENT_SECRET) \
 			-v $(REPOS_VOLUME):$(GIT_REPO_ROOT) \
-			$(IMAGE)
+			$(IMAGE))
 
 app-stop:
 	-docker stop $(APP_NAME)
@@ -297,7 +293,6 @@ help:
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make dev-setup         → Infra + pnpm install + local config template"
 	@echo "  make dev-backend       → Run backend with local profile (:8080)"
-	@echo "  ADMIN_ENABLED=false make up → Docker stack without admin API"
 	@echo "  make test              → Backend + runner + frontend lint"
 	@echo "  make test-backend      → ./mvnw test"
 	@echo "  make test-runner       → Go tests"

@@ -1,12 +1,12 @@
 @import 'tailwindcss';
 @plugin 'daisyui' {
   themes:
-    originhub,
-    originhub-light --default;
+    originhub --default,
+    originhub-light;
 }
 @plugin 'daisyui/theme' {
   name: 'originhub';
-  default: false;
+  default: true;
   color-scheme: dark;
   /* Layered cool slate: cards above canvas; borders/dividers read at a glance */
   --color-base-100: oklch(27% 0.024 250);
@@ -32,7 +32,7 @@
 }
 @plugin 'daisyui/theme' {
   name: 'originhub-light';
-  default: true;
+  default: false;
   color-scheme: light;
   /* Softer than paper-white: layered cool gray (hue 250) so panels don’t glare */
   --color-base-100: oklch(97% 0.014 250);

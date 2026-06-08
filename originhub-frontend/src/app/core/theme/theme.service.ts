@@ -61,7 +61,7 @@ export class ThemeService {
     } catch {
       /* storage unavailable */
     }
-    return THEME_LIGHT;
+    return THEME_DARK;
   }
 
   private applyTheme(next: OriginHubTheme, persist: boolean): void {

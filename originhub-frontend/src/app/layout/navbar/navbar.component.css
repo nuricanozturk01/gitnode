@@ -1,12 +1,103 @@
 :host {
   display: block;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
-/* Logo sits flush in the brand link — no filled chip; PNG alpha shows through */
+.navbar-shell {
+  --navbar-scroll: 0;
+  --navbar-border: color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+  --navbar-pad-y: calc(0.9rem - 0.35rem * var(--navbar-scroll));
+  --navbar-pad-x: calc(1rem + 0.5rem * var(--navbar-scroll));
+  --navbar-logo: calc(1.75rem - 0.25rem * var(--navbar-scroll));
+  --navbar-mark: calc(1.375rem - 0.125rem * var(--navbar-scroll));
+  --navbar-bg: calc(0.06 + 0.62 * var(--navbar-scroll));
+  --navbar-blur: calc(10px * var(--navbar-scroll));
+  --navbar-shadow: calc(0.06 * var(--navbar-scroll));
+  --navbar-blend: transparent;
+  padding-block: var(--navbar-pad-y);
+  border-bottom: 1px solid color-mix(in oklch, var(--navbar-border) calc(100% * var(--navbar-scroll)), transparent);
+  background: color-mix(in oklch, var(--color-base-100) calc(var(--navbar-bg) * 100%), var(--navbar-blend));
+  backdrop-filter: blur(var(--navbar-blur));
+  -webkit-backdrop-filter: blur(var(--navbar-blur));
+  box-shadow: 0 1px 0 color-mix(in oklch, var(--color-base-content) calc(var(--navbar-shadow) * 100%), transparent);
+  transition:
+    padding 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    backdrop-filter 0.2s ease;
+}
+
+/* Dark: resting bar uses lighter base-300 tone — not blurred black body bleed */
+[data-theme='originhub'] .navbar-shell {
+  --navbar-bg: calc(0.1 + 0.68 * var(--navbar-scroll));
+  --navbar-blend: color-mix(
+    in oklch,
+    var(--color-base-300) calc((1 - var(--navbar-scroll)) * 100%),
+    var(--color-base-200)
+  );
+  background: color-mix(in oklch, var(--color-base-100) calc(var(--navbar-bg) * 100%), var(--navbar-blend));
+}
+
+.navbar-shell__inner {
+  min-width: 0;
+  padding-inline: var(--navbar-pad-x);
+  transition: padding 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .navbar-shell {
+    --navbar-pad-x: calc(1.5rem + 0.5rem * var(--navbar-scroll));
+  }
+}
+
+@media (min-width: 1024px) {
+  .navbar-shell {
+    --navbar-pad-x: calc(2rem + 0.25rem * var(--navbar-scroll));
+  }
+
+  .navbar-shell--compact .navbar-shell__inner {
+    max-width: calc(80rem - 2rem * var(--navbar-scroll));
+  }
+}
+
 .navbar-logo-mark {
   line-height: 0;
 }
 
-.navbar-logo-mark img {
+.navbar-logo-mark__img {
   display: block;
+  width: var(--navbar-logo);
+  height: var(--navbar-logo);
+  transition:
+    width 0.2s ease,
+    height 0.2s ease;
+}
+
+.navbar-mark {
+  font-size: var(--navbar-mark);
+  transition: font-size 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .navbar-shell .navbar-mark {
+    --navbar-mark: calc(1.5rem - 0.125rem * var(--navbar-scroll));
+  }
+}
+
+.navbar-shell .btn-sm {
+  min-height: calc(2rem + 0.125rem * (1 - var(--navbar-scroll)));
+  transition: min-height 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar-shell,
+  .navbar-shell__inner,
+  .navbar-logo-mark__img,
+  .navbar-mark,
+  .navbar-shell .btn-sm {
+    transition: none;
+  }
 }

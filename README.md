@@ -353,7 +353,7 @@ docker run -d \
   -e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
   -e GITNODE_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300 \
   -v gitnode-repos:/data/repos \
-  repo.repsy.io/nuricanozturk/gitnode/originhub-os:latest
+  repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
 ```
 
 ### Option 2 — Makefile (recommended)

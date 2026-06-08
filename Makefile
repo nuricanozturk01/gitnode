@@ -12,7 +12,7 @@ RUNNER_DIR     := gitnode-runner
 LDAP_NAME      := gitnode-ldap
 LDAP_IMAGE     := ghcr.io/rroemhild/docker-test-openldap:master
 LDAP_PORT      := 389
-IMAGE          := repo.repsy.io/nuricanozturk/gitnode/originhub-os:latest
+IMAGE          := repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
 
 POSTGRES_DB    := gitnode
 POSTGRES_USER  := admin

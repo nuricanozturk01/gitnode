@@ -46,7 +46,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build and push VPS image
+      - name: Build and push VPS image (SPA)
         if: ${{ inputs.target == 'vps' || inputs.target == 'both' }}
         uses: docker/build-push-action@v6
         with:

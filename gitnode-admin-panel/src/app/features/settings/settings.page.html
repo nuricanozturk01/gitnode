@@ -1,0 +1,202 @@
+<div class="mx-auto max-w-3xl">
+  <header class="mb-8">
+    <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
+    <p class="text-base-content/65 mt-1 text-sm md:text-base">Platform-wide configuration for the admin panel.</p>
+  </header>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else { @if (error()) {
+  <div class="alert alert-error mb-4" role="alert">
+    <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+    <span>{{ error() }}</span>
+  </div>
+  }
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="repo-panel flex flex-col gap-5 p-6">
+    <div>
+      <h2 class="text-base-content text-lg font-semibold">Statistics cache</h2>
+      <p class="text-base-content/65 mt-1 text-sm">
+        Dashboard statistics are cached in the backend to reduce database load. Changes apply to new cache entries
+        immediately; use Refresh on the dashboard to reload current data.
+      </p>
+    </div>
+
+    <div class="form-control max-w-xs">
+      <label class="label" for="statsCacheMinutes">
+        <span class="label-text font-medium">Cache duration (minutes)</span>
+      </label>
+      <input
+        id="statsCacheMinutes"
+        type="number"
+        min="1"
+        max="1440"
+        formControlName="statsCacheMinutes"
+        class="input input-bordered w-full"
+      />
+      @if (form.controls.statsCacheMinutes.touched && form.controls.statsCacheMinutes.invalid) {
+      <div class="label">
+        <span class="label-text-alt text-error">Enter a value between 1 and 1440 minutes</span>
+      </div>
+      } @else {
+      <div class="label">
+        <span class="label-text-alt text-base-content/60">
+          Equivalent to {{ formatCacheTtl(minutesToSeconds(form.controls.statsCacheMinutes.value)) }} on the server
+        </span>
+      </div>
+      }
+    </div>
+
+    <div class="flex justify-end">
+      <button type="submit" class="btn btn-primary" [disabled]="saving() || form.invalid">
+        @if (saving()) {
+        <span class="loading loading-spinner loading-sm"></span>
+        } Save statistics
+      </button>
+    </div>
+  </form>
+
+  <form [formGroup]="toggleForm" (ngSubmit)="onSaveToggles()" class="repo-panel mt-6 p-6">
+    <div class="diagnostic-section">
+      <div class="diagnostic-section__intro">
+        <lucide-icon name="triangleAlert" class="diagnostic-section__icon size-5 shrink-0"></lucide-icon>
+        <div>
+          <h2 class="text-base-content text-lg font-semibold">Diagnostic viewers</h2>
+          <p class="text-base-content/65 mt-1 text-sm">
+            Turn on only while troubleshooting. Disabled viewers skip heavy work on the server — API calls return
+            immediately without reading log files or querying <code class="text-xs">event_publication</code>.
+          </p>
+        </div>
+      </div>
+
+      <div class="diagnostic-cards">
+        <article class="diagnostic-card">
+          <div class="diagnostic-card__head">
+            <div class="min-w-0">
+              <div class="diagnostic-card__title-row">
+                <lucide-icon name="database" class="text-primary size-4 shrink-0"></lucide-icon>
+                <h3 class="diagnostic-card__title">pgAudit logs</h3>
+              </div>
+              <p class="diagnostic-card__desc">
+                Scans PostgreSQL server log files for write, DDL, and role operations. Uses in-memory scanning (up to
+                50k lines per request).
+              </p>
+              <div class="diagnostic-card__meta">
+                <span class="badge-pill badge-pill--warning">Memory</span>
+                <span class="badge-pill badge-pill--neutral">Log volume required</span>
+              </div>
+            </div>
+            <app-sso-switch
+              [checked]="toggleForm.controls.pgAuditViewerEnabled.value"
+              [disabled]="savingToggles()"
+              size="md"
+              [showLabels]="true"
+              ariaLabel="Enable pgAudit log viewer"
+              (checkedChange)="toggleForm.controls.pgAuditViewerEnabled.setValue($event)"
+            />
+          </div>
+
+          @if (toggleForm.controls.pgAuditViewerEnabled.value) {
+          <div
+            class="diagnostic-card__status"
+            [class.diagnostic-card__status--ready]="pgAuditReady()"
+            [class.diagnostic-card__status--warn]="!pgAuditReady()"
+          >
+            <span class="font-medium">{{ pgAuditStatusLabel() }}</span>
+            @if (pgAuditStatus(); as status) {
+            <p class="mt-1">{{ status.message }}</p>
+            @if (status.logDirectory) {
+            <p class="mt-1 font-mono">{{ status.logDirectory }}</p>
+            } }
+          </div>
+          } @else {
+          <div class="diagnostic-card__status">
+            Viewer disabled — turn the switch <span class="font-medium">On</span> and save to browse pgAudit logs.
+          </div>
+          }
+        </article>
+
+        <article class="diagnostic-card">
+          <div class="diagnostic-card__head">
+            <div class="min-w-0">
+              <div class="diagnostic-card__title-row">
+                <lucide-icon name="workflow" class="text-primary size-4 shrink-0"></lucide-icon>
+                <h3 class="diagnostic-card__title">Modulith events</h3>
+              </div>
+              <p class="diagnostic-card__desc">
+                Inspects persisted Spring Modulith events — completed, in-progress, incomplete, and failed entries from
+                the module event store.
+              </p>
+              <div class="diagnostic-card__meta">
+                <span class="badge-pill badge-pill--warning">Database</span>
+                <span class="badge-pill badge-pill--neutral">Serialized payloads</span>
+              </div>
+            </div>
+            <app-sso-switch
+              [checked]="toggleForm.controls.modulithEventsViewerEnabled.value"
+              [disabled]="savingToggles()"
+              size="md"
+              [showLabels]="true"
+              ariaLabel="Enable Modulith event viewer"
+              (checkedChange)="toggleForm.controls.modulithEventsViewerEnabled.setValue($event)"
+            />
+          </div>
+
+          @if (toggleForm.controls.modulithEventsViewerEnabled.value) {
+          <div class="diagnostic-card__status diagnostic-card__status--ready">
+            Viewer enabled. Open <a routerLink="/modulith-events" class="link link-primary">Modulith events</a> to
+            browse the queue.
+          </div>
+          } @else {
+          <div class="diagnostic-card__status">
+            Viewer disabled — turn the switch <span class="font-medium">On</span> and save to inspect module events.
+          </div>
+          }
+        </article>
+      </div>
+
+      <p class="diagnostic-footnote">
+        pgAudit also needs Postgres logs mounted into the backend process. Docker stack:
+        <code class="text-xs">GITNODE_ADMIN_PGAUDIT_LOG_DIRECTORY=/var/log/postgresql</code>. Local dev: copy logs from
+        the Postgres container into <code class="text-xs">~/.gitnode/postgres-logs</code> and restart the backend.
+      </p>
+
+      <div class="flex justify-end pt-1">
+        <button type="submit" class="btn btn-primary" [disabled]="savingToggles()">
+          @if (savingToggles()) {
+          <span class="loading loading-spinner loading-sm"></span>
+          } Save diagnostic viewers
+        </button>
+      </div>
+    </div>
+  </form>
+
+  @if (platformAdmins(); as admins) {
+  <section class="repo-panel mt-6 p-6">
+    <div class="flex items-start gap-3">
+      <lucide-icon name="shieldCheck" class="text-primary mt-0.5 size-5 shrink-0"></lucide-icon>
+      <div class="min-w-0 flex-1">
+        <h2 class="text-base-content text-lg font-semibold">Platform administrators</h2>
+        <p class="text-base-content/65 mt-1 text-sm">
+          Usernames with access to this admin panel. Managed via server configuration (<code class="text-xs"
+            >GITNODE_PLATFORM_ADMIN_USERNAMES</code
+          >
+          and bootstrap admin settings).
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          @for (username of admins.usernames; track username) {
+          <span class="badge-pill badge-pill--primary">{{ username }}</span>
+          }
+        </div>
+        @if (admins.bootstrapAdminEnabled) {
+        <p class="text-base-content/55 mt-3 text-xs">
+          Bootstrap admin: <span class="font-medium">{{ admins.bootstrapAdminUsername }}</span>
+        </p>
+        }
+      </div>
+    </div>
+  </section>
+  } }
+</div>

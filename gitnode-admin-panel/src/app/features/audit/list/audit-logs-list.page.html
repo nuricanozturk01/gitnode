@@ -1,0 +1,381 @@
+<div class="mx-auto max-w-6xl">
+  <nav class="text-base-content/70 mb-4 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">Audit logs</span>
+  </nav>
+
+  <header class="mb-4 flex flex-wrap items-end justify-between gap-3">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight">Audit logs</h1>
+      <p class="text-base-content/60 mt-0.5 text-sm">{{ resultsSummary() }}</p>
+    </div>
+    @if (hasActiveFilters()) {
+    <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="clearFilters()">
+      <lucide-icon name="x" class="size-3.5"></lucide-icon>
+      Reset filters
+    </button>
+    }
+  </header>
+
+  <div class="repo-panel overflow-hidden">
+    <div class="audit-toolbar border-base-300/60 border-b p-3">
+      <label class="audit-toolbar__search input input-bordered input-sm flex items-center gap-2">
+        <lucide-icon name="search" class="text-base-content/45 size-3.5 shrink-0"></lucide-icon>
+        <input
+          type="search"
+          class="grow"
+          placeholder="Search actor, action, entity, details…"
+          [value]="search()"
+          (input)="onSearchInput($event)"
+          aria-label="Search audit logs"
+        />
+        @if (search()) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs btn-square shrink-0"
+          aria-label="Clear search"
+          (click)="clearSearch()"
+        >
+          <lucide-icon name="x" class="size-3.5"></lucide-icon>
+        </button>
+        }
+      </label>
+
+      <div class="join hidden sm:inline-flex" role="group" aria-label="Quick time range">
+        @for (preset of periodPresets; track preset.value) {
+        <button
+          type="button"
+          class="btn btn-xs join-item"
+          [class.btn-primary]="period() === preset.value && !from() && !to()"
+          [class.btn-ghost]="period() !== preset.value || from() || to()"
+          (click)="onPeriodChange(preset.value)"
+        >
+          {{ preset.label }}
+        </button>
+        }
+      </div>
+
+      <div class="join audit-toolbar__period sm:hidden" role="group" aria-label="Quick time range">
+        @for (preset of periodPresets; track preset.value) {
+        <button
+          type="button"
+          class="btn btn-xs join-item shrink-0"
+          [class.btn-primary]="period() === preset.value && !from() && !to()"
+          [class.btn-ghost]="period() !== preset.value || from() || to()"
+          (click)="onPeriodChange(preset.value)"
+        >
+          {{ preset.label }}
+        </button>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm gap-1.5"
+        (click)="toggleFilters()"
+        [attr.aria-expanded]="filtersExpanded()"
+        aria-controls="audit-advanced-filters"
+      >
+        <lucide-icon name="filter" class="size-3.5"></lucide-icon>
+        Filters @if (activeFilterCount() > 0) {
+        <span class="audit-filter-badge" aria-label="{{ activeFilterCount() }} active filters"
+          >{{ activeFilterCount() }}</span
+        >
+        }
+        <lucide-icon
+          name="chevronDown"
+          class="size-3.5 transition-transform"
+          [class.rotate-180]="filtersExpanded()"
+        ></lucide-icon>
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-ghost btn-square btn-sm"
+        [disabled]="initialLoading() || tableLoading() || refreshing()"
+        aria-label="Refresh audit logs"
+        (click)="refresh()"
+      >
+        @if (refreshing()) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } @else {
+        <lucide-icon name="refreshCw" class="size-4"></lucide-icon>
+        }
+      </button>
+    </div>
+
+    @if (filtersExpanded()) {
+    <div id="audit-advanced-filters" class="audit-filters">
+      <div class="join sm:hidden" role="group" aria-label="Quick time range">
+        @for (preset of periodPresets; track preset.value) {
+        <button
+          type="button"
+          class="btn btn-xs join-item"
+          [class.btn-primary]="period() === preset.value && !from() && !to()"
+          [class.btn-ghost]="period() !== preset.value || from() || to()"
+          (click)="onPeriodChange(preset.value)"
+        >
+          {{ preset.label }}
+        </button>
+        }
+      </div>
+      <input
+        type="search"
+        class="input input-bordered input-xs w-full"
+        placeholder="Filter by actor"
+        [value]="actor()"
+        (input)="onActorInput($event)"
+        aria-label="Filter by actor"
+      />
+      <select
+        class="select select-bordered select-xs w-full"
+        [value]="action()"
+        (change)="onActionChange($event)"
+        [disabled]="filtersLoading()"
+        aria-label="Filter by action"
+      >
+        <option value="">All actions</option>
+        @for (option of actionOptions(); track option) {
+        <option [value]="option">{{ option }}</option>
+        }
+      </select>
+      <select
+        class="select select-bordered select-xs w-full"
+        [value]="entityType()"
+        (change)="onEntityTypeChange($event)"
+        [disabled]="filtersLoading()"
+        aria-label="Filter by entity type"
+      >
+        <option value="">All entity types</option>
+        @for (option of entityTypeOptions(); track option) {
+        <option [value]="option">{{ option }}</option>
+        }
+      </select>
+      <input
+        type="search"
+        class="input input-bordered input-xs w-full"
+        placeholder="Filter by entity ID"
+        [value]="entityId()"
+        (input)="onEntityIdInput($event)"
+        aria-label="Filter by entity ID"
+      />
+      <input
+        type="search"
+        class="input input-bordered input-xs w-full"
+        placeholder="Filter by IP address"
+        [value]="ipAddress()"
+        (input)="onIpAddressInput($event)"
+        aria-label="Filter by IP address"
+      />
+      <input
+        type="datetime-local"
+        class="input input-bordered input-xs w-full"
+        [value]="from()"
+        (change)="onFromChange($event)"
+        aria-label="Filter from date and time"
+      />
+      <input
+        type="datetime-local"
+        class="input input-bordered input-xs w-full"
+        [value]="to()"
+        (change)="onToChange($event)"
+        aria-label="Filter to date and time"
+      />
+    </div>
+    } @if (initialLoading()) {
+    <div class="flex justify-center py-12">
+      <span class="loading loading-spinner loading-md text-primary"></span>
+    </div>
+    } @else if (entries().length === 0) {
+    <div class="audit-empty">
+      <p class="text-base-content mb-1 text-sm font-medium">
+        @if (hasActiveFilters()) { No entries match your filters } @else { No audit activity recorded yet }
+      </p>
+      <p class="text-base-content/55 text-sm">
+        @if (hasActiveFilters()) { Try a broader time range or remove some filters. } @else { Platform actions will show
+        up here automatically. }
+      </p>
+      @if (hasActiveFilters()) {
+      <button type="button" class="btn btn-outline btn-sm mt-3" (click)="clearFilters()">Reset filters</button>
+      }
+    </div>
+    } @else {
+    <div class="audit-table-section">
+      <p class="audit-table-hint">
+        Select a row to inspect full event details. Use ← → in the detail view to move between entries.
+      </p>
+      <div class="audit-table-wrap" [class.audit-table-wrap--busy]="tableLoading()">
+        @if (tableLoading()) {
+        <div class="audit-table-overlay" aria-hidden="true">
+          <span class="loading loading-spinner loading-sm text-primary"></span>
+        </div>
+        }
+        <table class="audit-table table-sm table-pin-rows table">
+          <thead>
+            <tr>
+              <th class="audit-col-when">When</th>
+              <th class="audit-col-actor">Actor</th>
+              <th class="audit-col-action">Action</th>
+              <th class="audit-col-summary">Summary</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of entries(); track entry.id) {
+            <tr
+              class="audit-row"
+              tabindex="0"
+              role="button"
+              [class.audit-row--selected]="selectedEntry()?.id === entry.id && detailOpen()"
+              [attr.aria-label]="rowAriaLabel(entry)"
+              (click)="openDetail(entry)"
+              (keydown.enter)="openDetail(entry)"
+              (keydown.space)="onRowActivate($event, entry)"
+            >
+              <td
+                class="audit-col-when text-base-content/75 text-xs whitespace-nowrap"
+                [title]="formatDateTime(entry.occurredAt)"
+              >
+                {{ formatCompactTime(entry.occurredAt) }}
+              </td>
+              <td class="audit-col-actor truncate text-sm" [title]="entry.actorUsername ?? undefined">
+                {{ entry.actorUsername ?? '—' }}
+              </td>
+              <td class="audit-col-action">
+                <span [class]="actionBadgeClass(entry.action)">{{ entry.action }}</span>
+              </td>
+              <td class="audit-col-summary audit-context" [title]="contextTitle(entry)">{{ contextLine(entry) }}</td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <app-pagination
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalElements]="totalElements()"
+      [pageSize]="pageSize"
+      [disabled]="tableLoading()"
+      (pageChange)="onPageChange($event)"
+    />
+    }
+  </div>
+</div>
+
+<div
+  class="modal"
+  [class.modal-open]="detailOpen()"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="audit-detail-title"
+>
+  <div class="modal-box audit-detail-modal">
+    @if (selectedEntry(); as entry) {
+    <div class="audit-detail-modal__header">
+      <div class="audit-detail-modal__title min-w-0 flex-1">
+        <p class="text-base-content/50 text-xs">{{ formatRelativeTime(entry.occurredAt) }}</p>
+        <h2 id="audit-detail-title" class="text-base-content mt-0.5 text-lg font-bold break-words">
+          {{ entry.action }}
+        </h2>
+        <p class="text-base-content/55 mt-1 text-xs">{{ formatDateTime(entry.occurredAt) }}</p>
+      </div>
+      @if (entries().length > 1) {
+      <div class="join audit-detail-modal__nav shrink-0">
+        <button
+          type="button"
+          class="btn btn-xs join-item btn-ghost"
+          [disabled]="!canShowPreviousDetail()"
+          aria-label="Previous event"
+          (click)="showPreviousDetail()"
+        >
+          <lucide-icon name="chevronLeft" class="size-3.5"></lucide-icon>
+        </button>
+        <span class="btn btn-xs join-item btn-ghost pointer-events-none min-w-14 tabular-nums">
+          {{ selectedIndex() + 1 }}/{{ entries().length }}
+        </span>
+        <button
+          type="button"
+          class="btn btn-xs join-item btn-ghost"
+          [disabled]="!canShowNextDetail()"
+          aria-label="Next event"
+          (click)="showNextDetail()"
+        >
+          <lucide-icon name="chevronRight" class="size-3.5"></lucide-icon>
+        </button>
+      </div>
+      }
+    </div>
+
+    <div class="audit-detail-modal__grid">
+      <div class="audit-kv">
+        <span class="audit-kv__k">Actor</span>
+        <span class="audit-kv__v">{{ entry.actorUsername ?? 'System' }}</span>
+      </div>
+      <div class="audit-kv">
+        <span class="audit-kv__k">Entity type</span>
+        <span class="audit-kv__v">{{ entry.entityType ?? '—' }}</span>
+      </div>
+      <div class="audit-kv audit-kv--full">
+        <span class="audit-kv__k">Entity ID</span>
+        <div class="audit-copy-row">
+          <span class="audit-kv__v audit-kv__v--mono flex-1">{{ entry.entityId ?? '—' }}</span>
+          @if (entry.entityId) {
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs btn-square shrink-0"
+            aria-label="Copy entity ID"
+            (click)="copyText('Entity ID', entry.entityId)"
+          >
+            <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+          </button>
+          }
+        </div>
+      </div>
+      <div class="audit-kv">
+        <span class="audit-kv__k">IP address</span>
+        <span class="audit-kv__v audit-kv__v--mono">{{ entry.ipAddress ?? '—' }}</span>
+      </div>
+      <div class="audit-kv audit-kv--full">
+        <span class="audit-kv__k">Event ID</span>
+        <div class="audit-copy-row">
+          <span class="audit-kv__v audit-kv__v--mono flex-1">{{ entry.id }}</span>
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs btn-square shrink-0"
+            aria-label="Copy event ID"
+            (click)="copyText('Event ID', entry.id)"
+          >
+            <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+          </button>
+        </div>
+      </div>
+      <div class="audit-kv audit-kv--full">
+        <span class="audit-kv__k">Details</span>
+        <div class="audit-copy-row audit-copy-row--top">
+          <span class="audit-kv__v audit-kv__v--mono flex-1 whitespace-pre-wrap">{{ entry.details ?? '—' }}</span>
+          @if (entry.details) {
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs btn-square shrink-0"
+            aria-label="Copy details"
+            (click)="copyText('Details', entry.details)"
+          >
+            <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+          </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-action audit-detail-modal__actions">
+      <button type="button" class="btn btn-ghost btn-sm" (click)="copyEntryJson(entry)">Copy JSON</button>
+      <button type="button" class="btn btn-sm" (click)="closeDetail()">Close</button>
+    </div>
+    }
+  </div>
+  <button type="button" class="modal-backdrop" aria-label="Close audit details" (click)="closeDetail()"></button>
+</div>

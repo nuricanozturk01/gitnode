@@ -1,0 +1,733 @@
+<div class="pr-detail-page min-w-0 space-y-4 sm:space-y-5">
+  @if (loading()) {
+  <section class="repo-panel flex justify-center py-24">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </section>
+  } @else if (pr(); as p) {
+
+  <!-- Top bar -->
+  <header class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <a
+      [routerLink]="['/', owner(), repoName(), 'pulls']"
+      class="text-base-content/55 hover:text-primary inline-flex items-center gap-1.5 text-sm no-underline transition-colors"
+    >
+      <lucide-icon name="arrowLeft" class="size-3.5 shrink-0"></lucide-icon>
+      <span>Pull requests</span>
+    </a>
+    @if (p.status === 'OPEN' && isLoggedIn() && repoContext.hasPermission('PULL_REQUEST_MERGE')) {
+    <button
+      type="button"
+      class="btn btn-outline btn-sm border-base-300 text-error hover:border-error/40 hover:bg-error/5 shrink-0"
+      (click)="closePr()"
+    >
+      Close pull request
+    </button>
+    }
+  </header>
+
+  <div class="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-6">
+    <div class="min-w-0 space-y-5">
+      <!-- PR header -->
+      <section class="repo-panel overflow-hidden">
+        <div class="border-base-300/70 bg-base-200/25 flex flex-wrap items-center gap-2 border-b px-4 py-2.5 sm:px-5">
+          <span [class]="'badge-pill ' + statusBadgeClass(p.status)">{{ statusLabel(p.status) }}</span>
+          @if (p.isDraft) {
+          <span class="badge-pill badge-pill--draft">Draft</span>
+          }
+          <span class="text-base-content/40 font-mono text-xs">#{{ p.number }}</span>
+        </div>
+
+        <div class="px-4 py-5 sm:px-6 sm:py-6">
+          @if (editingHeader()) {
+          <div class="space-y-3">
+            <input
+              type="text"
+              class="input input-bordered w-full text-lg font-semibold"
+              [ngModel]="editTitle()"
+              (ngModelChange)="editTitle.set($event)"
+              placeholder="Pull request title"
+            />
+            <textarea
+              class="textarea textarea-bordered w-full"
+              rows="4"
+              [ngModel]="editDescription()"
+              (ngModelChange)="editDescription.set($event)"
+              placeholder="Add a description (optional)"
+            ></textarea>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                [disabled]="!editTitle().trim() || savingHeader()"
+                (click)="saveHeader()"
+              >
+                @if (savingHeader()) {
+                <span class="loading loading-spinner loading-xs"></span>
+                } @else { Save }
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEditHeader()">Cancel</button>
+            </div>
+          </div>
+          } @else {
+          <div class="group flex items-start justify-between gap-4">
+            <h1 class="text-base-content text-xl leading-snug font-semibold tracking-tight text-balance sm:text-2xl">
+              {{ p.title }}
+            </h1>
+            @if (canEditPr() && p.status === 'OPEN') {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-base-content/45 hover:text-base-content mt-0.5 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+              (click)="startEditHeader()"
+              title="Edit title and description"
+            >
+              <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
+            </button>
+            }
+          </div>
+          }
+
+          <!-- Branch merge visualization -->
+          <div class="mt-4 flex flex-wrap items-center gap-2 text-sm">
+            <div
+              class="border-base-300/80 bg-base-200/40 inline-flex max-w-full items-center gap-2 rounded-lg border px-3 py-1.5"
+            >
+              <span class="text-base-content/45 text-xs font-medium tracking-wide uppercase">Merge into</span>
+              <code class="text-base-content truncate font-mono text-xs sm:text-sm">{{ p.targetBranch }}</code>
+            </div>
+            <lucide-icon name="arrowLeft" class="text-base-content/30 size-3.5 shrink-0 rotate-180"></lucide-icon>
+            <div
+              class="border-primary/25 bg-primary/5 inline-flex max-w-full items-center gap-2 rounded-lg border px-3 py-1.5"
+            >
+              <span class="text-primary/70 text-xs font-medium tracking-wide uppercase">From</span>
+              <code class="text-primary truncate font-mono text-xs sm:text-sm">{{ p.sourceBranch }}</code>
+            </div>
+          </div>
+
+          @if (!editingHeader()) { @if (p.description) {
+          <div class="border-base-300/60 bg-base-200/15 mt-5 rounded-lg border px-4 py-3.5 sm:px-5 sm:py-4">
+            <p class="text-base-content/85 m-0 text-sm leading-relaxed whitespace-pre-wrap sm:text-[0.9375rem]">
+              {{ p.description }}
+            </p>
+          </div>
+          } @else if (canEditPr() && p.status === 'OPEN') {
+          <button
+            type="button"
+            class="text-base-content/40 hover:text-primary mt-4 inline-flex items-center gap-1.5 text-sm transition-colors"
+            (click)="startEditHeader()"
+          >
+            <lucide-icon name="plus" class="size-3.5"></lucide-icon>
+            Add description
+          </button>
+          } }
+
+          <!-- Author meta -->
+          <div
+            class="border-base-300/50 text-base-content/60 mt-5 flex flex-col gap-2.5 border-t pt-4 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5"
+          >
+            <div class="flex min-w-0 items-center gap-2">
+              <app-avatar
+                [avatarUrl]="p.author.avatarUrl"
+                [email]="p.author.email"
+                [username]="p.author.username"
+                [fallback]="(p.author.username || p.author.name || '?').charAt(0).toUpperCase()"
+                size="xs"
+              />
+              <span class="min-w-0">
+                <span class="text-base-content font-medium">{{ p.author.name || p.author.username }}</span>
+                opened {{ p.createdAt | relativeTime }}
+              </span>
+            </div>
+            @if (p.mergedBy) {
+            <div class="flex min-w-0 items-center gap-2">
+              <app-avatar
+                [avatarUrl]="p.mergedBy.avatarUrl"
+                [email]="p.mergedBy.email"
+                [username]="p.mergedBy.username"
+                [fallback]="(p.mergedBy.username || p.mergedBy.name || '?').charAt(0).toUpperCase()"
+                size="xs"
+              />
+              <span class="min-w-0">
+                <span class="text-base-content font-medium">{{ p.mergedBy.name || p.mergedBy.username }}</span>
+                merged {{ p.mergedAt | relativeTime }}
+              </span>
+            </div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Mobile merge -->
+      @if (canMerge()) {
+      <section class="repo-panel lg:hidden">
+        <div class="border-base-300/70 bg-base-200/25 border-b px-4 py-3">
+          <h3 class="text-base-content text-sm font-semibold">Merge pull request</h3>
+          <p class="text-base-content/55 mt-0.5 text-xs">Choose how to integrate these changes.</p>
+        </div>
+        <div class="space-y-3 p-4">
+          <div class="grid gap-1.5">
+            <button
+              type="button"
+              class="btn btn-sm justify-start gap-2 rounded-lg border"
+              [class.btn-primary]="mergeStrategy() === 'MERGE_COMMIT'"
+              [class.border-primary]="mergeStrategy() === 'MERGE_COMMIT'"
+              [class.btn-ghost]="mergeStrategy() !== 'MERGE_COMMIT'"
+              [class.border-base-300/70]="mergeStrategy() !== 'MERGE_COMMIT'"
+              (click)="mergeStrategy.set('MERGE_COMMIT')"
+            >
+              <lucide-icon name="gitMerge" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              Create merge commit
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm justify-start gap-2 rounded-lg border"
+              [class.btn-primary]="mergeStrategy() === 'SQUASH'"
+              [class.border-primary]="mergeStrategy() === 'SQUASH'"
+              [class.btn-ghost]="mergeStrategy() !== 'SQUASH'"
+              [class.border-base-300/70]="mergeStrategy() !== 'SQUASH'"
+              (click)="mergeStrategy.set('SQUASH')"
+            >
+              <lucide-icon name="layers" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              Squash and merge
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm justify-start gap-2 rounded-lg border"
+              [class.btn-primary]="mergeStrategy() === 'REBASE'"
+              [class.border-primary]="mergeStrategy() === 'REBASE'"
+              [class.btn-ghost]="mergeStrategy() !== 'REBASE'"
+              [class.border-base-300/70]="mergeStrategy() !== 'REBASE'"
+              (click)="mergeStrategy.set('REBASE')"
+            >
+              <lucide-icon name="gitBranch" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              Rebase and merge
+            </button>
+          </div>
+          @if (mergeStrategy() === 'SQUASH' || mergeStrategy() === 'MERGE_COMMIT') {
+          <label class="label py-0" for="merge-commit-message-mobile">
+            <span class="label-text-alt text-base-content/55">Commit message (optional)</span>
+          </label>
+          <textarea
+            id="merge-commit-message-mobile"
+            class="textarea textarea-bordered textarea-sm w-full"
+            placeholder="e.g. Merge PR #{{ p.number }}"
+            [ngModel]="mergeCommitMessage()"
+            (ngModelChange)="mergeCommitMessage.set($event)"
+            rows="2"
+          ></textarea>
+          } @if (mergeError()) {
+          <div class="alert alert-error py-2 text-sm">
+            <span>{{ mergeError() }}</span>
+          </div>
+          }
+          <button type="button" class="btn btn-primary btn-sm w-full gap-2" [disabled]="merging()" (click)="merge()">
+            @if (merging()) {
+            <span class="loading loading-spinner loading-sm"></span>
+            } @else { {{ mergeActionLabel() }} }
+          </button>
+        </div>
+      </section>
+      }
+    </div>
+
+    <!-- Desktop merge sidebar -->
+    @if (canMerge()) {
+    <aside class="hidden min-w-0 lg:sticky lg:top-4 lg:block lg:self-start">
+      <section class="repo-panel overflow-hidden">
+        <div class="border-base-300/70 bg-base-200/25 border-b px-4 py-3">
+          <h3 class="text-base-content text-sm font-semibold">Merge</h3>
+          <p class="text-base-content/55 mt-0.5 text-xs leading-snug">Integrate into {{ p.targetBranch }}.</p>
+        </div>
+        <div class="space-y-3 p-4">
+          <div class="grid gap-1.5">
+            <button
+              type="button"
+              class="btn btn-sm justify-start gap-2 rounded-lg border"
+              [class.btn-primary]="mergeStrategy() === 'MERGE_COMMIT'"
+              [class.border-primary]="mergeStrategy() === 'MERGE_COMMIT'"
+              [class.btn-ghost]="mergeStrategy() !== 'MERGE_COMMIT'"
+              [class.border-base-300/70]="mergeStrategy() !== 'MERGE_COMMIT'"
+              (click)="mergeStrategy.set('MERGE_COMMIT')"
+            >
+              <lucide-icon name="gitMerge" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              Merge commit
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm justify-start gap-2 rounded-lg border"
+              [class.btn-primary]="mergeStrategy() === 'SQUASH'"
+              [class.border-primary]="mergeStrategy() === 'SQUASH'"
+              [class.btn-ghost]="mergeStrategy() !== 'SQUASH'"
+              [class.border-base-300/70]="mergeStrategy() !== 'SQUASH'"
+              (click)="mergeStrategy.set('SQUASH')"
+            >
+              <lucide-icon name="layers" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              Squash
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm justify-start gap-2 rounded-lg border"
+              [class.btn-primary]="mergeStrategy() === 'REBASE'"
+              [class.border-primary]="mergeStrategy() === 'REBASE'"
+              [class.btn-ghost]="mergeStrategy() !== 'REBASE'"
+              [class.border-base-300/70]="mergeStrategy() !== 'REBASE'"
+              (click)="mergeStrategy.set('REBASE')"
+            >
+              <lucide-icon name="gitBranch" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+              Rebase
+            </button>
+          </div>
+          @if (mergeStrategy() === 'SQUASH' || mergeStrategy() === 'MERGE_COMMIT') {
+          <label class="label py-0" for="merge-commit-message-desktop">
+            <span class="label-text-alt text-base-content/55">Commit message (optional)</span>
+          </label>
+          <textarea
+            id="merge-commit-message-desktop"
+            class="textarea textarea-bordered textarea-sm w-full"
+            placeholder="e.g. Merge PR #{{ p.number }}"
+            [ngModel]="mergeCommitMessage()"
+            (ngModelChange)="mergeCommitMessage.set($event)"
+            rows="2"
+          ></textarea>
+          } @if (mergeError()) {
+          <div class="alert alert-error py-2 text-sm">
+            <span>{{ mergeError() }}</span>
+          </div>
+          }
+          <button type="button" class="btn btn-primary btn-sm w-full gap-2" [disabled]="merging()" (click)="merge()">
+            @if (merging()) {
+            <span class="loading loading-spinner loading-sm"></span>
+            } @else { {{ mergeActionLabel() }} }
+          </button>
+        </div>
+      </section>
+    </aside>
+    }
+  </div>
+
+  <!-- Tabs + content -->
+  <section class="repo-panel overflow-hidden">
+    <div
+      role="tablist"
+      class="border-base-300/70 bg-base-100 flex flex-wrap gap-0 border-b px-2 sm:px-4"
+      aria-label="Pull request sections"
+    >
+      <button
+        type="button"
+        role="tab"
+        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
+        [class.border-primary]="activeTab() === 'conversation'"
+        [class.text-primary]="activeTab() === 'conversation'"
+        [class.border-transparent]="activeTab() !== 'conversation'"
+        [class.text-base-content/55]="activeTab() !== 'conversation'"
+        [class.hover:text-base-content]="activeTab() !== 'conversation'"
+        [attr.aria-selected]="activeTab() === 'conversation'"
+        (click)="setTab('conversation')"
+      >
+        <span class="inline-flex items-center gap-1.5">
+          <lucide-icon name="message-circle" class="size-3.5 opacity-80"></lucide-icon>
+          Conversation @if (comments().length > 0) {
+          <span class="badge-pill badge-pill--count text-[10px]">{{ comments().length }}</span>
+          }
+        </span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
+        [class.border-primary]="activeTab() === 'commits'"
+        [class.text-primary]="activeTab() === 'commits'"
+        [class.border-transparent]="activeTab() !== 'commits'"
+        [class.text-base-content/55]="activeTab() !== 'commits'"
+        [class.hover:text-base-content]="activeTab() !== 'commits'"
+        [attr.aria-selected]="activeTab() === 'commits'"
+        (click)="setTab('commits')"
+      >
+        <span class="inline-flex items-center gap-1.5">
+          <lucide-icon name="gitCommit" class="size-3.5 opacity-80"></lucide-icon>
+          Commits @if (commits().length > 0) {
+          <span class="badge-pill badge-pill--count text-[10px]">{{ commits().length }}</span>
+          }
+        </span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
+        [class.border-primary]="activeTab() === 'files'"
+        [class.text-primary]="activeTab() === 'files'"
+        [class.border-transparent]="activeTab() !== 'files'"
+        [class.text-base-content/55]="activeTab() !== 'files'"
+        [class.hover:text-base-content]="activeTab() !== 'files'"
+        [attr.aria-selected]="activeTab() === 'files'"
+        (click)="setTab('files')"
+      >
+        <span class="inline-flex items-center gap-1.5">
+          <lucide-icon name="fileText" class="size-3.5 opacity-80"></lucide-icon>
+          Files changed @if (files().length > 0) {
+          <span class="badge-pill badge-pill--count text-[10px]">{{ files().length }}</span>
+          }
+        </span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
+        [class.border-primary]="activeTab() === 'actions'"
+        [class.text-primary]="activeTab() === 'actions'"
+        [class.border-transparent]="activeTab() !== 'actions'"
+        [class.text-base-content/55]="activeTab() !== 'actions'"
+        [class.hover:text-base-content]="activeTab() !== 'actions'"
+        [attr.aria-selected]="activeTab() === 'actions'"
+        (click)="setTab('actions')"
+      >
+        <span class="inline-flex items-center gap-1.5">
+          <lucide-icon name="workflow" class="size-3.5 opacity-80"></lucide-icon>
+          Actions @if (runs().length > 0) {
+          <span class="badge-pill badge-pill--count text-[10px]">{{ runs().length }}</span>
+          }
+        </span>
+      </button>
+    </div>
+
+    <!-- Conversation -->
+    <div class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'conversation'">
+      <div class="space-y-0">
+        @for (comment of generalComments(); track comment.id) {
+        <article class="border-base-300/40 relative flex gap-3 border-b py-5 last:border-b-0 sm:gap-4">
+          <div class="shrink-0 pt-0.5">
+            <app-avatar
+              [avatarUrl]="comment.author.avatarUrl"
+              [email]="comment.author.email"
+              [username]="comment.author.username"
+              [fallback]="(comment.author.username || comment.author.name || '?').charAt(0).toUpperCase()"
+              size="sm"
+            />
+          </div>
+          <div class="min-w-0 flex-1">
+            <header class="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span class="text-base-content text-sm font-semibold"
+                >{{ comment.author.name || comment.author.username }}</span
+              >
+              <time class="text-base-content/50 text-xs">{{ comment.createdAt | relativeTime }}</time>
+              @if (isOwnComment(comment)) {
+              <span class="ml-auto flex gap-0.5">
+                @if (editingCommentId() === comment.id) {
+                <button type="button" class="btn btn-ghost btn-xs h-7 min-h-0 px-2" (click)="saveEditComment()">
+                  Save
+                </button>
+                <button type="button" class="btn btn-ghost btn-xs h-7 min-h-0 px-2" (click)="cancelEditComment()">
+                  Cancel
+                </button>
+                } @else {
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-base-content/50 h-7 min-h-0 px-2"
+                  (click)="startEditComment(comment)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error h-7 min-h-0 px-2"
+                  (click)="deleteComment(comment)"
+                >
+                  Delete
+                </button>
+                }
+              </span>
+              }
+            </header>
+            @if (editingCommentId() === comment.id) {
+            <textarea
+              class="textarea textarea-bordered w-full text-sm"
+              [ngModel]="editCommentBody()"
+              (ngModelChange)="editCommentBody.set($event)"
+              rows="3"
+            ></textarea>
+            } @else {
+            <div class="border-base-300/50 bg-base-200/20 rounded-lg border px-3.5 py-3">
+              <p class="text-base-content/90 m-0 text-sm leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+            </div>
+            }
+          </div>
+        </article>
+        } @if (canReview() && !isMergedOrClosed()) {
+        <article class="border-base-300/50 mt-2 border-t pt-5">
+          <div class="flex gap-3 sm:gap-4">
+            <div class="shrink-0 pt-0.5">
+              <app-avatar
+                [avatarUrl]="currentUser()?.avatarUrl ?? null"
+                [email]="currentUser()?.email ?? ''"
+                [username]="currentUser()?.username ?? null"
+                size="sm"
+                [fallback]="currentUser() ? (currentUser()!.username?.charAt(0).toUpperCase() ?? '?') : '?'"
+              />
+            </div>
+            <div class="min-w-0 flex-1">
+              <label class="text-base-content/55 mb-1.5 block text-xs font-medium" for="pr-new-comment"
+                >Leave a comment</label
+              >
+              <textarea
+                id="pr-new-comment"
+                class="textarea textarea-bordered w-full text-sm"
+                placeholder="Share your thoughts on this pull request..."
+                [ngModel]="newCommentBody()"
+                (ngModelChange)="newCommentBody.set($event)"
+                rows="4"
+              ></textarea>
+              <div class="mt-2 flex justify-end">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  [disabled]="!newCommentBody().trim() || submittingComment()"
+                  (click)="submitComment()"
+                >
+                  @if (submittingComment()) {
+                  <span class="loading loading-spinner loading-sm"></span>
+                  } @else { Comment }
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+        } @if (generalComments().length === 0 && !isLoggedIn()) {
+        <div class="text-base-content/50 flex flex-col items-center gap-2 py-16 text-center">
+          <lucide-icon name="message-circle" class="size-8 opacity-40"></lucide-icon>
+          <p class="text-sm">No comments yet. Sign in to join the conversation.</p>
+        </div>
+        } @if (hasMoreComments()) {
+        <div class="border-base-300/40 flex justify-center border-t pt-4">
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm gap-2"
+            [disabled]="commentsLoadingMore()"
+            (click)="loadMoreComments()"
+          >
+            @if (commentsLoadingMore()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="chevronDown" class="size-3.5"></lucide-icon>
+            } Load more comments
+          </button>
+        </div>
+        }
+      </div>
+    </div>
+
+    <!-- Commits -->
+    <div class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'commits'">
+      @if (commitsLoading()) {
+      <div class="flex justify-center py-16">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+      </div>
+      } @else if (commits().length > 0) {
+      <div class="border-base-300/70 divide-base-300/70 divide-y overflow-hidden rounded-lg border">
+        @for (commit of commits(); track commit.sha) {
+        <a
+          [routerLink]="['/', owner(), repoName(), 'commit', commit.sha]"
+          class="hover:bg-base-200/40 group flex items-center gap-3 px-3 py-3 no-underline transition-colors sm:px-4 sm:py-3.5"
+        >
+          <div
+            class="bg-base-200 text-base-content/50 group-hover:bg-primary/10 group-hover:text-primary flex size-8 shrink-0 items-center justify-center rounded-md transition-colors"
+          >
+            <lucide-icon name="gitCommit" class="size-3.5"></lucide-icon>
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-base-content line-clamp-1 text-sm font-medium">{{ commit.message }}</p>
+            <p class="text-base-content/50 mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs">
+              <span class="text-base-content/70 font-mono">{{ commit.shortSha }}</span>
+              <span aria-hidden="true">·</span>
+              <span>{{ commit.author.name || commit.author.username }}</span>
+              <span aria-hidden="true">·</span>
+              <span>{{ commit.committedAt | relativeTime }}</span>
+            </p>
+          </div>
+          <lucide-icon
+            name="chevronRight"
+            class="text-base-content/25 group-hover:text-base-content/50 size-4 shrink-0 transition-colors"
+          ></lucide-icon>
+        </a>
+        }
+      </div>
+      } @else {
+      <div class="text-base-content/50 flex flex-col items-center gap-2 py-16 text-center">
+        <lucide-icon name="gitCommit" class="size-8 opacity-40"></lucide-icon>
+        <p class="text-sm font-medium">No commits</p>
+        <p class="text-xs">This pull request does not list any commits yet.</p>
+      </div>
+      }
+    </div>
+
+    <!-- Files -->
+    <div class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'files'">
+      @if (filesLoading()) {
+      <div class="flex justify-center py-16">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+      </div>
+      } @else if (files().length > 0) {
+      <div class="border-base-300/70 overflow-hidden rounded-lg border">
+        @for (file of files(); track file.newPath || file.oldPath) {
+        <div class="border-base-300/50 border-b last:border-b-0">
+          <button
+            type="button"
+            class="hover:bg-base-200/35 flex w-full min-w-0 items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors sm:px-4 sm:py-3"
+            (click)="toggleFile(file.newPath || file.oldPath)"
+          >
+            <div class="flex min-w-0 items-center gap-2">
+              <lucide-icon
+                [name]="isExpanded(file.newPath || file.oldPath) ? 'chevronDown' : 'chevronRight'"
+                class="text-base-content/40 size-4 shrink-0"
+              ></lucide-icon>
+              <span class="truncate font-mono text-xs sm:text-sm">{{ file.newPath || file.oldPath }}</span>
+              <span class="badge-pill badge-pill--neutral shrink-0 text-[10px]"
+                >{{ changeTypeLabel(file.changeType) }}</span
+              >
+            </div>
+            <span class="text-base-content/50 shrink-0 font-mono text-xs">
+              <span class="text-success">+{{ file.additions }}</span>
+              <span class="text-base-content/30 mx-0.5">/</span>
+              <span class="text-error">−{{ file.deletions }}</span>
+            </span>
+          </button>
+          @if (isExpanded(file.newPath || file.oldPath) && file.hunks.length) {
+          <div class="border-base-300/50 bg-base-200/20 border-t">
+            @for (hunk of file.hunks; track hunk.header) {
+            <div class="border-base-300/40 border-b last:border-b-0">
+              <div class="bg-base-300/25 text-base-content/60 px-3 py-1 font-mono text-[11px] sm:px-4">
+                {{ hunk.header }}
+              </div>
+              @for ( line of hunk.lines; track line.oldLineNumber + '-' + line.newLineNumber + '-' + line.content ) {
+              <div
+                class="group flex items-start gap-2 px-3 py-px font-mono text-xs whitespace-pre sm:px-4 sm:text-sm"
+                [class]="lineClass(line)"
+              >
+                <span class="text-base-content/40 inline-block w-7 shrink-0 text-right select-none"
+                  >{{ linePrefix(line) }}</span
+                >
+                <span class="min-w-0 flex-1">{{ line.content || '\u00A0' }}</span>
+                @if (isLoggedIn() && !isMergedOrClosed() && (line.type === 'ADD' || line.type === 'DELETE')) { @let ln =
+                line.type === 'ADD' ? line.newLineNumber : line.oldLineNumber; @let side = line.type === 'ADD' ? 'RIGHT'
+                : 'LEFT';
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs h-6 min-h-0 shrink-0 opacity-0 group-hover:opacity-100"
+                  (click)="startReplyToLine(file.newPath || file.oldPath, ln, side, line)"
+                  title="Add line comment"
+                >
+                  <lucide-icon name="message-square" [size]="12"></lucide-icon>
+                </button>
+                }
+              </div>
+              @let filePath = file.newPath || file.oldPath; @let ln = line.type === 'ADD' ? line.newLineNumber :
+              line.oldLineNumber; @let side = line.type === 'ADD' ? 'RIGHT' : 'LEFT'; @for (lc of
+              getCommentsForFileLine(filePath, ln, side); track lc.id) {
+              <div class="border-primary/30 bg-base-100/60 border-l-2 py-2 pr-3 pl-4 sm:ml-10">
+                <div class="flex items-start gap-2">
+                  <app-avatar
+                    [avatarUrl]="lc.author.avatarUrl"
+                    [email]="lc.author.email"
+                    [username]="lc.author.username"
+                    [fallback]="(lc.author.username || lc.author.name || '?').charAt(0).toUpperCase()"
+                    size="xs"
+                  />
+                  <div class="min-w-0 flex-1 text-sm">
+                    <span class="font-medium">{{ lc.author.name || lc.author.username }}</span>
+                    <span class="text-base-content/50 ml-1.5 text-xs">{{ lc.createdAt | relativeTime }}</span>
+                    <p class="text-base-content/85 mt-1 whitespace-pre-wrap">{{ lc.body }}</p>
+                  </div>
+                </div>
+              </div>
+              } @if (replyingToLine(); as r) { @if ( !isMergedOrClosed() && r.filePath === (file.newPath ||
+              file.oldPath) && r.lineNumber === (line.type === 'ADD' ? line.newLineNumber : line.oldLineNumber) ) {
+              <div class="border-primary/40 bg-base-100 border-l-2 py-2 pr-3 pl-4 sm:ml-10">
+                <textarea
+                  class="textarea textarea-bordered textarea-sm w-full"
+                  placeholder="Add a line comment..."
+                  [ngModel]="lineCommentBody()"
+                  (ngModelChange)="lineCommentBody.set($event)"
+                  rows="2"
+                ></textarea>
+                <div class="mt-1.5 flex gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-xs"
+                    [disabled]="!lineCommentBody().trim() || submittingComment()"
+                    (click)="submitLineComment()"
+                  >
+                    @if (submittingComment()) {
+                    <span class="loading loading-spinner loading-xs"></span>
+                    } @else { Comment }
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-xs" (click)="cancelReplyToLine()">Cancel</button>
+                </div>
+              </div>
+              } } }
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+      } @else {
+      <div class="text-base-content/50 flex flex-col items-center gap-2 py-16 text-center">
+        <lucide-icon name="fileText" class="size-8 opacity-40"></lucide-icon>
+        <p class="text-sm font-medium">No file changes</p>
+        <p class="text-xs">There is no diff to show for this pull request.</p>
+      </div>
+      }
+    </div>
+
+    <!-- Actions -->
+    <div class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'actions'">
+      @if (runsLoading()) {
+      <div class="flex justify-center py-16">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+      </div>
+      } @else if (runs().length > 0) {
+      <div class="border-base-300/70 divide-base-300/70 divide-y overflow-hidden rounded-lg border">
+        @for (run of runs(); track run.id) {
+        <a
+          [routerLink]="['/', owner(), repoName(), 'actions', 'runs', run.id]"
+          class="hover:bg-base-200/35 group flex items-center gap-3 px-3 py-3 no-underline transition-colors sm:px-4"
+        >
+          <lucide-icon
+            [name]="runStatusIconName(run.status, run.conclusion)"
+            class="size-4 shrink-0"
+            [class]="runStatusIconClass(runDisplayStatus(run))"
+            [class.animate-spin]="runStatusIconSpinning(run.status, run.conclusion)"
+          ></lucide-icon>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-base-content text-sm font-medium">{{ run.workflowName }}</span>
+              <span class="text-base-content/45 font-mono text-xs">#{{ run.runNumber }}</span>
+              <span [class]="runStatusBadgeClass(runDisplayStatus(run))">
+                {{ runStatusLabel(runDisplayStatus(run)) }}
+              </span>
+            </div>
+            <p class="text-base-content/45 mt-0.5 text-xs">{{ run.createdAt | relativeTime }}</p>
+          </div>
+          <lucide-icon
+            name="chevronRight"
+            class="text-base-content/25 group-hover:text-base-content/50 size-4 shrink-0 transition-colors"
+          ></lucide-icon>
+        </a>
+        }
+      </div>
+      } @else {
+      <div class="text-base-content/50 flex flex-col items-center gap-2 py-16 text-center">
+        <lucide-icon name="workflow" class="size-8 opacity-40"></lucide-icon>
+        <p class="text-sm font-medium">No workflow runs</p>
+        <p class="text-xs">No CI runs triggered for this pull request.</p>
+      </div>
+      }
+    </div>
+  </section>
+
+  } @else {
+  <section class="repo-panel text-base-content/55 flex flex-col items-center gap-2 px-4 py-20 text-center">
+    <lucide-icon name="gitPullRequest" class="size-10 opacity-30"></lucide-icon>
+    <p class="m-0 text-sm font-medium">Pull request not found</p>
+  </section>
+  }
+</div>

@@ -1,0 +1,101 @@
+@if (loading()) {
+<div class="flex justify-center py-20">
+  <span class="loading loading-spinner loading-lg text-primary"></span>
+</div>
+} @else if (!run()) {
+<div class="repo-panel text-base-content/60 flex flex-col items-center gap-3 px-4 py-16 text-center">
+  <lucide-icon name="alertTriangle" class="size-10"></lucide-icon>
+  <p class="text-base-content font-semibold">Workflow run not found</p>
+  <a [routerLink]="['/', owner(), repoName(), 'actions']" class="btn btn-primary btn-sm mt-2">Back to Actions</a>
+</div>
+} @else {
+<div class="space-y-4">
+  <div class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-3 py-3 sm:px-4">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="min-w-0">
+          <a
+            [routerLink]="['/', owner(), repoName(), 'actions']"
+            class="text-base-content/50 hover:text-primary mb-2 inline-flex items-center gap-1 text-xs no-underline"
+          >
+            <lucide-icon name="arrowLeft" class="size-3"></lucide-icon>
+            Actions
+          </a>
+          <div class="flex flex-wrap items-center gap-2">
+            <lucide-icon
+              [name]="statusIconName(run()!.status, run()!.conclusion)"
+              class="size-5 shrink-0"
+              [class]="statusIconClass(displayStatus(run()!))"
+              [class.animate-spin]="statusIconSpinning(run()!.status, run()!.conclusion)"
+            ></lucide-icon>
+            <h2 class="text-base-content text-lg font-semibold">{{ run()!.workflowName }}</h2>
+            <span class="text-base-content/50 text-sm">#{{ run()!.runNumber }}</span>
+            <span [class]="statusBadgeClass(displayStatus(run()!))"> {{ statusLabel(displayStatus(run()!)) }} </span>
+          </div>
+          <p class="text-base-content/50 mt-1 text-sm">
+            Triggered by {{ run()!.triggerEvent }} @if (run()!.triggerRef) { on
+            <span class="font-mono text-xs">{{ run()!.triggerRef }}</span>
+            } · {{ run()!.createdAt | relativeTime }}
+          </p>
+        </div>
+        @if (repoContext.canWriteActions() && isLive()) {
+        <div class="flex shrink-0 items-center gap-2 self-start">
+          <button
+            type="button"
+            class="btn btn-outline btn-error btn-sm gap-1.5"
+            [disabled]="cancelling()"
+            (click)="cancelRun()"
+          >
+            @if (cancelling()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="x" class="size-3.5"></lucide-icon>
+            } Cancel run
+          </button>
+        </div>
+        }
+      </div>
+    </div>
+
+    @if (run()!.jobs.length > 1) {
+    <div class="border-base-300 border-t">
+      <app-job-graph
+        [jobs]="run()!.jobs"
+        [selectedJobId]="selectedJobId()"
+        (jobSelected)="selectJob($event)"
+      ></app-job-graph>
+    </div>
+    }
+  </div>
+
+  <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
+    <section class="repo-panel overflow-hidden lg:col-span-4">
+      <div class="repo-toolbar px-3 py-2.5 sm:px-4">
+        <h3 class="text-base-content text-sm font-semibold">Jobs</h3>
+      </div>
+      <app-job-panel
+        [jobs]="run()!.jobs"
+        [selectedJobId]="selectedJobId()"
+        [expandedJobIds]="expandedJobIds()"
+        (jobSelected)="selectJob($event)"
+        (stepSelected)="selectStep($event)"
+      ></app-job-panel>
+    </section>
+
+    <section class="repo-panel overflow-hidden lg:col-span-8">
+      <div class="repo-toolbar px-3 py-2.5 sm:px-4">
+        <h3 class="text-base-content text-sm font-semibold">
+          @if (selectedStep(); as step) { {{ stepName(step) }} } @else { Logs }
+        </h3>
+      </div>
+      <div class="p-3 sm:p-4">
+        @if (selectedStep(); as step) {
+        <app-log-viewer [stepId]="step.id" [stepName]="stepName(step)" [live]="isStepLive()"></app-log-viewer>
+        } @else {
+        <div class="text-base-content/50 py-12 text-center text-sm">Select a job step to view logs.</div>
+        }
+      </div>
+    </section>
+  </div>
+</div>
+}

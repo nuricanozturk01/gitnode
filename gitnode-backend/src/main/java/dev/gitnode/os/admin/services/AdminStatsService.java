@@ -1,0 +1,261 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package dev.gitnode.os.admin.services;
+
+import dev.gitnode.os.admin.dtos.AdminStatsOverview;
+import dev.gitnode.os.admin.dtos.AdminStatsOverviewResponse;
+import dev.gitnode.os.admin.dtos.PeriodStats;
+import dev.gitnode.os.admin.dtos.RepoActivityResponse;
+import dev.gitnode.os.admin.dtos.RepoActivityStat;
+import dev.gitnode.os.admin.dtos.TimeSeriesPoint;
+import dev.gitnode.os.admin.dtos.UploadActivityResponse;
+import dev.gitnode.os.admin.dtos.UploadActivityStat;
+import dev.gitnode.os.auth.api.OrganizationAdminPort;
+import dev.gitnode.os.shared.cache.CacheNames;
+import dev.gitnode.os.shared.repo.repositories.RepoRepository;
+import dev.gitnode.os.shared.repo.repositories.RepoStatRow;
+import dev.gitnode.os.shared.repo.services.RepoStorageService;
+import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@NullMarked
+public class AdminStatsService {
+
+  private static final int SEVEN = 7;
+
+  private static final String STORAGE_NOTE =
+      "Total storage is summed from on-disk bare repo folders; push/upload events are not tracked.";
+
+  private static final String UPLOAD_NOTE =
+      "Upload activity uses new repository creation as a proxy; estimated bytes come from on-disk repo size.";
+
+  private final TenantRepository tenantRepository;
+  private final RepoRepository repoRepository;
+  private final RepoStorageService repoStorageService;
+  private final AdminPlatformSettingsService adminPlatformSettingsService;
+  private final OrganizationAdminPort organizationAdminPort;
+
+  @Caching(
+      evict = {
+        @CacheEvict(cacheNames = CacheNames.ADMIN_STATS_OVERVIEW, allEntries = true),
+        @CacheEvict(cacheNames = CacheNames.ADMIN_STATS_REPO_ACTIVITY, allEntries = true),
+        @CacheEvict(cacheNames = CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY, allEntries = true)
+      })
+  public void evictAllCaches() {}
+
+  @Caching(
+      cacheable =
+          @Cacheable(
+              cacheNames = CacheNames.ADMIN_STATS_OVERVIEW,
+              key = "'all'",
+              condition = "!#refresh"),
+      put =
+          @CachePut(
+              cacheNames = CacheNames.ADMIN_STATS_OVERVIEW,
+              key = "'all'",
+              condition = "#refresh"))
+  @Transactional(readOnly = true)
+  public AdminStatsOverviewResponse getOverview(final boolean refresh) {
+
+    final var now = Instant.now();
+    final var cacheTtlSeconds = this.adminPlatformSettingsService.getStatsCacheTtlSeconds();
+    final var overview = this.computeOverview(now);
+    return new AdminStatsOverviewResponse(overview, now, cacheTtlSeconds, false);
+  }
+
+  @Caching(
+      cacheable =
+          @Cacheable(
+              cacheNames = CacheNames.ADMIN_STATS_REPO_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "!#refresh"),
+      put =
+          @CachePut(
+              cacheNames = CacheNames.ADMIN_STATS_REPO_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "#refresh"))
+  @Transactional(readOnly = true)
+  public RepoActivityResponse getRepoActivity(final String period, final boolean refresh) {
+
+    final var normalizedPeriod = this.normalizePeriod(period);
+    final var since = this.periodStart(normalizedPeriod);
+    final var rows = this.repoRepository.findRepoStatsSince(since);
+
+    final var byOwner =
+        rows.stream()
+            .collect(Collectors.groupingBy(RepoStatRow::ownerUsername, Collectors.counting()))
+            .entrySet()
+            .stream()
+            .map(entry -> new RepoActivityStat(entry.getKey(), entry.getValue()))
+            .sorted(Comparator.comparing(RepoActivityStat::ownerUsername))
+            .toList();
+
+    return new RepoActivityResponse(
+        new PeriodStats(normalizedPeriod, rows.size()),
+        byOwner,
+        this.buildRepoTimeSeries(rows.stream().map(RepoStatRow::createdAt).toList(), since));
+  }
+
+  @Caching(
+      cacheable =
+          @Cacheable(
+              cacheNames = CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "!#refresh"),
+      put =
+          @CachePut(
+              cacheNames = CacheNames.ADMIN_STATS_UPLOAD_ACTIVITY,
+              key =
+                  "#period != null && 'day'.equals(#period.trim().toLowerCase()) ? 'day' : 'week'",
+              condition = "#refresh"))
+  @Transactional(readOnly = true)
+  public UploadActivityResponse getUploadActivity(final String period, final boolean refresh) {
+
+    final var normalizedPeriod = this.normalizePeriod(period);
+    final var since = this.periodStart(normalizedPeriod);
+    final var rows = this.repoRepository.findRepoStatsSince(since);
+
+    final Map<String, UploadActivityStat> byOwner = new LinkedHashMap<>();
+
+    for (final RepoStatRow row : rows) {
+      final var estimatedBytes =
+          this.repoStorageService.calculateRepoStorageBytes(row.ownerUsername(), row.name());
+      final var existing = byOwner.get(row.ownerUsername());
+
+      if (existing == null) {
+        byOwner.put(
+            row.ownerUsername(), new UploadActivityStat(row.ownerUsername(), 1L, estimatedBytes));
+      } else {
+        byOwner.put(
+            row.ownerUsername(),
+            new UploadActivityStat(
+                row.ownerUsername(),
+                existing.repoCount() + 1L,
+                existing.estimatedBytes() + estimatedBytes));
+      }
+    }
+
+    final var sortedByOwner =
+        byOwner.values().stream()
+            .sorted(Comparator.comparing(UploadActivityStat::ownerUsername))
+            .toList();
+
+    return new UploadActivityResponse(
+        new PeriodStats(normalizedPeriod, rows.size()),
+        sortedByOwner,
+        this.buildRepoTimeSeries(rows.stream().map(RepoStatRow::createdAt).toList(), since),
+        UPLOAD_NOTE);
+  }
+
+  private AdminStatsOverview computeOverview(final Instant now) {
+
+    final var dayStart = now.minus(1, ChronoUnit.DAYS);
+    final var weekStart = now.minus(7, ChronoUnit.DAYS);
+
+    return new AdminStatsOverview(
+        this.tenantRepository.count(),
+        this.tenantRepository.countByEnabledTrue(),
+        this.repoRepository.count(),
+        this.repoStorageService.calculateTotalStorageBytes(),
+        true,
+        STORAGE_NOTE,
+        this.tenantRepository.countByCreatedAtAfter(dayStart),
+        this.tenantRepository.countByCreatedAtAfter(weekStart),
+        this.repoRepository.countByCreatedAtAfter(dayStart),
+        this.repoRepository.countByCreatedAtAfter(weekStart),
+        this.organizationAdminPort.countOrganizations(),
+        this.organizationAdminPort.countSsoEnabledOrganizations());
+  }
+
+  private String normalizePeriod(final @Nullable String period) {
+
+    final var normalized = period == null ? "week" : period.trim().toLowerCase(Locale.getDefault());
+
+    if (!normalized.equals("day") && !normalized.equals("week")) {
+      return "week";
+    }
+
+    return normalized;
+  }
+
+  private Instant periodStart(final String period) {
+
+    if ("day".equals(period)) {
+      return Instant.now().minus(1, ChronoUnit.DAYS);
+    }
+
+    return Instant.now().minus(SEVEN, ChronoUnit.DAYS);
+  }
+
+  private List<TimeSeriesPoint> buildRepoTimeSeries(
+      final List<Instant> createdAts, final Instant since) {
+
+    final var bucketUnit = ChronoUnit.DAYS;
+    final var buckets = this.initializeBuckets(since, bucketUnit);
+
+    for (final Instant createdAt : createdAts) {
+      final var bucketStart = this.truncate(createdAt, bucketUnit);
+      buckets.merge(bucketStart, 1L, Long::sum);
+    }
+
+    return buckets.entrySet().stream()
+        .sorted(Map.Entry.comparingByKey())
+        .map(entry -> new TimeSeriesPoint(entry.getKey(), entry.getValue()))
+        .toList();
+  }
+
+  private Map<Instant, Long> initializeBuckets(final Instant since, final ChronoUnit unit) {
+
+    final var buckets = new LinkedHashMap<Instant, Long>();
+    var cursor = this.truncate(since, unit);
+    final var end = this.truncate(Instant.now(), unit).plus(1, unit);
+
+    while (cursor.isBefore(end)) {
+      buckets.put(cursor, 0L);
+      cursor = cursor.plus(1, unit);
+    }
+
+    return buckets;
+  }
+
+  private Instant truncate(final Instant instant, final ChronoUnit unit) {
+
+    return ZonedDateTime.ofInstant(instant, ZoneOffset.UTC).truncatedTo(unit).toInstant();
+  }
+}

@@ -1,0 +1,97 @@
+<section class="repo-panel overflow-hidden">
+  @if (loading()) {
+  <div class="flex justify-center py-24">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (error()) {
+  <div class="alert alert-error mx-4">
+    <span>{{ error() }}</span>
+  </div>
+  } @else if (commit(); as c) {
+  <div class="repo-toolbar space-y-4 px-4 py-4">
+    <div class="flex items-start gap-3">
+      <app-avatar
+        [avatarUrl]="c.author.avatarUrl"
+        [email]="c.author.email"
+        [username]="c.author.username"
+        [fallback]="(c.author.name || c.author.username || '?').charAt(0).toUpperCase()"
+        size="lg"
+      />
+      <div class="min-w-0 flex-1">
+        <h1 class="text-base-content text-xl font-semibold">{{ c.message }}</h1>
+        @if (c.description) {
+        <p class="text-base-content/70 mt-1 whitespace-pre-wrap">{{ c.description }}</p>
+        }
+        <div class="text-base-content/60 mt-2 flex flex-wrap items-center gap-3 text-sm">
+          <a [routerLink]="['/', owner(), repoName()]" class="text-primary font-medium hover:underline">
+            {{ c.author.name || c.author.username || 'Unknown' }}
+          </a>
+          <span class="font-mono">{{ c.shortSha }}</span>
+          <span>{{ c.committedAt | relativeTime }}</span>
+          @if (c.stats) {
+          <span class="text-success">+{{ c.stats.additions }}</span>
+          <span class="text-error">-{{ c.stats.deletions }}</span>
+          <span>{{ c.stats.filesChanged }} files changed</span>
+          }
+        </div>
+      </div>
+    </div>
+
+    @if (c.parentShas.length) {
+    <div class="text-base-content/70 text-sm">
+      <span class="font-medium">Parent commits:</span>
+      @for (parent of c.parentShas; track parent) {
+      <a
+        [routerLink]="['/', owner(), repoName(), 'commit', parent]"
+        class="text-primary ml-1 font-mono hover:underline"
+      >
+        {{ parent.slice(0, 7) }}
+      </a>
+      }
+    </div>
+    }
+  </div>
+  @if (c.files.length) {
+  <div class="px-4 py-4">
+    <h2 class="text-base-content mb-3 text-lg font-semibold">Changed files</h2>
+    <div class="border-base-300 overflow-hidden rounded-lg border">
+      @for (file of c.files; track file.newPath || file.oldPath) {
+      <div class="border-base-300 border-b last:border-b-0">
+        <button
+          type="button"
+          class="hover:bg-base-200/50 flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+          (click)="toggleFile(file.newPath || file.oldPath)"
+        >
+          <div class="flex min-w-0 items-center gap-2">
+            <lucide-icon
+              [name]="
+                        isExpanded(file.newPath || file.oldPath) ? 'chevronDown' : 'chevronRight'
+                      "
+              class="size-4 shrink-0"
+            ></lucide-icon>
+            <span class="truncate font-mono text-sm">{{ file.newPath || file.oldPath }}</span>
+            <span class="badge-pill badge-pill--neutral shrink-0">{{ changeTypeLabel(file.changeType) }}</span>
+          </div>
+          <span class="text-base-content/60 shrink-0 text-xs"> +{{ file.additions }} -{{ file.deletions }} </span>
+        </button>
+        @if (isExpanded(file.newPath || file.oldPath) && file.hunks.length) {
+        <div class="bg-base-200/30 overflow-x-auto">
+          @for (hunk of file.hunks; track hunk.header) {
+          <div class="border-base-300 border-t first:border-t-0">
+            <div class="bg-base-300/30 text-base-content/70 px-4 py-1 font-mono text-xs">{{ hunk.header }}</div>
+            @for ( line of hunk.lines; track line.oldLineNumber + '-' + line.newLineNumber + '-' + line.content ) {
+            <div class="px-4 py-0.5 font-mono text-sm whitespace-pre" [class]="lineClass(line)">
+              <span class="text-base-content/50 inline-block w-8 select-none">{{ linePrefix(line) }}</span>
+              {{ line.content || '\u00A0' }}
+            </div>
+            }
+          </div>
+          }
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+  } }
+</section>

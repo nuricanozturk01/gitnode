@@ -1,0 +1,106 @@
+<div class="mx-auto max-w-6xl">
+  <nav class="text-base-content/70 mb-6 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">Users</span>
+  </nav>
+
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Users</h1>
+      <p class="text-base-content/65 mt-1 text-sm">Manage platform accounts and access.</p>
+    </div>
+  </header>
+
+  <div class="repo-panel mb-4 p-4">
+    <label class="input input-bordered flex w-full max-w-md items-center gap-2">
+      <lucide-icon name="search" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+      <input
+        type="search"
+        class="grow"
+        placeholder="Search by username"
+        [value]="search()"
+        (input)="onSearchInput($event)"
+        aria-label="Search users by username"
+      />
+    </label>
+  </div>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else {
+  <div class="repo-panel overflow-hidden">
+    @if (users().length === 0) {
+    <div class="text-base-content/60 p-10 text-center text-sm">
+      @if (search()) { No users match "{{ search() }}". } @else { No users found. }
+    </div>
+    } @else {
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of users(); track user.id) {
+          <tr class="hover">
+            <td class="font-medium">
+              <a [routerLink]="['/users', user.id]" class="link link-hover no-underline">{{ user.username }}</a>
+            </td>
+            <td class="text-base-content/80 text-sm">{{ user.email }}</td>
+            <td>
+              @if (user.enabled) {
+              <span class="badge-pill badge-pill--success">Enabled</span>
+              } @else {
+              <span class="badge-pill badge-pill--error">Disabled</span>
+              }
+            </td>
+            <td class="text-base-content/80 text-sm">{{ formatDate(user.createdAt) }}</td>
+            <td class="text-right">
+              <div class="flex justify-end gap-2">
+                <a [routerLink]="['/users', user.id]" class="btn btn-ghost btn-xs">View</a>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-outline gap-1"
+                  [class.user-action-btn--disable]="user.enabled"
+                  [class.user-action-btn--enable]="!user.enabled"
+                  [disabled]="togglingId() === user.id"
+                  (click)="toggleEnabled(user)"
+                >
+                  @if (togglingId() === user.id) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                  } @else if (user.enabled) {
+                  <lucide-icon name="userX" class="size-4"></lucide-icon>
+                  Disable } @else {
+                  <lucide-icon name="userCheck" class="size-4"></lucide-icon>
+                  Enable }
+                </button>
+              </div>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalElements]="totalElements()"
+      [pageSize]="pageSize"
+      [disabled]="loading()"
+      (pageChange)="onPageChange($event)"
+    />
+    }
+  </div>
+  }
+</div>

@@ -1,0 +1,178 @@
+<div class="bg-base-200 min-h-screen">
+  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Snippets</h1>
+        <p class="text-base-content/55 mt-1 text-sm">Browse and share code snippets.</p>
+      </div>
+      <a routerLink="/snippets/new" class="btn btn-primary shrink-0 gap-2">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        New snippet
+      </a>
+    </div>
+
+    <!-- Tabs -->
+    <div class="border-base-300 mb-6 flex gap-1 border-b">
+      <button
+        type="button"
+        class="px-4 py-2 text-sm font-medium transition-colors"
+        [class.text-primary]="activeTab() === 'public'"
+        [class.border-b-2]="activeTab() === 'public'"
+        [class.border-primary]="activeTab() === 'public'"
+        [class.text-base-content/55]="activeTab() !== 'public'"
+        (click)="switchTab('public')"
+      >
+        Public
+      </button>
+      <button
+        type="button"
+        class="px-4 py-2 text-sm font-medium transition-colors"
+        [class.text-primary]="activeTab() === 'mine'"
+        [class.border-b-2]="activeTab() === 'mine'"
+        [class.border-primary]="activeTab() === 'mine'"
+        [class.text-base-content/55]="activeTab() !== 'mine'"
+        (click)="switchTab('mine')"
+      >
+        Mine
+      </button>
+    </div>
+
+    <!-- Search bar (public tab only) -->
+    @if (activeTab() === 'public') {
+    <div class="mb-6 flex gap-2">
+      <div class="relative flex-1">
+        <lucide-icon
+          name="search"
+          class="text-base-content/40 absolute top-1/2 left-3 size-4 -translate-y-1/2"
+        ></lucide-icon>
+        <input
+          type="text"
+          class="input input-bordered w-full pl-9"
+          placeholder="Search snippets..."
+          [value]="searchInput()"
+          (input)="onSearchInput($event)"
+          (keydown)="onSearchKeydown($event)"
+        />
+      </div>
+      @if (searchQuery()) {
+      <button type="button" class="btn btn-ghost gap-1" (click)="clearSearch()">
+        <lucide-icon name="x" class="size-4"></lucide-icon>
+        Clear
+      </button>
+      } @else {
+      <button type="button" class="btn btn-ghost" (click)="onSearchSubmit()">Search</button>
+      }
+    </div>
+    }
+
+    <!-- Content -->
+    @if (loading()) {
+    <div class="flex justify-center py-16">
+      <span class="loading loading-spinner loading-lg text-primary"></span>
+    </div>
+    } @else if (snippetList().length === 0) {
+    <div class="bg-base-100 border-base-300 rounded-2xl border p-12 text-center shadow-sm">
+      <div
+        class="bg-primary/10 text-primary ring-primary/20 mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl ring-1"
+      >
+        <lucide-icon name="file-code-2" class="size-10"></lucide-icon>
+      </div>
+      <h3 class="text-base-content mb-2 text-lg font-semibold">No snippets found</h3>
+      @if (activeTab() === 'mine') {
+      <p class="text-base-content/55 mb-6 text-sm">Create your first snippet to share code with others.</p>
+      <a routerLink="/snippets/new" class="btn btn-primary gap-2">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        New snippet
+      </a>
+      } @else {
+      <p class="text-base-content/55 text-sm">No public snippets match your search.</p>
+      }
+    </div>
+    } @else {
+    <div class="flex flex-col gap-3">
+      @for (snippet of snippetList(); track snippet.id) {
+      <a
+        [routerLink]="['/snippets', snippet.id]"
+        class="bg-base-100 border-base-300 group block rounded-2xl border p-4 no-underline shadow-sm transition-all duration-150 hover:-translate-y-px hover:shadow-md"
+      >
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-base-content group-hover:text-primary truncate text-sm font-semibold">
+                {{ snippet.title }}
+              </span>
+              @if (snippet.visibility === 'PRIVATE') {
+              <span class="badge-pill badge-pill--warning inline-flex items-center gap-1">
+                <lucide-icon name="lock" class="size-3"></lucide-icon>
+                Private
+              </span>
+              }
+            </div>
+            @if (snippet.description) {
+            <p class="text-base-content/55 mt-0.5 truncate text-xs">{{ snippet.description }}</p>
+            } @if (snippet.forkedFrom) {
+            <p class="text-base-content/40 mt-0.5 text-xs">
+              Forked from
+              <span class="text-primary">{{ snippet.forkedFrom.owner.username }}/{{ snippet.forkedFrom.title }}</span>
+            </p>
+            }
+          </div>
+          <div class="text-base-content/40 flex shrink-0 items-center gap-3 text-xs">
+            <span class="flex items-center gap-1">
+              <lucide-icon name="file" class="size-3"></lucide-icon>
+              {{ snippet.fileCount }}
+            </span>
+            <span class="flex items-center gap-1">
+              <lucide-icon name="message-circle" class="size-3"></lucide-icon>
+              {{ snippet.commentCount }}
+            </span>
+          </div>
+        </div>
+        <div class="text-base-content/40 mt-3 flex items-center gap-2 text-xs">
+          <span>{{ snippet.owner.username }}</span>
+          <span>·</span>
+          <span>{{ snippet.createdAt | relativeTime }}</span>
+        </div>
+      </a>
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (activeTab() === 'public' && publicPage() && publicPage()!.totalPages > 1) {
+    <div class="mt-6 flex items-center justify-center gap-3">
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="currentPage() === 0" (click)="prevPage()">
+        <lucide-icon name="chevron-left" class="size-4"></lucide-icon>
+        Prev
+      </button>
+      <span class="text-base-content/55 text-sm"> Page {{ currentPage() + 1 }} of {{ publicPage()!.totalPages }} </span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        [disabled]="currentPage() >= publicPage()!.totalPages - 1"
+        (click)="nextPage()"
+      >
+        Next
+        <lucide-icon name="chevron-right" class="size-4"></lucide-icon>
+      </button>
+    </div>
+    } @if (activeTab() === 'mine' && myPage() && myPage()!.totalPages > 1) {
+    <div class="mt-6 flex items-center justify-center gap-3">
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="myCurrentPage() === 0" (click)="prevMinePage()">
+        <lucide-icon name="chevron-left" class="size-4"></lucide-icon>
+        Prev
+      </button>
+      <span class="text-base-content/55 text-sm"> Page {{ myCurrentPage() + 1 }} of {{ myPage()!.totalPages }} </span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm"
+        [disabled]="myCurrentPage() >= myPage()!.totalPages - 1"
+        (click)="nextMinePage()"
+      >
+        Next
+        <lucide-icon name="chevron-right" class="size-4"></lucide-icon>
+      </button>
+    </div>
+    } }
+  </div>
+</div>

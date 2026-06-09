@@ -1,0 +1,98 @@
+<div class="mx-auto max-w-6xl">
+  <nav class="text-base-content/70 mb-6 flex flex-wrap items-center gap-2 text-sm">
+    <a routerLink="/dashboard" class="link link-hover inline-flex items-center gap-1 no-underline">
+      <lucide-icon name="home" class="size-3.5 shrink-0"></lucide-icon>
+      Dashboard
+    </a>
+    <lucide-icon name="chevronRight" class="text-base-content/40 size-3.5 shrink-0"></lucide-icon>
+    <span class="text-base-content font-medium">Organizations</span>
+  </nav>
+
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Organizations</h1>
+      <p class="text-base-content/65 mt-1 text-sm">Enterprise tenants and their SSO configuration.</p>
+    </div>
+    <a routerLink="/organizations/new" class="btn btn-primary gap-2">
+      <lucide-icon name="plus" class="size-4"></lucide-icon>
+      New organization
+    </a>
+  </header>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else {
+  <div class="repo-panel overflow-hidden">
+    @if (organizations().length === 0) {
+    <div class="text-base-content/60 p-10 text-center">
+      <p class="mb-4">No organizations configured yet.</p>
+      <a routerLink="/organizations/new" class="btn btn-primary btn-sm">Create first organization</a>
+    </div>
+    } @else {
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Email domains</th>
+            <th class="min-w-36">SAML</th>
+            <th class="min-w-36">LDAP</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (org of organizations(); track org.slug) {
+          <tr class="hover">
+            <td class="font-medium">{{ org.name }}</td>
+            <td class="mono text-sm">{{ org.slug }}</td>
+            <td class="text-base-content/80 text-sm">{{ formatDomains(org.emailDomains) }}</td>
+            <td>
+              <app-sso-switch
+                [checked]="org.ssoEnabled"
+                [disabled]="togglingSlug() === org.slug || org.ldapEnabled"
+                size="sm"
+                [showLabels]="true"
+                [ariaLabel]="'Enable SAML for ' + org.name"
+                (checkedChange)="onSsoToggle(org, $event)"
+              />
+            </td>
+            <td>
+              <app-sso-switch
+                [checked]="org.ldapEnabled"
+                [disabled]="togglingLdapSlug() === org.slug || org.ssoEnabled || (!org.ldapEnabled && !org.ldapConfigured)"
+                size="sm"
+                [showLabels]="true"
+                [ariaLabel]="'Enable LDAP for ' + org.name"
+                (checkedChange)="onLdapToggle(org, $event)"
+              />
+            </td>
+            <td class="text-right">
+              <a
+                [routerLink]="['/organizations', org.slug]"
+                class="btn btn-ghost btn-sm gap-1"
+                aria-label="Edit {{ org.name }}"
+              >
+                <lucide-icon name="pencil" class="size-4"></lucide-icon>
+                Edit
+              </a>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalElements]="totalElements()"
+      [pageSize]="pageSize"
+      [disabled]="loading()"
+      (pageChange)="onPageChange($event)"
+    />
+    }
+  </div>
+  }
+</div>

@@ -1,0 +1,98 @@
+name: MR Checks | GitNode
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  pre-checks:
+    name: Editorconfig check - All
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install editorconfig-checker
+        run: npm install -g editorconfig-checker
+
+      - name: Run editorconfig-checker
+        run: editorconfig-checker -exclude 'Makefile'
+
+  gitnode-backend-checks:
+    name: GitNode Backend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Maven Action
+        uses: s4u/setup-maven-action@v1.19.0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: "25"
+          distribution: "temurin"
+          cache: maven
+
+      - name: Build and Verify
+        run: mvn -B -ntp verify
+
+  gitnode-runner-checks:
+    name: GitNode Runner Checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./gitnode-runner
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: gitnode-runner/go.sum
+
+      - name: Format check
+        run: make fmt-check
+
+      - name: Test
+        run: make test
+
+      - name: Lint
+        run: make lint
+
+      - name: Build
+        run: make build
+
+  gitnode-frontend-checks:
+    name: GitNode Checks (${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project:
+          - gitnode-frontend
+          - e2e
+          - gitnode-admin-panel
+    defaults:
+      run:
+        working-directory: ./${{ matrix.project }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install pnpm
+        run: corepack prepare pnpm@10 --activate
+
+      - name: Install dependencies
+        run: pnpm install --ignore-scripts
+
+      - name: Check
+        run: pnpm run lint

@@ -1,0 +1,81 @@
+<div class="mx-auto max-w-6xl">
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Webhook dead letters</h1>
+      <p class="text-base-content/65 mt-1 text-sm">
+        Failed webhook deliveries waiting for retry or manual intervention.
+      </p>
+      @if (!loading()) {
+      <p class="text-base-content/55 mt-2 text-xs">{{ pendingCount() }} pending in queue</p>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (entries().length === 0) {
+  <div class="repo-panel p-10 text-center">
+    <lucide-icon name="checkCircle" class="text-success mx-auto mb-3 size-10"></lucide-icon>
+    <p class="text-base-content font-medium">Queue is clear</p>
+    <p class="text-base-content/60 mt-1 text-sm">No failed webhook deliveries are waiting.</p>
+  </div>
+  } @else {
+  <div class="repo-panel overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Failed</th>
+            <th>Event</th>
+            <th>Target URL</th>
+            <th>Retries</th>
+            <th>Error</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of entries(); track entry.id) {
+          <tr>
+            <td class="text-sm whitespace-nowrap">{{ formatDateTime(entry.failedAt) }}</td>
+            <td class="text-sm">{{ entry.eventType ?? '—' }}</td>
+            <td class="max-w-xs truncate text-xs" [title]="entry.url">{{ entry.url }}</td>
+            <td class="text-sm">{{ entry.dlqRetryCount }}/3</td>
+            <td class="max-w-sm truncate text-xs" [title]="entry.errorMessage ?? undefined">
+              {{ entry.errorMessage ?? '—' }}
+            </td>
+            <td class="text-right whitespace-nowrap">
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs"
+                [disabled]="actingId() === entry.id"
+                (click)="retry(entry)"
+              >
+                Retry
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs text-error"
+                [disabled]="actingId() === entry.id"
+                (click)="dismiss(entry)"
+              >
+                Dismiss
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [page]="page()"
+      [totalPages]="totalPages()"
+      [totalElements]="totalElements()"
+      [pageSize]="pageSize"
+      [disabled]="loading()"
+      (pageChange)="onPageChange($event)"
+    />
+  </div>
+  }
+</div>

@@ -1,0 +1,197 @@
+<section class="repo-panel repo-settings-section relative overflow-hidden">
+  <div
+    class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+  ></div>
+  <div class="p-5 sm:p-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div>
+        <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+          <lucide-icon name="keyRound" class="text-primary size-5 shrink-0"></lucide-icon>
+          Repository secrets
+        </h2>
+        <p class="text-base-content/65 mt-1 max-w-2xl text-sm">
+          Encrypted values available to workflows. Secret names are case-sensitive and cannot be viewed after saving.
+        </p>
+      </div>
+      @if (canWrite() && !isSecretFormOpen) {
+        <button type="button" class="btn btn-primary btn-sm shrink-0 gap-1.5 self-start" (click)="startAddSecret()">
+          <lucide-icon name="plus" class="size-4"></lucide-icon>
+          New secret
+        </button>
+      }
+    </div>
+
+    <div class="alert alert-info mt-5 text-sm">
+      <lucide-icon name="shield" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+      <span>
+        Use secrets in workflow YAML with
+        <span class="secret-expr" aria-label="Secret expression example">
+          <span class="secret-expr__delim">${{ '{{' }}</span>
+          <span class="secret-expr__ns"> secrets</span><span class="secret-expr__name">.SECRET_NAME </span>
+          <span class="secret-expr__delim">&#125;&#125;</span> </span
+        >. Values are encrypted at rest and masked in logs.
+      </span>
+    </div>
+
+    @if (loadingSecrets()) {
+      <div class="mt-6 flex justify-center py-10">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+      </div>
+    } @else {
+      <div class="mt-6 space-y-3">
+        @for (secret of secrets(); track secret.name) {
+          <div class="border-base-200 rounded-xl border p-4">
+            @if (editingSecretName() === secret.name && canWrite()) {
+              <div class="space-y-4">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-base-content text-sm font-semibold">Update secret</h3>
+                  <span class="badge-pill badge-pill--neutral font-mono text-xs">{{ secret.name }}</span>
+                </div>
+                <div class="settings-field">
+                  <label class="settings-label" for="actions-secret-edit-value">New value</label>
+                  <input
+                    id="actions-secret-edit-value"
+                    type="password"
+                    class="settings-input input input-bordered border-base-300 w-full text-sm"
+                    placeholder="Enter a new value"
+                    [ngModel]="newSecretValue()"
+                    (ngModelChange)="newSecretValue.set($event)"
+                    autocomplete="new-password"
+                  />
+                  <p class="settings-field-hint text-base-content/55">
+                    The previous value cannot be displayed. Enter a replacement to update this secret.
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm gap-1.5"
+                    [disabled]="savingSecret() || !newSecretValue()"
+                    (click)="saveSecret()"
+                  >
+                    @if (savingSecret()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                      Saving…
+                    } @else {
+                      <lucide-icon name="check" class="size-4"></lucide-icon>
+                      Save
+                    }
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="cancelSecretForm()">
+                    <lucide-icon name="x" class="size-4"></lucide-icon>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            } @else {
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <lucide-icon name="keyRound" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+                    <span class="font-mono text-sm font-semibold break-all">{{ secret.name }}</span>
+                    <span class="badge-pill badge-pill--success">Encrypted</span>
+                  </div>
+                  <div class="mt-1.5 flex items-center gap-1.5">
+                    <span class="secret-expr secret-expr-block" [attr.aria-label]="'Reference for ' + secret.name">
+                      <span class="secret-expr__delim">${{ '{{' }}</span>
+                      <span class="secret-expr__ns"> secrets</span
+                      ><span class="secret-expr__name">.{{ secret.name }} </span>
+                      <span class="secret-expr__delim">&#125;&#125;</span>
+                    </span>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs gap-1 opacity-60 hover:opacity-100"
+                      title="Copy expression"
+                      (click)="copyExpr(secret.name)"
+                    >
+                      <lucide-icon name="copy" class="size-3.5"></lucide-icon>
+                    </button>
+                  </div>
+                  <p class="text-base-content/45 mt-1 text-xs">Updated value is hidden after save</p>
+                </div>
+                @if (canWrite()) {
+                  <div class="flex shrink-0 gap-1">
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs gap-1"
+                      title="Update secret"
+                      (click)="startEditSecret(secret.name)"
+                    >
+                      <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs text-error gap-1"
+                      title="Delete secret"
+                      (click)="deleteSecret(secret)"
+                    >
+                      <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @empty {
+          @if (!isSecretFormOpen) {
+            <p class="text-base-content/50 py-6 text-center text-sm">No secrets configured yet.</p>
+          }
+        }
+      </div>
+
+      @if (showAddSecret() && canWrite()) {
+        <div class="border-base-200 mt-4 rounded-xl border p-4 sm:p-5">
+          <h3 class="text-base-content mb-4 text-sm font-semibold">New secret</h3>
+          <div class="space-y-4">
+            <div class="settings-field">
+              <label class="settings-label" for="actions-secret-name">Name</label>
+              <input
+                id="actions-secret-name"
+                type="text"
+                class="settings-input input input-bordered border-base-300 w-full text-sm"
+                placeholder="DOCKER_PASSWORD"
+                [ngModel]="newSecretName()"
+                (ngModelChange)="newSecretName.set($event)"
+              />
+              <p class="settings-field-hint text-base-content/55">
+                Uppercase letters, numbers, and underscores. Example: <span class="font-mono">API_URL</span>
+              </p>
+            </div>
+            <div class="settings-field">
+              <label class="settings-label" for="actions-secret-value">Value</label>
+              <textarea
+                id="actions-secret-value"
+                class="settings-textarea textarea textarea-bordered border-base-300 w-full font-mono text-sm"
+                rows="3"
+                placeholder="Paste the secret value"
+                [ngModel]="newSecretValue()"
+                (ngModelChange)="newSecretValue.set($event)"
+                autocomplete="new-password"
+              ></textarea>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm gap-1.5"
+                [disabled]="savingSecret() || !newSecretName().trim() || !newSecretValue()"
+                (click)="saveSecret()"
+              >
+                @if (savingSecret()) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                  Saving…
+                } @else {
+                  <lucide-icon name="check" class="size-4"></lucide-icon>
+                  Create secret
+                }
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="cancelSecretForm()">
+                <lucide-icon name="x" class="size-4"></lucide-icon>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</section>

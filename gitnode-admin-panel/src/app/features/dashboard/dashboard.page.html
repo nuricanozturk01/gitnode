@@ -1,0 +1,261 @@
+<div class="mx-auto max-w-6xl">
+  <header class="mb-8 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
+      <p class="text-base-content/65 mt-1 text-sm md:text-base">
+        Platform statistics, activity, and organization overview.
+      </p>
+      @if (!loading() && cachedAtLabel()) {
+      <p class="text-base-content/55 mt-2 text-xs">
+        Statistics are cached on the server for up to {{ cacheTtlLabel() }}. Last loaded {{ cachedAtLabel() }}@if
+        (fromCache()) { (from cache)}@else { (fresh from database)}.
+      </p>
+      }
+    </div>
+    <button
+      type="button"
+      class="btn btn-outline btn-sm gap-2"
+      [disabled]="loading() || refreshing()"
+      (click)="refreshFromDatabase()"
+    >
+      @if (refreshing()) {
+      <span class="loading loading-spinner loading-xs"></span>
+      } @else {
+      <lucide-icon name="refreshCw" class="size-4"></lucide-icon>
+      } Refresh
+    </button>
+  </header>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else { @if (dlqPending() > 0) {
+  <div class="alert alert-warning mb-6" role="alert">
+    <lucide-icon name="triangleAlert" class="size-4 shrink-0"></lucide-icon>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <span>{{ dlqPending() }} webhook dead letter{{ dlqPending() === 1 ? '' : 's' }} need attention.</span>
+      <a routerLink="/webhooks/dlq" class="btn btn-sm btn-warning">Review queue</a>
+    </div>
+  </div>
+  }
+
+  <div class="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+    <a
+      routerLink="/organizations/new"
+      class="repo-panel hover:border-primary/30 flex items-center gap-3 p-4 transition-colors"
+    >
+      <lucide-icon name="plus" class="text-primary size-5 shrink-0"></lucide-icon>
+      <span class="text-sm font-medium">New organization</span>
+    </a>
+    <a routerLink="/users" class="repo-panel hover:border-primary/30 flex items-center gap-3 p-4 transition-colors">
+      <lucide-icon name="users" class="text-primary size-5 shrink-0"></lucide-icon>
+      <span class="text-sm font-medium">Manage users</span>
+    </a>
+    <a routerLink="/repos" class="repo-panel hover:border-primary/30 flex items-center gap-3 p-4 transition-colors">
+      <lucide-icon name="gitBranch" class="text-primary size-5 shrink-0"></lucide-icon>
+      <span class="text-sm font-medium">All repositories</span>
+    </a>
+    <a
+      routerLink="/audit-logs"
+      class="repo-panel hover:border-primary/30 flex items-center gap-3 p-4 transition-colors"
+    >
+      <lucide-icon name="scrollText" class="text-primary size-5 shrink-0"></lucide-icon>
+      <span class="text-sm font-medium">Audit logs</span>
+    </a>
+    <a routerLink="/system" class="repo-panel hover:border-primary/30 flex items-center gap-3 p-4 transition-colors">
+      <lucide-icon name="activity" class="text-primary size-5 shrink-0"></lucide-icon>
+      <span class="text-sm font-medium">System health</span>
+    </a>
+    <a routerLink="/settings" class="repo-panel hover:border-primary/30 flex items-center gap-3 p-4 transition-colors">
+      <lucide-icon name="settings" class="text-primary size-5 shrink-0"></lucide-icon>
+      <span class="text-sm font-medium">Platform settings</span>
+    </a>
+  </div>
+
+  <div class="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Total users</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.totalUsers ?? '—' }}</p>
+      <p class="text-base-content/55 mt-1 text-xs">
+        +{{ overview()?.newUsersThisWeek ?? 0 }} week · +{{ overview()?.newUsersToday ?? 0 }} today
+      </p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Active users</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.enabledUsers ?? '—' }}</p>
+      <p class="text-base-content/55 mt-1 text-xs">{{ disabledUsers() }} disabled</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Repositories</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.totalRepos ?? '—' }}</p>
+      <p class="text-base-content/55 mt-1 text-xs">
+        +{{ overview()?.newReposThisWeek ?? 0 }} week · +{{ overview()?.newReposToday ?? 0 }} today
+      </p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Organizations</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.totalOrganizations ?? '—' }}</p>
+      <p class="text-base-content/55 mt-1 text-xs">{{ overview()?.ssoEnabledOrganizations ?? 0 }} SSO enabled</p>
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Storage used</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">{{ formatStorage(overview()?.totalStorageBytes) }}</p>
+      @if (overview()?.storageEstimated) {
+      <p class="text-base-content/55 mt-1 text-xs">Estimated from disk scan</p>
+      }
+    </div>
+    <div class="repo-panel p-5">
+      <p class="text-base-content/60 text-sm font-medium">Webhook DLQ</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">{{ dlqPending() }}</p>
+      <p class="text-base-content/55 mt-1 text-xs">Pending dead letters</p>
+    </div>
+  </div>
+
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-base-content text-lg font-semibold">Activity</h2>
+    <div class="join">
+      <button
+        type="button"
+        class="btn btn-sm join-item"
+        [class.btn-primary]="period() === 'day'"
+        [class.btn-ghost]="period() !== 'day'"
+        (click)="setPeriod('day')"
+      >
+        Daily
+      </button>
+      <button
+        type="button"
+        class="btn btn-sm join-item"
+        [class.btn-primary]="period() === 'week'"
+        [class.btn-ghost]="period() !== 'week'"
+        (click)="setPeriod('week')"
+      >
+        Weekly
+      </button>
+    </div>
+  </div>
+
+  <div class="mb-8 grid gap-4 lg:grid-cols-2">
+    <div class="repo-panel overflow-hidden">
+      <div class="repo-toolbar px-4 py-3">
+        <h3 class="text-base-content font-semibold">Repository activity</h3>
+        <p class="text-base-content/60 text-xs">New repos per day ({{ period() }})</p>
+      </div>
+      @if (activity().length === 0) {
+      <div class="text-base-content/60 p-8 text-center text-sm">No repository activity for this period.</div>
+      } @else {
+      <div class="p-4">
+        <app-activity-chart [labels]="chartLabels()" [series]="chartSeries()" />
+      </div>
+      }
+    </div>
+
+    <div class="repo-panel overflow-hidden">
+      <div class="repo-toolbar px-4 py-3">
+        <h3 class="text-base-content font-semibold">Top contributors</h3>
+        <p class="text-base-content/60 text-xs">Repos created this {{ period() }}</p>
+      </div>
+      @if (contributors().length === 0) {
+      <div class="text-base-content/60 p-8 text-center text-sm">No repository activity for this period.</div>
+      } @else {
+      <div class="p-4">
+        <app-activity-chart [labels]="contributorChartLabels()" [series]="contributorChartSeries()" [height]="240" />
+      </div>
+      }
+    </div>
+  </div>
+
+  <div class="repo-panel mb-8 overflow-hidden">
+    <div class="repo-toolbar flex items-center justify-between gap-3 px-4 py-3">
+      <div>
+        <h2 class="text-base-content font-semibold">Recent audit activity</h2>
+        <p class="text-base-content/60 text-xs">Latest platform events recorded by the audit system</p>
+      </div>
+      <a routerLink="/audit-logs" class="btn btn-ghost btn-xs gap-1">
+        View all
+        <lucide-icon name="chevronRight" class="size-3.5"></lucide-icon>
+      </a>
+    </div>
+    @if (recentAudit().length === 0) {
+    <div class="text-base-content/60 p-8 text-center text-sm">No recent audit events.</div>
+    } @else {
+    <div class="overflow-x-auto">
+      <table class="table-sm table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Entity</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of recentAudit(); track entry.id) {
+          <tr class="hover">
+            <td class="text-xs whitespace-nowrap">{{ formatAuditTime(entry.occurredAt) }}</td>
+            <td class="text-sm">{{ entry.actorUsername ?? 'System' }}</td>
+            <td><span class="badge-pill">{{ entry.action }}</span></td>
+            <td class="text-base-content/70 text-xs">
+              {{ entry.entityType ?? '—' }}@if (entry.entityId) { · {{ entry.entityId }} }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+
+  <div class="repo-panel overflow-hidden">
+    <div class="repo-toolbar flex items-center justify-between gap-3 px-4 py-3">
+      <h2 class="text-base-content font-semibold">Organizations</h2>
+      <a routerLink="/organizations/new" class="btn btn-primary btn-sm gap-1">
+        <lucide-icon name="plus" class="size-4"></lucide-icon>
+        New organization
+      </a>
+    </div>
+    @if (organizations().length === 0) {
+    <div class="text-base-content/60 p-8 text-center text-sm">No organizations yet.</div>
+    } @else {
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>SSO</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (org of organizations(); track org.slug) {
+          <tr class="hover">
+            <td>
+              <a [routerLink]="['/organizations', org.slug]" class="link link-primary font-medium no-underline">
+                {{ org.name }}
+              </a>
+            </td>
+            <td class="mono text-sm">{{ org.slug }}</td>
+            <td>
+              @if (org.ssoEnabled) {
+              <span class="badge-pill badge-pill--success">Enabled</span>
+              } @else {
+              <span class="badge-pill badge-pill--neutral">Disabled</span>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <app-pagination
+      [page]="orgPage()"
+      [totalPages]="orgTotalPages()"
+      [totalElements]="orgTotalElements()"
+      [pageSize]="10"
+      (pageChange)="onOrgPageChange($event)"
+    />
+    }
+  </div>
+  }
+</div>

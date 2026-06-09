@@ -1,0 +1,284 @@
+<div class="min-w-0 space-y-5 sm:space-y-6">
+  @if (loading()) {
+  <section class="repo-panel flex justify-center py-20">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </section>
+  } @else if (issue(); as iss) {
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <a
+      [routerLink]="['/', owner(), repoName(), 'issues']"
+      class="btn btn-ghost btn-sm text-base-content/80 hover:text-base-content -ml-1 gap-2 px-2"
+    >
+      <lucide-icon name="arrowLeft" class="size-4 shrink-0"></lucide-icon>
+      <span>Issues</span>
+    </a>
+    @if (isLoggedIn() && (isOwnIssue() || canManageIssues())) {
+    <div class="flex gap-2">
+      <button type="button" class="btn btn-outline btn-sm border-base-300 shrink-0" (click)="toggleStatus()">
+        @if (iss.status === 'OPEN') {
+        <lucide-icon name="checkCircle" class="size-4"></lucide-icon>
+        Close issue } @else {
+        <lucide-icon name="circleDot" class="size-4"></lucide-icon>
+        Re-open issue }
+      </button>
+      <button
+        type="button"
+        class="btn btn-outline btn-sm border-base-300 text-error hover:border-error/50 hover:bg-error/10 shrink-0"
+        (click)="deleteIssue()"
+      >
+        Delete
+      </button>
+    </div>
+    }
+  </div>
+
+  <section
+    class="repo-panel border-primary/10 from-base-100 to-base-200/15 overflow-hidden border bg-gradient-to-br shadow-sm"
+  >
+    <div class="repo-toolbar flex flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
+      <span [class]="'badge-pill ' + statusBadgeClass(iss.status)">{{ statusLabel(iss.status) }}</span>
+      <span class="text-base-content/45 font-mono text-sm">#{{ iss.number }}</span>
+    </div>
+    <div class="px-4 py-4 sm:px-5 sm:py-6">
+      <h1 class="text-base-content text-xl leading-tight font-bold tracking-tight text-balance sm:text-2xl">
+        {{ iss.title }}
+      </h1>
+
+      @if (iss.description) {
+      <div class="border-base-300/60 bg-base-200/20 mt-5 rounded-xl border px-3 py-3 sm:px-4 sm:py-4">
+        <p class="text-base-content/90 m-0 text-sm leading-relaxed whitespace-pre-wrap sm:text-base">
+          {{ iss.description }}
+        </p>
+      </div>
+      }
+
+      <div
+        class="border-base-300/50 text-base-content/65 mt-5 flex flex-col gap-3 border-t border-dashed pt-4 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2"
+      >
+        <div class="flex min-w-0 items-center gap-2">
+          <app-avatar
+            [avatarUrl]="iss.author.avatarUrl"
+            [email]="iss.author.email"
+            [username]="iss.author.username"
+            [fallback]="(iss.author.username || iss.author.name || '?').charAt(0).toUpperCase()"
+            size="xs"
+          />
+          <span class="min-w-0">
+            <span class="text-base-content/90 font-medium">{{ iss.author.name || iss.author.username }}</span>
+            opened {{ iss.createdAt | relativeTime }}
+          </span>
+        </div>
+        @if (iss.assignee) {
+        <div class="flex min-w-0 items-center gap-2">
+          <lucide-icon name="userRound" class="size-4 shrink-0 opacity-50"></lucide-icon>
+          <span class="min-w-0">
+            Assigned to
+            <span class="text-base-content/90 font-medium">{{ iss.assignee.name || iss.assignee.username }}</span>
+          </span>
+        </div>
+        } @if (iss.closedAt) {
+        <div class="flex min-w-0 items-center gap-2">
+          <lucide-icon name="checkCircle" class="size-4 shrink-0 opacity-50"></lucide-icon>
+          <span>Closed {{ iss.closedAt | relativeTime }}</span>
+        </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Development: linked tasks -->
+  @if (linkedTasks().length > 0) {
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar flex items-center gap-2 px-4 py-3 sm:px-5">
+      <lucide-icon name="layoutDashboard" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+      <h3 class="text-base-content text-sm font-semibold">Development</h3>
+      <span class="text-base-content/40 text-xs">&mdash; linked tasks</span>
+    </div>
+    <div class="divide-base-300 divide-y">
+      @for (t of linkedTasks(); track t.taskCode) {
+      <a
+        [routerLink]="['/projects', t.projectCode, 'tasks', t.taskCode]"
+        class="hover:bg-base-200/40 group flex items-center gap-3 px-4 py-3 transition-colors sm:px-5"
+      >
+        <div class="shrink-0">
+          <span
+            class="mt-0.5 block size-2 rounded-full"
+            [class.bg-success]="t.taskStatus === 'COMPLETED'"
+            [class.bg-warning]="t.taskStatus === 'IN_PROGRESS'"
+            [class.bg-base-content/30]="t.taskStatus === 'NOT_STARTED'"
+          ></span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <code
+              class="text-base-content/50 bg-base-200 shrink-0 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+            >
+              {{ t.taskCode }}
+            </code>
+            <span
+              class="text-base-content group-hover:text-primary min-w-0 truncate text-sm font-medium transition-colors"
+            >
+              {{ t.taskTitle }}
+            </span>
+          </div>
+          <p class="text-base-content/45 mt-0.5 text-xs">
+            {{ t.projectName }} &middot;
+            <span [class]="taskStatusClass(t.taskStatus)">{{ taskStatusLabel(t.taskStatus) }}</span>
+          </p>
+        </div>
+        <lucide-icon
+          name="chevronRight"
+          class="text-base-content/25 group-hover:text-primary size-4 shrink-0 transition-colors"
+        ></lucide-icon>
+      </a>
+      }
+    </div>
+  </section>
+  }
+
+  <!-- Comments -->
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar flex items-center justify-between px-4 py-3 sm:px-5">
+      <h3 class="text-base-content text-sm font-semibold">
+        {{ iss.commentCount }} {{ iss.commentCount === 1 ? 'comment' : 'comments' }}
+      </h3>
+      @if (commentTotalPages() > 1) {
+      <span class="text-base-content/50 text-xs"> Page {{ commentPage() + 1 }} of {{ commentTotalPages() }} </span>
+      }
+    </div>
+
+    @if (commentsLoading()) {
+    <div class="flex justify-center py-8">
+      <span class="loading loading-spinner loading-md text-primary"></span>
+    </div>
+    } @else if (comments().length === 0) {
+    <div class="text-base-content/50 px-4 py-8 text-center text-sm">No comments yet.</div>
+    } @else {
+    <div class="divide-base-300 divide-y">
+      @for (comment of comments(); track comment.id) {
+      <div class="flex gap-3 px-4 py-4 sm:gap-4 sm:px-5">
+        <app-avatar
+          [avatarUrl]="comment.author.avatarUrl"
+          [email]="comment.author.email"
+          [username]="comment.author.username"
+          [fallback]="(comment.author.username || comment.author.name || '?').charAt(0).toUpperCase()"
+          size="sm"
+          class="mt-0.5 shrink-0"
+        />
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2 text-sm">
+              <span class="text-base-content font-medium"> {{ comment.author.name || comment.author.username }} </span>
+              <span class="text-base-content/45 text-xs">{{ comment.createdAt | relativeTime }}</span>
+            </div>
+            @if (canModifyComment(comment)) {
+            <div class="flex gap-1">
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1 opacity-60 hover:opacity-100"
+                (click)="startEditComment(comment)"
+              >
+                <lucide-icon name="pencil" class="size-3"></lucide-icon>
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs text-error gap-1 opacity-60 hover:opacity-100"
+                (click)="deleteComment(comment.id)"
+              >
+                <lucide-icon name="trash2" class="size-3"></lucide-icon>
+              </button>
+            </div>
+            }
+          </div>
+          @if (editingCommentId() === comment.id) {
+          <div class="mt-3 flex flex-col gap-2">
+            <textarea
+              class="textarea textarea-bordered w-full text-sm"
+              rows="4"
+              [ngModel]="editCommentBody()"
+              (ngModelChange)="editCommentBody.set($event)"
+              name="editBody"
+            ></textarea>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                class="btn btn-primary btn-sm"
+                (click)="saveEditComment(comment.id)"
+                [disabled]="!editCommentBody().trim()"
+              >
+                Save
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEditComment()">Cancel</button>
+            </div>
+          </div>
+          } @else {
+          <p class="text-base-content/85 mt-2 text-sm leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
+          }
+        </div>
+      </div>
+      }
+    </div>
+
+    @if (commentTotalPages() > 1) {
+    <div class="border-base-300 flex items-center justify-between border-t px-4 py-3">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm gap-1.5"
+        [disabled]="!hasPrevComments()"
+        (click)="prevCommentPage()"
+      >
+        <lucide-icon name="arrowLeft" class="size-3.5"></lucide-icon>
+        Previous
+      </button>
+      <span class="text-base-content/55 text-sm"> {{ commentPage() + 1 }} / {{ commentTotalPages() }} </span>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm gap-1.5"
+        [disabled]="!hasNextComments()"
+        (click)="nextCommentPage()"
+      >
+        Next
+        <lucide-icon name="arrowRight" class="size-3.5"></lucide-icon>
+      </button>
+    </div>
+    } }
+  </section>
+
+  @if (isLoggedIn()) {
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-3 sm:px-5">
+      <h3 class="text-base-content text-sm font-semibold">Leave a comment</h3>
+    </div>
+    <div class="p-4 sm:p-5">
+      <div class="flex flex-col gap-3">
+        <textarea
+          class="textarea textarea-bordered w-full"
+          rows="5"
+          placeholder="Write a comment..."
+          [ngModel]="newCommentBody()"
+          (ngModelChange)="newCommentBody.set($event)"
+          name="newComment"
+        ></textarea>
+        <div class="flex justify-end">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm gap-2"
+            [disabled]="!newCommentBody().trim() || submittingComment()"
+            (click)="submitComment()"
+          >
+            @if (submittingComment()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } Comment
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+  } } @else {
+  <section class="repo-panel flex flex-col items-center justify-center gap-3 py-20">
+    <lucide-icon name="circleDot" class="text-base-content/30 size-12"></lucide-icon>
+    <p class="text-base-content/60 text-base">Issue not found.</p>
+    <a [routerLink]="['/', owner(), repoName(), 'issues']" class="btn btn-ghost btn-sm">Back to issues</a>
+  </section>
+  }
+</div>

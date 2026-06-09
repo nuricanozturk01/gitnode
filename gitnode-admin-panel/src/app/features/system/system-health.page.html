@@ -1,0 +1,95 @@
+<div class="mx-auto max-w-4xl">
+  <header class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-base-content text-2xl font-bold tracking-tight md:text-3xl">System health</h1>
+      <p class="text-base-content/65 mt-1 text-sm">
+        Live status from the GitNode backend actuator. Use this to verify database, cache, and core services.
+      </p>
+      @if (checkedAt()) {
+      <p class="text-base-content/45 mt-2 text-xs">Last checked {{ checkedAt() | date: 'medium' }}</p>
+      }
+    </div>
+    <button
+      type="button"
+      class="btn btn-outline btn-sm gap-1"
+      [disabled]="loading() || refreshing()"
+      (click)="refresh()"
+    >
+      @if (refreshing()) {
+      <span class="loading loading-spinner loading-xs"></span>
+      } @else {
+      <lucide-icon name="refreshCw" class="size-4"></lucide-icon>
+      } Refresh
+    </button>
+  </header>
+
+  @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (error()) {
+  <div class="alert alert-error" role="alert">
+    <lucide-icon name="circleAlert" class="size-4 shrink-0"></lucide-icon>
+    <span>{{ error() }}</span>
+  </div>
+  } @else if (health(); as snapshot) {
+  <section class="repo-panel mb-6 p-6">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-base-content text-lg font-semibold">Overall status</h2>
+        @if (snapshot.groups?.length) {
+        <p class="text-base-content/60 mt-1 text-sm">Groups: {{ snapshot.groups?.join(', ') }}</p>
+        }
+      </div>
+      <span [class]="statusBadgeClass(snapshot.status)">{{ snapshot.status }}</span>
+    </div>
+  </section>
+
+  @if (components().length === 0) {
+  <div class="repo-panel text-base-content/60 p-8 text-center text-sm">
+    No component details returned. Sign in with a valid admin session to view detailed health checks.
+  </div>
+  } @else {
+  <div class="repo-panel overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th>Status</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of components(); track item.name) {
+          <tr>
+            <td class="font-medium">{{ item.name }}</td>
+            <td>
+              <span [class]="statusBadgeClass(item.component.status)">{{ item.component.status }}</span>
+            </td>
+            <td class="text-base-content/70 text-xs">
+              @if (item.component.details) {
+              <pre class="whitespace-pre-wrap">{{ item.component.details | json }}</pre>
+              } @else { — }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+  } @if (metrics().length > 0) {
+  <section class="repo-panel mt-6 p-6">
+    <h2 class="text-base-content text-lg font-semibold">Runtime metrics</h2>
+    <p class="text-base-content/65 mt-1 text-sm">Key counters from the backend Micrometer registry.</p>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      @for (metric of metrics(); track metric.name) {
+      <div class="border-base-300/60 rounded-lg border p-4">
+        <p class="text-base-content/55 text-xs font-medium tracking-wide uppercase">{{ metric.name }}</p>
+        <p class="text-base-content mt-1 text-2xl font-bold tabular-nums">{{ formatMetricValue(metric.value) }}</p>
+      </div>
+      }
+    </div>
+  </section>
+  } }
+</div>

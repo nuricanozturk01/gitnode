@@ -1,0 +1,65 @@
+@import 'highlight.js/styles/github.css';
+
+:host {
+  display: block;
+}
+
+[data-code-syntax='light'] .hljs {
+  background: transparent;
+}
+
+[data-code-syntax='dark'] .hljs {
+  color: #c9d1d9;
+  background: transparent;
+}
+
+[data-code-syntax='dark'] td .hljs-keyword {
+  color: #ff7b72;
+}
+
+[data-code-syntax='dark'] td .hljs-string {
+  color: #a5d6ff;
+}
+
+[data-code-syntax='dark'] td .hljs-comment {
+  color: #8b949e;
+}
+
+[data-code-syntax='dark'] td .hljs-number {
+  color: #79c0ff;
+}
+
+[data-code-syntax='dark'] td .hljs-title {
+  color: #d2a8ff;
+}
+
+.code-viewer__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.code-viewer__table td {
+  vertical-align: top;
+  padding: 0;
+}
+
+.code-viewer__gutter {
+  width: 3rem;
+  padding: 0 0.75rem 0 0.5rem !important;
+  text-align: right;
+  user-select: none;
+  color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+  border-right: 1px solid color-mix(in oklch, var(--color-base-content) 10%, transparent);
+}
+
+.code-viewer__code {
+  padding: 0 1rem !important;
+  white-space: pre;
+}
+
+.code-viewer__code .hljs {
+  padding: 0;
+}

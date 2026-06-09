@@ -1,0 +1,869 @@
+<div class="bg-base-200 min-h-screen">
+  @if (loading()) {
+  <div class="flex min-h-screen flex-col items-center justify-center">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+
+  } @else if (!task()) {
+  <div class="flex min-h-screen flex-col items-center justify-center px-4 text-center">
+    <lucide-icon name="x" class="text-base-content/20 mb-4 size-12"></lucide-icon>
+    <p class="text-base-content/60">Task not found.</p>
+    <a [routerLink]="['/projects', owner, projectCode]" class="btn btn-ghost btn-sm mt-4 gap-2">
+      <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+      Back to board
+    </a>
+  </div>
+
+  } @else { @let t = task()!;
+
+  <!-- Top bar -->
+  <div class="border-base-300 bg-base-100 sticky top-0 z-10 border-b px-4 py-3 sm:px-6">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-4">
+      <nav class="text-base-content/50 flex min-w-0 flex-1 items-center gap-1.5 text-sm">
+        <a routerLink="/projects" class="hover:text-base-content shrink-0 no-underline transition-colors">Projects</a>
+        <lucide-icon name="chevronRight" class="text-base-content/30 size-3.5 shrink-0"></lucide-icon>
+        <a
+          [routerLink]="['/projects', owner, projectCode]"
+          class="hover:text-base-content shrink-0 no-underline transition-colors"
+        >
+          <code class="bg-primary/10 text-primary rounded-md px-1.5 py-0.5 font-mono text-xs font-semibold"
+            >{{ projectCode }}</code
+          >
+        </a>
+        <lucide-icon name="chevronRight" class="text-base-content/30 size-3.5 shrink-0"></lucide-icon>
+        <span class="text-base-content font-mono text-sm font-semibold">{{ t.code }}</span>
+      </nav>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <a [routerLink]="['/projects', owner, projectCode]" class="btn btn-ghost btn-sm gap-1.5">
+          <lucide-icon name="arrowLeft" class="size-4"></lucide-icon>
+          Board
+        </a>
+        @if (isOwner()) {
+        <button type="button" class="btn btn-ghost btn-sm text-error hover:bg-error/10 gap-1.5" (click)="deleteTask()">
+          <lucide-icon name="x" class="size-4"></lucide-icon>
+          Delete
+        </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Main layout: content + sidebar -->
+  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+    <div class="flex flex-col items-start gap-6 lg:flex-row">
+      <!-- Left: main content -->
+      <div class="flex min-w-0 flex-1 flex-col gap-5">
+        <!-- Title card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <!-- Code + type + status row -->
+          <div class="mb-3 flex flex-wrap items-center gap-2">
+            <span class="text-base-content/40 font-mono text-xs font-bold tracking-wider">{{ t.code }}</span>
+
+            @if (t.type === 'BUG') {
+            <span
+              class="text-error bg-error/10 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+            >
+              <lucide-icon name="alertTriangle" class="size-3.5"></lucide-icon>
+              Bug
+            </span>
+            } @else {
+            <span
+              class="text-base-content/50 bg-base-200 inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold"
+            >
+              <lucide-icon name="checkCircle" class="size-3.5"></lucide-icon>
+              Task
+            </span>
+            } @if (isOwner()) {
+            <div class="dropdown dropdown-bottom">
+              <div
+                tabindex="0"
+                role="button"
+                [class]="'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 ' + statusInlineBadgeClass(t.status)"
+              >
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
+                {{ statusLabel(t.status) }}
+                <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
+              </div>
+              <ul
+                tabindex="0"
+                class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-44 rounded-xl border p-1 shadow-xl"
+              >
+                @for (status of statuses; track status) {
+                <li>
+                  <button type="button" class="flex items-center gap-2 text-sm" (click)="changeStatus(status)">
+                    <span
+                      class="size-2 rounded-full"
+                      [class.bg-success]="status === 'COMPLETED'"
+                      [class.bg-warning]="status === 'IN_PROGRESS'"
+                      [class.bg-base-content/30]="status === 'NOT_STARTED'"
+                    ></span>
+                    {{ statusLabel(status) }}
+                  </button>
+                </li>
+                }
+              </ul>
+            </div>
+            } @else {
+            <span
+              [class]="'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + statusInlineBadgeClass(t.status)"
+            >
+              <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
+              {{ statusLabel(t.status) }}
+            </span>
+            }
+          </div>
+
+          <!-- Title -->
+          @if (editingTitle()) {
+          <div class="mt-1 flex items-start gap-2">
+            <input
+              type="text"
+              class="input input-bordered flex-1 text-lg font-bold"
+              [value]="editTitle()"
+              (input)="editTitle.set($any($event.target).value)"
+              (keydown.enter)="saveTitle()"
+              (keydown.escape)="editingTitle.set(false)"
+            />
+            <button type="button" class="btn btn-primary btn-sm shrink-0" [disabled]="saving()" (click)="saveTitle()">
+              @if (saving()) { <span class="loading loading-spinner loading-xs"></span> } @else { Save }
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm shrink-0" (click)="editingTitle.set(false)">
+              Cancel
+            </button>
+          </div>
+          } @else if (isOwner()) {
+          <h1
+            class="text-base-content hover:text-primary group flex cursor-pointer items-start gap-2 text-xl leading-snug font-bold transition-colors"
+            role="button"
+            tabindex="0"
+            aria-label="Edit title"
+            (click)="startEditTitle()"
+            (keydown.enter)="startEditTitle()"
+            (keydown.space)="$event.preventDefault(); startEditTitle()"
+          >
+            <span>{{ t.title }}</span>
+            <lucide-icon
+              name="fileText"
+              class="text-base-content/20 group-hover:text-primary/50 mt-1 size-4 shrink-0 transition-colors"
+            ></lucide-icon>
+          </h1>
+          } @else {
+          <h1 class="text-base-content text-xl leading-snug font-bold">{{ t.title }}</h1>
+          }
+        </div>
+
+        <!-- Description card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h2 class="text-base-content text-sm font-semibold">Description</h2>
+            @if (isOwner() && !editingDesc()) {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-base-content/40 hover:text-base-content gap-1"
+              (click)="startEditDesc()"
+            >
+              <lucide-icon name="fileText" class="size-3.5"></lucide-icon>
+              Edit
+            </button>
+            }
+          </div>
+          @if (editingDesc()) {
+          <div class="flex flex-col gap-3">
+            <textarea
+              class="textarea textarea-bordered w-full text-sm leading-relaxed"
+              rows="6"
+              placeholder="Add a description…"
+              [value]="editDesc()"
+              (input)="editDesc.set($any($event.target).value)"
+            ></textarea>
+            <div class="flex gap-2">
+              <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveDesc()">
+                @if (saving()) { <span class="loading loading-spinner loading-xs"></span> } @else { Save }
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="editingDesc.set(false)">Cancel</button>
+            </div>
+          </div>
+          } @else if (t.description) {
+          <p class="text-base-content/70 text-sm leading-relaxed wrap-break-word whitespace-pre-wrap">
+            {{ t.description }}
+          </p>
+          } @else if (isOwner()) {
+          <button
+            type="button"
+            class="text-base-content/30 hover:text-base-content/50 w-full text-left text-sm italic transition-colors"
+            (click)="startEditDesc()"
+          >
+            No description. Click to add one…
+          </button>
+          } @else {
+          <p class="text-base-content/30 text-sm italic">No description.</p>
+          }
+        </div>
+
+        <!-- Development: branch + PR -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          @let devRepo = repoForTask(t);
+          <h2 class="text-base-content mb-3 text-sm font-semibold">Development</h2>
+
+          @if (!t.branchName) {
+          <p class="text-base-content/60 mb-4 text-sm leading-relaxed">
+            Create a Git branch for this task, then open a pull request from that branch so it appears linked here.
+          </p>
+          @if (isOwner()) { @if (linkedRepos().length === 0) {
+          <p class="text-base-content/50 mb-4 text-xs leading-relaxed">
+            No repositories are linked to this project yet — the branch dialog will list repositories you can access.
+            Link repos to the project for shorter lists.
+          </p>
+          }
+          <button type="button" class="btn btn-primary btn-sm gap-2" (click)="openCreateBranchModal()">
+            <lucide-icon name="gitBranch" class="size-4"></lucide-icon>
+            Create branch
+          </button>
+          } } @else {
+          <div class="flex flex-col gap-3">
+            <div class="bg-base-200/50 flex flex-wrap items-center gap-3 rounded-xl p-3 text-sm">
+              <lucide-icon name="gitBranch" class="text-base-content/50 size-4 shrink-0"></lucide-icon>
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-base-content/40 text-xs font-medium">Branch</span>
+                <code class="text-base-content truncate font-mono text-xs">{{ t.branchName }}</code>
+              </div>
+              @if (devRepo) {
+              <a
+                [routerLink]="['/', devRepo.ownerUsername, devRepo.name, 'tree', t.branchName!]"
+                class="btn btn-ghost btn-xs shrink-0 gap-1"
+              >
+                <lucide-icon name="folder" class="size-3.5"></lucide-icon>
+                Browse
+              </a>
+              }
+            </div>
+
+            @if (t.linkedPr) { @if (devRepo) {
+            <a
+              [routerLink]="['/', devRepo.ownerUsername, devRepo.name, 'pulls', t.linkedPr.number]"
+              class="bg-base-200/50 hover:bg-base-200 flex items-center gap-3 rounded-xl p-3 text-sm no-underline transition-colors"
+            >
+              <lucide-icon
+                name="gitPullRequest"
+                class="size-4 shrink-0"
+                [class.text-success]="t.linkedPr.status === 'MERGED'"
+                [class.text-primary]="t.linkedPr.status === 'OPEN'"
+                [class.text-base-content/40]="t.linkedPr.status === 'CLOSED'"
+              ></lucide-icon>
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-base-content/40 text-xs font-medium">Pull request</span>
+                <span class="text-base-content truncate text-sm font-medium"
+                  >#{{ t.linkedPr.number }} {{ t.linkedPr.title }}</span
+                >
+              </div>
+              <span
+                [class]="'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + prInlineBadgeClass(t.linkedPr.status)"
+              >
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + prDotBgClass(t.linkedPr.status)"></span>
+                {{ t.linkedPr.status }}
+              </span>
+            </a>
+            } @else {
+            <div class="bg-base-200/50 flex items-center gap-3 rounded-xl p-3 text-sm">
+              <lucide-icon name="gitPullRequest" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
+              <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span class="text-base-content/40 text-xs font-medium">Pull request</span>
+                <span class="text-base-content truncate text-sm font-medium"
+                  >#{{ t.linkedPr.number }} {{ t.linkedPr.title }}</span
+                >
+              </div>
+              <span
+                [class]="'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + prInlineBadgeClass(t.linkedPr.status)"
+              >
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + prDotBgClass(t.linkedPr.status)"></span>
+                {{ t.linkedPr.status }}
+              </span>
+            </div>
+            } } @else {
+            <div class="flex flex-col gap-2">
+              @if (devRepo && isOwner()) {
+              <button type="button" class="btn btn-outline btn-sm w-fit gap-2" (click)="openNewPullRequest(t)">
+                <lucide-icon name="gitPullRequest" class="size-4"></lucide-icon>
+                Open pull request
+              </button>
+              <p class="text-base-content/50 max-w-md text-xs leading-relaxed">
+                Compare branch <code class="font-mono">{{ t.branchName }}</code> into
+                <code class="font-mono">{{ devRepo.defaultBranch || 'main' }}</code>. The PR links here when opened; if
+                <a [routerLink]="['/projects', owner, projectCode, 'settings']" class="link link-hover text-primary"
+                  >project settings</a
+                >
+                allow it, merging marks the task completed.
+              </p>
+              } @else {
+              <p class="text-base-content/50 text-xs leading-relaxed">
+                Open a pull request from branch <code class="font-mono">{{ t.branchName }}</code> in the repository
+                where it was created. If this project lists that repo, link it to the project so shortcuts appear here.
+              </p>
+              }
+            </div>
+            }
+          </div>
+          }
+        </div>
+
+        <!-- Linked Issue card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <div class="mb-3 flex items-center justify-between">
+            <h3 class="text-base-content text-sm font-semibold">Linked Issue</h3>
+            @if (t.linkedIssue && isOwner()) {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-error opacity-60 hover:opacity-100"
+              (click)="unlinkIssue()"
+            >
+              <lucide-icon name="x" class="size-3.5"></lucide-icon>
+              Unlink
+            </button>
+            }
+          </div>
+          @if (t.linkedIssue) { @let issueRoute = linkedIssueRoute(t);
+          <div class="bg-base-200/50 flex items-center gap-3 rounded-xl p-3 text-sm">
+            <lucide-icon
+              name="circleDot"
+              class="size-4 shrink-0"
+              [class.text-success]="t.linkedIssue.status === 'OPEN'"
+              [class.text-base-content/40]="t.linkedIssue.status === 'CLOSED'"
+            ></lucide-icon>
+            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span class="text-base-content/40 text-xs font-medium">Issue</span>
+              @if (issueRoute) {
+              <a
+                [routerLink]="issueRoute"
+                class="text-base-content hover:text-primary truncate text-sm font-medium transition-colors"
+                >#{{ t.linkedIssue.number }} {{ t.linkedIssue.title }}</a
+              >
+              } @else {
+              <span class="text-base-content truncate text-sm font-medium"
+                >#{{ t.linkedIssue.number }} {{ t.linkedIssue.title }}</span
+              >
+              }
+            </div>
+            <span
+              [class]="'inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + issueInlineBadgeClass(t.linkedIssue.status)"
+            >
+              <span [class]="'size-1.5 shrink-0 rounded-full ' + issueDotBgClass(t.linkedIssue.status)"></span>
+              {{ t.linkedIssue.status }}
+            </span>
+          </div>
+          } @else if (isOwner()) {
+          <div class="text-base-content/50 flex flex-col gap-2 text-sm">
+            <p class="text-xs leading-relaxed">Link this task to a repository issue to track the problem it solves.</p>
+            <button type="button" class="btn btn-outline btn-sm w-fit gap-2" (click)="openLinkIssueModal()">
+              <lucide-icon name="link" class="size-3.5"></lucide-icon>
+              Link an issue
+            </button>
+          </div>
+          }
+        </div>
+
+        <!-- Link Issue Modal -->
+        @if (showLinkIssueModal() && isOwner()) {
+        <div
+          class="bg-base-300/60 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="link-issue-modal-title"
+          tabindex="-1"
+          (click)="onLinkIssueBackdropClick($event)"
+          (keydown.escape)="closeLinkIssueModal()"
+        >
+          <div class="bg-base-100 border-base-300 w-full max-w-sm rounded-2xl border p-6 shadow-2xl">
+            <div class="mb-4 flex items-center justify-between">
+              <h3 id="link-issue-modal-title" class="text-base-content text-base font-semibold">Link an issue</h3>
+              <button type="button" class="btn btn-ghost btn-sm btn-square" (click)="closeLinkIssueModal()">
+                <lucide-icon name="x" class="size-4"></lucide-icon>
+              </button>
+            </div>
+            <div class="flex flex-col gap-3">
+              <div class="flex flex-col gap-1">
+                <label for="link-issue-owner" class="text-base-content/70 text-xs font-medium">Repository owner</label>
+                <input
+                  id="link-issue-owner"
+                  type="text"
+                  class="input input-bordered input-sm bg-base-200 w-full cursor-not-allowed font-mono"
+                  [value]="linkIssueOwner()"
+                  readonly
+                />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="link-issue-repo" class="text-base-content/70 text-xs font-medium">Repository</label>
+                <select
+                  id="link-issue-repo"
+                  class="select select-bordered select-sm w-full font-mono"
+                  [ngModel]="linkIssueRepo()"
+                  (ngModelChange)="onLinkIssueRepoChange($event)"
+                >
+                  <option value="" disabled>Select repository</option>
+                  @for (repo of linkIssueRepos(); track repo.name) {
+                  <option [value]="repo.name">{{ repo.name }}</option>
+                  }
+                </select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label for="link-issue-number" class="text-base-content/70 text-xs font-medium">Issue</label>
+                @if (linkIssueLoadingIssues()) {
+                <div class="flex items-center gap-2 py-1">
+                  <span class="loading loading-spinner loading-xs"></span>
+                  <span class="text-base-content/50 text-xs">Loading issues…</span>
+                </div>
+                } @else {
+                <select
+                  id="link-issue-number"
+                  class="select select-bordered select-sm w-full"
+                  [ngModel]="linkIssueNumber()"
+                  (ngModelChange)="linkIssueNumber.set($event ? +$event : null)"
+                  [disabled]="!linkIssueRepo() || linkIssueIssues().length === 0"
+                >
+                  <option [value]="null">
+                    @if (!linkIssueRepo()) { Select a repository first } @else if (linkIssueIssues().length === 0) { No
+                    open issues } @else { Select issue }
+                  </option>
+                  @for (issue of linkIssueIssues(); track issue.id) {
+                  <option [value]="issue.number">#{{ issue.number }} — {{ issue.title }}</option>
+                  }
+                </select>
+                }
+              </div>
+              <div class="mt-1 flex gap-2">
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm flex-1 gap-2"
+                  [disabled]="linkingIssue() || linkIssueNumber() === null"
+                  (click)="submitLinkIssue()"
+                >
+                  @if (linkingIssue()) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                  } Link issue
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="closeLinkIssueModal()">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        }
+
+        <!-- Subtasks card -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-5 shadow-sm">
+          <div class="mb-4 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <h2 class="text-base-content text-sm font-semibold">Subtasks</h2>
+              @if (t.subtasks.length > 0) {
+              <div class="flex items-center gap-1.5">
+                <span class="text-base-content/50 text-xs"
+                  >{{ completedSubtasksCount(t.subtasks) }}/{{ t.subtasks.length }}</span
+                >
+                <div class="bg-base-200 h-1.5 w-20 overflow-hidden rounded-full">
+                  <div
+                    class="bg-success h-full rounded-full transition-all duration-300"
+                    [style.width.%]="subtasksProgressPercent(t.subtasks)"
+                  ></div>
+                </div>
+              </div>
+              }
+            </div>
+          </div>
+
+          @if (t.subtasks.length > 0) {
+          <ul class="divide-base-200 -mx-1 mb-4 flex flex-col divide-y">
+            @for (subtask of t.subtasks; track subtask.id) { @let subRepo = repoForSubtask(subtask);
+            <li class="group flex flex-col gap-2 px-1 py-2.5">
+              <div class="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm checkbox-primary shrink-0"
+                  [checked]="subtask.status === 'COMPLETED'"
+                  [disabled]="!isOwner()"
+                  (change)="isOwner() && toggleSubtask(subtask)"
+                />
+                <div class="min-w-0 flex-1">
+                  <div class="mb-0.5 flex flex-wrap items-center gap-2">
+                    <code
+                      class="text-base-content/50 bg-base-200 rounded px-1.5 py-0.5 font-mono text-[10px] font-semibold"
+                      >{{ subtask.code }}</code
+                    >
+                  </div>
+                  <span
+                    class="text-sm leading-snug wrap-break-word transition-colors"
+                    [class.line-through]="subtask.status === 'COMPLETED'"
+                    [class.text-base-content/35]="subtask.status === 'COMPLETED'"
+                    [class.text-base-content]="subtask.status !== 'COMPLETED'"
+                    >{{ subtask.title }}</span
+                  >
+                </div>
+                @if (isOwner()) {
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-base-content/20 hover:text-error hover:bg-error/10 size-6 shrink-0 p-0 opacity-0 transition-all group-hover:opacity-100"
+                  (click)="deleteSubtask(subtask)"
+                >
+                  <lucide-icon name="x" class="size-3.5"></lucide-icon>
+                </button>
+                }
+              </div>
+              <div class="border-base-200 flex flex-wrap items-center gap-2 border-t border-dashed pt-2 pl-8">
+                @if (!subtask.branchName && isOwner()) {
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs gap-1"
+                  (click)="openCreateBranchModalForSubtask(subtask)"
+                >
+                  <lucide-icon name="gitBranch" class="size-3.5"></lucide-icon>
+                  Branch
+                </button>
+                } @else {
+                <code class="text-base-content/70 max-w-full truncate font-mono text-xs">{{ subtask.branchName }}</code>
+                @if (subRepo) {
+                <a
+                  [routerLink]="['/', subRepo.ownerUsername, subRepo.name, 'tree', subtask.branchName!]"
+                  class="btn btn-ghost btn-xs"
+                  >Browse</a
+                >
+                } @if (subtask.linkedPr && subRepo) {
+                <a
+                  [routerLink]="['/', subRepo.ownerUsername, subRepo.name, 'pulls', subtask.linkedPr.number]"
+                  class="text-primary text-xs font-medium no-underline hover:underline"
+                  >#{{ subtask.linkedPr.number }}</a
+                >
+                } @else if (subtask.branchName && subRepo && isOwner()) {
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs gap-1"
+                  (click)="openNewPullRequestForSubtask(t, subtask)"
+                >
+                  <lucide-icon name="gitPullRequest" class="size-3.5"></lucide-icon>
+                  Open PR
+                </button>
+                } }
+              </div>
+            </li>
+            }
+          </ul>
+          } @if (isOwner()) {
+          <div class="flex items-center gap-2">
+            <input
+              type="text"
+              class="input input-bordered input-sm flex-1 text-sm"
+              placeholder="Add a subtask…"
+              [value]="newSubtaskTitle()"
+              (input)="newSubtaskTitle.set($any($event.target).value)"
+              (keydown.enter)="addSubtask()"
+            />
+            <button
+              type="button"
+              class="btn btn-primary btn-sm gap-1"
+              [disabled]="addingSubtask() || !newSubtaskTitle().trim()"
+              (click)="addSubtask()"
+            >
+              @if (addingSubtask()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              } @else {
+              <lucide-icon name="plus" class="size-4"></lucide-icon>
+              } Add
+            </button>
+          </div>
+          }
+        </div>
+      </div>
+
+      <!-- Right: sidebar -->
+      <aside class="flex w-full shrink-0 flex-col gap-4 lg:w-64">
+        <!-- Properties -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-4 shadow-sm">
+          <h3 class="text-base-content/40 mb-3 text-xs font-semibold tracking-wider uppercase">Properties</h3>
+          <div class="flex flex-col gap-3">
+            <!-- Status -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Status</span>
+              @if (isOwner()) {
+              <div class="dropdown dropdown-end">
+                <div
+                  tabindex="0"
+                  role="button"
+                  [class]="'inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80 ' + statusInlineBadgeClass(t.status)"
+                >
+                  <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
+                  {{ statusLabel(t.status) }}
+                  <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-44 rounded-xl border p-1 shadow-xl"
+                >
+                  @for (s of statuses; track s) {
+                  <li><button type="button" class="text-sm" (click)="changeStatus(s)">{{ statusLabel(s) }}</button></li>
+                  }
+                </ul>
+              </div>
+              } @else {
+              <span
+                [class]="'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold ' + statusInlineBadgeClass(t.status)"
+              >
+                <span [class]="'size-1.5 shrink-0 rounded-full ' + statusDotBgClass(t.status)"></span>
+                {{ statusLabel(t.status) }}
+              </span>
+              }
+            </div>
+
+            <!-- Type -->
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Type</span>
+              @if (isOwner()) {
+              <div class="dropdown dropdown-end">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="bg-base-200 text-base-content/60 inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                >
+                  @if (t.type === 'BUG') {
+                  <lucide-icon name="alertTriangle" class="text-error size-3"></lucide-icon>
+                  <span class="text-error">Bug</span>
+                  } @else {
+                  <lucide-icon name="checkCircle" class="size-3"></lucide-icon>
+                  Task }
+                  <lucide-icon name="chevronDown" class="size-3"></lucide-icon>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-32 rounded-xl border p-1 shadow-xl"
+                >
+                  @for (tp of types; track tp) {
+                  <li>
+                    <button type="button" class="text-sm" (click)="changeType(tp)">
+                      {{ tp === 'BUG' ? 'Bug' : 'Task' }}
+                    </button>
+                  </li>
+                  }
+                </ul>
+              </div>
+              } @else {
+              <span
+                class="bg-base-200 text-base-content/60 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-semibold"
+              >
+                @if (t.type === 'BUG') {
+                <lucide-icon name="alertTriangle" class="text-error size-3"></lucide-icon>
+                <span class="text-error">Bug</span>
+                } @else {
+                <lucide-icon name="checkCircle" class="size-3"></lucide-icon>
+                Task }
+              </span>
+              }
+            </div>
+
+            <!-- Column -->
+            @if (columns().length > 0) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Column</span>
+              @if (isOwner()) {
+              <div class="dropdown dropdown-end">
+                <div
+                  tabindex="0"
+                  role="button"
+                  class="bg-base-200 text-base-content/60 inline-flex max-w-32 cursor-pointer items-center gap-1.5 truncate rounded-lg px-2 py-1 text-xs font-semibold transition-opacity hover:opacity-80"
+                >
+                  <span class="truncate">{{ columnName(t.boardColumnId) }}</span>
+                  <lucide-icon name="chevronDown" class="size-3 shrink-0"></lucide-icon>
+                </div>
+                <ul
+                  tabindex="0"
+                  class="dropdown-content menu bg-base-100 border-base-300 z-20 mt-1 w-48 rounded-xl border p-1 shadow-xl"
+                >
+                  @for (col of columns(); track col.id) {
+                  <li><button type="button" class="text-sm" (click)="moveToColumn(col.id)">{{ col.name }}</button></li>
+                  }
+                </ul>
+              </div>
+              } @else {
+              <span
+                class="bg-base-200 text-base-content/60 max-w-32 truncate rounded-lg px-2 py-1 text-xs font-semibold"
+              >
+                {{ columnName(t.boardColumnId) }}
+              </span>
+              }
+            </div>
+            }
+
+            <!-- Assignee -->
+            @if (t.assignee) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/50 text-xs font-medium">Assignee</span>
+              <span class="text-base-content bg-base-200 max-w-32 truncate rounded-lg px-2 py-1 text-xs font-semibold"
+                >{{ t.assignee.name }}</span
+              >
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-4 shadow-sm">
+          <h3 class="text-base-content/40 mb-3 text-xs font-semibold tracking-wider uppercase">Timeline</h3>
+          <div class="flex flex-col gap-2">
+            @if (t.createdAt) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/40 text-xs">Created</span>
+              <span class="text-base-content/60 text-xs">{{ t.createdAt | relativeTime }}</span>
+            </div>
+            } @if (t.updatedAt) {
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-base-content/40 text-xs">Updated</span>
+              <span class="text-base-content/60 text-xs">{{ t.updatedAt | relativeTime }}</span>
+            </div>
+            }
+          </div>
+        </div>
+
+        <!-- Subtask summary (if any) -->
+        @if (t.subtasks.length > 0) {
+        <div class="bg-base-100 border-base-300 rounded-2xl border p-4 shadow-sm">
+          <h3 class="text-base-content/40 mb-3 text-xs font-semibold tracking-wider uppercase">Progress</h3>
+          <div class="mb-1.5 flex items-center gap-2">
+            <div class="bg-base-200 h-2 flex-1 overflow-hidden rounded-full">
+              <div
+                class="bg-success h-full rounded-full transition-all duration-300"
+                [style.width.%]="subtasksProgressPercent(t.subtasks)"
+              ></div>
+            </div>
+            <span class="text-base-content/50 shrink-0 text-xs font-medium tabular-nums">
+              {{ completedSubtasksCount(t.subtasks) }}/{{ t.subtasks.length }}
+            </span>
+          </div>
+          <p class="text-base-content/40 text-xs">{{ subtasksProgressCaption(t.subtasks) }}</p>
+        </div>
+        }
+      </aside>
+    </div>
+  </div>
+  }
+
+  <!-- Create branch modal -->
+  @if (showBranchModal() && task() && isOwner()) { @let ct = task()!;
+  <div class="modal modal-open">
+    <div class="modal-box max-w-md">
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm btn-circle absolute top-2 right-2"
+        (click)="closeCreateBranchModal()"
+        aria-label="Close"
+      >
+        <lucide-icon name="x" class="size-4"></lucide-icon>
+      </button>
+      <h3 class="mb-1 text-lg font-bold">
+        @if (branchModalTarget() === 'subtask') { Create branch for subtask } @else { Create branch }
+      </h3>
+      <p class="text-base-content/60 mb-4 font-mono text-sm">{{ ct.code }}</p>
+
+      <div class="flex flex-col gap-4">
+        <div class="form-control w-full">
+          <span class="label-text font-medium">Signed in as</span>
+          <div class="bg-base-200 text-base-content/80 rounded-lg px-3 py-2 text-sm font-medium">{{ owner }}</div>
+          @if (branchModalRepos().length > 0) {
+          <span class="label-text-alt text-base-content/50">Repositories below use your account or project links.</span>
+          }
+        </div>
+
+        @if (branchModalRepos().length === 0) {
+        <p class="text-base-content/60 text-sm leading-relaxed">
+          No repositories found for this account. Create a repository first, or link one to this project so it appears
+          here.
+        </p>
+        } @else {
+        <label class="form-control w-full">
+          <span class="label-text font-medium">Repository</span>
+          <select
+            id="branch-repo-select"
+            class="select select-bordered w-full"
+            [value]="branchSelectedRepoId()"
+            (change)="onBranchRepoSelect($any($event.target).value)"
+          >
+            @for (r of branchModalRepos(); track r.id) {
+            <option [value]="r.id">{{ r.ownerUsername }}/{{ r.name }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="form-control w-full">
+          <span class="label-text font-medium" id="branch-source-label">Create branch from</span>
+          @if (branchListLoading()) {
+          <div class="flex items-center gap-2 py-2" aria-labelledby="branch-source-label">
+            <span class="loading loading-spinner loading-sm text-primary"></span>
+            <span class="text-base-content/60 text-sm">Loading branches…</span>
+          </div>
+          } @else if (branchRefBranches().length === 0) {
+          <p class="text-base-content/50 text-sm" aria-labelledby="branch-source-label">
+            No branches found for this repository.
+          </p>
+          } @else {
+          <select
+            id="branch-source-select"
+            class="select select-bordered w-full"
+            aria-labelledby="branch-source-label"
+            [value]="branchSourceBranch()"
+            (change)="branchSourceBranch.set($any($event.target).value)"
+          >
+            @for (b of branchRefBranches(); track b.name) {
+            <option [value]="b.name">{{ b.name }}{{ b.isDefault ? ' (default)' : '' }}</option>
+            }
+          </select>
+          }
+        </div>
+
+        <div class="form-control w-full">
+          <label class="label pt-0 pb-1" for="branch-name-suffix">
+            <span class="label-text font-medium">New branch name <span class="text-error">*</span></span>
+          </label>
+          <div
+            class="border-base-300 focus-within:border-primary focus-within:ring-primary/30 flex w-full min-w-0 overflow-hidden rounded-lg border focus-within:ring-1"
+          >
+            <span
+              class="bg-base-200 text-base-content/80 border-base-300 flex shrink-0 items-center border-r px-3 py-2 font-mono text-sm select-none"
+              aria-hidden="true"
+              >{{ branchNamePrefixForModal() }}</span
+            >
+            <input
+              id="branch-name-suffix"
+              type="text"
+              class="placeholder:text-base-content/40 min-w-0 flex-1 border-0 bg-transparent px-3 py-2 text-sm outline-none"
+              placeholder="e.g. add-login-flow"
+              autocomplete="off"
+              [value]="branchNameSuffix()"
+              (input)="branchNameSuffix.set($any($event.target).value)"
+            />
+          </div>
+          <span class="label-text-alt text-base-content/50"
+            >Prefix is fixed to the task code; only the suffix is editable.</span
+          >
+        </div>
+        }
+      </div>
+
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" (click)="closeCreateBranchModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn btn-primary gap-2"
+          [disabled]="creatingBranch() || !branchModalCanSubmit()"
+          (click)="submitCreateBranch()"
+        >
+          @if (creatingBranch()) {
+          <span class="loading loading-spinner loading-sm"></span>
+          } @else {
+          <lucide-icon name="gitBranch" class="size-4"></lucide-icon>
+          } Create branch
+        </button>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="modal-backdrop cursor-default border-0 p-0"
+      aria-label="Close dialog"
+      (click)="closeCreateBranchModal()"
+    ></button>
+  </div>
+  }
+</div>

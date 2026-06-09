@@ -1,0 +1,38 @@
+{
+  "name": "gitnode-e2e",
+  "private": true,
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
+  "scripts": {
+    "test:e2e": "playwright test --project=api --project=scenario --project=teardown",
+    "test:e2e:api": "playwright test --project=api",
+    "test:e2e:scenario": "E2E_SCENARIO_ONLY=1 playwright test --project=scenario --project=teardown",
+    "test:e2e:scenario:only": "E2E_SCENARIO_ONLY=1 playwright test --project=scenario",
+    "test:e2e:saml": "E2E_SAML_ENABLED=1 playwright test --project=saml",
+    "test:e2e:ldap": "E2E_LDAP_ENABLED=1 playwright test --project=ldap",
+    "test:e2e:teardown": "E2E_TEARDOWN_ONLY=1 playwright test --project=teardown",
+    "test:e2e:ui": "playwright test --ui",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && tsc --noEmit",
+    "lint:eslint": "eslint .",
+    "lint-fix": "eslint . --fix",
+    "check": "pnpm run lint",
+    "format": "prettier --write \"**/*.{ts,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md}\""
+  },
+  "devDependencies": {
+    "dotenv": "^16.6.1",
+    "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.15.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.0.0",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "prettier": "^3.8.3",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.50.1"
+  },
+  "packageManager": "pnpm@10.12.1+sha512.f0dda8580f0ee9481c5c79a1d927b9164f2c478e90992ad268bbb2465a736984391d6333d2c327913578b2804af33474ca554ba29c04a8b13060a717675ae3ac"
+}

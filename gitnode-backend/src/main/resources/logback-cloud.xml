@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<configuration>
+  <timestamp key="byDay" datePattern="yyyy-MM-dd"/>
+
+  <appender name="SLACK" class="dev.gitnode.os.shared.log.SlackAppender">
+    <webhookUri>${SLACK_WEBHOOK_URI}</webhookUri>
+
+    <layout class="ch.qos.logback.classic.PatternLayout">
+      <pattern>%date %-5level %class - %msg%n</pattern>
+    </layout>
+
+    <username>gitnode</username>
+    <channel>gitnode-cloud</channel>
+    <iconEmoji>:beetle:</iconEmoji>
+    <colorCoding>true</colorCoding>
+  </appender>
+
+  <appender name="MAISLOG" class="com.maislog.MaislogAppender">
+    <endpoint>https://maislog.dev/api/v1/writer/logs</endpoint>
+    <token>${MAISLOG_TOKEN}</token>
+    <serviceName>${MAISLOG_SERVICE_NAME}</serviceName>
+  </appender>
+
+  <!-- Currently recommended way of using Slack appender -->
+  <appender name="ASYNC_SLACK" class="ch.qos.logback.classic.AsyncAppender">
+    <appender-ref ref="SLACK"/>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>WARN</level>
+    </filter>
+  </appender>
+
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%date %-5level %class - %msg%n</pattern>
+    </encoder>
+    <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+      <level>WARN</level>
+    </filter>
+  </appender>
+
+  <logger name="org.hibernate.engine.jdbc.spi.SqlExceptionHelper" level="ERROR"/>
+  <logger name="org.apache.sshd.server.session.ServerSessionImpl" level="ERROR"/>
+  <logger name="org.apache.sshd.common.util.logging" level="ERROR"/>
+  <logger name="com.gitnode.os.ssh" level="INFO"/>
+  <logger name="com.gitnode.os" level="DEBUG"/>
+
+  <root>
+    <level value="DEBUG"/>
+    <appender-ref ref="STDOUT"/>
+    <appender-ref ref="MAISLOG"/>
+    <appender-ref ref="ASYNC_SLACK"/>
+  </root>
+</configuration>

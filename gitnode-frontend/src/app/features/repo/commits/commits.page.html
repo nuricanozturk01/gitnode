@@ -1,0 +1,89 @@
+<section class="repo-panel overflow-hidden">
+  <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <div class="flex items-center gap-2">
+      <select
+        class="select select-bordered select-sm w-44"
+        [value]="branch()"
+        (change)="onBranchChange($any($event.target).value)"
+      >
+        @for (b of branches(); track b.name) {
+        <option [value]="b.name">{{ b.name }}</option>
+        } @if (branches().length === 0) {
+        <option [value]="defaultBranch()">{{ defaultBranch() }}</option>
+        }
+      </select>
+      <h2 class="text-base-content text-lg font-semibold">Commits</h2>
+    </div>
+  </div>
+
+  @if (error()) {
+  <div class="alert alert-error mx-4 mb-4">
+    <span>{{ error() }}</span>
+  </div>
+  } @if (loading()) {
+  <div class="flex justify-center py-16">
+    <span class="loading loading-spinner loading-lg text-primary"></span>
+  </div>
+  } @else if (commits().length === 0) {
+  <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 py-16">
+    <lucide-icon name="gitCommit" class="size-12"></lucide-icon>
+    <p class="text-center font-medium">No commits yet</p>
+    <p class="text-center text-sm">Push your first commit to get started.</p>
+  </div>
+  } @else {
+  <div class="overflow-x-auto">
+    <div class="divide-base-300 divide-y">
+      @for (c of commits(); track c.sha) {
+      <a
+        [routerLink]="['/', owner(), repoName(), 'commit', c.sha]"
+        class="hover:bg-base-200/50 block px-4 py-3 transition-colors"
+      >
+        <div class="flex items-start gap-3">
+          <app-avatar
+            [avatarUrl]="c.author.avatarUrl"
+            [email]="c.author.email"
+            [username]="c.author.username"
+            [fallback]="(c.author.name || c.author.username || '?').charAt(0).toUpperCase()"
+            size="md"
+          />
+          <div class="min-w-0 flex-1">
+            <p class="text-base-content line-clamp-1 font-medium">{{ c.message }}</p>
+            @if (c.description) {
+            <p class="text-base-content/70 mt-0.5 line-clamp-1 text-sm">{{ c.description }}</p>
+            }
+            <div class="text-base-content/60 mt-1 flex items-center gap-3 text-xs">
+              <span class="font-mono">{{ c.shortSha }}</span>
+              <span>{{ c.author.name || c.author.username || 'Unknown' }}</span>
+              <span>{{ c.committedAt | relativeTime }}</span>
+              @if (c.stats) {
+              <span class="text-success">+{{ c.stats.additions }}</span>
+              <span class="text-error">-{{ c.stats.deletions }}</span>
+              }
+            </div>
+          </div>
+          <lucide-icon name="chevronRight" class="text-base-content/40 size-4 shrink-0"></lucide-icon>
+        </div>
+      </a>
+      }
+    </div>
+  </div>
+
+  @if (totalPages() > 1) {
+  <div class="mt-6 flex justify-center gap-2">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline"
+      [disabled]="!hasPrevious()"
+      (click)="goToPage(currentPage() - 1)"
+    >
+      Previous
+    </button>
+    <span class="text-base-content/70 flex items-center px-4 text-sm">
+      Page {{ currentPage() + 1 }} of {{ totalPages() }}
+    </span>
+    <button type="button" class="btn btn-sm btn-outline" [disabled]="!hasNext()" (click)="goToPage(currentPage() + 1)">
+      Next
+    </button>
+  </div>
+  } }
+</section>

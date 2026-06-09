@@ -1,0 +1,26 @@
+<div class="job-graph">
+  @for (layer of layers(); track $index; let last = $last) {
+    <div class="job-graph__row">
+      @for (job of layer.jobs; track job.id) {
+        <button
+          type="button"
+          [class]="nodeClass(job)"
+          [class.job-graph__node--selected]="selectedJobId() === job.id"
+          (click)="selectJob(job.id)"
+        >
+          {{ job.name }}
+        </button>
+      }
+    </div>
+    @if (!last && layer.jobs.length > 1) {
+      <div class="job-graph__merge">
+        <div class="job-graph__merge-bar"></div>
+        <lucide-icon name="chevronDown" class="size-4"></lucide-icon>
+      </div>
+    } @else if (!last) {
+      <div class="job-graph__connector">
+        <lucide-icon name="chevronDown" class="size-4"></lucide-icon>
+      </div>
+    }
+  }
+</div>

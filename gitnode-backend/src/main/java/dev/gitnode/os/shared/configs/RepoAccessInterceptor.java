@@ -1,0 +1,160 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package dev.gitnode.os.shared.configs;
+
+import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.shared.repo.entities.Repo;
+import dev.gitnode.os.shared.repo.repositories.RepoRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+@Component
+@RequiredArgsConstructor
+@NullMarked
+public class RepoAccessInterceptor implements HandlerInterceptor {
+
+  private final RepoRepository repoRepository;
+  private final JwtUtils jwtUtils;
+  private final CollaboratorAccessPort collaboratorAccessPort;
+
+  @Override
+  public boolean preHandle(
+      final HttpServletRequest request, final HttpServletResponse response, final Object handler)
+      throws IOException {
+
+    final var repo = this.resolvePrivateRepo(request);
+    if (repo == null) {
+      return true;
+    }
+
+    return this.checkAuthorization(request, response, repo);
+  }
+
+  private @Nullable Repo resolvePrivateRepo(final HttpServletRequest request) {
+
+    final var parsed = parseOwnerRepo(request.getRequestURI());
+
+    return parsed
+        .flatMap(
+            strings ->
+                this.repoRepository
+                    .findByOwnerUsernameAndName(strings[0], strings[1])
+                    .filter(Repo::isPrivate))
+        .orElse(null);
+  }
+
+  private boolean checkAuthorization(
+      final HttpServletRequest request, final HttpServletResponse response, final Repo repo)
+      throws IOException {
+
+    final var authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
+
+    if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+      return this.writeForbidden(response);
+    }
+
+    return this.checkAuthorization(authHeader, request, response, repo);
+  }
+
+  private boolean checkAuthorization(
+      final String authHeader,
+      final HttpServletRequest request,
+      final HttpServletResponse response,
+      final Repo repo)
+      throws IOException {
+
+    try {
+      final var requesterId = this.jwtUtils.extractUserId(authHeader);
+      final boolean isOwner = repo.getOwner().getId().equals(requesterId);
+
+      if (isOwner) {
+        return true;
+      }
+
+      final boolean isCollaborator =
+          this.collaboratorAccessPort.isActiveCollaborator(repo.getId(), requesterId);
+
+      if (isCollaborator) {
+        return true;
+      }
+
+      final boolean isInvitationEndpoint =
+          request.getRequestURI().endsWith("/collaborators/invitation")
+              || request.getRequestURI().contains("/collaborators/invitation/");
+
+      if (isInvitationEndpoint
+          && this.collaboratorAccessPort.hasPendingInvitation(repo.getId(), requesterId)) {
+        return true;
+      }
+
+      return this.writeForbidden(response);
+    } catch (final Exception _) {
+      return this.writeUnauthorized(response);
+    }
+  }
+
+  private boolean writeForbidden(final HttpServletResponse response) throws IOException {
+    this.writeError(response, HttpServletResponse.SC_FORBIDDEN, "repoAccessDenied");
+    return false;
+  }
+
+  private boolean writeUnauthorized(final HttpServletResponse response) throws IOException {
+    this.writeError(response, HttpServletResponse.SC_UNAUTHORIZED, "invalidToken");
+    return false;
+  }
+
+  private void writeError(final HttpServletResponse response, final int status, final String code)
+      throws IOException {
+    response.setStatus(status);
+    response.setContentType("application/json");
+    response.getWriter().write("{\"error\":\"" + code + "\"}");
+  }
+
+  private static Optional<String[]> parseOwnerRepo(final String uri) {
+    final var prefix = "/api/repos/";
+
+    if (!uri.startsWith(prefix)) {
+      return Optional.empty();
+    }
+
+    final var rest = uri.substring(prefix.length());
+    final var slash = rest.indexOf('/');
+
+    if (slash < 0) {
+      return Optional.empty();
+    }
+
+    final var owner = rest.substring(0, slash);
+    final var afterOwner = rest.substring(slash + 1);
+    final var slash2 = afterOwner.indexOf('/');
+    final var repoName = slash2 < 0 ? afterOwner : afterOwner.substring(0, slash2);
+
+    if (owner.isBlank() || repoName.isBlank()) {
+      return Optional.empty();
+    }
+
+    return Optional.of(new String[] {owner, repoName});
+  }
+}

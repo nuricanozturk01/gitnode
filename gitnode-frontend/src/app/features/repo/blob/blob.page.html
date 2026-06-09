@@ -1,0 +1,154 @@
+<section class="repo-panel overflow-hidden" [attr.data-blob-syntax]="blobSyntaxTheme()">
+  <div class="repo-toolbar space-y-3 px-4 py-3">
+    <app-repo-breadcrumb
+      [owner]="owner()"
+      [repoName]="repoName()"
+      [branch]="branch()"
+      [path]="path()"
+      [items]="breadcrumbItems()"
+    />
+    <div class="flex items-center justify-between gap-2">
+      <span class="mono text-base-content text-sm">{{ fileName() }}</span>
+      <div class="flex items-center gap-2">
+        @if (blob(); as b) {
+        <span class="text-base-content/60 text-xs">{{ b.size | fileSize }}</span>
+        @if (b.lineCount > 0) {
+        <span class="text-base-content/60 text-xs">{{ b.lineCount }} lines</span>
+        } @if (!b.isBinary && !imageObjectUrl() && !pdfObjectUrl()) {
+        <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="copyContent()">
+          @if (copied()) {
+          <lucide-icon name="checkCircle" class="text-success size-3"></lucide-icon>
+          Copied! } @else {
+          <lucide-icon name="copy" class="size-3"></lucide-icon>
+          Copy }
+        </button>
+        @if (repoContext.canEdit() && !isEditing()) {
+        <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="enterEditMode()">
+          <lucide-icon name="pencil" class="size-3"></lucide-icon>
+          Edit
+        </button>
+        } @if (isEditing()) {
+        <button type="button" class="btn btn-ghost btn-xs" (click)="cancelEdit()">Cancel</button>
+        } } }
+      </div>
+    </div>
+  </div>
+
+  @if (loading()) {
+  <div class="flex justify-center py-12">
+    <span class="loading loading-spinner loading-md text-primary"></span>
+  </div>
+  } @else if (blob(); as b) { @if (imageObjectUrl()) {
+  <div class="flex flex-col items-center gap-3 p-6">
+    <img
+      [src]="imageObjectUrl()"
+      [alt]="fileName()"
+      class="ring-base-300 max-h-[70vh] max-w-full rounded-lg object-contain shadow-sm ring-1"
+    />
+    <div class="flex items-center gap-3">
+      <a
+        [href]="environment.apiUrl + '/api/repos/' + owner() + '/' + repoName() + '/raw/' + branch() + '/' + path()"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="btn btn-ghost btn-xs gap-1"
+      >
+        <lucide-icon name="download" class="size-3"></lucide-icon>
+        Download
+      </a>
+    </div>
+  </div>
+  } @else if (pdfObjectUrl()) {
+  <div class="flex h-[70vh] w-full flex-col">
+    <iframe [src]="pdfObjectUrl()" class="border-base-300 h-full w-full rounded-lg border" title="PDF viewer"></iframe>
+  </div>
+  } @else if (rawBlobUrl()) {
+  <div class="text-base-content/50 flex flex-col items-center gap-4 p-8 text-center text-sm">
+    <p>File is too large to display inline (over 512KB).</p>
+    <a [href]="rawBlobUrl()" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+      Download file
+    </a>
+  </div>
+  } @else if (b.isBinary) {
+  <div class="text-base-content/50 flex flex-col items-center gap-4 p-8 text-center text-sm">
+    <p>Binary file — cannot display content.</p>
+    <a
+      [href]="environment.apiUrl + '/api/repos/' + owner() + '/' + repoName() + '/raw/' + branch() + '/' + path()"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="btn btn-ghost btn-sm"
+    >
+      Download
+    </a>
+  </div>
+  } @else if (isEditing()) {
+
+  <div class="border-base-300 flex flex-col gap-0">
+    <textarea
+      class="bg-base-100 text-base-content border-base-300 min-h-[60vh] w-full resize-y border-0 border-b p-4 font-mono text-sm leading-6 outline-none focus:outline-none"
+      style="
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        white-space: pre;
+        overflow-x: auto;
+      "
+      [value]="editContent()"
+      (input)="editContent.set($any($event.target).value)"
+      spellcheck="false"
+      autocomplete="off"
+      autocorrect="off"
+      autocapitalize="off"
+    ></textarea>
+
+    <div class="bg-base-50 border-base-300 space-y-3 p-4">
+      <h3 class="text-base-content text-sm font-semibold">Commit changes</h3>
+      <input
+        type="text"
+        class="input input-bordered input-sm w-full"
+        placeholder="Update {{ fileName() }}"
+        [value]="commitMessage()"
+        (input)="commitMessage.set($any($event.target).value)"
+      />
+      <textarea
+        class="textarea textarea-bordered w-full resize-none text-sm"
+        rows="3"
+        placeholder="Add an optional extended description..."
+        [value]="commitDescription()"
+        (input)="commitDescription.set($any($event.target).value)"
+      ></textarea>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          [disabled]="saving() || !commitMessage().trim()"
+          (click)="commitFile()"
+        >
+          @if (saving()) {
+          <span class="loading loading-spinner loading-xs"></span>
+          } Commit changes
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="cancelEdit()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  } @else {
+  <div class="bg-base-200 overflow-x-auto">
+    <table
+      class="w-full border-collapse text-sm"
+      style="font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace"
+    >
+      <tbody>
+        @for (line of highlightedLines(); track $index) {
+        <tr class="hover:bg-base-300/40">
+          <td
+            class="text-base-content/40 border-base-300 w-[1%] min-w-[52px] border-r px-4 py-0 text-right align-top leading-6 select-none"
+          >
+            {{ $index + 1 }}
+          </td>
+          <td class="px-4 py-0 align-top leading-6 whitespace-pre" [innerHTML]="line"></td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } }
+</section>

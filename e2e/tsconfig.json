@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@helpers/*": ["api/helpers/*"],
+      "@fixtures/*": ["api/fixtures/*"],
+      "@e2e-helpers/*": ["helpers/*"]
+    }
+  },
+  "include": ["**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "playwright-report",
+    "test-results",
+    "blob-report",
+    "scenario/.workdirs"
+  ]
+}

@@ -1,0 +1,35 @@
+@import 'highlight.js/styles/github.css';
+
+[data-blob-syntax='light'] .hljs {
+  background: transparent;
+}
+
+[data-blob-syntax='dark'] .hljs {
+  color: #c9d1d9;
+  background: transparent;
+}
+
+[data-blob-syntax='dark'] td .hljs-keyword {
+  color: #ff7b72;
+}
+[data-blob-syntax='dark'] td .hljs-string {
+  color: #a5d6ff;
+}
+[data-blob-syntax='dark'] td .hljs-comment {
+  color: #8b949e;
+}
+[data-blob-syntax='dark'] td .hljs-number {
+  color: #79c0ff;
+}
+[data-blob-syntax='dark'] td .hljs-function {
+  color: #d2a8ff;
+}
+[data-blob-syntax='dark'] td .hljs-title {
+  color: #d2a8ff;
+}
+[data-blob-syntax='dark'] td .hljs-type {
+  color: #ffa657;
+}
+[data-blob-syntax='dark'] td .hljs-built_in {
+  color: #ffa657;
+}

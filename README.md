@@ -414,6 +414,70 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 
 ---
 
+## 🏗 Scaling & High Availability
+
+GitNode is designed to run as multiple stateless app instances behind a load balancer.
+
+### What is multi-instance safe
+
+| Component | Storage | Multi-instance |
+|---|---|---|
+| Session / JWT | Stateless | ✅ |
+| Spring Cache (`branches`, `repo-meta`, …) | Redis | ✅ |
+| Actions runtime state (pending uploads, ID allocation) | Redis | ✅ |
+| Webhook DLQ retry state | DB | ✅ |
+| Rate-limit counters | Redis | ✅ |
+
+### What requires shared storage
+
+| Component | Default path | Multi-instance requirement |
+|---|---|---|
+| Git repositories | `GITNODE_GIT_REPO__ROOT` (default `/data/repos`) | **Shared volume** — all instances must read/write the same path |
+| CI/CD artifacts & cache | `gitnode.actions.artifacts.local-path` | **Shared volume** — artifacts committed on one instance must be readable on all others |
+
+Without shared storage, requests routed to a different instance than the one that wrote the file will return 404. Mount a network filesystem (NFS, AWS EFS, GCP Filestore, Azure Files) at both paths, or use a `ReadWriteMany` Kubernetes PVC.
+
+### Docker Compose HA (built-in)
+
+```bash
+make up-ha N=3    # infra + 3 app instances + HAProxy (HTTP :8080, SSH :2222)
+make proxy        # start HAProxy only (if instances already running)
+make app-scale N=3
+```
+
+HAProxy config is in `haproxy.cfg` at the project root.
+
+### Kubernetes example
+
+```yaml
+# Shared PVC for repos + artifacts — mount on all app pods
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitnode-data
+spec:
+  accessModes: [ReadWriteMany]   # requires NFS / EFS / GCP Filestore / Azure Files
+  resources:
+    requests:
+      storage: 100Gi
+---
+# In your Deployment / StatefulSet:
+volumeMounts:
+  - name: data
+    mountPath: /data/repos          # GITNODE_GIT_REPO__ROOT
+  - name: data
+    mountPath: /data/artifacts      # gitnode.actions.artifacts.local-path
+    subPath: artifacts
+volumes:
+  - name: data
+    persistentVolumeClaim:
+      claimName: gitnode-data
+```
+
+Redis and PostgreSQL must also be external (not per-pod) in a multi-instance setup — use a managed service or a dedicated StatefulSet with persistence.
+
+---
+
 ## 📄 License
 
 Distributed under the [MIT License](LICENSE.txt).

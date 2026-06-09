@@ -99,7 +99,12 @@ class SnippetCommentServiceTest {
     return SnippetCommentInfo.builder()
         .id(id)
         .body(body)
-        .author(SnippetOwnerInfo.builder().id(UUID.randomUUID()).username("user").build())
+        .author(
+            SnippetOwnerInfo.builder()
+                .id(UUID.randomUUID())
+                .username("user")
+                .email("user@example.com")
+                .build())
         .build();
   }
 

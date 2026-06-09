@@ -98,6 +98,8 @@ import {
   Terminal,
   Network,
   Unlock,
+  Clock,
+  FileX2,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -184,4 +186,6 @@ export const LUCIDE_ICONS = {
   Terminal,
   Network,
   Unlock,
+  Clock,
+  FileX2,
 };

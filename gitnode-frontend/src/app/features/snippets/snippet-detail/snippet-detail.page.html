@@ -1,11 +1,16 @@
 @if (loading()) {
-<div class="bg-base-200 flex min-h-[60vh] flex-col items-center justify-center gap-4 py-16">
+<div class="flex min-h-[60vh] flex-col items-center justify-center gap-4 py-16">
   <span class="loading loading-spinner loading-lg text-primary" aria-hidden="true"></span>
   <p class="text-base-content/55 text-sm">Loading snippet…</p>
 </div>
 } @else if (loadError()) {
-<div class="bg-base-200 min-h-[60vh] px-4 py-16">
-  <div class="mx-auto max-w-lg text-center">
+<div class="min-h-[60vh] px-4 py-16">
+  <div class="repo-panel mx-auto max-w-lg p-8 text-center">
+    <div
+      class="bg-error/10 text-error ring-error/20 mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl ring-1"
+    >
+      <lucide-icon name="file-x-2" class="size-7" aria-hidden="true"></lucide-icon>
+    </div>
     <p class="text-base-content text-lg font-semibold">Snippet unavailable</p>
     <p class="text-base-content/55 mt-2 text-sm">{{ loadError() }}</p>
     @if (isLoggedIn()) {
@@ -16,180 +21,263 @@
   </div>
 </div>
 } @else if (snippet()) {
-<div class="bg-base-200 min-h-screen" [attr.data-blob-syntax]="blobSyntaxTheme()">
-  <div class="mx-auto max-w-5xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
+<div class="snippet-detail min-h-screen" [attr.data-blob-syntax]="blobSyntaxTheme()">
+  <div class="mx-auto max-w-6xl px-4 py-6 sm:px-6 md:py-10 lg:px-8">
     <!-- Breadcrumb -->
-    <div class="text-base-content/55 mb-4 flex items-center gap-2 text-sm">
-      <a routerLink="/snippets" class="text-primary hover:underline">Snippets</a>
-      <span>/</span>
-      <span class="text-base-content font-medium">{{ snippet()!.title }}</span>
-    </div>
+    <nav class="snippet-detail__breadcrumb mb-5 flex min-w-0 items-center gap-2 text-sm" aria-label="Breadcrumb">
+      <a routerLink="/snippets">Snippets</a>
+      <lucide-icon name="chevron-right" class="size-3.5 shrink-0 opacity-50" aria-hidden="true"></lucide-icon>
+      <span class="text-base-content truncate font-medium">{{ snippet()!.title }}</span>
+    </nav>
 
-    <!-- Header card -->
-    <div class="bg-base-100 border-base-300 mb-6 rounded-2xl border p-5 shadow-sm">
-      <div class="flex flex-wrap items-start justify-between gap-4">
+    <!-- Header -->
+    <header class="repo-panel mb-6 overflow-hidden">
+      <div class="repo-toolbar flex flex-wrap items-start justify-between gap-4 px-4 py-4 sm:px-5 sm:py-5">
         <div class="min-w-0 flex-1">
-          <div class="mb-1 flex flex-wrap items-center gap-2">
-            <h1 class="text-base-content text-xl font-bold">{{ snippet()!.title }}</h1>
+          <div class="mb-2 flex flex-wrap items-center gap-2">
+            <h1 class="text-base-content text-2xl font-bold tracking-tight sm:text-[1.65rem]">
+              {{ snippet()!.title }}
+            </h1>
             @if (snippet()!.visibility === 'PRIVATE') {
-            <span class="badge-pill badge-pill--warning gap-1">
+            <span class="badge-pill badge-pill--warning inline-flex items-center gap-1">
               <lucide-icon name="lock" class="size-3"></lucide-icon>
               Private
             </span>
             } @else {
-            <span class="badge-pill badge-pill--public gap-1">
+            <span class="badge-pill badge-pill--public inline-flex items-center gap-1">
               <lucide-icon name="globe" class="size-3"></lucide-icon>
               Public
             </span>
             }
           </div>
+
           @if (snippet()!.description) {
-          <p class="text-base-content/60 mt-1 text-sm">{{ snippet()!.description }}</p>
+          <p class="text-base-content/65 max-w-3xl text-sm leading-relaxed">{{ snippet()!.description }}</p>
           } @if (snippet()!.forkedFrom) {
-          <p class="text-base-content/40 mt-1 text-xs">
+          <p class="text-base-content/50 mt-2 text-xs">
             Forked from
             <a [routerLink]="['/snippets', snippet()!.forkedFrom!.id]" class="text-primary hover:underline">
               {{ snippet()!.forkedFrom!.owner.username }}/{{ snippet()!.forkedFrom!.title }}
             </a>
           </p>
           }
-          <div class="text-base-content/40 mt-3 flex flex-wrap items-center gap-3 text-xs">
-            <a [routerLink]="['/', snippet()!.owner.username]" class="hover:text-primary no-underline">
-              {{ snippet()!.owner.username }}
+
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <a
+              [routerLink]="['/', snippet()!.owner.username]"
+              class="text-base-content hover:text-primary flex items-center gap-2 no-underline transition-colors"
+            >
+              @let ownerAvatar = avatarProps(snippet()!.owner);
+              <app-avatar
+                [avatarUrl]="ownerAvatar.avatarUrl"
+                [email]="ownerAvatar.email"
+                [username]="ownerAvatar.username"
+                [fallback]="ownerAvatar.fallback"
+                size="sm"
+              />
+              <span class="text-sm font-medium">{{ snippet()!.owner.username }}</span>
             </a>
-            <span>·</span>
-            <span>{{ snippet()!.createdAt | relativeTime }}</span>
-            <span>·</span>
-            <span class="flex items-center gap-1">
-              <lucide-icon name="file" class="size-3"></lucide-icon>
+            <span class="text-base-content/25 hidden h-4 w-px bg-current sm:block" aria-hidden="true"></span>
+            <span class="snippet-detail__meta-chip">
+              <lucide-icon name="clock" class="size-3"></lucide-icon>
+              {{ snippet()!.createdAt | relativeTime }}
+            </span>
+            <span class="snippet-detail__meta-chip">
+              <lucide-icon name="file-code-2" class="size-3"></lucide-icon>
               {{ snippet()!.fileCount }} file{{ snippet()!.fileCount !== 1 ? 's' : '' }}
             </span>
-            <span class="flex items-center gap-1">
+            <span class="snippet-detail__meta-chip">
               <lucide-icon name="git-fork" class="size-3"></lucide-icon>
               {{ snippet()!.forkCount }}
             </span>
-            <span class="flex items-center gap-1">
+            <span class="snippet-detail__meta-chip">
               <lucide-icon name="message-circle" class="size-3"></lucide-icon>
               {{ snippet()!.commentCount }}
             </span>
           </div>
         </div>
 
-        <!-- Action buttons -->
         <div class="flex shrink-0 flex-wrap items-center gap-2">
-          <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="copySnippetUrl()">
+          <button type="button" class="btn btn-ghost btn-sm gap-1.5" (click)="copySnippetUrl()">
             <lucide-icon name="link" class="size-4"></lucide-icon>
             Copy link
           </button>
           @if (isLoggedIn() && !isOwner()) {
-          <button type="button" class="btn btn-ghost btn-sm gap-1" (click)="fork()">
+          <button type="button" class="btn btn-ghost btn-sm gap-1.5" (click)="fork()">
             <lucide-icon name="git-fork" class="size-4"></lucide-icon>
             Fork
           </button>
           } @if (isOwner()) {
-          <a [routerLink]="['/snippets', snippet()!.id, 'edit']" class="btn btn-ghost btn-sm gap-1">
+          <a [routerLink]="['/snippets', snippet()!.id, 'edit']" class="btn btn-ghost btn-sm gap-1.5">
             <lucide-icon name="pencil" class="size-4"></lucide-icon>
             Edit
           </a>
-          <button type="button" class="btn btn-ghost btn-sm text-error gap-1" (click)="deleteSnippet()">
+          <button type="button" class="btn btn-ghost btn-sm text-error gap-1.5" (click)="deleteSnippet()">
             <lucide-icon name="trash-2" class="size-4"></lucide-icon>
             Delete
           </button>
           }
         </div>
       </div>
-    </div>
+    </header>
 
-    <div class="flex flex-col gap-6 lg:flex-row">
-      <!-- Files -->
-      <div class="flex min-w-0 flex-1 flex-col gap-4">
-        @for (hf of highlightedFiles(); track hf.file.id; let idx = $index) {
-        <div class="bg-base-100 border-base-300 overflow-hidden rounded-2xl border shadow-sm">
-          <!-- File header -->
-          <div class="border-base-300 flex items-center justify-between gap-2 border-b px-4 py-2.5">
-            <div class="flex min-w-0 items-center gap-2">
-              <button type="button" class="btn btn-ghost btn-xs btn-square" (click)="toggleCollapse(idx)">
-                <lucide-icon [name]="hf.collapsed ? 'chevron-right' : 'chevron-down'" class="size-4"></lucide-icon>
-              </button>
+    <div class="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start">
+      <!-- Main column -->
+      <div class="flex min-w-0 flex-col gap-5">
+        <!-- Files -->
+        @if (highlightedFiles().length > 0) {
+        <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
+          <p class="text-base-content/50 text-xs font-medium tracking-wide uppercase">
+            {{ highlightedFiles().length }} file{{ highlightedFiles().length !== 1 ? 's' : '' }}
+          </p>
+          @if (highlightedFiles().length > 1) {
+          <div class="flex items-center gap-1">
+            <button type="button" class="btn btn-ghost btn-xs" (click)="expandAllFiles()">Expand all</button>
+            <button type="button" class="btn btn-ghost btn-xs" (click)="collapseAllFiles()">Collapse all</button>
+          </div>
+          }
+        </div>
+        } @for (hf of highlightedFiles(); track hf.file.id; let idx = $index) {
+        <section
+          class="repo-panel snippet-accordion overflow-hidden"
+          [class.snippet-accordion--collapsed]="hf.collapsed"
+        >
+          <div class="repo-toolbar flex items-center justify-between gap-2 px-2 py-1.5 sm:px-3">
+            <button
+              type="button"
+              class="snippet-accordion__trigger flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1.5 py-1.5 text-left sm:px-2"
+              [attr.aria-expanded]="!hf.collapsed"
+              [attr.aria-controls]="'snippet-file-' + hf.file.id"
+              (click)="toggleCollapse(idx)"
+            >
+              <lucide-icon
+                [name]="hf.collapsed ? 'chevron-right' : 'chevron-down'"
+                class="text-base-content/55 size-4 shrink-0 transition-transform duration-200"
+                aria-hidden="true"
+              ></lucide-icon>
               <lucide-icon name="file-code-2" class="text-primary size-4 shrink-0"></lucide-icon>
-              <span class="text-base-content truncate font-mono text-sm font-medium">{{ hf.file.filename }}</span>
+              <span class="mono text-base-content truncate text-sm font-medium">{{ hf.file.filename }}</span>
               @if (hf.language !== 'plaintext') {
-              <span class="bg-primary/10 text-primary shrink-0 rounded px-1.5 py-0.5 font-mono text-xs"
-                >{{ hf.language }}</span
-              >
+              <span class="snippet-detail__lang-badge">{{ hf.language }}</span>
               }
-            </div>
-            <div class="flex shrink-0 items-center gap-1">
-              <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="copyToClipboard(hf.file.content)">
+            </button>
+            <div class="flex shrink-0 items-center gap-1 pr-1 sm:pr-1.5">
+              @if (!hf.isMarkdown) {
+              <span class="text-base-content/45 hidden text-xs sm:inline">
+                {{ hf.file.content.split('\n').length }} lines
+              </span>
+              }
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                (click)="$event.stopPropagation(); copyToClipboard(hf.file.content)"
+              >
                 <lucide-icon name="copy" class="size-3.5"></lucide-icon>
                 Copy
               </button>
-              <a [href]="rawFileUrl(hf.file.id)" target="_blank" class="btn btn-ghost btn-xs gap-1 no-underline">
+              <a
+                [href]="rawFileUrl(hf.file.id)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-ghost btn-xs gap-1 no-underline"
+                (click)="$event.stopPropagation()"
+              >
                 <lucide-icon name="external-link" class="size-3.5"></lucide-icon>
                 Raw
               </a>
             </div>
           </div>
 
-          <!-- File content -->
-          @if (!hf.collapsed) { @if (hf.isMarkdown && hf.markdownHtml) {
-          <div class="prose prose-sm max-w-none p-5" [innerHTML]="hf.markdownHtml"></div>
-          } @else {
-          <div class="overflow-x-auto">
-            <table class="w-full border-collapse font-mono text-xs leading-5">
-              <tbody>
-                @for (line of hf.lines; track $index) {
-                <tr class="hover:bg-base-200/50">
-                  <td class="text-base-content/30 w-12 px-3 py-0 text-right select-none">{{ $index + 1 }}</td>
-                  <td class="px-4 py-0 whitespace-pre" [innerHTML]="line"></td>
-                </tr>
-                }
-              </tbody>
-            </table>
+          <div
+            class="snippet-accordion__panel"
+            [class.snippet-accordion__panel--open]="!hf.collapsed"
+            [id]="'snippet-file-' + hf.file.id"
+            [attr.aria-hidden]="hf.collapsed"
+          >
+            <div class="snippet-accordion__panel-inner">
+              @if (hf.isMarkdown && hf.markdownHtml) {
+              <div class="snippet-detail__markdown prose prose-sm max-w-none" [innerHTML]="hf.markdownHtml"></div>
+              } @else {
+              <div class="snippet-code-viewer__body overflow-x-auto">
+                <table class="snippet-code-viewer__table">
+                  <tbody>
+                    @for (line of hf.lines; track $index) {
+                    <tr>
+                      <td class="snippet-code-viewer__gutter">{{ $index + 1 }}</td>
+                      <td class="snippet-code-viewer__code"><span class="hljs" [innerHTML]="line"></span></td>
+                    </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              }
+            </div>
           </div>
-          } }
-        </div>
+        </section>
         }
 
         <!-- Comments -->
-        <div class="bg-base-100 border-base-300 rounded-2xl border shadow-sm">
-          <div class="border-base-300 border-b px-5 py-3">
-            <h2 class="text-base-content text-sm font-semibold">Comments ({{ commentTotalElements() }})</h2>
+        <section class="repo-panel overflow-hidden">
+          <div class="repo-toolbar flex items-center justify-between gap-2 px-4 py-3 sm:px-5">
+            <h2 class="text-base-content text-sm font-semibold">
+              Comments
+              <span class="text-base-content/45 font-normal">({{ commentTotalElements() }})</span>
+            </h2>
+            @if (commentTotalPages() > 1) {
+            <span class="text-base-content/45 text-xs">{{ commentPage() + 1 }} / {{ commentTotalPages() }}</span>
+            }
           </div>
 
           @if (loadingComments()) {
-          <div class="flex justify-center py-6">
+          <div class="flex justify-center py-8">
             <span class="loading loading-spinner loading-sm text-primary"></span>
           </div>
           } @else if (comments().length === 0) {
-          <p class="text-base-content/40 px-5 py-6 text-center text-sm">No comments yet.</p>
+          <div class="text-base-content/45 px-4 py-10 text-center text-sm sm:px-5">
+            No comments yet. Be the first to share feedback.
+          </div>
           } @else {
           <div class="divide-base-300 divide-y">
             @for (comment of comments(); track comment.id) {
-            <div class="flex gap-3 px-5 py-4">
+            <article class="flex gap-3 px-4 py-4 sm:gap-4 sm:px-5">
+              @let commentAvatar = avatarProps(comment.author);
+              <app-avatar
+                [avatarUrl]="commentAvatar.avatarUrl"
+                [email]="commentAvatar.email"
+                [username]="commentAvatar.username"
+                [fallback]="commentAvatar.fallback"
+                size="sm"
+                class="mt-0.5 shrink-0"
+              />
               <div class="min-w-0 flex-1">
-                <div class="flex items-center justify-between gap-2">
-                  <span class="text-base-content text-sm font-medium">{{ comment.author.username }}</span>
-                  <div class="text-base-content/40 flex items-center gap-2 text-xs">
-                    <span>{{ comment.createdAt | relativeTime }}</span>
-                    @if (canDeleteComment(comment)) {
-                    <button
-                      type="button"
-                      class="btn btn-ghost btn-xs btn-square text-error"
-                      (click)="deleteComment(comment.id)"
+                <header class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex flex-wrap items-center gap-2 text-sm">
+                    <a
+                      [routerLink]="['/', comment.author.username]"
+                      class="text-base-content hover:text-primary font-medium no-underline"
                     >
-                      <lucide-icon name="trash-2" class="size-3.5"></lucide-icon>
-                    </button>
-                    }
+                      {{ comment.author.username }}
+                    </a>
+                    <time class="text-base-content/45 text-xs">{{ comment.createdAt | relativeTime }}</time>
                   </div>
-                </div>
-                <p class="text-base-content/80 mt-1 text-sm whitespace-pre-wrap">{{ comment.body }}</p>
+                  @if (canDeleteComment(comment)) {
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-xs btn-square text-error opacity-70 hover:opacity-100"
+                    aria-label="Delete comment"
+                    (click)="deleteComment(comment.id)"
+                  >
+                    <lucide-icon name="trash-2" class="size-3.5"></lucide-icon>
+                  </button>
+                  }
+                </header>
+                <p class="text-base-content/80 mt-2 text-sm leading-relaxed whitespace-pre-wrap">{{ comment.body }}</p>
               </div>
-            </div>
+            </article>
             }
           </div>
           @if (commentTotalPages() > 1) {
-          <div class="border-base-300 flex items-center justify-center gap-3 border-t px-5 py-3">
+          <div class="border-base-300 flex items-center justify-center gap-3 border-t px-4 py-3 sm:px-5">
             <button
               type="button"
               class="btn btn-ghost btn-xs"
@@ -197,27 +285,32 @@
               (click)="loadCommentPage(commentPage() - 1)"
             >
               <lucide-icon name="chevron-left" class="size-3.5"></lucide-icon>
+              Prev
             </button>
-            <span class="text-base-content/50 text-xs">{{ commentPage() + 1 }} / {{ commentTotalPages() }}</span>
             <button
               type="button"
               class="btn btn-ghost btn-xs"
               [disabled]="commentPage() >= commentTotalPages() - 1"
               (click)="loadCommentPage(commentPage() + 1)"
             >
+              Next
               <lucide-icon name="chevron-right" class="size-3.5"></lucide-icon>
             </button>
           </div>
           } } @if (isLoggedIn()) {
-          <div class="border-base-300 border-t px-5 py-4">
+          <div class="snippet-detail__comment-form border-base-300 border-t px-4 py-4 sm:px-5">
+            <label class="text-base-content/55 mb-2 block text-xs font-medium" for="snippet-comment"
+              >Add a comment</label
+            >
             <textarea
+              id="snippet-comment"
               class="textarea textarea-bordered w-full text-sm"
               rows="3"
-              placeholder="Leave a comment..."
+              placeholder="Share feedback or ask a question…"
               [value]="commentBody()"
               (input)="onCommentInput($event)"
             ></textarea>
-            <div class="mt-2 flex justify-end">
+            <div class="mt-3 flex justify-end">
               <button
                 type="button"
                 class="btn btn-primary btn-sm"
@@ -226,23 +319,24 @@
               >
                 @if (submittingComment()) {
                 <span class="loading loading-spinner loading-xs"></span>
-                } Comment
+                } Post comment
               </button>
             </div>
           </div>
           }
-        </div>
+        </section>
       </div>
 
       <!-- Revisions sidebar -->
       @if (revisions().length > 0 || revisionTotalPages() > 0) {
-      <div class="shrink-0 lg:w-60">
-        <div class="bg-base-100 border-base-300 rounded-2xl border shadow-sm">
-          <div class="border-base-300 border-b px-4 py-3">
+      <aside class="snippet-detail__sidebar min-w-0">
+        <section class="repo-panel overflow-hidden">
+          <div class="repo-toolbar px-4 py-3">
             <h2 class="text-base-content text-sm font-semibold">Revisions</h2>
           </div>
+
           @if (loadingRevisions()) {
-          <div class="flex justify-center py-4">
+          <div class="flex justify-center py-6">
             <span class="loading loading-spinner loading-sm text-primary"></span>
           </div>
           } @else {
@@ -251,24 +345,25 @@
             <li>
               <a
                 [routerLink]="['/snippets', snippet()!.id, 'revisions', rev.id]"
-                class="hover:bg-base-200/60 block px-4 py-3 no-underline transition-colors"
+                class="snippet-detail__revision-link"
+                [class.snippet-detail__revision-link--latest]="revisionPage() === 0 && i === 0"
               >
-                <div class="flex items-center justify-between gap-1">
-                  <span class="text-primary font-mono text-xs">r{{ revisionPage() * 10 + i + 1 }}</span>
+                <div class="flex items-center justify-between gap-2">
+                  <span class="text-primary font-mono text-xs font-semibold">r{{ revisionPage() * 10 + i + 1 }}</span>
                   @if (revisionPage() === 0 && i === 0) {
-                  <span class="badge-pill badge-pill--primary">latest</span>
+                  <span class="badge-pill badge-pill--primary text-[10px]">latest</span>
                   }
                 </div>
                 @if (rev.summary) {
-                <p class="text-base-content/70 mt-0.5 truncate text-xs">{{ rev.summary }}</p>
+                <p class="text-base-content/70 mt-1 line-clamp-2 text-xs leading-relaxed">{{ rev.summary }}</p>
                 }
-                <p class="text-base-content/40 mt-0.5 text-xs">{{ rev.createdAt | relativeTime }}</p>
+                <p class="text-base-content/45 mt-1 text-xs">{{ rev.createdAt | relativeTime }}</p>
               </a>
             </li>
             }
           </ul>
           @if (revisionTotalPages() > 1) {
-          <div class="border-base-300 flex items-center justify-center gap-2 border-t px-4 py-2">
+          <div class="border-base-300 flex items-center justify-center gap-2 border-t px-3 py-2.5">
             <button
               type="button"
               class="btn btn-ghost btn-xs"
@@ -277,7 +372,7 @@
             >
               <lucide-icon name="chevron-left" class="size-3.5"></lucide-icon>
             </button>
-            <span class="text-base-content/50 text-xs">{{ revisionPage() + 1 }} / {{ revisionTotalPages() }}</span>
+            <span class="text-base-content/45 text-xs">{{ revisionPage() + 1 }} / {{ revisionTotalPages() }}</span>
             <button
               type="button"
               class="btn btn-ghost btn-xs"
@@ -288,8 +383,8 @@
             </button>
           </div>
           } }
-        </div>
-      </div>
+        </section>
+      </aside>
       }
     </div>
   </div>

@@ -47,7 +47,6 @@ import org.mapstruct.MappingConstants;
 public interface SnippetMapper {
 
   @BeanMapping(builder = @Builder())
-  @Mapping(target = "avatarUrl", ignore = true)
   SnippetOwnerInfo toOwnerInfo(Tenant tenant);
 
   @BeanMapping(builder = @Builder())
@@ -68,6 +67,7 @@ public interface SnippetMapper {
   SnippetInfo toInfo(Snippet snippet);
 
   @BeanMapping(builder = @Builder())
+  @Mapping(target = "author", source = "author")
   SnippetCommentInfo toCommentInfo(SnippetComment comment);
 
   @BeanMapping(builder = @Builder())

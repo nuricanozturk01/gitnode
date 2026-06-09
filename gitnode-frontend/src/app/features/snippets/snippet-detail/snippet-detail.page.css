@@ -1,5 +1,9 @@
 @import 'highlight.js/styles/github.css';
 
+.snippet-detail {
+  --snippet-sticky-top: 4.5rem;
+}
+
 [data-blob-syntax='dark'] .hljs {
   background: transparent;
 }
@@ -45,4 +49,167 @@
 [data-blob-syntax='dark'] .hljs-built_in,
 [data-blob-syntax='dark'] .hljs-class .hljs-title {
   color: #79c0ff;
+}
+
+.snippet-detail__breadcrumb {
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+}
+
+.snippet-detail__breadcrumb a {
+  color: color-mix(in oklch, var(--color-base-content) 70%, transparent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.snippet-detail__breadcrumb a:hover {
+  color: var(--color-primary);
+}
+
+.snippet-detail__meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  background: color-mix(in oklch, var(--color-base-content) 5%, var(--color-base-200));
+  border: 1px solid color-mix(in oklch, var(--color-base-content) 8%, var(--color-base-300));
+}
+
+.snippet-detail__lang-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 10%, transparent);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 18%, transparent);
+}
+
+.snippet-code-viewer__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.snippet-code-viewer__table td {
+  vertical-align: top;
+  padding: 0;
+}
+
+.snippet-code-viewer__gutter {
+  width: 3.25rem;
+  padding: 0 0.75rem 0 0.5rem !important;
+  text-align: right;
+  user-select: none;
+  color: color-mix(in oklch, var(--color-base-content) 38%, transparent);
+  border-right: 1px solid color-mix(in oklch, var(--color-base-content) 10%, var(--color-base-300));
+  background: color-mix(in oklch, var(--color-base-200) 35%, var(--color-base-100));
+}
+
+.snippet-code-viewer__code {
+  padding: 0 1rem !important;
+  white-space: pre;
+}
+
+.snippet-code-viewer__code .hljs {
+  padding: 0;
+  background: transparent;
+}
+
+.snippet-code-viewer__body {
+  padding-block: 0.75rem;
+  background: var(--color-base-100);
+}
+
+.snippet-detail__markdown {
+  padding: 1.25rem 1.5rem;
+}
+
+.snippet-detail__sidebar {
+  position: sticky;
+  top: var(--snippet-sticky-top);
+}
+
+.snippet-detail__revision-link {
+  display: block;
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.snippet-detail__revision-link:hover {
+  background: color-mix(in oklch, var(--color-base-200) 55%, var(--color-base-100));
+}
+
+.snippet-detail__revision-link--latest {
+  background: color-mix(in oklch, var(--color-primary) 6%, var(--color-base-100));
+}
+
+.snippet-detail__revision-link--latest:hover {
+  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-base-100));
+}
+
+.snippet-detail__comment-form {
+  background: color-mix(in oklch, var(--color-base-200) 40%, var(--color-base-100));
+}
+
+.snippet-accordion__trigger {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.snippet-accordion__trigger:hover {
+  background: color-mix(in oklch, var(--color-base-content) 4%, transparent);
+}
+
+.snippet-accordion__trigger:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--color-primary) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.snippet-accordion--collapsed .snippet-accordion__trigger {
+  border-radius: 0;
+}
+
+.snippet-accordion__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  border-top: 1px solid transparent;
+  transition:
+    grid-template-rows 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.snippet-accordion__panel--open {
+  grid-template-rows: 1fr;
+  border-top-color: var(--color-base-300);
+}
+
+.snippet-accordion__panel-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snippet-accordion__panel {
+    transition: none;
+  }
+
+  .snippet-accordion__trigger lucide-icon {
+    transition: none;
+  }
 }

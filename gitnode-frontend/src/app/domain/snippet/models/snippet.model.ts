@@ -19,6 +19,7 @@ export type SnippetVisibility = 'PUBLIC' | 'PRIVATE';
 export interface SnippetOwnerInfo {
   id: string;
   username: string;
+  email: string;
   avatarUrl: string | null;
 }
 

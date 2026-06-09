@@ -113,7 +113,11 @@ class SnippetServiceTest {
 
   private SnippetDetail stubDetail(UUID id, String title) {
     SnippetOwnerInfo owner =
-        SnippetOwnerInfo.builder().id(UUID.randomUUID()).username("owner").build();
+        SnippetOwnerInfo.builder()
+            .id(UUID.randomUUID())
+            .username("owner")
+            .email("owner@example.com")
+            .build();
     return SnippetDetail.builder()
         .id(id)
         .title(title)
@@ -128,7 +132,11 @@ class SnippetServiceTest {
 
   private SnippetInfo stubInfo(UUID id, String title) {
     SnippetOwnerInfo owner =
-        SnippetOwnerInfo.builder().id(UUID.randomUUID()).username("owner").build();
+        SnippetOwnerInfo.builder()
+            .id(UUID.randomUUID())
+            .username("owner")
+            .email("owner@example.com")
+            .build();
     return SnippetInfo.builder()
         .id(id)
         .title(title)
@@ -627,7 +635,12 @@ class SnippetServiceTest {
       SnippetRevisionInfo revInfo =
           SnippetRevisionInfo.builder()
               .id(rev.getId())
-              .author(SnippetOwnerInfo.builder().id(owner.getId()).username("alice").build())
+              .author(
+                  SnippetOwnerInfo.builder()
+                      .id(owner.getId())
+                      .username("alice")
+                      .email("alice@example.com")
+                      .build())
               .build();
 
       when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));

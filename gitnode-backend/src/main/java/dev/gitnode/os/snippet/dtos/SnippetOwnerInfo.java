@@ -20,4 +20,5 @@ import lombok.Builder;
 import org.jspecify.annotations.Nullable;
 
 @Builder
-public record SnippetOwnerInfo(UUID id, String username, @Nullable String avatarUrl) {}
+public record SnippetOwnerInfo(
+    UUID id, String username, String email, @Nullable String avatarUrl) {}

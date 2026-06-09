@@ -44,7 +44,6 @@ export class RegisterPage {
     username: ['', [Validators.required, Validators.minLength(3), Validators.pattern(/^[a-zA-Z0-9_-]+$/)]],
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required, Validators.minLength(6)]],
-    displayName: ['', [Validators.required]],
   });
 
   async onSubmit(): Promise<void> {
@@ -52,7 +51,8 @@ export class RegisterPage {
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.authService.register(this.form.getRawValue());
+      const { username, email, password } = this.form.getRawValue();
+      await this.authService.register({ username, email, password });
       this.toast.success('Account created successfully');
       void this.router.navigate(['/dashboard']);
     } catch (e) {

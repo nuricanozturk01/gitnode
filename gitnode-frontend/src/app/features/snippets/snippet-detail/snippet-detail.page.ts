@@ -31,10 +31,12 @@ import hljs from 'highlight.js';
 import { marked } from 'marked';
 import { SnippetService } from '../../../core/snippet/services/snippet.service';
 import { TokenService } from '../../../core/auth/services/token.service';
+import { UserService } from '../../../core/user/services/user.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { copyTextToClipboard } from '../../../shared/utils/clipboard.util';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { ThemeService } from '../../../core/theme/theme.service';
+import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { filenameToHljsLanguage, isMarkdown } from '../shared/language-detect.util';
 import type {
@@ -42,7 +44,9 @@ import type {
   SnippetCommentInfo,
   SnippetRevisionInfo,
   SnippetFileInfo,
+  SnippetOwnerInfo,
 } from '../../../domain/snippet/models/snippet.model';
+import type { User } from '../../../domain/auth/models/user.model';
 
 interface HighlightedFile {
   file: SnippetFileInfo;
@@ -58,7 +62,7 @@ interface HighlightedFile {
   selector: 'app-snippet-detail',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
+  imports: [RouterLink, LucideAngularModule, AvatarComponent, RelativeTimePipe],
   templateUrl: './snippet-detail.page.html',
   styleUrl: './snippet-detail.page.css',
 })
@@ -67,6 +71,7 @@ export class SnippetDetailPage implements OnInit {
   private readonly router = inject(Router);
   private readonly snippetService = inject(SnippetService);
   private readonly tokenService = inject(TokenService);
+  private readonly userService = inject(UserService);
   private readonly toastService = inject(ToastService);
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly sanitizer = inject(DomSanitizer);
@@ -91,6 +96,7 @@ export class SnippetDetailPage implements OnInit {
   readonly commentBody = signal('');
   readonly submittingComment = signal(false);
   readonly snippetId = signal('');
+  readonly currentUser = signal<User | null>(null);
 
   readonly blobSyntaxTheme = computed(() => (this.theme.isDark() ? 'dark' : 'light'));
   readonly currentUsername = this.tokenService.getUsername();
@@ -110,11 +116,14 @@ export class SnippetDetailPage implements OnInit {
     this.loading.set(true);
     this.loadError.set(null);
     try {
-      const [detail, commentPage, revisionPage] = await Promise.all([
+      const mePromise = this.isLoggedIn() ? this.userService.getMe().catch(() => null) : Promise.resolve(null);
+      const [detail, commentPage, revisionPage, me] = await Promise.all([
         this.snippetService.get(id),
         this.snippetService.listComments(id, 0, 10),
         this.snippetService.listRevisions(id, 0, 10),
+        mePromise,
       ]);
+      this.currentUser.set(me);
       this.snippet.set(detail);
       this.comments.set(commentPage.content);
       this.commentPage.set(commentPage.number);
@@ -153,7 +162,7 @@ export class SnippetDetailPage implements OnInit {
           lines: [],
           isMarkdown: true,
           markdownHtml: this.sanitizer.bypassSecurityTrustHtml(sanitized),
-          collapsed: false,
+          collapsed: result.length > 0 && detail.files.length > 1,
         });
       } else {
         let highlighted: string;
@@ -169,7 +178,7 @@ export class SnippetDetailPage implements OnInit {
           lines,
           isMarkdown: false,
           markdownHtml: null,
-          collapsed: false,
+          collapsed: result.length > 0 && detail.files.length > 1,
         });
       }
     }
@@ -177,8 +186,40 @@ export class SnippetDetailPage implements OnInit {
     this.highlightedFiles.set(result);
   }
 
+  /** Same avatar inputs as navbar: prefer /me profile for the signed-in user. */
+  avatarProps(owner: SnippetOwnerInfo): {
+    avatarUrl: string | null | undefined;
+    email: string | null | undefined;
+    username: string;
+    fallback: string;
+  } {
+    const me = this.currentUser();
+    if (me?.username === owner.username) {
+      return {
+        avatarUrl: me.avatarUrl,
+        email: me.email,
+        username: me.username,
+        fallback: me.username.charAt(0).toUpperCase(),
+      };
+    }
+    return {
+      avatarUrl: owner.avatarUrl,
+      email: owner.email ?? null,
+      username: owner.username,
+      fallback: owner.username.charAt(0).toUpperCase(),
+    };
+  }
+
   toggleCollapse(index: number): void {
     this.highlightedFiles.update((files) => files.map((f, i) => (i === index ? { ...f, collapsed: !f.collapsed } : f)));
+  }
+
+  expandAllFiles(): void {
+    this.highlightedFiles.update((files) => files.map((f) => ({ ...f, collapsed: false })));
+  }
+
+  collapseAllFiles(): void {
+    this.highlightedFiles.update((files) => files.map((f) => ({ ...f, collapsed: true })));
   }
 
   copyToClipboard(text: string): void {

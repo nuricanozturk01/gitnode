@@ -88,25 +88,6 @@
             </div>
 
             <div class="form-control">
-              <label class="label" for="displayName">
-                <span class="label-text font-medium">Display Name</span>
-              </label>
-              <input
-                id="displayName"
-                type="text"
-                formControlName="displayName"
-                placeholder="Your Full Name"
-                class="input input-bordered w-full"
-                autocomplete="name"
-              />
-              @if (form.get('displayName')?.invalid && form.get('displayName')?.touched) {
-              <span class="label">
-                <span class="label-text-alt text-error">Required</span>
-              </span>
-              }
-            </div>
-
-            <div class="form-control">
               <label class="label" for="password">
                 <span class="label-text font-medium">Password</span>
               </label>

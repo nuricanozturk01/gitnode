@@ -16,6 +16,7 @@
 package dev.gitnode.os.webhook.services;
 
 import dev.gitnode.os.shared.lock.DistributedLockService;
+import dev.gitnode.os.webhook.entities.Webhook;
 import dev.gitnode.os.webhook.entities.WebhookDeadLetter;
 import dev.gitnode.os.webhook.repositories.WebhookDeadLetterRepository;
 import dev.gitnode.os.webhook.repositories.WebhookRepository;
@@ -24,6 +25,10 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
@@ -88,15 +93,22 @@ public class WebhookDlqRetryScheduler {
         return;
       }
       log.info("DLQ retry run: {} entries due", due.size());
-      due.forEach(this::processEntry);
+      final Map<UUID, Webhook> webhookMap = this.loadWebhooks(due);
+      due.forEach(dl -> this.processEntry(dl, webhookMap));
     } finally {
       this.lockService.unlock(LOCK_KEY, owner);
     }
   }
 
-  private void processEntry(final WebhookDeadLetter dl) {
-    final var webhookOpt = this.webhookRepository.findById(dl.getWebhookId());
-    if (webhookOpt.isEmpty()) {
+  private Map<UUID, Webhook> loadWebhooks(final List<WebhookDeadLetter> entries) {
+    final var ids = entries.stream().map(WebhookDeadLetter::getWebhookId).distinct().toList();
+    return this.webhookRepository.findAllById(ids).stream()
+        .collect(Collectors.toMap(Webhook::getId, w -> w));
+  }
+
+  private void processEntry(final WebhookDeadLetter dl, final Map<UUID, Webhook> webhookMap) {
+    final var webhook = webhookMap.get(dl.getWebhookId());
+    if (webhook == null) {
       log.info(
           "DLQ entry {} discarded — webhook {} no longer exists", dl.getId(), dl.getWebhookId());
       this.deadLetterRepository.delete(dl);
@@ -108,7 +120,7 @@ public class WebhookDlqRetryScheduler {
       this.deadLetterRepository.delete(dl);
       return;
     }
-    final var secret = webhookOpt.get().getSecret();
+    final var secret = webhook.getSecret();
     try {
       this.deliveryService.redeliverRaw(dl.getUrl(), secret, payload);
       log.info("DLQ retry succeeded id={} webhookId={}", dl.getId(), dl.getWebhookId());

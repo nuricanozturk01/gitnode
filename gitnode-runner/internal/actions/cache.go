@@ -30,7 +30,7 @@ func NewCacheAction(serverURL, runnerToken string) *CacheAction {
 }
 
 func (a *CacheAction) Name() string       { return "actions/cache" }
-func (a *CacheAction) Versions() []string { return []string{"v1"} }
+func (a *CacheAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *CacheAction) Execute(
 	ctx context.Context,

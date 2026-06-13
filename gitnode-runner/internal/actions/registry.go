@@ -39,6 +39,8 @@ func NewRegistry(serverURL, runnerToken string) *Registry {
 	r.register(NewSetupPythonAction())
 	r.register(NewSetupGoAction())
 	r.register(NewDockerLoginAction())
+	r.register(NewSetupBuildxAction())
+	r.register(NewDockerBuildPushAction())
 	r.register(NewCacheAction(serverURL, runnerToken))
 	r.register(NewUploadArtifactAction(serverURL, runnerToken))
 	r.register(NewDownloadArtifactAction(serverURL, runnerToken))

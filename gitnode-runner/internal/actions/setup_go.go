@@ -15,7 +15,7 @@ type SetupGoAction struct{}
 func NewSetupGoAction() *SetupGoAction { return &SetupGoAction{} }
 
 func (a *SetupGoAction) Name() string       { return "actions/setup-go" }
-func (a *SetupGoAction) Versions() []string { return []string{"v1"} }
+func (a *SetupGoAction) Versions() []string { return []string{"v1", "v2", "v3", "v4", "v5"} }
 
 func (a *SetupGoAction) Execute(
 	ctx context.Context,

@@ -104,7 +104,7 @@ export class RepoService {
       isPrivate: form.isPrivate ?? true,
     };
     if (form.topics && form.topics.length > 0) {
-      body['topics'] = Array.isArray(form.topics) ? form.topics : [...form.topics];
+      body['topics'] = form.topics;
     }
     return body;
   }

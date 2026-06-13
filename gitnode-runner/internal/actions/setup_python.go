@@ -16,7 +16,7 @@ type SetupPythonAction struct{}
 func NewSetupPythonAction() *SetupPythonAction { return &SetupPythonAction{} }
 
 func (a *SetupPythonAction) Name() string       { return "actions/setup-python" }
-func (a *SetupPythonAction) Versions() []string { return []string{"v1"} }
+func (a *SetupPythonAction) Versions() []string { return []string{"v1", "v2", "v3", "v4", "v5"} }
 
 func (a *SetupPythonAction) Execute(
 	ctx context.Context,

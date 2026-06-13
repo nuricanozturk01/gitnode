@@ -16,7 +16,7 @@ type SetupJavaAction struct{}
 func NewSetupJavaAction() *SetupJavaAction { return &SetupJavaAction{} }
 
 func (a *SetupJavaAction) Name() string       { return "actions/setup-java" }
-func (a *SetupJavaAction) Versions() []string { return []string{"v1"} }
+func (a *SetupJavaAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *SetupJavaAction) Execute(
 	ctx context.Context,

@@ -15,7 +15,7 @@ type DockerLoginAction struct{}
 func NewDockerLoginAction() *DockerLoginAction { return &DockerLoginAction{} }
 
 func (a *DockerLoginAction) Name() string       { return "docker/login-action" }
-func (a *DockerLoginAction) Versions() []string { return []string{"v1"} }
+func (a *DockerLoginAction) Versions() []string { return []string{"v1", "v2", "v3"} }
 
 func (a *DockerLoginAction) Execute(
 	ctx context.Context,

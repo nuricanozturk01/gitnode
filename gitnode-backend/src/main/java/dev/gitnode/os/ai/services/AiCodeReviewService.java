@@ -48,6 +48,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -154,15 +156,21 @@ public class AiCodeReviewService {
       final UUID prAuthorId,
       final UUID repoOwnerId,
       final @Nullable UUID requesterId) {
-    this.reviewRunner.executeReview(
-        reviewId,
-        ownerUsername,
-        repoName,
-        sourceSha,
-        targetBranch,
-        prAuthorId,
-        repoOwnerId,
-        requesterId);
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            AiCodeReviewService.this.reviewRunner.executeReview(
+                reviewId,
+                ownerUsername,
+                repoName,
+                sourceSha,
+                targetBranch,
+                prAuthorId,
+                repoOwnerId,
+                requesterId);
+          }
+        });
   }
 
   @Transactional
@@ -297,8 +305,20 @@ public class AiCodeReviewService {
     review.setStatusMessage(null);
     this.reviewRepository.save(review);
 
+    final var prAuthorId =
+        this.prQueryPort
+            .findByRepoIdAndNumber(review.getRepoId(), review.getPrNumber())
+            .map(dev.gitnode.os.pr.api.PrData::authorId)
+            .orElse(null);
+    final var repo = this.repoRepository.findById(review.getRepoId()).orElse(null);
     this.eventPublisher.publishEvent(
-        new AiCodeReviewCompletedEvent(review.getId(), review.getRepoId(), review.getPrNumber()));
+        new AiCodeReviewCompletedEvent(
+            review.getId(),
+            review.getRepoId(),
+            review.getPrNumber(),
+            prAuthorId,
+            repo != null ? repo.getOwner().getUsername() : "",
+            repo != null ? repo.getName() : ""));
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)

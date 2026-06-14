@@ -67,6 +67,17 @@ import type { InvitationTokenInfo } from '../../domain/collaborator/collaborator
                 >Open repository</a
               >
             </div>
+          } @else if (declined()) {
+            <div class="flex flex-col items-center gap-3 py-4 text-center">
+              <lucide-icon name="xCircle" class="text-base-content/40 size-10"></lucide-icon>
+              <h1 class="text-lg font-semibold">Invitation declined</h1>
+              <p class="text-base-content/60 text-sm">
+                You declined the invitation to
+                <strong>{{ invitation()?.repoOwner }}/{{ invitation()?.repoName }}</strong
+                >.
+              </p>
+              <a routerLink="/" class="btn btn-ghost btn-sm mt-2">Go home</a>
+            </div>
           } @else if (invitation(); as inv) {
             <div class="flex flex-col gap-1">
               <lucide-icon name="userPlus" class="text-primary size-8"></lucide-icon>
@@ -91,10 +102,21 @@ import type { InvitationTokenInfo } from '../../domain/collaborator/collaborator
             } @else {
               <div class="flex gap-2">
                 <button type="button" class="btn btn-success flex-1" [disabled]="responding()" (click)="accept()">
-                  @if (responding()) {
+                  @if (responding() === 'accept') {
                     <span class="loading loading-spinner loading-xs"></span>
                   }
                   Accept
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-error btn-outline flex-1"
+                  [disabled]="!!responding()"
+                  (click)="decline()"
+                >
+                  @if (responding() === 'decline') {
+                    <span class="loading loading-spinner loading-xs"></span>
+                  }
+                  Decline
                 </button>
               </div>
             }
@@ -115,7 +137,8 @@ export class AcceptInvitePage implements OnInit {
   readonly notFound = signal(false);
   readonly expired = signal(false);
   readonly accepted = signal(false);
-  readonly responding = signal(false);
+  readonly declined = signal(false);
+  readonly responding = signal<'accept' | 'decline' | null>(null);
   readonly invitation = signal<InvitationTokenInfo | null>(null);
   readonly isLoggedIn = signal(false);
   readonly currentUrl = signal('');
@@ -151,7 +174,7 @@ export class AcceptInvitePage implements OnInit {
 
   async accept(): Promise<void> {
     if (this.responding()) return;
-    this.responding.set(true);
+    this.responding.set('accept');
     try {
       await this.collaboratorService.acceptViaToken(this.token);
       this.accepted.set(true);
@@ -166,7 +189,25 @@ export class AcceptInvitePage implements OnInit {
         this.toast.error('Failed to accept invitation');
       }
     } finally {
-      this.responding.set(false);
+      this.responding.set(null);
+    }
+  }
+
+  async decline(): Promise<void> {
+    if (this.responding()) return;
+    this.responding.set('decline');
+    try {
+      await this.collaboratorService.declineViaToken(this.token);
+      this.declined.set(true);
+    } catch (err: unknown) {
+      const status = (err as { status?: number }).status;
+      if (status === 403) {
+        this.toast.error('This invitation is not for your account');
+      } else {
+        this.toast.error('Failed to decline invitation');
+      }
+    } finally {
+      this.responding.set(null);
     }
   }
 }

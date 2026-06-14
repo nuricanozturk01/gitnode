@@ -13,21 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os.events.issue;
+package dev.gitnode.os.events.ai;
 
-import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public record IssueCommentedEvent(
-    UUID commentId,
-    UUID issueId,
+public record AiCodebaseAnalysisCompletedEvent(
+    UUID analysisId,
     UUID repoId,
-    int issueNumber,
-    String body,
-    UUID commenterId,
-    UUID issueAuthorId,
+    String branch,
+    String status,
+    UUID triggeredBy,
     String ownerUsername,
-    String repoName,
-    Set<UUID> participantIds) {}
+    String repoName) {}

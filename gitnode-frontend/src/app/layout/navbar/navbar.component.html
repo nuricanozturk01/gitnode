@@ -150,6 +150,9 @@
 
     <!-- Right: desktop theme + auth / user -->
     <div class="flex shrink-0 items-center gap-2">
+      @if (isLoggedIn()) {
+        <app-notification-bell />
+      }
       <button
         type="button"
         class="btn btn-ghost btn-square btn-sm hidden md:inline-flex"

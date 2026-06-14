@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal, computed, effect } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Location } from '@angular/common';
@@ -73,6 +73,7 @@ export class RepoSettingsPage {
   private readonly webhookService = inject(WebhookService);
   private readonly collaboratorService = inject(CollaboratorService);
   private readonly aiService = inject(AiService);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly activeTab = signal<RepoSettingsTab>(DEFAULT_REPO_SETTINGS_TAB);
 
@@ -81,6 +82,7 @@ export class RepoSettingsPage {
   readonly analysisTriggeringNew = signal(false);
   readonly latestAnalysis = signal<CodebaseAnalysis | null>(null);
   readonly analysisError = signal<string | null>(null);
+  private analysisPollingTimer: ReturnType<typeof setInterval> | null = null;
   readonly aiPrReviewEnabled = signal(false);
   readonly savingAiRepoSettings = signal(false);
   readonly aiRepoSettingsError = signal<string | null>(null);
@@ -226,6 +228,9 @@ export class RepoSettingsPage {
 
   private applyTab(t: RepoSettingsTab): void {
     if (this.activeTab() === t) return;
+    if (this.activeTab() === 'ai-analysis') {
+      this.stopAnalysisPolling();
+    }
     this.activeTab.set(t);
     const r = this.repo();
     if (!r) return;
@@ -732,6 +737,30 @@ export class RepoSettingsPage {
     }
   }
 
+  private startAnalysisPolling(): void {
+    this.stopAnalysisPolling();
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    this.analysisPollingTimer = setInterval(() => {
+      void this.aiService.getLatestAnalysis(owner, repo).then((analysis) => {
+        if (!analysis) return;
+        this.latestAnalysis.set(analysis);
+        if (analysis.status !== 'PENDING') {
+          this.stopAnalysisPolling();
+        }
+      });
+    }, 4000);
+    this.destroyRef.onDestroy(() => this.stopAnalysisPolling());
+  }
+
+  private stopAnalysisPolling(): void {
+    if (this.analysisPollingTimer !== null) {
+      clearInterval(this.analysisPollingTimer);
+      this.analysisPollingTimer = null;
+    }
+  }
+
   async loadLatestAnalysis(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
@@ -739,7 +768,11 @@ export class RepoSettingsPage {
     this.analysisLoading.set(true);
     this.analysisError.set(null);
     try {
-      this.latestAnalysis.set(await this.aiService.getLatestAnalysis(owner, repo));
+      const analysis = await this.aiService.getLatestAnalysis(owner, repo);
+      this.latestAnalysis.set(analysis);
+      if (analysis?.status === 'PENDING') {
+        this.startAnalysisPolling();
+      }
     } catch {
       this.analysisError.set('Failed to load analysis');
     } finally {
@@ -758,6 +791,9 @@ export class RepoSettingsPage {
       const result = await this.aiService.triggerCodebaseAnalysis(owner, repo);
       this.latestAnalysis.set(result);
       this.toast.success('Analysis started');
+      if (result.status === 'PENDING') {
+        this.startAnalysisPolling();
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to trigger analysis';
       this.analysisError.set(msg);

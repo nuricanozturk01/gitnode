@@ -1,0 +1,150 @@
+<div class="relative">
+  <!-- Bell button -->
+  <button type="button" class="btn btn-ghost btn-square btn-sm relative" aria-label="Notifications" (click)="toggle()">
+    <lucide-icon name="bell" class="size-5"></lucide-icon>
+    @if (hasUnread()) {
+      <span
+        class="badge-pill badge-pill--error absolute -top-1 -right-1 flex !h-4 !min-w-4 items-center justify-center !px-1 !py-0 !text-[10px]"
+        aria-label="{{ unreadCount() }} unread notifications"
+      >
+        {{ unreadCount() > 99 ? '99+' : unreadCount() }}
+      </span>
+    }
+  </button>
+
+  @if (open()) {
+    <!-- Backdrop -->
+    <div class="fixed inset-0 z-[199]" aria-hidden="true" (click)="close()"></div>
+
+    <!-- Panel -->
+    <div
+      class="border-base-300 bg-base-100 absolute right-0 z-[200] mt-2 flex w-80 flex-col rounded-xl border shadow-2xl sm:w-96"
+      role="dialog"
+      aria-label="Notifications"
+    >
+      <!-- Header -->
+      <div class="border-base-200 flex shrink-0 items-center justify-between border-b px-4 py-3">
+        <div class="flex items-center gap-2">
+          <lucide-icon name="bell" class="text-base-content/60 size-4"></lucide-icon>
+          <span class="text-base-content text-sm font-semibold">Notifications</span>
+          @if (hasUnread()) {
+            <span class="badge-pill badge-pill--error">{{ unreadCount() }}</span>
+          }
+        </div>
+        <div class="flex items-center gap-1">
+          @if (hasUnread()) {
+            <button type="button" class="btn btn-ghost btn-xs gap-1" title="Mark all as read" (click)="markAllRead()">
+              <lucide-icon name="check-check" class="size-3.5"></lucide-icon>
+              <span class="hidden sm:inline">All read</span>
+            </button>
+          }
+          @if (hasAny()) {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-error hover:bg-error/10"
+              title="Clear all notifications"
+              (click)="deleteAll()"
+            >
+              <lucide-icon name="trash" class="size-3.5"></lucide-icon>
+            </button>
+          }
+          <button type="button" class="btn btn-ghost btn-xs btn-square" aria-label="Close" (click)="close()">
+            <lucide-icon name="x" class="size-3.5"></lucide-icon>
+          </button>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="min-h-0 flex-1 overflow-y-auto" style="max-height: 440px">
+        @if (loading()) {
+          <div class="flex justify-center py-10">
+            <span class="loading loading-spinner loading-md text-primary"></span>
+          </div>
+        } @else if (!hasAny()) {
+          <div class="py-12 text-center">
+            <lucide-icon name="bell-off" class="text-base-content/20 mx-auto size-10"></lucide-icon>
+            <p class="text-base-content/40 mt-3 text-sm font-medium">No notifications yet</p>
+            <p class="text-base-content/30 mt-1 text-xs">We'll let you know when something happens.</p>
+          </div>
+        } @else {
+          @for (n of notifications(); track n.id) {
+            <button
+              type="button"
+              class="border-base-200 group hover:bg-base-200 relative flex w-full items-start gap-3 border-b px-4 py-3 text-left transition-colors last:border-0"
+              [class.bg-primary/5]="!n.read"
+              (click)="clickNotification(n)"
+            >
+              <!-- Icon -->
+              <div class="bg-base-200 mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full">
+                <lucide-icon
+                  [name]="notificationIcon(n.type)"
+                  class="size-4"
+                  [class]="notificationIconClass(n.type)"
+                ></lucide-icon>
+              </div>
+
+              <!-- Content -->
+              <div class="min-w-0 flex-1 pr-6">
+                <p
+                  class="text-base-content text-sm leading-snug"
+                  [class.font-semibold]="!n.read"
+                  [class.font-medium]="n.read"
+                >
+                  {{ n.title }}
+                </p>
+                @if (n.body) {
+                  <p class="text-base-content/55 mt-1 line-clamp-3 text-xs leading-relaxed whitespace-pre-wrap">
+                    {{ n.body }}
+                  </p>
+                }
+                <p class="text-base-content/35 mt-1.5 text-[11px]">{{ n.createdAt | date: 'MMM d, h:mm a' }}</p>
+              </div>
+
+              <!-- Unread dot -->
+              @if (!n.read) {
+                <span class="bg-primary absolute top-4 right-9 size-2 shrink-0 rounded-full"></span>
+              }
+
+              <!-- Delete button -->
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs btn-square text-error hover:bg-error/10 absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100"
+                title="Remove"
+                [disabled]="deletingId() === n.id"
+                (click)="deleteNotification(n, $event)"
+              >
+                @if (deletingId() === n.id) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                } @else {
+                  <lucide-icon name="x" class="size-3"></lucide-icon>
+                }
+              </button>
+            </button>
+          }
+
+          <!-- Load more -->
+          @if (hasMore()) {
+            <div class="border-base-200 border-t p-3 text-center">
+              <button type="button" class="btn btn-ghost btn-sm w-full" [disabled]="loadingMore()" (click)="loadMore()">
+                @if (loadingMore()) {
+                  <span class="loading loading-spinner loading-xs"></span>
+                }
+                Load more
+              </button>
+            </div>
+          }
+        }
+      </div>
+      <!-- Footer -->
+      <div class="border-base-200 border-t px-4 py-2.5">
+        <a
+          routerLink="/notifications"
+          class="text-primary/70 hover:text-primary w-full text-center text-xs font-medium transition-colors"
+          (click)="close()"
+        >
+          View all notifications
+        </a>
+      </div>
+    </div>
+  }
+</div>

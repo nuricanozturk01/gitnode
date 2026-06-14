@@ -15,9 +15,21 @@
  */
 package dev.gitnode.os.events.pr;
 
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public record PullRequestStatusChangedEvent(
-    UUID prId, UUID repoId, String sourceBranch, String targetBranch, String newStatus) {}
+    UUID prId,
+    UUID repoId,
+    String sourceBranch,
+    String targetBranch,
+    String newStatus,
+    UUID prAuthorId,
+    int prNumber,
+    String ownerUsername,
+    String repoName,
+    Set<UUID> participantIds,
+    @Nullable UUID actorId) {}

@@ -151,6 +151,7 @@ public class SecurityConfig {
     auth.requestMatchers(HttpMethod.GET, "/api/actions/cache").permitAll();
     auth.requestMatchers(HttpMethod.POST, "/api/actions/cache").permitAll();
 
+    auth.requestMatchers(HttpMethod.GET, "/api/notifications/stream").permitAll();
     auth.requestMatchers("/api/**").authenticated();
     auth.anyRequest().permitAll();
   }

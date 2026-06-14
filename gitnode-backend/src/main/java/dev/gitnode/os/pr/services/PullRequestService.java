@@ -45,8 +45,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.UUID;
@@ -172,7 +174,8 @@ public class PullRequestService {
       entityType = "PULL_REQUEST",
       detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', number=' + #number")
   @Transactional
-  public void close(final String owner, final String repoName, final int number) {
+  public void close(
+      final String owner, final String repoName, final int number, final UUID closedById) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
@@ -185,13 +188,25 @@ public class PullRequestService {
     pr.setClosedAt(Instant.now());
 
     this.prRepository.save(pr);
+
+    final Set<UUID> participants =
+        new HashSet<>(this.commentRepository.findDistinctCommenterIdsByPrId(pr.getId()));
+    participants.add(pr.getAuthor().getId());
+    participants.remove(closedById);
+
     this.eventPublisher.publishEvent(
         new PullRequestStatusChangedEvent(
             pr.getId(),
             repo.getId(),
             pr.getSourceBranch(),
             pr.getTargetBranch(),
-            PrStatus.CLOSED.name()));
+            PrStatus.CLOSED.name(),
+            pr.getAuthor().getId(),
+            pr.getNumber(),
+            owner,
+            repoName,
+            Set.copyOf(participants),
+            closedById));
   }
 
   @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
@@ -230,13 +245,25 @@ public class PullRequestService {
     pr.setMergedAt(Instant.now());
 
     final var saved = this.prRepository.save(pr);
+
+    final Set<UUID> participants =
+        new HashSet<>(this.commentRepository.findDistinctCommenterIdsByPrId(saved.getId()));
+    participants.add(saved.getAuthor().getId());
+    participants.remove(mergedById);
+
     this.eventPublisher.publishEvent(
         new PullRequestStatusChangedEvent(
             saved.getId(),
             repo.getId(),
             saved.getSourceBranch(),
             saved.getTargetBranch(),
-            PrStatus.MERGED.name()));
+            PrStatus.MERGED.name(),
+            saved.getAuthor().getId(),
+            saved.getNumber(),
+            owner,
+            repoName,
+            Set.copyOf(participants),
+            mergedById));
     return this.toDetail(saved);
   }
 

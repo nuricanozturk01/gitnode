@@ -13,21 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os.events.issue;
+package dev.gitnode.os.events.pr;
 
 import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public record IssueCommentedEvent(
+public record PullRequestCommentedEvent(
     UUID commentId,
-    UUID issueId,
+    UUID prId,
+    int prNumber,
     UUID repoId,
-    int issueNumber,
-    String body,
     UUID commenterId,
-    UUID issueAuthorId,
+    UUID prAuthorId,
     String ownerUsername,
     String repoName,
     Set<UUID> participantIds) {}

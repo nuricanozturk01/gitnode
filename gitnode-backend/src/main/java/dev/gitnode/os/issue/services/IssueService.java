@@ -35,8 +35,10 @@ import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -300,9 +302,24 @@ public class IssueService implements IssueQueryService {
     comment.setBody(form.getBody());
 
     final var saved = this.commentRepository.save(comment);
+
+    final Set<UUID> participants =
+        new HashSet<>(this.commentRepository.findDistinctCommenterIdsByIssueId(issue.getId()));
+    participants.add(issue.getAuthor().getId());
+    participants.remove(authorId);
+
     this.eventPublisher.publishEvent(
         new IssueCommentedEvent(
-            saved.getId(), issue.getId(), repo.getId(), issue.getNumber(), saved.getBody()));
+            saved.getId(),
+            issue.getId(),
+            repo.getId(),
+            issue.getNumber(),
+            saved.getBody(),
+            authorId,
+            issue.getAuthor().getId(),
+            owner,
+            repoName,
+            Set.copyOf(participants)));
     return this.issueMapper.toCommentInfo(saved);
   }
 

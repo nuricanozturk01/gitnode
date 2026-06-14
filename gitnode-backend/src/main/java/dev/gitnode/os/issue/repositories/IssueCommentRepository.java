@@ -1,6 +1,7 @@
 package dev.gitnode.os.issue.repositories;
 
 import dev.gitnode.os.issue.entities.IssueComment;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
@@ -26,4 +27,7 @@ public interface IssueCommentRepository extends JpaRepository<IssueComment, UUID
   Optional<IssueComment> findByIdAndIssueId(UUID id, UUID issueId);
 
   int countByIssueId(UUID issueId);
+
+  @Query("SELECT DISTINCT c.author.id FROM IssueComment c WHERE c.issue.id = :issueId")
+  List<UUID> findDistinctCommenterIdsByIssueId(UUID issueId);
 }

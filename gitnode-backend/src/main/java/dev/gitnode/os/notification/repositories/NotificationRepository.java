@@ -13,33 +13,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os.pr.repositories;
+package dev.gitnode.os.notification.repositories;
 
-import dev.gitnode.os.pr.entities.PullRequestComment;
-import java.util.List;
+import dev.gitnode.os.notification.entities.Notification;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
+import org.springframework.data.repository.query.Param;
 
-@Repository
 @NullMarked
-public interface PrCommentRepository extends JpaRepository<PullRequestComment, UUID> {
+public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
+  Page<Notification> findByRecipientIdOrderByCreatedAtDesc(UUID recipientId, Pageable pageable);
+
+  long countByRecipientIdAndReadFalse(UUID recipientId);
+
+  @Modifying
   @Query(
-      value =
-          """
-          select prc from PullRequestComment prc join fetch prc.author
-            where prc.pr.id = :prId order by prc.createdAt asc
-        """,
-      countQuery = "select count(prc) from PullRequestComment prc where prc.pr.id = :prId")
-  Page<PullRequestComment> findAllByPrIdOrderByCreatedAtAsc(UUID prId, Pageable pageable);
+      "UPDATE Notification n SET n.read = true WHERE n.recipientId = :recipientId AND n.read = false")
+  void markAllReadByRecipientId(@Param("recipientId") UUID recipientId);
 
-  long countByPrId(UUID prId);
+  @Modifying
+  @Query("DELETE FROM Notification n WHERE n.recipientId = :recipientId")
+  void deleteAllByRecipientId(@Param("recipientId") UUID recipientId);
 
-  @Query("SELECT DISTINCT c.author.id FROM PullRequestComment c WHERE c.pr.id = :prId")
-  List<UUID> findDistinctCommenterIdsByPrId(UUID prId);
+  boolean existsByIdAndRecipientId(UUID id, UUID recipientId);
 }

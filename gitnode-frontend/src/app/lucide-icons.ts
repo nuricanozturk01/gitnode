@@ -101,6 +101,11 @@ import {
   Clock,
   FileX2,
   RefreshCw,
+  Bell,
+  BellOff,
+  AlertCircle,
+  CheckCheck,
+  Trash,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -190,4 +195,9 @@ export const LUCIDE_ICONS = {
   Clock,
   FileX2,
   RefreshCw,
+  Bell,
+  BellOff,
+  AlertCircle,
+  CheckCheck,
+  Trash,
 };

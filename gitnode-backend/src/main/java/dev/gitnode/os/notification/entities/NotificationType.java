@@ -13,21 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os.events.issue;
+package dev.gitnode.os.notification.entities;
 
-import java.util.Set;
-import java.util.UUID;
-import org.jspecify.annotations.NullMarked;
-
-@NullMarked
-public record IssueCommentedEvent(
-    UUID commentId,
-    UUID issueId,
-    UUID repoId,
-    int issueNumber,
-    String body,
-    UUID commenterId,
-    UUID issueAuthorId,
-    String ownerUsername,
-    String repoName,
-    Set<UUID> participantIds) {}
+public enum NotificationType {
+  ISSUE_COMMENT,
+  PR_COMMENT,
+  PR_MERGED,
+  PR_CLOSED,
+  AI_CODE_REVIEW_COMPLETED,
+  AI_CODE_REVIEW_FAILED,
+  AI_ANALYSIS_COMPLETED,
+  AI_ANALYSIS_FAILED,
+  COLLABORATOR_INVITED
+}

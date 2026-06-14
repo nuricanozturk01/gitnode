@@ -42,6 +42,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.access.AccessDeniedException;
 
 @ExtendWith(MockitoExtension.class)
@@ -51,6 +52,7 @@ class PullRequestCommentServiceTest {
   @Mock private PrMapper prMapper;
   @Mock private PrFinder prFinder;
   @Mock private PrCommentRepository commentRepository;
+  @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private PullRequestCommentService commentService;
 
@@ -62,11 +64,16 @@ class PullRequestCommentServiceTest {
     repo.setId(UUID.randomUUID());
     PullRequest pr = new PullRequest();
     pr.setId(UUID.randomUUID());
+    Tenant prAuthor = new Tenant();
+    prAuthor.setId(UUID.randomUUID());
+    pr.setAuthor(prAuthor);
     Tenant author = new Tenant();
     author.setId(authorId);
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
     when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
     when(prFinder.findTenant(authorId)).thenReturn(author);
+    when(commentRepository.findDistinctCommenterIdsByPrId(pr.getId()))
+        .thenReturn(java.util.List.of());
     PullRequestComment saved = new PullRequestComment();
     saved.setId(UUID.randomUUID());
     saved.setBody("Looks good");

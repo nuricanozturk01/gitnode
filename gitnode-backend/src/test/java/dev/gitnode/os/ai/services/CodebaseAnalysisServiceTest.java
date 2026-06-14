@@ -61,7 +61,7 @@ class CodebaseAnalysisServiceTest {
     final Method method =
         CodebaseAnalysisService.class.getDeclaredMethod("parseStructuredResponse", String.class);
     method.setAccessible(true);
-    final var service = new CodebaseAnalysisService(null, null, null, null);
+    final var service = new CodebaseAnalysisService(null, null, null, null, null, null);
     return (Map<String, String>) method.invoke(service, raw);
   }
 
@@ -69,7 +69,7 @@ class CodebaseAnalysisServiceTest {
     final Method method =
         CodebaseAnalysisService.class.getDeclaredMethod("parseScoreValue", String.class);
     method.setAccessible(true);
-    final var service = new CodebaseAnalysisService(null, null, null, null);
+    final var service = new CodebaseAnalysisService(null, null, null, null, null, null);
     return (Short) method.invoke(service, value);
   }
 }

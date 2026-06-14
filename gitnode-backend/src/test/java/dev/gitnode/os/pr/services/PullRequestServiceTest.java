@@ -139,7 +139,7 @@ class PullRequestServiceTest {
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
     when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
 
-    assertThatThrownBy(() -> pullRequestService.close("alice", "demo", 1))
+    assertThatThrownBy(() -> pullRequestService.close("alice", "demo", 1, UUID.randomUUID()))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("already closed or merged");
   }
@@ -149,11 +149,14 @@ class PullRequestServiceTest {
   void close_closesPr_whenOpen() {
     Repo repo = repo();
     PullRequest pr = openPr(repo);
+    UUID closedById = UUID.randomUUID();
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
     when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
     when(prRepository.save(pr)).thenReturn(pr);
+    when(commentRepository.findDistinctCommenterIdsByPrId(pr.getId()))
+        .thenReturn(java.util.List.of());
 
-    pullRequestService.close("alice", "demo", 1);
+    pullRequestService.close("alice", "demo", 1, closedById);
 
     assertThat(pr.getStatus()).isEqualTo(PrStatus.CLOSED.name());
     assertThat(pr.getClosedAt()).isNotNull();

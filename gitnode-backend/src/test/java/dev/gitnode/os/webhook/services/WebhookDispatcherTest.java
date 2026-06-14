@@ -74,7 +74,18 @@ class WebhookDispatcherTest {
     when(webhookRepository.findAllByRepoIdAndEnabledTrue(repoId)).thenReturn(List.of(webhook));
 
     webhookDispatcher.onPrStatusChanged(
-        new PullRequestStatusChangedEvent(prId, repoId, "feature", "main", "CLOSED"));
+        new PullRequestStatusChangedEvent(
+            prId,
+            repoId,
+            "feature",
+            "main",
+            "CLOSED",
+            UUID.randomUUID(),
+            1,
+            "alice",
+            "demo",
+            java.util.Set.of(),
+            null));
 
     verify(deliveryService)
         .deliver(
@@ -97,7 +108,17 @@ class WebhookDispatcherTest {
   void onPrStatusChanged_skips_whenStatusNotClosedOrMerged() {
     webhookDispatcher.onPrStatusChanged(
         new PullRequestStatusChangedEvent(
-            UUID.randomUUID(), UUID.randomUUID(), "feature", "main", "OPEN"));
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "feature",
+            "main",
+            "OPEN",
+            UUID.randomUUID(),
+            1,
+            "alice",
+            "demo",
+            java.util.Set.of(),
+            null));
 
     verify(deliveryService, never()).deliver(any(), any(), any(), any(), any(), any(), any());
   }

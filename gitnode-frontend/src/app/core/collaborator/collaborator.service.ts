@@ -82,6 +82,12 @@ export class CollaboratorService {
     );
   }
 
+  declineViaToken(token: string): Promise<CollaboratorInfo> {
+    return firstValueFrom(
+      this.http.post<CollaboratorInfo>(`${environment.apiUrl}/api/invitations/${token}/decline`, {}),
+    );
+  }
+
   sendInvitationEmail(owner: string, repo: string, username: string): Promise<void> {
     return firstValueFrom(this.http.post<void>(`${this.api(owner, repo)}/${username}/send-invitation`, {}));
   }

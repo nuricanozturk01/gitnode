@@ -102,6 +102,19 @@
       <button
         type="button"
         role="tab"
+        id="settings-tab-notifications"
+        class="tab gap-2 rounded-md"
+        [class.tab-active]="activeTab() === 'notifications'"
+        [attr.aria-selected]="activeTab() === 'notifications'"
+        aria-controls="settings-panel-notifications"
+        (click)="setTab('notifications')"
+      >
+        <lucide-icon name="bell" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        Notifications
+      </button>
+      <button
+        type="button"
+        role="tab"
         id="settings-tab-danger"
         class="tab text-error gap-2 rounded-md"
         [class.tab-active]="activeTab() === 'danger'"
@@ -955,6 +968,61 @@
 
           @if (aiError()) {
           <div class="alert alert-error mt-4 text-sm">{{ aiError() }}</div>
+          }
+        </div>
+      </section>
+    </div>
+    } @if (activeTab() === 'notifications') {
+    <div
+      id="settings-panel-notifications"
+      role="tabpanel"
+      aria-labelledby="settings-tab-notifications"
+      class="settings-panels"
+    >
+      <section class="repo-panel settings-section relative overflow-hidden">
+        <div
+          class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+        ></div>
+        <div class="p-5 sm:p-6">
+          <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+            <lucide-icon name="bell" class="text-primary size-5 shrink-0"></lucide-icon>
+            Notification Preferences
+          </h2>
+          <p class="text-base-content/65 mt-1 max-w-2xl text-sm">
+            Choose which events send you in-app notifications. Toggle off any type you don't need.
+          </p>
+
+          @if (loadingPreferences()) {
+          <div class="flex justify-center py-10">
+            <span class="loading loading-spinner loading-md text-primary"></span>
+          </div>
+          } @else {
+          <div class="settings-stack mt-6">
+            @for (pref of notificationPreferences(); track pref.type) {
+            <div
+              class="settings-enable-row border-base-200 flex items-center justify-between gap-4 rounded-xl border p-4 sm:p-5"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="settings-label m-0">{{ notificationTypeLabels[pref.type] }}</p>
+              </div>
+              <div class="flex shrink-0 items-center gap-2.5">
+                @if (savingPreference() === pref.type) {
+                <span class="loading loading-spinner loading-xs text-primary" aria-hidden="true"></span>
+                }
+                <label class="gn-switch" [class.gn-switch--disabled]="savingPreference() === pref.type">
+                  <input
+                    type="checkbox"
+                    [checked]="pref.enabled"
+                    [disabled]="savingPreference() === pref.type"
+                    (change)="togglePreference(pref.type, $any($event.target).checked)"
+                    [attr.aria-label]="notificationTypeLabels[pref.type]"
+                  />
+                  <span class="gn-switch__track" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+            }
+          </div>
           }
         </div>
       </section>

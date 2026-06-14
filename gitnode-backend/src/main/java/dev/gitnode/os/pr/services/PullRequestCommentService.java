@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.pr.services;
 
+import dev.gitnode.os.events.pr.PullRequestCommentedEvent;
 import dev.gitnode.os.pr.dtos.PrCommentForm;
 import dev.gitnode.os.pr.dtos.PrCommentInfo;
 import dev.gitnode.os.pr.dtos.PrCommentUpdateForm;
@@ -22,10 +23,13 @@ import dev.gitnode.os.pr.entities.PullRequestComment;
 import dev.gitnode.os.pr.mappers.PrMapper;
 import dev.gitnode.os.pr.repositories.PrCommentRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.access.AccessDeniedException;
@@ -42,6 +46,7 @@ public class PullRequestCommentService {
   private final PrMapper prMapper;
   private final PrFinder prFinder;
   private final PrCommentRepository commentRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Transactional
   public PrCommentInfo addComment(
@@ -64,7 +69,25 @@ public class PullRequestCommentService {
     comment.setLineNumber(form.getLineNumber());
     comment.setLineSide(form.getLineSide());
 
-    return this.toCommentInfo(this.commentRepository.save(comment));
+    final var saved = this.commentRepository.save(comment);
+
+    final Set<UUID> participants =
+        new HashSet<>(this.commentRepository.findDistinctCommenterIdsByPrId(pr.getId()));
+    participants.add(pr.getAuthor().getId());
+    participants.remove(authorId);
+
+    this.eventPublisher.publishEvent(
+        new PullRequestCommentedEvent(
+            saved.getId(),
+            pr.getId(),
+            pr.getNumber(),
+            repo.getId(),
+            authorId,
+            pr.getAuthor().getId(),
+            owner,
+            repoName,
+            Set.copyOf(participants)));
+    return this.toCommentInfo(saved);
   }
 
   @Transactional

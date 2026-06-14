@@ -105,6 +105,9 @@ public class CollaboratorService implements CollaboratorAccessPort {
 
     final RepoCollaborator collaborator;
 
+    final var token = UUID.randomUUID().toString();
+    final var expiresAt = Instant.now().plus(INVITE_LINK_EXPIRY_DAYS, ChronoUnit.DAYS);
+
     if (existingOpt.isPresent()) {
       collaborator = existingOpt.get();
       collaborator.setStatus(CollaboratorStatus.PENDING);
@@ -117,12 +120,20 @@ public class CollaboratorService implements CollaboratorAccessPort {
       collaborator.setPermissions(resolvePermissions(form.getPermissions()));
       collaborator.setStatus(CollaboratorStatus.PENDING);
     }
+    collaborator.setInviteToken(token);
+    collaborator.setTokenExpiresAt(expiresAt);
 
     final var saved = this.collaboratorRepository.save(collaborator);
 
     this.eventPublisher.publishEvent(
         new CollaboratorInvitedEvent(
-            repo.getId(), repo.getName(), invitee.getId(), invitee.getUsername(), requesterId));
+            repo.getId(),
+            repo.getName(),
+            repo.getOwner().getUsername(),
+            invitee.getId(),
+            invitee.getUsername(),
+            requesterId,
+            token));
 
     return this.collaboratorMapper.toInfo(saved);
   }
@@ -359,6 +370,34 @@ public class CollaboratorService implements CollaboratorAccessPort {
     }
 
     collaborator.setStatus(CollaboratorStatus.ACCEPTED);
+    collaborator.setInviteToken(null);
+    collaborator.setTokenExpiresAt(null);
+    final var saved = this.collaboratorRepository.save(collaborator);
+
+    return this.collaboratorMapper.toInfo(saved);
+  }
+
+  @Audited(
+      action = "DECLINE_COLLABORATOR_INVITE",
+      entityType = "COLLABORATOR",
+      entityIdSpEL = "#result.getId().toString()",
+      detailsSpEL = "'user=' + #result.username")
+  @Transactional
+  public CollaboratorInfo declineViaToken(final UUID requesterId, final String token) {
+    final var collaborator =
+        this.collaboratorRepository
+            .findByInviteToken(token)
+            .orElseThrow(() -> new ItemNotFoundException("invitationNotFound"));
+
+    if (!collaborator.getTenant().getId().equals(requesterId)) {
+      throw new AccessNotAllowedException("invitationNotForYou");
+    }
+
+    if (collaborator.getStatus() != CollaboratorStatus.PENDING) {
+      throw new BadRequestException("invitationAlreadyHandled");
+    }
+
+    collaborator.setStatus(CollaboratorStatus.DECLINED);
     collaborator.setInviteToken(null);
     collaborator.setTokenExpiresAt(null);
     final var saved = this.collaboratorRepository.save(collaborator);

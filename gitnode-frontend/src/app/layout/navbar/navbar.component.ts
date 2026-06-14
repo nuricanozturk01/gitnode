@@ -27,17 +27,19 @@ import {
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../shared/components/avatar/avatar.component';
+import { NotificationBellComponent } from '../../shared/components/notification-bell/notification-bell.component';
 import { AuthService } from '../../core/auth/services/auth.service';
 import { TokenService } from '../../core/auth/services/token.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { UserService } from '../../core/user/services/user.service';
+import { NotificationService } from '../../core/notification/notification.service';
 import type { User } from '../../domain/auth/models/user.model';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-navbar',
   standalone: true,
-  imports: [LucideAngularModule, RouterLink, RouterLinkActive, AvatarComponent],
+  imports: [LucideAngularModule, RouterLink, RouterLinkActive, AvatarComponent, NotificationBellComponent],
   templateUrl: './navbar.component.html',
   styleUrl: './navbar.component.css',
 })
@@ -45,6 +47,7 @@ export class NavbarComponent {
   private readonly authService = inject(AuthService);
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
+  private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   readonly theme = inject(ThemeService);
 
@@ -74,8 +77,12 @@ export class NavbarComponent {
     effect(() => {
       if (this.tokenService.isLoggedIn()) {
         this.loadUser();
+        void this.notificationService.loadUnreadCount();
+        this.notificationService.connectSse();
+        this.destroyRef.onDestroy(() => this.notificationService.disconnectSse());
       } else {
         this.user.set(null);
+        this.notificationService.disconnectSse();
       }
     });
   }

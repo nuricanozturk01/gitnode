@@ -17,6 +17,13 @@ package dev.gitnode.os.events.ai;
 
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
-public record AiCodeReviewCompletedEvent(UUID reviewId, UUID repoId, int prNumber) {}
+public record AiCodeReviewCompletedEvent(
+    UUID reviewId,
+    UUID repoId,
+    int prNumber,
+    @Nullable UUID prAuthorId,
+    String ownerUsername,
+    String repoName) {}

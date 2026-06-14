@@ -18,4 +18,10 @@ package dev.gitnode.os.events.collaborator;
 import java.util.UUID;
 
 public record CollaboratorInvitedEvent(
-    UUID repoId, String repoName, UUID tenantId, String invitedUsername, UUID invitedById) {}
+    UUID repoId,
+    String repoName,
+    String ownerUsername,
+    UUID tenantId,
+    String invitedUsername,
+    UUID invitedById,
+    String inviteToken) {}

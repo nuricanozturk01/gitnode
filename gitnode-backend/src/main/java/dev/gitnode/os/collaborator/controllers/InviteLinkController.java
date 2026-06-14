@@ -52,4 +52,13 @@ public class InviteLinkController {
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     return ResponseEntity.ok(this.collaboratorService.acceptViaToken(requesterId, token));
   }
+
+  @PostMapping("/{token}/decline")
+  public ResponseEntity<CollaboratorInfo> declineByToken(
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @PathVariable final String token) {
+
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    return ResponseEntity.ok(this.collaboratorService.declineViaToken(requesterId, token));
+  }
 }

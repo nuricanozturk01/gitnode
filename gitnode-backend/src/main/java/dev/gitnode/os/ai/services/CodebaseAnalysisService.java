@@ -22,9 +22,11 @@ import dev.gitnode.os.ai.dtos.CodebaseAnalysisDto;
 import dev.gitnode.os.ai.entities.AiCodebaseAnalysis;
 import dev.gitnode.os.ai.entities.ReviewStatus;
 import dev.gitnode.os.ai.repositories.AiCodebaseAnalysisRepository;
+import dev.gitnode.os.events.ai.AiCodebaseAnalysisCompletedEvent;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.shared.repo.dtos.PageResponse;
+import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -38,10 +40,13 @@ import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -76,15 +81,21 @@ public class CodebaseAnalysisService {
   private final UserAiSettingsService settingsService;
   private final GitProvider gitProvider;
   private final CodebaseAnalysisRunner analysisRunner;
+  private final RepoRepository repoRepository;
+  private final ApplicationEventPublisher eventPublisher;
 
   CodebaseAnalysisService(
       final AiCodebaseAnalysisRepository analysisRepository,
       final UserAiSettingsService settingsService,
       final GitProvider gitProvider,
-      @Lazy final CodebaseAnalysisRunner analysisRunner) {
+      @Lazy final CodebaseAnalysisRunner analysisRunner,
+      final RepoRepository repoRepository,
+      final ApplicationEventPublisher eventPublisher) {
     this.analysisRepository = analysisRepository;
     this.settingsService = settingsService;
     this.gitProvider = gitProvider;
+    this.repoRepository = repoRepository;
+    this.eventPublisher = eventPublisher;
     this.analysisRunner = analysisRunner;
   }
 
@@ -123,8 +134,16 @@ public class CodebaseAnalysisService {
     analysis.setTriggeredBy(tenantId);
     final var saved = this.analysisRepository.save(analysis);
 
-    this.analysisRunner.executeAnalysis(
-        saved.getId(), ownerUsername, repoName, branch, settings.getId());
+    final var analysisId = saved.getId();
+    final var settingsId = settings.getId();
+    TransactionSynchronizationManager.registerSynchronization(
+        new TransactionSynchronization() {
+          @Override
+          public void afterCommit() {
+            CodebaseAnalysisService.this.analysisRunner.executeAnalysis(
+                analysisId, ownerUsername, repoName, branch, settingsId);
+          }
+        });
     return this.toDto(saved);
   }
 
@@ -184,6 +203,15 @@ public class CodebaseAnalysisService {
       analysis.setStatus(ReviewStatus.FAILED);
     }
     this.analysisRepository.save(analysis);
+    this.eventPublisher.publishEvent(
+        new AiCodebaseAnalysisCompletedEvent(
+            analysis.getId(),
+            analysis.getRepoId(),
+            analysis.getBranch(),
+            analysis.getStatus().name(),
+            analysis.getTriggeredBy(),
+            ownerUsername,
+            repoName));
   }
 
   private void mergeSecurityAnalysis(

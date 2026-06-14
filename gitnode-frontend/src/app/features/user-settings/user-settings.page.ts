@@ -30,6 +30,7 @@ import { TokenService } from '../../core/auth/services/token.service';
 import { UserWebhookService } from '../../core/webhook/user-webhook.service';
 import { RunnerService } from '../../core/actions/services/runner.service';
 import { AiService } from '../../core/ai/services/ai.service';
+import { NotificationService } from '../../core/notification/notification.service';
 import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
 import { normalizeStatusKey, runnerStatusLabel } from '../../shared/utils/workflow-status.utils';
 import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
@@ -37,11 +38,13 @@ import type { SshKeyInfo } from '../../domain/ssh/models/ssh-key-info.model';
 import type { WebhookInfo } from '../../domain/webhook/webhook.model';
 import type { RunnerInfo, RegistrationToken } from '../../domain/actions/models/runner.model';
 import type { AiProvider } from '../../domain/ai/ai-settings.model';
+import type { NotificationPreference } from '../../domain/notification/notification.model';
+import { NOTIFICATION_TYPE_LABELS } from '../../domain/notification/notification.model';
 import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
 import { parseUrlTab, replaceUrlFragment } from '../../shared/utils/url-tab.utils';
 import { environment } from '../../../environments/environment';
 
-type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'actions' | 'ai' | 'danger';
+type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'actions' | 'ai' | 'notifications' | 'danger';
 const USER_SETTINGS_TABS = [
   'profile',
   'security',
@@ -49,6 +52,7 @@ const USER_SETTINGS_TABS = [
   'webhooks',
   'actions',
   'ai',
+  'notifications',
   'danger',
 ] as const satisfies readonly UserSettingsTab[];
 const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
@@ -71,10 +75,16 @@ export class UserSettingsPage {
   private readonly userWebhookService = inject(UserWebhookService);
   private readonly runnerService = inject(RunnerService);
   private readonly aiService = inject(AiService);
+  private readonly notificationService = inject(NotificationService);
   readonly tokenService = inject(TokenService);
 
   readonly serverUrl = environment.apiUrl;
   statusLabel = runnerStatusLabel;
+  readonly notificationTypeLabels = NOTIFICATION_TYPE_LABELS;
+
+  readonly notificationPreferences = signal<NotificationPreference[]>([]);
+  readonly loadingPreferences = signal(false);
+  readonly savingPreference = signal<string | null>(null);
 
   readonly runners = signal<RunnerInfo[]>([]);
   readonly loadingRunners = signal(false);
@@ -212,6 +222,7 @@ export class UserSettingsPage {
     if (t === 'webhooks') void this.loadWebhooks();
     if (t === 'actions') void this.loadRunners();
     if (t === 'ai') void this.loadAiSettings();
+    if (t === 'notifications') void this.loadNotificationPreferences();
     if (t === 'profile') {
       const u = this.tokenService.getUsername();
       if (u) this.username.set(u);
@@ -679,6 +690,30 @@ export class UserSettingsPage {
       this.toast.success('API key removed');
     } catch {
       this.toast.error('Could not remove API key');
+    }
+  }
+
+  async loadNotificationPreferences(): Promise<void> {
+    this.loadingPreferences.set(true);
+    try {
+      const prefs = await this.notificationService.getPreferences();
+      this.notificationPreferences.set(prefs);
+    } catch {
+      this.toast.error('Could not load notification preferences');
+    } finally {
+      this.loadingPreferences.set(false);
+    }
+  }
+
+  async togglePreference(type: NotificationPreference['type'], enabled: boolean): Promise<void> {
+    this.savingPreference.set(type);
+    try {
+      const updated = await this.notificationService.setPreference(type, enabled);
+      this.notificationPreferences.update((list) => list.map((p) => (p.type === updated.type ? updated : p)));
+    } catch {
+      this.toast.error('Could not save preference');
+    } finally {
+      this.savingPreference.set(null);
     }
   }
 }

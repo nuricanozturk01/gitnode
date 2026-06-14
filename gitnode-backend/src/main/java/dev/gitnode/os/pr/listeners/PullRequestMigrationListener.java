@@ -72,7 +72,8 @@ public class PullRequestMigrationListener {
           this.prService.create(tenantUsername, repoName, event.getTenantId(), prForm);
 
       if (isClosed) {
-        this.closePrAndCleanup(tenantUsername, repoName, prDetail.number(), sourceBranch);
+        this.closePrAndCleanup(
+            tenantUsername, repoName, prDetail.number(), sourceBranch, event.getTenantId());
       }
     } catch (final Exception e) {
       log.debug("PR migrate edilemedi: {} - {}", pr.get("number"), e.getMessage());
@@ -110,10 +111,11 @@ public class PullRequestMigrationListener {
       final String tenantUsername,
       final String repoName,
       final int prNumber,
-      final String sourceBranch) {
+      final String sourceBranch,
+      final java.util.UUID closedById) {
 
     try {
-      this.prService.close(tenantUsername, repoName, prNumber);
+      this.prService.close(tenantUsername, repoName, prNumber, closedById);
     } catch (final Exception e) {
       log.debug("PR kapatılamadı: {} - {}", prNumber, e.getMessage());
     }

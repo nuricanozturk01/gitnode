@@ -97,7 +97,7 @@ public class PullRequestController {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    this.prService.close(owner, repo, number);
+    this.prService.close(owner, repo, number, requesterId);
     return ResponseEntity.noContent().build();
   }
 

@@ -85,6 +85,11 @@ export const routes: Routes = [
   },
 
   {
+    path: 'notifications',
+    loadComponent: () => import('./features/notifications/notifications.page').then((m) => m.NotificationsPage),
+    canActivate: [authGuard],
+  },
+  {
     path: 'accept-invite/:token',
     loadComponent: () => import('./features/collaborator/accept-invite.page').then((m) => m.AcceptInvitePage),
   },

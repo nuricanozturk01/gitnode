@@ -15,9 +15,19 @@
  */
 package dev.gitnode.os.events.issue;
 
+import java.util.Set;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public record IssueCommentedEvent(
-    UUID commentId, UUID issueId, UUID repoId, int issueNumber, String body) {}
+    UUID commentId,
+    UUID issueId,
+    UUID repoId,
+    int issueNumber,
+    String body,
+    UUID commenterId,
+    UUID issueAuthorId,
+    String ownerUsername,
+    String repoName,
+    Set<UUID> participantIds) {}

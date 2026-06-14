@@ -14,9 +14,10 @@
 /// limitations under the License.
 ///
 
-import { Component, ChangeDetectionStrategy, DestroyRef, inject, signal, computed, effect } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Location } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { FormsModule } from '@angular/forms';
@@ -606,8 +607,9 @@ export class PrDetailPage {
       this.pr.set(updated);
       this.toast.success('Pull request merged');
     } catch (err) {
-      this.mergeError.set(err.error);
-      this.toast.error(err.error);
+      const msg = err instanceof HttpErrorResponse ? (err.error as string) : 'Merge failed';
+      this.mergeError.set(msg);
+      this.toast.error(msg);
     } finally {
       this.merging.set(false);
     }

@@ -32,7 +32,6 @@ import dev.gitnode.os.webhook.repositories.WebhookRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -99,7 +98,7 @@ class WebhookDlqRetrySchedulerTest {
 
     when(deadLetterRepository.findDueForRetry(any(), anyInt(), any(Pageable.class)))
         .thenReturn(List.of(dl));
-    when(webhookRepository.findById(dl.getWebhookId())).thenReturn(Optional.of(webhook));
+    when(webhookRepository.findAllById(any())).thenReturn(List.of(webhook));
 
     scheduler.retryDeadLetters();
 
@@ -114,7 +113,6 @@ class WebhookDlqRetrySchedulerTest {
 
     when(deadLetterRepository.findDueForRetry(any(), anyInt(), any(Pageable.class)))
         .thenReturn(List.of(dl));
-    when(webhookRepository.findById(dl.getWebhookId())).thenReturn(Optional.empty());
 
     scheduler.retryDeadLetters();
 
@@ -130,7 +128,7 @@ class WebhookDlqRetrySchedulerTest {
 
     when(deadLetterRepository.findDueForRetry(any(), anyInt(), any(Pageable.class)))
         .thenReturn(List.of(dl));
-    when(webhookRepository.findById(dl.getWebhookId())).thenReturn(Optional.of(webhook));
+    when(webhookRepository.findAllById(any())).thenReturn(List.of(webhook));
 
     scheduler.retryDeadLetters();
 
@@ -146,7 +144,7 @@ class WebhookDlqRetrySchedulerTest {
 
     when(deadLetterRepository.findDueForRetry(any(), anyInt(), any(Pageable.class)))
         .thenReturn(List.of(dl));
-    when(webhookRepository.findById(dl.getWebhookId())).thenReturn(Optional.of(webhook));
+    when(webhookRepository.findAllById(any())).thenReturn(List.of(webhook));
     doThrow(new RuntimeException("connection refused"))
         .when(deliveryService)
         .redeliverRaw(any(), any(), any());
@@ -171,7 +169,7 @@ class WebhookDlqRetrySchedulerTest {
 
     when(deadLetterRepository.findDueForRetry(any(), anyInt(), any(Pageable.class)))
         .thenReturn(List.of(dl));
-    when(webhookRepository.findById(dl.getWebhookId())).thenReturn(Optional.of(webhook));
+    when(webhookRepository.findAllById(any())).thenReturn(List.of(webhook));
     doThrow(new RuntimeException("still failing"))
         .when(deliveryService)
         .redeliverRaw(any(), any(), any());
@@ -191,7 +189,7 @@ class WebhookDlqRetrySchedulerTest {
 
     when(deadLetterRepository.findDueForRetry(any(), anyInt(), any(Pageable.class)))
         .thenReturn(List.of(dl));
-    when(webhookRepository.findById(dl.getWebhookId())).thenReturn(Optional.of(webhook));
+    when(webhookRepository.findAllById(any())).thenReturn(List.of(webhook));
 
     scheduler.retryDeadLetters();
 
@@ -213,6 +211,7 @@ class WebhookDlqRetrySchedulerTest {
 
   private static Webhook webhook(final UUID id, final String secret) {
     final var w = new Webhook();
+    w.setId(id);
     w.setSecret(secret);
     return w;
   }

@@ -15,7 +15,7 @@ type SetupPnpmAction struct{}
 func NewSetupPnpmAction() *SetupPnpmAction { return &SetupPnpmAction{} }
 
 func (a *SetupPnpmAction) Name() string       { return "pnpm/action-setup" }
-func (a *SetupPnpmAction) Versions() []string { return []string{"v1"} }
+func (a *SetupPnpmAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *SetupPnpmAction) Execute(
 	ctx context.Context,

@@ -26,7 +26,7 @@ func NewCheckoutAction(serverURL, runnerToken string) *CheckoutAction {
 }
 
 func (a *CheckoutAction) Name() string       { return "actions/checkout" }
-func (a *CheckoutAction) Versions() []string { return []string{"v1"} }
+func (a *CheckoutAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *CheckoutAction) Execute(
 	ctx context.Context,

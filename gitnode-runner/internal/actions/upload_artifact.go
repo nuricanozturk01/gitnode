@@ -25,7 +25,7 @@ func NewUploadArtifactAction(serverURL, runnerToken string) *UploadArtifactActio
 }
 
 func (a *UploadArtifactAction) Name() string       { return "actions/upload-artifact" }
-func (a *UploadArtifactAction) Versions() []string { return []string{"v1"} }
+func (a *UploadArtifactAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *UploadArtifactAction) Execute(
 	ctx context.Context,

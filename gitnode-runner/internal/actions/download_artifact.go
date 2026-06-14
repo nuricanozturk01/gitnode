@@ -23,7 +23,7 @@ func NewDownloadArtifactAction(serverURL, runnerToken string) *DownloadArtifactA
 }
 
 func (a *DownloadArtifactAction) Name() string       { return "actions/download-artifact" }
-func (a *DownloadArtifactAction) Versions() []string { return []string{"v1"} }
+func (a *DownloadArtifactAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *DownloadArtifactAction) Execute(
 	ctx context.Context,

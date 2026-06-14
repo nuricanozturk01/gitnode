@@ -16,7 +16,7 @@ type SetupNodeAction struct{}
 func NewSetupNodeAction() *SetupNodeAction { return &SetupNodeAction{} }
 
 func (a *SetupNodeAction) Name() string       { return "actions/setup-node" }
-func (a *SetupNodeAction) Versions() []string { return []string{"v1"} }
+func (a *SetupNodeAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *SetupNodeAction) Execute(
 	ctx context.Context,

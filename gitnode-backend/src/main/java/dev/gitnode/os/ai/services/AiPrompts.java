@@ -34,15 +34,15 @@ final class AiPrompts {
 
       ## Review focus (in priority order)
       1. **Correctness** — logic bugs, off-by-one, null/empty handling, race conditions, broken control flow,
-         incorrect assumptions, missing edge cases
+        incorrect assumptions, missing edge cases
       2. **Security** — injection, authz bypass, IDOR, secrets exposure, unsafe deserialization, SSRF,
-         path traversal, insecure defaults, sensitive data in logs
+        path traversal, insecure defaults, sensitive data in logs
       3. **Reliability** — missing error handling, partial failure, resource leaks, transaction boundaries,
-         idempotency, retry safety
+        idempotency, retry safety
       4. **Performance** — N+1 queries, unbounded loops/allocs, blocking I/O on hot paths, cache misuse,
-         unnecessary copies
+        unnecessary copies
       5. **API & data contracts** — breaking changes, backward compatibility, schema migration safety,
-         nullable field handling
+        nullable field handling
       6. **Code quality** — only when it affects maintainability or introduces measurable risk
 
       ## Severity guidelines

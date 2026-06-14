@@ -25,4 +25,5 @@ export interface RepoForm {
   isPrivate?: boolean;
   deleteHeadBranchOnPrMerge?: boolean;
   deleteHeadBranchOnPrClose?: boolean;
+  aiPrReviewEnabled?: boolean;
 }

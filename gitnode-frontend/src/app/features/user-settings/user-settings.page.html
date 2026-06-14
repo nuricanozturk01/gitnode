@@ -89,6 +89,19 @@
       <button
         type="button"
         role="tab"
+        id="settings-tab-ai"
+        class="tab gap-2 rounded-md"
+        [class.tab-active]="activeTab() === 'ai'"
+        [attr.aria-selected]="activeTab() === 'ai'"
+        aria-controls="settings-panel-ai"
+        (click)="setTab('ai')"
+      >
+        <lucide-icon name="sparkles" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+        AI
+      </button>
+      <button
+        type="button"
+        role="tab"
         id="settings-tab-danger"
         class="tab text-error gap-2 rounded-md"
         [class.tab-active]="activeTab() === 'danger'"
@@ -783,6 +796,170 @@
             </div>
             }
           </div>
+          }
+        </div>
+      </section>
+    </div>
+    } @if (activeTab() === 'ai') {
+    <div id="settings-panel-ai" role="tabpanel" aria-labelledby="settings-tab-ai" class="settings-panels space-y-6">
+      <section class="repo-panel settings-section relative overflow-hidden">
+        <div
+          class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+        ></div>
+        <div class="p-5 sm:p-6">
+          <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+            <lucide-icon name="sparkles" class="text-primary size-5 shrink-0"></lucide-icon>
+            AI Assistant
+          </h2>
+          <p class="text-base-content/65 mt-1 max-w-2xl text-sm">
+            Connect your AI provider for commit message suggestions, PR descriptions, and automated code reviews.
+          </p>
+
+          <div class="settings-stack mt-6">
+            <div
+              class="settings-enable-row border-base-200 flex items-center justify-between gap-4 rounded-xl border p-4 sm:p-5"
+            >
+              <div class="min-w-0 flex-1">
+                <p class="settings-label m-0">Enable AI features</p>
+                <p class="settings-field-hint text-base-content/60 mt-1">
+                  When enabled, GitNode uses your provider for suggestions and automated reviews.
+                </p>
+              </div>
+              <div class="flex shrink-0 items-center gap-2.5">
+                @if (savingAiEnabled()) {
+                <span class="loading loading-spinner loading-xs text-primary" aria-hidden="true"></span>
+                }
+                <label class="gn-switch" [class.gn-switch--disabled]="savingAiEnabled()">
+                  <input
+                    type="checkbox"
+                    [checked]="aiEnabled()"
+                    [disabled]="savingAiEnabled()"
+                    (change)="onAiEnabledToggle($any($event.target).checked)"
+                    aria-label="Enable AI features"
+                  />
+                  <span class="gn-switch__track" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          @if (aiEnabled()) {
+          <div class="settings-stack mt-6">
+            <div class="settings-field">
+              <label class="settings-label" for="ai-provider">Provider</label>
+              <select
+                id="ai-provider"
+                class="settings-input select select-bordered border-base-300 w-full max-w-xs text-sm"
+                [ngModel]="aiProvider()"
+                (ngModelChange)="aiProvider.set($event)"
+                name="aiProvider"
+              >
+                <option value="OPENAI">OpenAI (GPT-4o, GPT-4o-mini)</option>
+                <option value="ANTHROPIC">Anthropic (Claude)</option>
+                <option value="GEMINI">Google Gemini</option>
+                <option value="LOCAL">Local AI (Ollama)</option>
+              </select>
+            </div>
+
+            <div class="settings-field">
+              <label class="settings-label" for="ai-api-key">
+                API Key @if (aiHasKey()) {
+                <span class="text-success ml-2 text-xs font-normal">Key saved</span>
+                }
+              </label>
+              <div class="flex gap-2">
+                <input
+                  id="ai-api-key"
+                  type="password"
+                  class="settings-input input input-bordered border-base-300 w-full text-sm"
+                  placeholder="Enter new API key to update"
+                  [ngModel]="aiApiKey()"
+                  (ngModelChange)="aiApiKey.set($event)"
+                  name="aiApiKey"
+                  autocomplete="new-password"
+                />
+                @if (aiHasKey()) {
+                <button type="button" class="btn btn-ghost btn-sm text-error shrink-0" (click)="deleteAiApiKey()">
+                  Remove
+                </button>
+                }
+              </div>
+              @if (aiProvider() === 'LOCAL') {
+              <p class="settings-field-hint text-base-content/55">Optional for local AI (Ollama).</p>
+              } @else {
+              <p class="settings-field-hint text-base-content/55">Required for cloud providers.</p>
+              }
+            </div>
+
+            <div class="settings-field">
+              <label class="settings-label" for="ai-model">Model</label>
+              <input
+                id="ai-model"
+                type="text"
+                class="settings-input input input-bordered border-base-300 w-full text-sm"
+                [placeholder]="aiModelPlaceholder()"
+                [ngModel]="aiModel()"
+                (ngModelChange)="aiModel.set($event)"
+                name="aiModel"
+              />
+              <p class="settings-field-hint text-base-content/55">
+                Leave blank to use the provider default ({{ aiModelPlaceholder() }}).
+              </p>
+            </div>
+
+            @if (aiProvider() === 'LOCAL') {
+            <div class="settings-field">
+              <label class="settings-label" for="ai-base-url">Base URL</label>
+              <input
+                id="ai-base-url"
+                type="text"
+                class="settings-input input input-bordered border-base-300 w-full text-sm"
+                placeholder="http://localhost:11434"
+                [ngModel]="aiBaseUrl()"
+                (ngModelChange)="aiBaseUrl.set($event)"
+                name="aiBaseUrl"
+              />
+            </div>
+            }
+          </div>
+
+          <div class="mt-6 flex flex-wrap gap-2">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm gap-1.5"
+              [class.loading]="savingAi()"
+              [disabled]="savingAi()"
+              (click)="saveAiSettings()"
+            >
+              @if (savingAi()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              Saving… } @else {
+              <lucide-icon name="check" class="size-4"></lucide-icon>
+              Save AI settings }
+            </button>
+            @if (aiHasKey() || aiApiKey().trim() || aiProvider() === 'LOCAL') {
+            <button
+              type="button"
+              class="btn btn-outline btn-sm gap-1.5"
+              [class.loading]="testingAi()"
+              [disabled]="testingAi()"
+              (click)="testAiConnection()"
+            >
+              @if (testingAi()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              Testing… } @else {
+              <lucide-icon name="zap" class="size-4"></lucide-icon>
+              Test connection }
+            </button>
+            }
+          </div>
+
+          @if (aiError()) {
+          <div class="alert alert-error mt-4 text-sm">{{ aiError() }}</div>
+          } } @else {
+          <p class="text-base-content/55 mt-6 text-sm leading-relaxed">
+            Turn on AI features above to choose a provider, enter your API key, and configure a model.
+          </p>
           }
         </div>
       </section>

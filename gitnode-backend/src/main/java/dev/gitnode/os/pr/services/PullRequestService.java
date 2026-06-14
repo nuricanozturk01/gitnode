@@ -126,7 +126,16 @@ public class PullRequestService {
 
       final var saved = this.prRepository.save(pr);
       this.eventPublisher.publishEvent(
-          new PullRequestCreatedEvent(saved.getId(), repo.getId(), form.getSourceBranch()));
+          new PullRequestCreatedEvent(
+              saved.getId(),
+              repo.getId(),
+              saved.getNumber(),
+              repo.getOwner().getUsername(),
+              repo.getName(),
+              form.getSourceBranch(),
+              form.getTargetBranch(),
+              sourceSha,
+              authorId));
       return this.toDetail(saved);
     }
   }

@@ -42,6 +42,7 @@ public class RepoInfo implements Serializable {
   private final Set<String> topics;
   private final boolean deleteHeadBranchOnPrMerge;
   private final boolean deleteHeadBranchOnPrClose;
+  private final boolean aiPrReviewEnabled;
   private final Instant createdAt;
   private final Instant updatedAt;
   private final @Nullable RepoForkedFromInfo forkedFrom;

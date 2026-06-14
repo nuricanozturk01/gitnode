@@ -42,6 +42,11 @@ public class PrQueryAdapter implements PrQueryPort {
   }
 
   @Override
+  public Optional<PrData> findByRepoIdAndNumber(final UUID repoId, final int number) {
+    return this.prRepository.findByRepoIdAndNumber(repoId, number).map(this::toData);
+  }
+
+  @Override
   public List<PrData> findOpenByRepoId(final UUID repoId) {
     return this.prRepository
         .findAllByRepoIdAndStatusOrderByCreatedAtDesc(repoId, "OPEN", Pageable.unpaged())
@@ -57,6 +62,8 @@ public class PrQueryAdapter implements PrQueryPort {
         pr.getTitle(),
         pr.getSourceBranch(),
         pr.getTargetBranch(),
-        pr.getStatus());
+        pr.getStatus(),
+        pr.getSourceSha(),
+        pr.getAuthor().getId());
   }
 }

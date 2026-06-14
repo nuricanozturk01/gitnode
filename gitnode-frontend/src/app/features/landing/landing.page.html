@@ -38,7 +38,9 @@
               class="text-primary size-3.5 shrink-0 sm:size-4"
               aria-hidden="true"
             ></lucide-icon>
-            <span class="min-w-0 leading-snug">Git hosting · CI/CD Actions · Enterprise SSO</span>
+            <span class="min-w-0 leading-snug"
+              >Git hosting · CI/CD Actions · AI-assisted workflows · Enterprise SSO</span
+            >
           </div>
 
           <h1
@@ -51,8 +53,9 @@
           <p
             class="text-base-content/70 mt-4 max-w-lg text-sm leading-relaxed text-pretty sm:mt-5 sm:text-base sm:leading-relaxed md:text-lg"
           >
-            GitNode is a modern Git platform you run yourself — repositories, pull requests, enterprise SAML/LDAP
-            sign-in, admin tooling, and observability — without giving up custody of your source.
+            GitNode is a modern Git platform you run yourself — repositories, pull requests, CI/CD Actions, optional
+            AI-assisted review and analysis (your API keys, your models), enterprise SAML/LDAP sign-in, and full
+            observability — without giving up custody of your source.
           </p>
 
           <div
@@ -153,8 +156,8 @@
             aria-hidden="true"
           >
             <span class="landing-float-badge">
-              <lucide-icon name="gitPullRequest" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
-              PR #42 merged
+              <lucide-icon name="sparkles" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+              AI review ready
             </span>
           </div>
           <div
@@ -247,6 +250,10 @@
           <div class="landing-tech-item">
             <dt>JGit</dt>
             <dd>Git engine</dd>
+          </div>
+          <div class="landing-tech-item">
+            <dt>Spring AI</dt>
+            <dd>LLM integrations</dd>
           </div>
           <div class="landing-tech-item">
             <dt>Prometheus</dt>
@@ -366,8 +373,8 @@
         <p class="landing-section-eyebrow mb-3">Platform</p>
         <h2 id="landing-features-heading" class="text-2xl font-bold tracking-tight sm:text-4xl">Everything you need</h2>
         <p class="text-base-content/65 mt-3 text-sm text-pretty sm:text-base sm:text-lg">
-          Git hosting, CI/CD Actions, enterprise SSO, admin tooling, observability, and audit — a cohesive experience
-          for teams that want GitHub-like workflows without the SaaS footprint.
+          Git hosting, CI/CD Actions, optional AI-assisted review, enterprise SSO, admin tooling, observability, and
+          audit — a cohesive experience for teams that want GitHub-like workflows on infrastructure they control.
         </p>
       </div>
 
@@ -403,7 +410,8 @@
           </div>
           <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">Pull requests</h3>
           <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
-            Review diffs, discuss changes, and merge when the team is ready.
+            Review diffs, discuss changes, merge when ready — with an optional <strong>AI Review</strong> tab when the
+            repo owner enables it.
           </p>
         </article>
 
@@ -702,6 +710,158 @@
         </article>
       </div>
 
+      <!-- AI Features -->
+      <div class="mt-16 sm:mt-20">
+        <div class="mb-8 flex items-center gap-4 sm:mb-10">
+          <div class="bg-base-300/60 h-px flex-1"></div>
+          <span class="text-base-content/40 text-[11px] font-semibold tracking-widest uppercase sm:text-xs"
+            >AI features</span
+          >
+          <div class="bg-base-300/60 h-px flex-1"></div>
+        </div>
+
+        <div
+          class="landing-surface-panel border-primary/20 from-primary/5 mb-6 rounded-2xl border bg-gradient-to-br px-5 py-6 sm:mb-8 sm:px-8 sm:py-7"
+        >
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
+            <div
+              class="bg-primary/15 text-primary flex size-12 shrink-0 items-center justify-center rounded-xl sm:size-14"
+            >
+              <lucide-icon name="zap" class="size-6 sm:size-7" aria-hidden="true"></lucide-icon>
+            </div>
+            <div class="min-w-0 flex-1">
+              <h3 class="text-lg font-semibold tracking-tight sm:text-xl">Your keys. Your models. Your rules.</h3>
+              <p class="text-base-content/70 mt-2 max-w-3xl text-sm leading-relaxed sm:text-base">
+                GitNode does not ship a shared LLM bill. Each user connects OpenAI, Anthropic, Gemini, or a local Ollama
+                instance in <strong>User Settings → AI</strong>. API keys are encrypted with AES-256-GCM. Repositories
+                separately opt in to automated PR review — nothing runs until both sides are enabled.
+              </p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <span class="badge-pill badge-pill--primary">Bring your own key</span>
+                <span class="badge-pill badge-pill--neutral">Repo-level PR toggle</span>
+                <span class="badge-pill badge-pill--neutral">Memory-safe on large repos</span>
+                <span class="badge-pill badge-pill--neutral">Circuit breakers</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-6 md:gap-5">
+          <!-- AI Code Review -->
+          <article
+            class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-6 md:flex-row md:items-stretch md:gap-8 lg:p-8"
+          >
+            <div class="flex min-w-0 flex-1 flex-col">
+              <div class="mb-4 flex flex-wrap items-center gap-3">
+                <div class="bg-primary/15 text-primary flex h-12 w-12 items-center justify-center rounded-xl">
+                  <lucide-icon name="sparkles" class="size-6" aria-hidden="true"></lucide-icon>
+                </div>
+                <span class="badge-pill badge-pill--primary">Opt-in per repo</span>
+              </div>
+              <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">PR AI Code Review</h3>
+              <p class="text-base-content/70 mt-2 max-w-2xl flex-1 text-sm leading-relaxed sm:text-base">
+                Enable <strong>PR AI review</strong> under <strong>Settings → AI Analysis</strong>. When a pull request
+                opens, a production-tuned reviewer analyzes the diff for bugs, security issues, performance risks, and
+                maintainability — with categorized, severity-ranked comments and an overall summary. Retry anytime from
+                the PR if settings were missing on first run.
+              </p>
+              <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
+                Results live in the <strong>AI Review</strong> tab on each pull request.
+              </p>
+            </div>
+            <div
+              class="border-base-300/60 mt-6 flex min-w-0 flex-col justify-center gap-2 border-t pt-6 md:mt-0 md:w-72 md:shrink-0 md:border-t-0 md:border-l md:pt-0 md:pl-8"
+            >
+              <span class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Detects</span>
+              <div class="flex flex-wrap gap-2 md:flex-col md:gap-2">
+                <span class="badge-pill badge-pill--neutral w-fit">Logic bugs</span>
+                <span class="badge-pill badge-pill--neutral w-fit">Security flaws</span>
+                <span class="badge-pill badge-pill--neutral w-fit">Performance risks</span>
+                <span class="badge-pill badge-pill--neutral w-fit">API contract breaks</span>
+                <span class="badge-pill badge-pill--neutral w-fit">Bounded large-PR diffs</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- AI Commit Message -->
+          <article
+            class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+          >
+            <div class="mb-4 flex flex-wrap items-center gap-3">
+              <div class="bg-primary/15 text-primary flex h-12 w-12 items-center justify-center rounded-xl">
+                <lucide-icon name="gitCommit" class="size-6" aria-hidden="true"></lucide-icon>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">AI commit messages</h3>
+            <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+              The <strong>Sparkles</strong> control on the new-PR form reads your branch diff and suggests a
+              <strong>Conventional Commits</strong> subject — scoped, imperative, ready to paste into
+              <span class="font-mono text-xs opacity-90">git commit -m</span>.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">feat / fix / chore</span>
+              <span class="badge badge-outline badge-sm border-base-300/80 font-normal">Auto scope</span>
+            </div>
+          </article>
+
+          <!-- AI PR Description -->
+          <article
+            class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-3 lg:p-8"
+          >
+            <div class="mb-4 flex flex-wrap items-center gap-3">
+              <div class="bg-primary/15 text-primary flex h-12 w-12 items-center justify-center rounded-xl">
+                <lucide-icon name="messageSquare" class="size-6" aria-hidden="true"></lucide-icon>
+              </div>
+            </div>
+            <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">AI PR descriptions</h3>
+            <p class="text-base-content/70 mt-2 flex-1 text-sm leading-relaxed sm:text-base">
+              <strong>AI Generate</strong> drafts a title plus structured Markdown: summary, motivation, breaking
+              changes, security notes, and a reviewer-ready test-plan checklist — from the branch diff in one click.
+            </p>
+            <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
+              On the <strong>New pull request</strong> form.
+            </p>
+          </article>
+
+          <!-- AI Codebase Analysis -->
+          <article
+            class="feature-card feature-card--lift border-primary/25 from-base-100 to-primary/5 flex min-w-0 flex-col rounded-2xl border bg-gradient-to-br p-4 shadow-sm sm:p-6 md:col-span-6 md:flex-row md:items-stretch md:gap-8 lg:p-8"
+          >
+            <div class="flex min-w-0 flex-1 flex-col">
+              <div class="mb-4 flex flex-wrap items-center gap-3">
+                <div class="bg-primary/15 text-primary flex h-12 w-12 items-center justify-center rounded-xl">
+                  <lucide-icon name="barChart3" class="size-6" aria-hidden="true"></lucide-icon>
+                </div>
+              </div>
+              <h3 class="text-lg font-semibold tracking-tight break-words sm:text-xl">AI codebase analysis</h3>
+              <p class="text-base-content/70 mt-2 max-w-2xl flex-1 text-sm leading-relaxed sm:text-base">
+                Score any branch across six dimensions — architecture, code quality, performance, memory usage,
+                scalability, and security — each rated 1–10 with issues and fixes. A dedicated security pass prioritizes
+                auth, config, and dependency surfaces. Built for monorepos: bounded tree walks skip
+                <span class="font-mono text-xs opacity-90">node_modules</span> and build output instead of loading the
+                whole tree into memory.
+              </p>
+              <p class="text-base-content/55 mt-4 text-xs leading-relaxed sm:text-sm">
+                Trigger from <strong>Settings → AI Analysis</strong>; browse past runs in the same tab.
+              </p>
+            </div>
+            <div
+              class="border-base-300/60 mt-6 flex min-w-0 flex-col justify-center gap-2 border-t pt-6 md:mt-0 md:w-64 md:shrink-0 md:border-t-0 md:border-l md:pt-0 md:pl-8"
+            >
+              <span class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Dimensions</span>
+              <div class="flex flex-wrap gap-2 md:flex-col md:gap-2">
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Architecture</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Code quality</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Performance</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Memory usage</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Scalability</span>
+                <span class="badge badge-outline badge-sm border-base-300/80 w-fit font-normal">Security</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+
       <!-- Enterprise & operations -->
       <div class="mt-16 sm:mt-20">
         <div class="mb-8 flex items-center gap-4 sm:mb-10">
@@ -877,7 +1037,8 @@
           Ready to host your own Git?
         </h2>
         <p class="text-base-content/65 mx-auto mt-4 max-w-lg text-sm text-pretty sm:text-base sm:text-lg">
-          Deploy GitNode where you already run services. No per-seat tax — capacity is yours to size.
+          Deploy GitNode where you already run services. Enable AI when you want it — with your own API keys and
+          repo-level controls. No per-seat tax.
         </p>
         <div
           class="mt-8 flex w-full min-w-0 flex-col items-stretch gap-2.5 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-3"

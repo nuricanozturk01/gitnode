@@ -77,6 +77,10 @@ public class Repo {
   @Column(name = "delete_head_branch_on_pr_close", nullable = false)
   private boolean deleteHeadBranchOnPrClose;
 
+  @ColumnDefault("false")
+  @Column(name = "ai_pr_review_enabled", nullable = false)
+  private boolean aiPrReviewEnabled;
+
   @Column(name = "topics")
   private Set<String> topics;
 

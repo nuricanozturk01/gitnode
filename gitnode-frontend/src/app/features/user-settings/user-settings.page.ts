@@ -24,28 +24,31 @@ import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 import { SshKeyService } from '../../core/ssh/services/ssh-key.service';
 import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../core/toast/toast.service';
-import { profileErrorMessage } from '../../shared/utils/api-error.utils';
+import { profileErrorMessage, apiErrorMessage } from '../../shared/utils/api-error.utils';
 import { UserService } from '../../core/user/services/user.service';
 import { TokenService } from '../../core/auth/services/token.service';
 import { UserWebhookService } from '../../core/webhook/user-webhook.service';
 import { RunnerService } from '../../core/actions/services/runner.service';
+import { AiService } from '../../core/ai/services/ai.service';
 import { RelativeTimePipe } from '../../shared/pipes/relative-time.pipe';
 import { normalizeStatusKey, runnerStatusLabel } from '../../shared/utils/workflow-status.utils';
 import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
 import type { SshKeyInfo } from '../../domain/ssh/models/ssh-key-info.model';
 import type { WebhookInfo } from '../../domain/webhook/webhook.model';
 import type { RunnerInfo, RegistrationToken } from '../../domain/actions/models/runner.model';
+import type { AiProvider } from '../../domain/ai/ai-settings.model';
 import { USER_WEBHOOK_EVENT_GROUPS } from '../../domain/webhook/webhook.model';
 import { parseUrlTab, replaceUrlFragment } from '../../shared/utils/url-tab.utils';
 import { environment } from '../../../environments/environment';
 
-type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'actions' | 'danger';
+type UserSettingsTab = 'profile' | 'security' | 'ssh' | 'webhooks' | 'actions' | 'ai' | 'danger';
 const USER_SETTINGS_TABS = [
   'profile',
   'security',
   'ssh',
   'webhooks',
   'actions',
+  'ai',
   'danger',
 ] as const satisfies readonly UserSettingsTab[];
 const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
@@ -67,6 +70,7 @@ export class UserSettingsPage {
   private readonly userService = inject(UserService);
   private readonly userWebhookService = inject(UserWebhookService);
   private readonly runnerService = inject(RunnerService);
+  private readonly aiService = inject(AiService);
   readonly tokenService = inject(TokenService);
 
   readonly serverUrl = environment.apiUrl;
@@ -145,6 +149,33 @@ export class UserSettingsPage {
     return this.webhooks().length < 3;
   }
 
+  // AI settings state
+  readonly aiEnabled = signal(false);
+  readonly aiProvider = signal<AiProvider>('OPENAI');
+  readonly aiApiKey = signal('');
+  readonly aiModel = signal('');
+  readonly aiBaseUrl = signal('');
+  readonly aiHasKey = signal(false);
+  readonly savingAi = signal(false);
+  readonly savingAiEnabled = signal(false);
+  readonly testingAi = signal(false);
+  readonly aiError = signal<string | null>(null);
+
+  readonly aiModelPlaceholder = computed(() => {
+    switch (this.aiProvider()) {
+      case 'OPENAI':
+        return 'gpt-4o-mini';
+      case 'ANTHROPIC':
+        return 'claude-haiku-4-5-20251001';
+      case 'GEMINI':
+        return 'gemini-2.0-flash';
+      case 'LOCAL':
+        return 'llama3';
+      default:
+        return 'default model';
+    }
+  });
+
   constructor() {
     this.route.fragment.pipe(takeUntilDestroyed()).subscribe((fragment) => {
       this.applyTab(parseUrlTab(fragment, USER_SETTINGS_TABS, DEFAULT_USER_SETTINGS_TAB));
@@ -180,6 +211,7 @@ export class UserSettingsPage {
     if (t === 'ssh') this.loadSshKeys();
     if (t === 'webhooks') void this.loadWebhooks();
     if (t === 'actions') void this.loadRunners();
+    if (t === 'ai') void this.loadAiSettings();
     if (t === 'profile') {
       const u = this.tokenService.getUsername();
       if (u) this.username.set(u);
@@ -537,6 +569,124 @@ export class UserSettingsPage {
       this.toast.success('Runner removed');
     } catch {
       this.toast.error('Could not remove runner');
+    }
+  }
+
+  private async loadAiSettings(): Promise<void> {
+    if (this.savingAiEnabled()) return;
+    try {
+      const settings = await this.aiService.getSettings();
+      this.aiEnabled.set(settings.enabled);
+      this.aiProvider.set(settings.provider);
+      this.aiHasKey.set(settings.hasApiKey);
+      this.aiModel.set(settings.model ?? '');
+      this.aiBaseUrl.set(settings.baseUrl ?? '');
+      this.aiError.set(null);
+    } catch {
+      // ignore — settings may not exist yet
+    }
+  }
+
+  async onAiEnabledToggle(enabled: boolean): Promise<void> {
+    if (this.savingAiEnabled() || this.savingAi()) return;
+    const previous = this.aiEnabled();
+    if (previous === enabled) return;
+
+    const provider = this.aiProvider();
+    const needsApiKey = provider !== 'LOCAL';
+    if (enabled && needsApiKey && !this.aiHasKey() && !this.aiApiKey().trim()) {
+      this.aiError.set('Enter an API key and save before enabling AI features.');
+      return;
+    }
+
+    this.aiEnabled.set(enabled);
+    await this.persistAiEnabled(enabled, previous);
+  }
+
+  private async persistAiEnabled(enabled: boolean, rollbackValue: boolean): Promise<void> {
+    this.savingAiEnabled.set(true);
+    this.aiError.set(null);
+    try {
+      const updated = await this.aiService.updateSettings({
+        provider: this.aiProvider(),
+        apiKey: null,
+        baseUrl: this.aiBaseUrl() || null,
+        model: this.aiModel() || null,
+        enabled,
+      });
+      this.aiEnabled.set(updated.enabled);
+      this.aiHasKey.set(updated.hasApiKey);
+      this.toast.success(enabled ? 'AI features enabled' : 'AI features disabled');
+    } catch (err) {
+      this.aiEnabled.set(rollbackValue);
+      const msg = apiErrorMessage(err, 'Failed to update AI settings');
+      this.aiError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.savingAiEnabled.set(false);
+    }
+  }
+
+  async saveAiSettings(): Promise<void> {
+    const provider = this.aiProvider();
+    const needsApiKey = provider !== 'LOCAL';
+    if (this.aiEnabled() && needsApiKey && !this.aiHasKey() && !this.aiApiKey().trim()) {
+      this.aiError.set('Enter an API key and save before enabling AI features.');
+      return;
+    }
+
+    this.savingAi.set(true);
+    this.aiError.set(null);
+    try {
+      const updated = await this.aiService.updateSettings({
+        provider,
+        apiKey: this.aiApiKey() || null,
+        baseUrl: this.aiBaseUrl() || null,
+        model: this.aiModel() || null,
+        enabled: this.aiEnabled(),
+      });
+      this.aiEnabled.set(updated.enabled);
+      this.aiHasKey.set(updated.hasApiKey);
+      this.aiApiKey.set('');
+      this.toast.success('AI settings saved');
+    } catch (err) {
+      this.aiError.set(apiErrorMessage(err, 'Failed to save AI settings'));
+    } finally {
+      this.savingAi.set(false);
+    }
+  }
+
+  async testAiConnection(): Promise<void> {
+    this.testingAi.set(true);
+    this.aiError.set(null);
+    try {
+      const result = await this.aiService.testConnection({
+        provider: this.aiProvider(),
+        apiKey: this.aiApiKey().trim() || null,
+        baseUrl: this.aiBaseUrl() || null,
+        model: this.aiModel() || null,
+      });
+      this.toast.success(result.message || 'AI connection successful!');
+    } catch (err) {
+      this.aiError.set(apiErrorMessage(err, 'Connection failed. Check your API key and model.'));
+    } finally {
+      this.testingAi.set(false);
+    }
+  }
+
+  async deleteAiApiKey(): Promise<void> {
+    const confirmed = await this.confirmModal.confirm(
+      'Remove API Key',
+      'Remove saved API key? AI features will stop working.',
+      { confirmLabel: 'Remove', variant: 'danger' },
+    );
+    if (!confirmed) return;
+    try {
+      await this.aiService.deleteApiKey();
+      this.aiHasKey.set(false);
+      this.toast.success('API key removed');
+    } catch {
+      this.toast.error('Could not remove API key');
     }
   }
 }

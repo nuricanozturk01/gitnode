@@ -44,7 +44,7 @@ GITLAB_CLIENT_SECRET := YOUR_SECRET
   runner-build runner-build-all \
   ldap-up ldap-down \
   dev-setup dev-backend \
-  actions-encryption-key saml-keygen \
+  actions-encryption-key ai-encryption-key saml-keygen \
   test test-backend test-runner test-lint verify \
   logs logs-db logs-redis logs-prometheus logs-grafana \
   ps build purge help
@@ -107,6 +107,7 @@ monitoring-down:
 # ── App container ─────────────────────────────────────────────────────────────
 
 ACTIONS_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.gitnode/actions-encryption-key 2>/dev/null)
+GITNODE_AI_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.gitnode/ai-encryption-key 2>/dev/null)
 
 app:
 	@docker ps --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
@@ -127,6 +128,7 @@ app:
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
 			-e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
 			$(if $(ACTIONS_ENCRYPTION_KEY),-e ACTIONS_ENCRYPTION_KEY=$(ACTIONS_ENCRYPTION_KEY),) \
+			$(if $(GITNODE_AI_ENCRYPTION_KEY),-e GITNODE_AI_ENCRYPTION_KEY=$(GITNODE_AI_ENCRYPTION_KEY),) \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
 			-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
@@ -242,6 +244,19 @@ actions-encryption-key:
 	echo "  application-local.yaml:"; \
 	echo "    gitnode.actions.secrets.encryption-key: $$KEY"
 
+# 32-byte AES-256 key for AI user API key encryption at rest (base64)
+ai-encryption-key:
+	@mkdir -p ~/.gitnode
+	@KEY=$$(openssl rand -base64 32 | tr -d '\n'); \
+	echo "$$KEY" > ~/.gitnode/ai-encryption-key; \
+	chmod 600 ~/.gitnode/ai-encryption-key; \
+	echo "AI encryption key → ~/.gitnode/ai-encryption-key"; \
+	echo ""; \
+	echo "  export GITNODE_AI_ENCRYPTION_KEY=$$KEY"; \
+	echo ""; \
+	echo "  application-local.yaml:"; \
+	echo "    gitnode.ai.encryption-key: $$KEY"
+
 sync-postgres-logs:
 	@mkdir -p $(HOME)/.gitnode/postgres-logs
 	docker cp $(POSTGRES_NAME):/var/log/postgresql/. $(HOME)/.gitnode/postgres-logs/
@@ -290,6 +305,7 @@ help:
 	@echo "  make ldap-down         → Stop & remove LDAP test container"
 	@echo "  make saml-keygen       → Generate SP signing key pair (~/.gitnode/saml/)"
 	@echo "  make actions-encryption-key → Actions secrets vault key (~/.gitnode/actions-encryption-key)"
+	@echo "  make ai-encryption-key      → AI API key encryption key (~/.gitnode/ai-encryption-key)"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make dev-setup         → Infra + pnpm install + local config template"
 	@echo "  make dev-backend       → Run backend with local profile (:8080)"

@@ -18,6 +18,17 @@
           <div class="form-control">
             <label class="label" for="pr-title">
               <span class="label-text font-medium">Title</span>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                [class.loading]="suggestingTitle()"
+                [disabled]="suggestingTitle() || suggestingDescription()"
+                (click)="aiSuggestTitle()"
+                title="AI suggest title"
+              >
+                <lucide-icon name="sparkles" class="size-3"></lucide-icon>
+                AI Suggest
+              </button>
             </label>
             <input
               id="pr-title"
@@ -34,7 +45,17 @@
           <div class="form-control">
             <label class="label" for="pr-description">
               <span class="label-text font-medium">Description</span>
-              <span class="label-text-alt text-base-content/50">Optional</span>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs gap-1"
+                [class.loading]="suggestingDescription()"
+                [disabled]="suggestingDescription() || suggestingTitle()"
+                (click)="aiSuggestDescription()"
+                title="AI generate description"
+              >
+                <lucide-icon name="sparkles" class="size-3"></lucide-icon>
+                AI Generate
+              </button>
             </label>
             <textarea
               id="pr-description"

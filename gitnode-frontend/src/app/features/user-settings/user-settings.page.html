@@ -843,7 +843,6 @@
             </div>
           </div>
 
-          @if (aiEnabled()) {
           <div class="settings-stack mt-6">
             <div class="settings-field">
               <label class="settings-label" for="ai-provider">Provider</label>
@@ -956,10 +955,6 @@
 
           @if (aiError()) {
           <div class="alert alert-error mt-4 text-sm">{{ aiError() }}</div>
-          } } @else {
-          <p class="text-base-content/55 mt-6 text-sm leading-relaxed">
-            Turn on AI features above to choose a provider, enter your API key, and configure a model.
-          </p>
           }
         </div>
       </section>

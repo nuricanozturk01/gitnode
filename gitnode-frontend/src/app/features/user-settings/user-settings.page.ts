@@ -591,14 +591,6 @@ export class UserSettingsPage {
     if (this.savingAiEnabled() || this.savingAi()) return;
     const previous = this.aiEnabled();
     if (previous === enabled) return;
-
-    const provider = this.aiProvider();
-    const needsApiKey = provider !== 'LOCAL';
-    if (enabled && needsApiKey && !this.aiHasKey() && !this.aiApiKey().trim()) {
-      this.aiError.set('Enter an API key and save before enabling AI features.');
-      return;
-    }
-
     this.aiEnabled.set(enabled);
     await this.persistAiEnabled(enabled, previous);
   }

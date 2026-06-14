@@ -10,5 +10,7 @@ public interface PrQueryPort {
 
   Optional<PrData> findById(UUID prId);
 
+  Optional<PrData> findByRepoIdAndNumber(UUID repoId, int number);
+
   List<PrData> findOpenByRepoId(UUID repoId);
 }

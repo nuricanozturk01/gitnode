@@ -162,6 +162,10 @@ public class RepoService {
     if (form.getDeleteHeadBranchOnPrClose() != null) {
       repo.setDeleteHeadBranchOnPrClose(form.getDeleteHeadBranchOnPrClose());
     }
+
+    if (form.getAiPrReviewEnabled() != null) {
+      repo.setAiPrReviewEnabled(form.getAiPrReviewEnabled());
+    }
   }
 
   @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#repoOwner + ':' + #repoName")

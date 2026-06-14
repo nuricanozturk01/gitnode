@@ -16,7 +16,7 @@
 
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
@@ -37,7 +37,9 @@ import type { DiffLine } from '../../../domain/commit/models/diff-line.model';
 import type { CommitInfo } from '../../../domain/commit/models/commit-info.model';
 import { parseUrlTab, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
 import { WorkflowRunService } from '../../../core/actions/services/workflow-run.service';
+import { AiService } from '../../../core/ai/services/ai.service';
 import type { WorkflowRun } from '../../../domain/actions/models/workflow-run.model';
+import type { AiCodeReview } from '../../../domain/ai/ai-settings.model';
 import {
   resolveWorkflowDisplayStatus,
   workflowStatusBadgeClass,
@@ -46,8 +48,9 @@ import {
   workflowStatusIconSpinning,
   workflowStatusLabel,
 } from '../../../shared/utils/workflow-status.utils';
+import { apiErrorMessage } from '../../../shared/utils/api-error.utils';
 
-const PR_DETAIL_TABS = ['conversation', 'commits', 'files', 'actions'] as const;
+const PR_DETAIL_TABS = ['conversation', 'commits', 'files', 'actions', 'ai-review'] as const;
 type PrDetailTab = (typeof PR_DETAIL_TABS)[number];
 const DEFAULT_PR_DETAIL_TAB: PrDetailTab = 'conversation';
 
@@ -69,6 +72,8 @@ export class PrDetailPage {
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
   private readonly runService = inject(WorkflowRunService);
+  private readonly aiService = inject(AiService);
+  private readonly destroyRef = inject(DestroyRef);
   readonly repoContext = inject(RepoContextService);
 
   readonly pr = signal<PullRequestDetail | null>(null);
@@ -96,6 +101,16 @@ export class PrDetailPage {
   readonly runs = signal<WorkflowRun[]>([]);
   readonly runsLoading = signal(false);
   readonly runsLoaded = signal(false);
+
+  readonly aiReview = signal<AiCodeReview | null>(null);
+  readonly aiReviewLoading = signal(false);
+  readonly aiReviewLoaded = signal(false);
+  readonly aiReviewPage = signal(0);
+  readonly aiReviewRetrying = signal(false);
+  readonly expandedAiComments = signal<Set<string>>(new Set());
+  readonly aiSummaryExpanded = signal(true);
+
+  private aiReviewPollTimer: ReturnType<typeof setInterval> | null = null;
 
   runStatusBadgeClass = workflowStatusBadgeClass;
   runStatusLabel = workflowStatusLabel;
@@ -220,7 +235,9 @@ export class PrDetailPage {
       if (tab === 'files' && !this.filesLoaded() && !this.filesLoading()) this.loadDiff();
       if (tab === 'commits' && !this.commitsLoaded() && !this.commitsLoading()) this.loadCommits();
       if (tab === 'actions' && !this.runsLoaded() && !this.runsLoading()) this.loadRuns();
+      if (tab === 'ai-review' && !this.aiReviewLoaded() && !this.aiReviewLoading()) void this.loadAiReview();
     });
+    this.destroyRef.onDestroy(() => this.clearAiReviewPoll());
   }
 
   private async loadData(): Promise<void> {
@@ -374,6 +391,20 @@ export class PrDetailPage {
   setTab(t: PrDetailTab): void {
     this.activeTab.set(t);
     replaceUrlFragment(this.location, t === DEFAULT_PR_DETAIL_TAB ? null : t);
+  }
+
+  prTabButtonClass(tab: PrDetailTab): string {
+    const base = 'border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4';
+    return this.activeTab() === tab
+      ? `${base} border-primary text-primary`
+      : `${base} border-transparent text-base-content/55 hover:text-base-content`;
+  }
+
+  mergeStrategyButtonClass(strategy: 'MERGE_COMMIT' | 'SQUASH' | 'REBASE'): string {
+    const base = 'btn btn-sm justify-start gap-2 rounded-lg border';
+    return this.mergeStrategy() === strategy
+      ? `${base} btn-primary border-primary`
+      : `${base} btn-ghost border-base-300/70`;
   }
 
   toggleFile(path: string): void {
@@ -599,6 +630,166 @@ export class PrDetailPage {
       await this.loadData();
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Failed to close pull request');
+    }
+  }
+
+  async loadAiReview(silent = false): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const num = this.number();
+    if (!owner || !repo || !num) return;
+    if (!silent) {
+      this.aiReviewLoading.set(true);
+    }
+    try {
+      const review = await this.aiService.getCodeReview(owner, repo, num, this.aiReviewPage());
+      this.aiReview.set(review);
+      this.aiReviewLoaded.set(true);
+      if (this.aiReviewPage() === 0) {
+        this.initAiReviewExpanded(review);
+      }
+      this.scheduleAiReviewPoll(review);
+    } catch {
+      this.aiReview.set(null);
+      this.aiReviewLoaded.set(true);
+      this.clearAiReviewPoll();
+    } finally {
+      if (!silent) {
+        this.aiReviewLoading.set(false);
+      }
+    }
+  }
+
+  async retryAiReview(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const num = this.number();
+    if (!owner || !repo || !num) return;
+    this.aiReviewRetrying.set(true);
+    const previousStatus = this.aiReview()?.status;
+    try {
+      const review = await this.aiService.retryCodeReview(owner, repo, num);
+      this.aiReview.set(review);
+      this.aiReviewLoaded.set(true);
+      this.aiReviewPage.set(0);
+      this.expandedAiComments.set(new Set());
+      this.aiSummaryExpanded.set(true);
+      this.scheduleAiReviewPoll(review);
+      const toastMessage =
+        previousStatus === 'COMPLETED'
+          ? 'Re-running AI review'
+          : previousStatus === 'PENDING'
+            ? 'Restarting AI review'
+            : previousStatus === 'FAILED' || previousStatus === 'SKIPPED'
+              ? 'Retrying AI review'
+              : 'AI review started';
+      this.toast.success(toastMessage);
+    } catch (err) {
+      this.toast.error(apiErrorMessage(err, 'Failed to retry AI review'));
+    } finally {
+      this.aiReviewRetrying.set(false);
+    }
+  }
+
+  private scheduleAiReviewPoll(review: AiCodeReview | null): void {
+    this.clearAiReviewPoll();
+    if (review?.status === 'PENDING' && this.activeTab() === 'ai-review') {
+      this.aiReviewPollTimer = setInterval(() => void this.loadAiReview(true), 3000);
+    }
+  }
+
+  private clearAiReviewPoll(): void {
+    if (this.aiReviewPollTimer) {
+      clearInterval(this.aiReviewPollTimer);
+      this.aiReviewPollTimer = null;
+    }
+  }
+
+  async loadMoreAiReviewComments(): Promise<void> {
+    const review = this.aiReview();
+    if (!review || this.aiReviewPage() + 1 >= review.comments.totalPages) return;
+    this.aiReviewPage.update((p) => p + 1);
+    await this.loadAiReview();
+  }
+
+  async loadPrevAiReviewComments(): Promise<void> {
+    if (this.aiReviewPage() === 0) return;
+    this.aiReviewPage.update((p) => p - 1);
+    await this.loadAiReview();
+  }
+
+  isAiCommentExpanded(commentId: string): boolean {
+    return this.expandedAiComments().has(commentId);
+  }
+
+  toggleAiComment(commentId: string): void {
+    this.expandedAiComments.update((current) => {
+      const next = new Set(current);
+      if (next.has(commentId)) {
+        next.delete(commentId);
+      } else {
+        next.add(commentId);
+      }
+      return next;
+    });
+  }
+
+  expandAllAiComments(): void {
+    const review = this.aiReview();
+    if (!review) return;
+    this.expandedAiComments.set(new Set(review.comments.content.map((c) => c.id)));
+    this.aiSummaryExpanded.set(true);
+  }
+
+  collapseAllAiComments(): void {
+    this.expandedAiComments.set(new Set());
+    this.aiSummaryExpanded.set(false);
+  }
+
+  toggleAiSummary(): void {
+    this.aiSummaryExpanded.update((open) => !open);
+  }
+
+  private initAiReviewExpanded(review: AiCodeReview): void {
+    if (review.status !== 'COMPLETED') {
+      this.expandedAiComments.set(new Set());
+      this.aiSummaryExpanded.set(true);
+      return;
+    }
+
+    const expanded = new Set<string>();
+    for (const comment of review.comments.content) {
+      if (comment.severity === 'CRITICAL' || comment.severity === 'HIGH') {
+        expanded.add(comment.id);
+      }
+    }
+    this.expandedAiComments.set(expanded);
+    this.aiSummaryExpanded.set(true);
+  }
+
+  severityBadgeClass(severity: string): string {
+    switch (severity) {
+      case 'CRITICAL':
+      case 'HIGH':
+        return 'badge-pill badge-pill--error';
+      case 'MEDIUM':
+        return 'badge-pill badge-pill--warning';
+      case 'LOW':
+        return 'badge-pill badge-pill--primary';
+      default:
+        return 'badge-pill badge-pill--neutral';
+    }
+  }
+
+  aiReviewStatusMessageClass(status: string): string {
+    const base = 'rounded-lg border px-4 py-3 text-sm';
+    switch (status) {
+      case 'FAILED':
+        return `${base} border-error/30 bg-error/5 text-error`;
+      case 'SKIPPED':
+        return `${base} border-base-300/70 bg-base-200/40 text-base-content/70`;
+      default:
+        return base;
     }
   }
 }

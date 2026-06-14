@@ -15,6 +15,7 @@
 ///
 
 import { Component, ChangeDetectionStrategy, inject, signal, computed, effect } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Location } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -38,14 +39,17 @@ import type {
 import { ALL_PERMISSIONS } from '../../../domain/collaborator/collaborator.model';
 import { ActionsSettingsComponent } from './actions-settings/actions-settings.component';
 import { parseUrlTabPrefix, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
+import { AiService } from '../../../core/ai/services/ai.service';
+import type { CodebaseAnalysis, CodebaseAnalysisDimension } from '../../../domain/ai/ai-settings.model';
 
-type RepoSettingsTab = 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'actions' | 'danger';
+type RepoSettingsTab = 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'actions' | 'ai-analysis' | 'danger';
 const REPO_SETTINGS_TABS = [
   'general',
   'pullRequests',
   'webhooks',
   'collaborators',
   'actions',
+  'ai-analysis',
   'danger',
 ] as const satisfies readonly RepoSettingsTab[];
 const DEFAULT_REPO_SETTINGS_TAB: RepoSettingsTab = 'general';
@@ -54,7 +58,7 @@ const DEFAULT_REPO_SETTINGS_TAB: RepoSettingsTab = 'general';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-settings',
   standalone: true,
-  imports: [LucideAngularModule, FormsModule, ActionsSettingsComponent],
+  imports: [LucideAngularModule, FormsModule, ActionsSettingsComponent, DatePipe],
   templateUrl: './repo-settings.page.html',
   styleUrl: './repo-settings.page.css',
 })
@@ -68,8 +72,18 @@ export class RepoSettingsPage {
   private readonly toast = inject(ToastService);
   private readonly webhookService = inject(WebhookService);
   private readonly collaboratorService = inject(CollaboratorService);
+  private readonly aiService = inject(AiService);
 
   readonly activeTab = signal<RepoSettingsTab>(DEFAULT_REPO_SETTINGS_TAB);
+
+  // AI Analysis
+  readonly analysisLoading = signal(false);
+  readonly analysisTriggeringNew = signal(false);
+  readonly latestAnalysis = signal<CodebaseAnalysis | null>(null);
+  readonly analysisError = signal<string | null>(null);
+  readonly aiPrReviewEnabled = signal(false);
+  readonly savingAiRepoSettings = signal(false);
+  readonly aiRepoSettingsError = signal<string | null>(null);
 
   readonly generalName = signal('');
   readonly generalDescription = signal('');
@@ -149,6 +163,10 @@ export class RepoSettingsPage {
       if (tab === 'danger') this.syncVisibilityFromRepo();
       if (tab === 'webhooks') void this.loadWebhooks();
       if (tab === 'collaborators') void this.loadCollaborators();
+      if (tab === 'ai-analysis') {
+        this.syncAiSettingsFromRepo();
+        void this.loadLatestAnalysis();
+      }
     });
   }
 
@@ -216,6 +234,10 @@ export class RepoSettingsPage {
     if (t === 'danger') this.syncVisibilityFromRepo();
     if (t === 'webhooks') void this.loadWebhooks();
     if (t === 'collaborators') void this.loadCollaborators();
+    if (t === 'ai-analysis') {
+      this.syncAiSettingsFromRepo();
+      void this.loadLatestAnalysis();
+    }
   }
 
   onPullMergeToggle(checked: boolean): void {
@@ -224,6 +246,53 @@ export class RepoSettingsPage {
 
   onPullCloseToggle(checked: boolean): void {
     this.deleteHeadBranchOnPrClose.set(checked);
+  }
+
+  private syncAiSettingsFromRepo(): void {
+    const r = this.repo();
+    if (!r || this.savingAiRepoSettings()) return;
+    this.aiPrReviewEnabled.set(r.aiPrReviewEnabled === true);
+    this.aiRepoSettingsError.set(null);
+  }
+
+  async onAiPrReviewToggle(checked: boolean): Promise<void> {
+    if (!this.canWriteSettings() || this.savingAiRepoSettings()) return;
+    const previous = this.aiPrReviewEnabled();
+    if (previous === checked) return;
+    this.aiPrReviewEnabled.set(checked);
+    await this.persistAiPrReviewEnabled(checked, previous);
+  }
+
+  private async persistAiPrReviewEnabled(enabled: boolean, rollbackValue: boolean): Promise<void> {
+    const owner = this.owner();
+    const repoName = this.repoName();
+    const r = this.repo();
+    if (!owner || !repoName || !r) {
+      this.aiPrReviewEnabled.set(rollbackValue);
+      return;
+    }
+
+    this.savingAiRepoSettings.set(true);
+    this.aiRepoSettingsError.set(null);
+    try {
+      const topics = r.topics?.length ? [...r.topics] : [];
+      const updated = await this.repoService.update(owner, repoName, {
+        name: r.name,
+        description: r.description ?? undefined,
+        topics,
+        aiPrReviewEnabled: enabled,
+      });
+      this.repoContext.repo.set(updated);
+      this.aiPrReviewEnabled.set(updated.aiPrReviewEnabled === true);
+      this.toast.success(enabled ? 'PR AI review enabled' : 'PR AI review disabled');
+    } catch (err) {
+      this.aiPrReviewEnabled.set(rollbackValue);
+      const msg = err instanceof Error ? err.message : 'Failed to save AI settings';
+      this.aiRepoSettingsError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.savingAiRepoSettings.set(false);
+    }
   }
 
   async loadWebhooks(): Promise<void> {
@@ -661,6 +730,74 @@ export class RepoSettingsPage {
     } catch (err) {
       this.toast.error(err instanceof Error ? err.message : 'Failed to remove collaborator');
     }
+  }
+
+  async loadLatestAnalysis(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    this.analysisLoading.set(true);
+    this.analysisError.set(null);
+    try {
+      this.latestAnalysis.set(await this.aiService.getLatestAnalysis(owner, repo));
+    } catch {
+      this.analysisError.set('Failed to load analysis');
+    } finally {
+      this.analysisLoading.set(false);
+    }
+  }
+
+  async triggerAnalysis(): Promise<void> {
+    if (!this.canWriteSettings()) return;
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    this.analysisTriggeringNew.set(true);
+    this.analysisError.set(null);
+    try {
+      const result = await this.aiService.triggerCodebaseAnalysis(owner, repo);
+      this.latestAnalysis.set(result);
+      this.toast.success('Analysis started');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to trigger analysis';
+      this.analysisError.set(msg);
+      this.toast.error(msg);
+    } finally {
+      this.analysisTriggeringNew.set(false);
+    }
+  }
+
+  analysisScoreClass(score: number): string {
+    if (score >= 8) return 'text-success';
+    if (score >= 5) return 'text-warning';
+    return 'text-error';
+  }
+
+  analysisScoreBarClass(score: number): string {
+    if (score >= 8) return 'bg-success';
+    if (score >= 5) return 'bg-warning';
+    return 'bg-error';
+  }
+
+  analysisDimensionCards(analysis: CodebaseAnalysis): CodebaseAnalysisDimension[] {
+    if (analysis.dimensions?.length) {
+      return analysis.dimensions;
+    }
+    return [
+      { key: 'arch', label: 'Architecture', score: analysis.archScore, reason: null, issues: null, fix: null },
+      { key: 'quality', label: 'Code Quality', score: analysis.qualityScore, reason: null, issues: null, fix: null },
+      { key: 'security', label: 'Security', score: analysis.securityScore, reason: null, issues: null, fix: null },
+      { key: 'perf', label: 'Performance', score: analysis.perfScore, reason: null, issues: null, fix: null },
+      { key: 'memory', label: 'Memory Usage', score: analysis.memoryScore, reason: null, issues: null, fix: null },
+      {
+        key: 'scalability',
+        label: 'Scalability',
+        score: analysis.scalabilityScore,
+        reason: null,
+        issues: null,
+        fix: null,
+      },
+    ];
   }
 
   async deleteRepo(): Promise<void> {

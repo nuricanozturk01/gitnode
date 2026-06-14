@@ -80,6 +80,19 @@
       <lucide-icon name="workflow" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
       Actions
     </button>
+    <button
+      type="button"
+      role="tab"
+      id="repo-settings-tab-ai-analysis"
+      class="tab flex-1 gap-2 rounded-md sm:flex-none"
+      [class.tab-active]="activeTab() === 'ai-analysis'"
+      [attr.aria-selected]="activeTab() === 'ai-analysis'"
+      aria-controls="repo-settings-panel-ai-analysis"
+      (click)="setTab('ai-analysis')"
+    >
+      <lucide-icon name="sparkles" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+      AI Analysis
+    </button>
     @if (isRepoOwner()) {
     <button
       type="button"
@@ -817,6 +830,178 @@
     class="repo-settings-panels"
   >
     <app-actions-settings [owner]="owner()" [repoName]="repoName()" [canWrite]="canWriteSettings()" />
+  </div>
+  } @if (activeTab() === 'ai-analysis') {
+  <div
+    id="repo-settings-panel-ai-analysis"
+    role="tabpanel"
+    aria-labelledby="repo-settings-tab-ai-analysis"
+    class="repo-settings-panels space-y-6"
+  >
+    <section class="repo-panel repo-settings-section relative overflow-hidden">
+      <div
+        class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+      ></div>
+      <div class="p-5 sm:p-6">
+        <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+          <lucide-icon name="gitPullRequest" class="text-primary size-5 shrink-0"></lucide-icon>
+          PR AI Review
+        </h2>
+        <p class="text-base-content/65 mt-1 max-w-2xl text-sm">
+          Automatically review new pull requests with AI when they are opened. Requires AI enabled in your user
+          settings.
+        </p>
+
+        <div class="settings-stack mt-6">
+          <div
+            class="settings-enable-row border-base-200 flex items-center justify-between gap-4 rounded-xl border p-4 sm:p-5"
+          >
+            <div class="min-w-0 flex-1">
+              <p class="settings-label m-0">Enable PR AI review</p>
+              <p class="settings-field-hint text-base-content/60 mt-1">
+                When enabled, each new pull request in this repository is analyzed for bugs, security, and quality
+                issues.
+              </p>
+            </div>
+            <div class="flex shrink-0 items-center gap-2.5">
+              @if (savingAiRepoSettings()) {
+              <span class="loading loading-spinner loading-xs text-primary" aria-hidden="true"></span>
+              }
+              <label class="gn-switch" [class.gn-switch--disabled]="!canWriteSettings() || savingAiRepoSettings()">
+                <input
+                  type="checkbox"
+                  [checked]="aiPrReviewEnabled()"
+                  [disabled]="!canWriteSettings() || savingAiRepoSettings()"
+                  (change)="onAiPrReviewToggle($any($event.target).checked)"
+                  aria-label="Enable PR AI review"
+                />
+                <span class="gn-switch__track" aria-hidden="true"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        @if (aiRepoSettingsError()) {
+        <div class="alert alert-error mt-4 text-sm" role="alert">{{ aiRepoSettingsError() }}</div>
+        }
+      </div>
+    </section>
+
+    <section class="repo-panel repo-settings-section relative overflow-hidden">
+      <div
+        class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+      ></div>
+      <div class="p-5 sm:p-6">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
+              <lucide-icon name="sparkles" class="text-primary size-5 shrink-0"></lucide-icon>
+              AI Codebase Analysis
+            </h2>
+            <p class="text-base-content/65 mt-1 text-sm">
+              Analyze your codebase across architecture, quality, performance, memory, scalability, and security.
+              Requires AI settings configured in your user profile.
+            </p>
+          </div>
+          @if (canWriteSettings()) {
+          <button
+            type="button"
+            class="btn btn-primary btn-sm shrink-0 gap-2"
+            [disabled]="analysisTriggeringNew() || analysisLoading()"
+            (click)="triggerAnalysis()"
+          >
+            @if (analysisTriggeringNew()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            Analyzing… } @else {
+            <lucide-icon name="sparkles" class="size-3.5"></lucide-icon>
+            Run Analysis }
+          </button>
+          }
+        </div>
+
+        @if (analysisError()) {
+        <div class="alert alert-error mt-4 text-sm" role="alert">{{ analysisError() }}</div>
+        } @if (analysisLoading()) {
+        <div class="mt-8 flex justify-center">
+          <span class="loading loading-spinner loading-md text-primary"></span>
+        </div>
+        } @else if (!latestAnalysis()) {
+        <div class="border-base-300 mt-6 rounded-xl border border-dashed p-10 text-center">
+          <lucide-icon name="sparkles" class="text-base-content/20 mx-auto size-10"></lucide-icon>
+          <p class="text-base-content/50 mt-3 text-sm">No analysis yet. Run your first analysis to get insights.</p>
+        </div>
+        } @else { @let analysis = latestAnalysis()!;
+        <div class="mt-6 space-y-5">
+          <div class="flex flex-wrap items-center gap-3">
+            @if (analysis.status === 'PENDING') {
+            <span class="badge-pill badge-pill--warning inline-flex items-center gap-1.5">
+              <span class="loading loading-spinner loading-xs"></span>
+              In progress
+            </span>
+            } @else if (analysis.status === 'COMPLETED') {
+            <span class="badge-pill badge-pill--success">Completed</span>
+            } @else if (analysis.status === 'FAILED') {
+            <span class="badge-pill badge-pill--error">Failed</span>
+            }
+            <span class="text-base-content/50 text-xs">{{ analysis.createdAt | date: 'medium' }}</span>
+            <span class="text-base-content/50 text-xs">Branch: <strong>{{ analysis.branch }}</strong></span>
+          </div>
+
+          @if (analysis.status === 'COMPLETED') {
+          <div class="space-y-4">
+            @for (dim of analysisDimensionCards(analysis); track dim.key) { @let score = dim.score ?? 0;
+            <div class="border-base-300 rounded-xl border p-4 sm:p-5">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <h3 class="text-base-content text-sm font-semibold">{{ dim.label }}</h3>
+                <span class="text-base font-bold" [class]="analysisScoreClass(score)">{{ score }}/10</span>
+              </div>
+              <div class="bg-base-200 mt-3 h-1.5 w-full overflow-hidden rounded-full">
+                <div
+                  class="h-full rounded-full transition-all"
+                  [class]="analysisScoreBarClass(score)"
+                  [style.width.%]="score * 10"
+                ></div>
+              </div>
+
+              @if (dim.reason) {
+              <div class="mt-4">
+                <p class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Why this score</p>
+                <p class="text-base-content/75 mt-1.5 text-sm leading-relaxed">{{ dim.reason }}</p>
+              </div>
+              } @if (dim.issues) {
+              <div class="mt-4">
+                <p class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">Issues found</p>
+                <p class="text-base-content/75 mt-1.5 text-sm leading-relaxed">{{ dim.issues }}</p>
+              </div>
+              } @if (dim.fix) {
+              <div class="mt-4">
+                <p class="text-base-content/50 text-xs font-semibold tracking-wide uppercase">How to improve</p>
+                <p class="text-base-content/75 mt-1.5 text-sm leading-relaxed">{{ dim.fix }}</p>
+              </div>
+              }
+            </div>
+            }
+          </div>
+
+          @if (analysis.summary) {
+          <div class="border-base-300 rounded-xl border p-4">
+            <h3 class="text-base-content text-sm font-semibold">Summary</h3>
+            <p class="text-base-content/70 mt-1.5 text-sm leading-relaxed whitespace-pre-line">
+              {{ analysis.summary }}
+            </p>
+          </div>
+          } @if (analysis.recommendations) {
+          <div class="border-base-300 rounded-xl border p-4">
+            <h3 class="text-base-content text-sm font-semibold">Recommendations</h3>
+            <p class="text-base-content/70 mt-1.5 text-sm leading-relaxed whitespace-pre-line">
+              {{ analysis.recommendations }}
+            </p>
+          </div>
+          } }
+        </div>
+        }
+      </div>
+    </section>
   </div>
   } @if (activeTab() === 'danger' && isRepoOwner()) {
   <div

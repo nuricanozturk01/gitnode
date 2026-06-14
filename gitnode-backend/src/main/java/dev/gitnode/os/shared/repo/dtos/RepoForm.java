@@ -55,4 +55,9 @@ public class RepoForm {
    * When non-null, updates whether the head branch is deleted when a PR is closed without merging.
    */
   private Boolean deleteHeadBranchOnPrClose;
+
+  /**
+   * When non-null, enables automatic AI review when pull requests are opened in this repository.
+   */
+  private Boolean aiPrReviewEnabled;
 }

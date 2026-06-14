@@ -23,7 +23,7 @@
 
 <br/>
 
-[✨ Features](#-features) · [🛠 Tech Stack](#-tech-stack) · [🚀 Getting Started](#-getting-started) · [🗺 Roadmap](#-roadmap) · [📄 License](#-license)
+[✨ Features](#-features) · [🛠 Tech Stack](#-tech-stack) · [🚀 Getting Started](#-getting-started) · [📄 License](#-license)
 
 <br/>
 
@@ -48,9 +48,10 @@ server"*, GitNode is for you.
 ## ✨ Features
 
 GitNode covers the full Git hosting loop — repos, review, browsing, issues, project boards, releases, webhooks, code
-snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **enterprise SAML/LDAP
-SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit logging** — all
-on your own infrastructure.
+snippets, and collaborator access — plus **CI/CD Actions** (YAML workflows + Go runner agent), **AI code review, commit
+suggestions, PR description generation, and codebase analysis** (OpenAI / Anthropic / Gemini / Ollama), **enterprise
+SAML/LDAP SSO**, **platform admin tooling**, **rate limiting**, **Prometheus/Grafana observability**, and **audit
+logging** — all on your own infrastructure.
 
 <div align="center">
 
@@ -62,7 +63,7 @@ on your own infrastructure.
 |              🔔 [Webhooks](#-webhooks)              |     🔐 [Authentication](#-authentication)     |           👥 [Collaborators](#-collaborators)           |
 |      🍴 [Repository Forks](#-repository-forks)      | 🛡 [Access Policies](#-repo-access-policies)  |    🏢 [Enterprise SSO](#-enterprise-saml--ldap-sso)     |
 |           📊 [Admin Panel](#-admin-panel)           |      ⚡ [Rate Limiting](#-rate-limiting)       | 📈 [Observability](#-prometheus--grafana-observability) |
-|         📜 [Audit Logging](#-audit-logging)         |         ⚡ [Actions](#-actions--cicd)          |                                                         |
+|         📜 [Audit Logging](#-audit-logging)         |         ⚡ [Actions](#-actions--cicd)          |        🤖 [AI Features](#-ai-features)                  |
 
 </div>
 
@@ -268,11 +269,74 @@ bootstrap credentials (see Environment Variables in README).
 
 ### 🔐 Authentication
 
-- Bearer Auth username + password with JWT
+- Username + password login with JWT
 - Basic Auth for git repo operations
 - OAuth2: **Google**, **GitHub**, **GitLab**
 - SSH public keys for Git over SSH
 - **Enterprise SAML 2.0** and **LDAP** per organization (see above)
+
+### 🤖 AI Features
+
+AI is **opt-in at every layer**: users bring their own provider and API key; repositories opt in to automated PR review separately. Nothing runs until you enable it — no platform-level LLM key required.
+
+**Bring your own model (BYOK)**
+
+| Provider | Models / notes |
+|---|---|
+| **OpenAI** | GPT-4o, GPT-4o-mini, GPT-4-turbo, compatible endpoints |
+| **Anthropic** | Claude 3.5 Sonnet, Claude 3 Opus, and newer Claude models |
+| **Google Gemini** | Via OpenAI-compatible API — key from [Google AI Studio](https://aistudio.google.com/) |
+| **Local (Ollama)** | Self-hosted models; set base URL to your Ollama instance |
+
+Configure in **User Settings → AI**: pick provider, model, API key, and optional custom base URL. Keys are encrypted at rest with **AES-256-GCM** when `GITNODE_AI_ENCRYPTION_KEY` is set. Use **Test connection** to validate credentials before saving.
+
+#### PR AI Code Review
+
+- **Repo opt-in** — toggle **Enable PR AI review** in **Settings → AI Analysis** (off by default)
+- When enabled, opening a PR triggers an async review using the PR author's AI settings, falling back to the repo owner
+- Comments are categorized (`BUG`, `SECURITY`, `PERFORMANCE`, `CODE_QUALITY`, `GENERAL`) with severity (`CRITICAL` → `INFO`)
+- View results in the PR **AI Review** tab — summary plus paginated inline findings
+- **Retry** if a review failed or was skipped; uses your account's AI settings
+- **Memory-safe diffs** — large PRs use prioritized, bounded diff sampling (vendor paths and lockfiles skipped)
+
+#### AI Commit Message
+
+- **Sparkles** button on the new-pull-request form suggests a **Conventional Commits** message from the branch diff
+- Imperative, scoped, ≤72 characters — ready to paste into your commit
+
+#### AI PR Description
+
+- **AI Generate** on the new-PR form produces a title plus structured Markdown: summary, motivation, breaking changes, security/config notes, and a test-plan checklist
+- Rate-limited to **10 requests per 10 minutes** per user
+
+#### AI Codebase Analysis
+
+Scores the repository across **six dimensions** (1–10 each) with reasons, issues, and fixes:
+
+| Dimension | What it evaluates |
+|---|---|
+| **Architecture** | Modularity, layering, coupling, deployability |
+| **Code Quality** | Readability, consistency, error-handling patterns |
+| **Performance** | Hot paths, I/O, caching, algorithmic cost |
+| **Memory Usage** | Allocation patterns, unbounded buffers, leak risk |
+| **Scalability** | Stateless design, pagination, horizontal scaling readiness |
+| **Security** | Authn/authz, secrets, injection, transport — includes a **dedicated security pass** |
+
+- Run from **Settings → AI Analysis**; history is paginated per branch
+- **Memory-safe for large repos** — bounded tree walk, skips `node_modules` / `target` / lockfiles, loads only the highest-priority source files
+- Rate-limited to **3 analyses per hour** per user
+
+#### Production hardening
+
+- **Production-ready prompts** — structured output for parsing; focused on actionable findings, not noise
+- **Bounded inputs** — diff and codebase samples are truncated with explicit sampling notes sent to the model
+- **Per-provider circuit breakers** (`ai-openai`, `ai-anthropic`, `ai-gemini`, `ai-local`) — opens at 60% failure rate over 5 calls, 60 s cooldown
+
+**Environment variable:**
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `GITNODE_AI_ENCRYPTION_KEY` | No | *(blank = plaintext)* | Base64-encoded 32-byte AES-256 key for user API keys. Generate with `make ai-encryption-key` or `openssl rand -base64 32`. **Required in production.** |
 
 ---
 
@@ -288,7 +352,8 @@ bootstrap credentials (see Environment Variables in README).
 | Database      | PostgreSQL 17 + Flyway, pgAudit                                                                                                |
 | Cache         | Redis (cache + rate limiting)                                                                                                  |
 | Observability | Micrometer, Prometheus, Grafana                                                                                                |
-| Resilience    | Resilience4j circuit breakers (webhook delivery, SAML metadata)                                                                |
+| Resilience    | Resilience4j circuit breakers (webhook delivery, SAML metadata, AI providers)                                                  |
+| AI            | Spring AI 2.0 — OpenAI, Anthropic, Gemini (OpenAI-compat), Ollama; BYOK per user; bounded sampling for large repos |
 | Audit         | Application audit log (partitioned PostgreSQL)                                                                                 |
 | CI/CD Engine  | Spring Boot `actions` module — WebSocket runner protocol, SSE log streaming, secrets vault (AES-256-GCM), artifact/cache store |
 | Runner Agent  | Go 1.24 (`gitnode-runner`) — shell + Docker executors, single static binary                                                    |
@@ -351,9 +416,10 @@ docker run -d \
   -e GITNODE_BOOTSTRAP_ADMIN_USERNAME=admin \
   -e GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123 \
   -e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
+  -e GITNODE_FRONTEND_BASE_URL=http://localhost:8080 \
   -e GITNODE_AUDIT_ENABLED=true \
   -e GITNODE_OBSERVABILITY_ENABLED=false \
-  -e GITNODE_CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:4300 \
+  -e GITNODE_CORS_ALLOWED_ORIGINS=http://localhost:8080 \
   -v gitnode-repos:/data/repos \
   repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
 ```
@@ -386,31 +452,39 @@ All commands: **[CONTRIBUTING.md](CONTRIBUTING.md#makefile-reference)**
 
 ### Environment Variables
 
-| Variable                                | Required | Default                                       | Description                                       |
-|-----------------------------------------|----------|-----------------------------------------------|---------------------------------------------------|
-| `GITNODE_ADMIN_PGAUDIT_ENABLED`         |          | `false`                                       | Admin panel pgAudit log viewer                    |
-| `GITNODE_ADMIN_PGAUDIT_LOG_DIRECTORY`   |          | —                                             | Postgres log dir in app container (enable viewer) |
-| `GITNODE_JWT_SECRET`                    | ✅        | —                                             | Min 32-char secret for JWT signing                |
-| `GITNODE_BOOTSTRAP_ADMIN_USERNAME`      |          | `admin`                                       | First-start platform admin username               |
-| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`      | ✅ prod   | —                                             | Bootstrap admin password (empty skips)            |
-| `GITNODE_PLATFORM_ADMIN_USERNAMES`      |          | —                                             | Comma-separated platform admin usernames          |
-| `GITNODE_GIT_REPO__ROOT`                |          | `/data/repos`                                 | Git repository storage path                       |
-| `GITNODE_FRONTEND_BASE_URL`             |          | `http://localhost:8080`                       | Public base URL                                   |
-| `GITNODE_CORS_ALLOWED_ORIGINS`          |          | `http://localhost:4200,http://localhost:4300` | CORS origins (add admin panel URL)                |
-| `GITNODE_AUDIT_ENABLED`                 |          | `true`                                        | Application audit log                             |
-| `GITNODE_OBSERVABILITY_ENABLED`         |          | `true`                                        | Prometheus `/actuator/prometheus`                 |
-| `GITNODE_SSO_SAML_ENABLED`              |          | `false`                                       | Global SAML feature flag                          |
-| `GITNODE_SSO_LDAP_ENABLED`              |          | `false`                                       | Global LDAP feature flag                          |
-| `GITNODE_SSO_SAML_SP_SIGNING_KEY_PATH`  |          | —                                             | SP signing private key (SAML)                     |
-| `GITNODE_SSO_SAML_SP_SIGNING_CERT_PATH` |          | —                                             | SP signing certificate (SAML)                     |
-| `SPRING_DATA_REDIS_HOST`                |          | `gitnode-redis`                               | Redis hostname                                    |
-| `SPRING_DATA_REDIS_PORT`                |          | `6379`                                        | Redis port                                        |
-| `OAUTH2_GOOGLE_CLIENT_ID`               |          | —                                             | Google OAuth2 client ID                           |
-| `OAUTH2_GOOGLE_CLIENT_SECRET`           |          | —                                             | Google OAuth2 client secret                       |
-| `OAUTH2_GITHUB_CLIENT_ID`               |          | —                                             | GitHub OAuth2 client ID                           |
-| `OAUTH2_GITHUB_CLIENT_SECRET`           |          | —                                             | GitHub OAuth2 client secret                       |
-| `OAUTH2_GITLAB_CLIENT_ID`               |          | —                                             | GitLab OAuth2 client ID                           |
-| `OAUTH2_GITLAB_CLIENT_SECRET`           |          | —                                             | GitLab OAuth2 client secret                       |
+| Variable                                | Required | Default                                       | Description                                                    |
+|-----------------------------------------|----------|-----------------------------------------------|----------------------------------------------------------------|
+| `GITNODE_JWT_SECRET`                    | ✅        | —                                             | Min 32-char secret for JWT signing                             |
+| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`      | ✅ prod   | —                                             | Bootstrap admin password (empty skips bootstrap)               |
+| `GITNODE_BOOTSTRAP_ADMIN_USERNAME`      |          | `admin`                                       | First-start platform admin username                            |
+| `GITNODE_BOOTSTRAP_ADMIN_ENABLED`       |          | `true`                                        | Run bootstrap admin creation on startup                        |
+| `GITNODE_PLATFORM_ADMIN_USERNAMES`      |          | —                                             | Comma-separated additional platform admin usernames            |
+| `GITNODE_GIT_REPO__ROOT`                |          | `~/.gitnode`                                  | Git repository storage path (use a volume in Docker)           |
+| `GITNODE_FRONTEND_BASE_URL`             |          | `http://localhost:4200`                       | Base URL returned after OAuth2/SAML redirects                  |
+| `GITNODE_CORS_ALLOWED_ORIGINS`          |          | `http://localhost:4200,http://localhost:4300` | CORS origins — add admin panel URL for admin access            |
+| `GITNODE_AUDIT_ENABLED`                 |          | `true`                                        | Application audit log                                          |
+| `GITNODE_OBSERVABILITY_ENABLED`         |          | `true`                                        | Prometheus `/actuator/prometheus`                              |
+| `GITNODE_ACTIONS_ENABLED`               |          | `true`                                        | CI/CD Actions engine                                           |
+| `GITNODE_ADMIN_MODULITH_EVENTS_ENABLED` |          | `false`                                       | Admin panel event publication viewer                           |
+| `GITNODE_ADMIN_PGAUDIT_ENABLED`         |          | `false`                                       | Admin panel pgAudit log viewer                                 |
+| `GITNODE_ADMIN_PGAUDIT_LOG_DIRECTORY`   |          | —                                             | Postgres log dir mounted into the app container                |
+| `GITNODE_SSO_SAML_ENABLED`              |          | `false`                                       | Global SAML feature flag                                       |
+| `GITNODE_SSO_LDAP_ENABLED`              |          | `false`                                       | Global LDAP feature flag                                       |
+| `GITNODE_SSO_SAML_SP_SIGNING_KEY_PATH`  |          | —                                             | SP signing private key path (SAML); `make saml-keygen`         |
+| `GITNODE_SSO_SAML_SP_SIGNING_CERT_PATH` |          | —                                             | SP signing certificate path (SAML); `make saml-keygen`        |
+| `ACTIONS_ENCRYPTION_KEY`                |          | —                                             | AES-256 key (base64) for Actions secrets vault; `make actions-encryption-key` |
+| `GITNODE_AI_ENCRYPTION_KEY`             |          | —                                             | AES-256 key (base64) for user AI API keys at rest; `make ai-encryption-key` |
+| `SPRING_DATA_REDIS_HOST`                |          | `localhost`                                   | Redis hostname                                                 |
+| `SPRING_DATA_REDIS_PORT`                |          | `6379`                                        | Redis port                                                     |
+| `SPRING_DATASOURCE_URL`                 |          | `jdbc:postgresql://localhost:5432/gitnode`    | Postgres JDBC URL                                              |
+| `SPRING_DATASOURCE_USERNAME`            |          | `admin`                                       | Postgres username                                              |
+| `SPRING_DATASOURCE_PASSWORD`            |          | `admin123`                                    | Postgres password                                              |
+| `OAUTH2_GOOGLE_CLIENT_ID`               |          | —                                             | Google OAuth2 client ID                                        |
+| `OAUTH2_GOOGLE_CLIENT_SECRET`           |          | —                                             | Google OAuth2 client secret                                    |
+| `OAUTH2_GITHUB_CLIENT_ID`               |          | —                                             | GitHub OAuth2 client ID                                        |
+| `OAUTH2_GITHUB_CLIENT_SECRET`           |          | —                                             | GitHub OAuth2 client secret                                    |
+| `OAUTH2_GITLAB_CLIENT_ID`               |          | —                                             | GitLab OAuth2 client ID                                        |
+| `OAUTH2_GITLAB_CLIENT_SECRET`           |          | —                                             | GitLab OAuth2 client secret                                    |
 
 ---
 

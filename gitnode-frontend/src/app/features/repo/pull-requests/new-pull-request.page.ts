@@ -24,6 +24,8 @@ import { BranchService } from '../../../core/branch/services/branch.service';
 import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { AiService } from '../../../core/ai/services/ai.service';
+import { apiErrorMessage } from '../../../shared/utils/api-error.utils';
 import type { BranchInfo } from '../../../domain/repository/models/branch-info.model';
 
 @Component({
@@ -41,6 +43,7 @@ export class NewPullRequestPage {
   private readonly prService = inject(PullRequestService);
   private readonly repoContext = inject(RepoContextService);
   private readonly toast = inject(ToastService);
+  private readonly aiService = inject(AiService);
 
   readonly branches = signal<BranchInfo[]>([]);
   readonly loading = signal(true);
@@ -51,6 +54,9 @@ export class NewPullRequestPage {
   readonly targetBranch = signal('');
   readonly sourceBranch = signal('');
   readonly isDraft = signal(false);
+
+  readonly suggestingTitle = signal(false);
+  readonly suggestingDescription = signal(false);
 
   readonly defaultBranch = this.repoContext.defaultBranch;
   private readonly repoRouteParams = parentParamMapSignal(this.route);
@@ -100,6 +106,37 @@ export class NewPullRequestPage {
     const titleQ = q.get('title');
     if (titleQ) {
       this.title.set(titleQ);
+    }
+  }
+
+  async aiSuggestTitle(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    this.suggestingTitle.set(true);
+    try {
+      const result = await this.aiService.suggestPrDescription(owner, repo, this.sourceBranch(), this.targetBranch());
+      if (result.title) this.title.set(result.title);
+    } catch (err) {
+      this.toast.error(apiErrorMessage(err, 'AI suggestion failed. Check your AI settings.'));
+    } finally {
+      this.suggestingTitle.set(false);
+    }
+  }
+
+  async aiSuggestDescription(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    if (!owner || !repo) return;
+    this.suggestingDescription.set(true);
+    try {
+      const result = await this.aiService.suggestPrDescription(owner, repo, this.sourceBranch(), this.targetBranch());
+      if (result.description) this.description.set(result.description);
+      if (!this.title() && result.title) this.title.set(result.title);
+    } catch (err) {
+      this.toast.error(apiErrorMessage(err, 'AI suggestion failed. Check your AI settings.'));
+    } finally {
+      this.suggestingDescription.set(false);
     }
   }
 

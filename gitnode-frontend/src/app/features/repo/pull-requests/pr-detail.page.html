@@ -167,37 +167,17 @@
           <div class="grid gap-1.5">
             <button
               type="button"
-              class="btn btn-sm justify-start gap-2 rounded-lg border"
-              [class.btn-primary]="mergeStrategy() === 'MERGE_COMMIT'"
-              [class.border-primary]="mergeStrategy() === 'MERGE_COMMIT'"
-              [class.btn-ghost]="mergeStrategy() !== 'MERGE_COMMIT'"
-              [class.border-base-300/70]="mergeStrategy() !== 'MERGE_COMMIT'"
+              [class]="mergeStrategyButtonClass('MERGE_COMMIT')"
               (click)="mergeStrategy.set('MERGE_COMMIT')"
             >
               <lucide-icon name="gitMerge" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               Create merge commit
             </button>
-            <button
-              type="button"
-              class="btn btn-sm justify-start gap-2 rounded-lg border"
-              [class.btn-primary]="mergeStrategy() === 'SQUASH'"
-              [class.border-primary]="mergeStrategy() === 'SQUASH'"
-              [class.btn-ghost]="mergeStrategy() !== 'SQUASH'"
-              [class.border-base-300/70]="mergeStrategy() !== 'SQUASH'"
-              (click)="mergeStrategy.set('SQUASH')"
-            >
+            <button type="button" [class]="mergeStrategyButtonClass('SQUASH')" (click)="mergeStrategy.set('SQUASH')">
               <lucide-icon name="layers" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               Squash and merge
             </button>
-            <button
-              type="button"
-              class="btn btn-sm justify-start gap-2 rounded-lg border"
-              [class.btn-primary]="mergeStrategy() === 'REBASE'"
-              [class.border-primary]="mergeStrategy() === 'REBASE'"
-              [class.btn-ghost]="mergeStrategy() !== 'REBASE'"
-              [class.border-base-300/70]="mergeStrategy() !== 'REBASE'"
-              (click)="mergeStrategy.set('REBASE')"
-            >
+            <button type="button" [class]="mergeStrategyButtonClass('REBASE')" (click)="mergeStrategy.set('REBASE')">
               <lucide-icon name="gitBranch" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               Rebase and merge
             </button>
@@ -241,37 +221,17 @@
           <div class="grid gap-1.5">
             <button
               type="button"
-              class="btn btn-sm justify-start gap-2 rounded-lg border"
-              [class.btn-primary]="mergeStrategy() === 'MERGE_COMMIT'"
-              [class.border-primary]="mergeStrategy() === 'MERGE_COMMIT'"
-              [class.btn-ghost]="mergeStrategy() !== 'MERGE_COMMIT'"
-              [class.border-base-300/70]="mergeStrategy() !== 'MERGE_COMMIT'"
+              [class]="mergeStrategyButtonClass('MERGE_COMMIT')"
               (click)="mergeStrategy.set('MERGE_COMMIT')"
             >
               <lucide-icon name="gitMerge" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               Merge commit
             </button>
-            <button
-              type="button"
-              class="btn btn-sm justify-start gap-2 rounded-lg border"
-              [class.btn-primary]="mergeStrategy() === 'SQUASH'"
-              [class.border-primary]="mergeStrategy() === 'SQUASH'"
-              [class.btn-ghost]="mergeStrategy() !== 'SQUASH'"
-              [class.border-base-300/70]="mergeStrategy() !== 'SQUASH'"
-              (click)="mergeStrategy.set('SQUASH')"
-            >
+            <button type="button" [class]="mergeStrategyButtonClass('SQUASH')" (click)="mergeStrategy.set('SQUASH')">
               <lucide-icon name="layers" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               Squash
             </button>
-            <button
-              type="button"
-              class="btn btn-sm justify-start gap-2 rounded-lg border"
-              [class.btn-primary]="mergeStrategy() === 'REBASE'"
-              [class.border-primary]="mergeStrategy() === 'REBASE'"
-              [class.btn-ghost]="mergeStrategy() !== 'REBASE'"
-              [class.border-base-300/70]="mergeStrategy() !== 'REBASE'"
-              (click)="mergeStrategy.set('REBASE')"
-            >
+            <button type="button" [class]="mergeStrategyButtonClass('REBASE')" (click)="mergeStrategy.set('REBASE')">
               <lucide-icon name="gitBranch" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
               Rebase
             </button>
@@ -314,12 +274,7 @@
       <button
         type="button"
         role="tab"
-        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
-        [class.border-primary]="activeTab() === 'conversation'"
-        [class.text-primary]="activeTab() === 'conversation'"
-        [class.border-transparent]="activeTab() !== 'conversation'"
-        [class.text-base-content/55]="activeTab() !== 'conversation'"
-        [class.hover:text-base-content]="activeTab() !== 'conversation'"
+        [class]="prTabButtonClass('conversation')"
         [attr.aria-selected]="activeTab() === 'conversation'"
         (click)="setTab('conversation')"
       >
@@ -333,12 +288,7 @@
       <button
         type="button"
         role="tab"
-        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
-        [class.border-primary]="activeTab() === 'commits'"
-        [class.text-primary]="activeTab() === 'commits'"
-        [class.border-transparent]="activeTab() !== 'commits'"
-        [class.text-base-content/55]="activeTab() !== 'commits'"
-        [class.hover:text-base-content]="activeTab() !== 'commits'"
+        [class]="prTabButtonClass('commits')"
         [attr.aria-selected]="activeTab() === 'commits'"
         (click)="setTab('commits')"
       >
@@ -352,12 +302,7 @@
       <button
         type="button"
         role="tab"
-        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
-        [class.border-primary]="activeTab() === 'files'"
-        [class.text-primary]="activeTab() === 'files'"
-        [class.border-transparent]="activeTab() !== 'files'"
-        [class.text-base-content/55]="activeTab() !== 'files'"
-        [class.hover:text-base-content]="activeTab() !== 'files'"
+        [class]="prTabButtonClass('files')"
         [attr.aria-selected]="activeTab() === 'files'"
         (click)="setTab('files')"
       >
@@ -371,12 +316,7 @@
       <button
         type="button"
         role="tab"
-        class="border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4"
-        [class.border-primary]="activeTab() === 'actions'"
-        [class.text-primary]="activeTab() === 'actions'"
-        [class.border-transparent]="activeTab() !== 'actions'"
-        [class.text-base-content/55]="activeTab() !== 'actions'"
-        [class.hover:text-base-content]="activeTab() !== 'actions'"
+        [class]="prTabButtonClass('actions')"
         [attr.aria-selected]="activeTab() === 'actions'"
         (click)="setTab('actions')"
       >
@@ -385,6 +325,18 @@
           Actions @if (runs().length > 0) {
           <span class="badge-pill badge-pill--count text-[10px]">{{ runs().length }}</span>
           }
+        </span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        [class]="prTabButtonClass('ai-review')"
+        [attr.aria-selected]="activeTab() === 'ai-review'"
+        (click)="setTab('ai-review')"
+      >
+        <span class="inline-flex items-center gap-1.5">
+          <lucide-icon name="sparkles" class="size-3.5 opacity-80"></lucide-icon>
+          AI Review
         </span>
       </button>
     </div>
@@ -405,9 +357,9 @@
           </div>
           <div class="min-w-0 flex-1">
             <header class="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span class="text-base-content text-sm font-semibold"
-                >{{ comment.author.name || comment.author.username }}</span
-              >
+              <span class="text-base-content text-sm font-semibold">
+                {{ comment.author.name || comment.author.username }}
+              </span>
               <time class="text-base-content/50 text-xs">{{ comment.createdAt | relativeTime }}</time>
               @if (isOwnComment(comment)) {
               <span class="ml-auto flex gap-0.5">
@@ -464,9 +416,9 @@
               />
             </div>
             <div class="min-w-0 flex-1">
-              <label class="text-base-content/55 mb-1.5 block text-xs font-medium" for="pr-new-comment"
-                >Leave a comment</label
-              >
+              <label class="text-base-content/55 mb-1.5 block text-xs font-medium" for="pr-new-comment">
+                Leave a comment
+              </label>
               <textarea
                 id="pr-new-comment"
                 class="textarea textarea-bordered w-full text-sm"
@@ -579,9 +531,9 @@
                 class="text-base-content/40 size-4 shrink-0"
               ></lucide-icon>
               <span class="truncate font-mono text-xs sm:text-sm">{{ file.newPath || file.oldPath }}</span>
-              <span class="badge-pill badge-pill--neutral shrink-0 text-[10px]"
-                >{{ changeTypeLabel(file.changeType) }}</span
-              >
+              <span class="badge-pill badge-pill--neutral shrink-0 text-[10px]">
+                {{ changeTypeLabel(file.changeType) }}
+              </span>
             </div>
             <span class="text-base-content/50 shrink-0 font-mono text-xs">
               <span class="text-success">+{{ file.additions }}</span>
@@ -601,9 +553,9 @@
                 class="group flex items-start gap-2 px-3 py-px font-mono text-xs whitespace-pre sm:px-4 sm:text-sm"
                 [class]="lineClass(line)"
               >
-                <span class="text-base-content/40 inline-block w-7 shrink-0 text-right select-none"
-                  >{{ linePrefix(line) }}</span
-                >
+                <span class="text-base-content/40 inline-block w-7 shrink-0 text-right select-none">
+                  {{ linePrefix(line) }}
+                </span>
                 <span class="min-w-0 flex-1">{{ line.content || '\u00A0' }}</span>
                 @if (isLoggedIn() && !isMergedOrClosed() && (line.type === 'ADD' || line.type === 'DELETE')) { @let ln =
                 line.type === 'ADD' ? line.newLineNumber : line.oldLineNumber; @let side = line.type === 'ADD' ? 'RIGHT'
@@ -719,6 +671,205 @@
         <lucide-icon name="workflow" class="size-8 opacity-40"></lucide-icon>
         <p class="text-sm font-medium">No workflow runs</p>
         <p class="text-xs">No CI runs triggered for this pull request.</p>
+      </div>
+      }
+    </div>
+
+    <!-- AI Code Review -->
+    <div class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'ai-review'">
+      @if (aiReviewLoading()) {
+      <div class="flex justify-center py-16">
+        <span class="loading loading-spinner loading-md text-primary"></span>
+      </div>
+      } @else if (!aiReview()) {
+      <div class="text-base-content/50 flex flex-col items-center gap-3 py-16 text-center">
+        <lucide-icon name="sparkles" class="size-8 opacity-40"></lucide-icon>
+        <p class="text-sm font-medium">No AI review yet</p>
+        <p class="max-w-sm text-xs">
+          Enable PR AI review in repository settings, configure AI in your user settings, then run a review below.
+        </p>
+        <button
+          type="button"
+          class="btn btn-sm btn-primary gap-2"
+          [disabled]="aiReviewRetrying()"
+          (click)="retryAiReview()"
+        >
+          @if (aiReviewRetrying()) {
+          <span class="loading loading-spinner loading-xs"></span>
+          } @else {
+          <lucide-icon name="refreshCw" class="size-3.5"></lucide-icon>
+          } Run AI review
+        </button>
+      </div>
+      } @else { @let review = aiReview()!;
+      <div class="space-y-4">
+        <div class="flex flex-wrap items-center gap-3">
+          <span
+            class="badge-pill"
+            [class.badge-pill--success]="review.status === 'COMPLETED'"
+            [class.badge-pill--warning]="review.status === 'PENDING'"
+            [class.badge-pill--error]="review.status === 'FAILED'"
+            [class.badge-pill--neutral]="review.status === 'SKIPPED'"
+          >
+            {{ review.status }}
+          </span>
+
+          @if (review.status === 'PENDING') {
+          <span class="loading loading-spinner loading-xs text-primary"></span>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline gap-2"
+            [disabled]="aiReviewRetrying()"
+            (click)="retryAiReview()"
+          >
+            @if (aiReviewRetrying()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="refreshCw" class="size-3.5"></lucide-icon>
+            } Restart review
+          </button>
+          } @if (review.status !== 'PENDING') {
+          <button
+            type="button"
+            class="btn btn-sm gap-2"
+            [class.btn-primary]="review.status === 'FAILED' || review.status === 'SKIPPED'"
+            [class.btn-outline]="review.status === 'COMPLETED'"
+            [disabled]="aiReviewRetrying()"
+            (click)="retryAiReview()"
+          >
+            @if (aiReviewRetrying()) {
+            <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+            <lucide-icon name="refreshCw" class="size-3.5"></lucide-icon>
+            } @if (review.status === 'COMPLETED') { Re-run review } @else { Retry review }
+          </button>
+          }
+        </div>
+
+        @if (review.statusMessage) {
+        <div [class]="aiReviewStatusMessageClass(review.status)">{{ review.statusMessage }}</div>
+        } @if (review.status === 'PENDING') {
+        <p class="text-base-content/60 text-sm">AI is reviewing the pull request diff. This may take a minute…</p>
+        } @if (review.summary && review.status === 'COMPLETED') {
+        <section
+          class="repo-panel ai-review-accordion overflow-hidden"
+          [class.ai-review-accordion--collapsed]="!aiSummaryExpanded()"
+        >
+          <button
+            type="button"
+            class="ai-review-accordion__trigger flex w-full items-center gap-2 px-4 py-3 text-left"
+            [attr.aria-expanded]="aiSummaryExpanded()"
+            (click)="toggleAiSummary()"
+          >
+            <lucide-icon
+              [name]="aiSummaryExpanded() ? 'chevron-down' : 'chevron-right'"
+              class="text-base-content/55 size-4 shrink-0"
+              aria-hidden="true"
+            ></lucide-icon>
+            <span class="text-sm font-semibold">Review summary</span>
+          </button>
+          <div
+            class="ai-review-accordion__panel"
+            [class.ai-review-accordion__panel--open]="aiSummaryExpanded()"
+            [attr.aria-hidden]="!aiSummaryExpanded()"
+          >
+            <div class="ai-review-accordion__panel-inner px-4 pb-4">
+              <p class="text-base-content/70 m-0 text-sm leading-relaxed">{{ review.summary }}</p>
+            </div>
+          </div>
+        </section>
+        } @if (review.status === 'COMPLETED') { @if (review.comments.content.length > 0) {
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-base-content/50 m-0 text-xs font-medium tracking-wide uppercase">
+            {{ review.comments.totalElements }} finding{{ review.comments.totalElements !== 1 ? 's' : '' }}
+          </p>
+          <div class="flex items-center gap-1">
+            <button type="button" class="btn btn-ghost btn-xs" (click)="expandAllAiComments()">Expand all</button>
+            <button type="button" class="btn btn-ghost btn-xs" (click)="collapseAllAiComments()">Collapse all</button>
+          </div>
+        </div>
+        }
+
+        <div class="space-y-2">
+          @for (comment of review.comments.content; track comment.id) {
+          <section
+            class="repo-panel ai-review-accordion overflow-hidden"
+            [class.ai-review-accordion--collapsed]="!isAiCommentExpanded(comment.id)"
+          >
+            <button
+              type="button"
+              class="ai-review-accordion__trigger flex w-full items-start gap-2 px-4 py-3 text-left"
+              [attr.aria-expanded]="isAiCommentExpanded(comment.id)"
+              [attr.aria-controls]="'ai-review-comment-' + comment.id"
+              (click)="toggleAiComment(comment.id)"
+            >
+              <lucide-icon
+                [name]="isAiCommentExpanded(comment.id) ? 'chevron-down' : 'chevron-right'"
+                class="text-base-content/55 mt-0.5 size-4 shrink-0"
+                aria-hidden="true"
+              ></lucide-icon>
+              <span class="min-w-0 flex-1 space-y-2">
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="text-base-content/60 font-mono text-xs">
+                    {{ comment.filePath }}{{ comment.lineNumber ? ':' + comment.lineNumber : '' }}
+                  </span>
+                  <span [class]="severityBadgeClass(comment.severity)">{{ comment.severity }}</span>
+                  <span class="badge-pill badge-pill--neutral">{{ comment.category }}</span>
+                </span>
+                <span class="text-base-content/80 block text-sm leading-snug">{{ comment.comment }}</span>
+              </span>
+            </button>
+
+            <div
+              class="ai-review-accordion__panel"
+              [class.ai-review-accordion__panel--open]="isAiCommentExpanded(comment.id)"
+              [id]="'ai-review-comment-' + comment.id"
+              [attr.aria-hidden]="!isAiCommentExpanded(comment.id)"
+            >
+              <div class="ai-review-accordion__panel-inner border-base-300/50 border-t px-4 py-3">
+                @if (comment.suggestion) {
+                <div class="space-y-1">
+                  <p class="text-base-content/50 m-0 text-[11px] font-semibold tracking-wide uppercase">
+                    Suggested fix
+                  </p>
+                  <p class="text-base-content/75 m-0 text-sm leading-relaxed">{{ comment.suggestion }}</p>
+                </div>
+                } @else {
+                <p class="text-base-content/50 m-0 text-sm italic">
+                  No remediation suggestion returned for this finding.
+                </p>
+                }
+              </div>
+            </div>
+          </section>
+          } @empty {
+          <div class="repo-panel text-base-content/50 px-4 py-6 text-center text-sm">No issues found — great code!</div>
+          }
+        </div>
+
+        @if (review.comments.totalPages > 1) {
+        <div class="flex justify-center gap-2">
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            [disabled]="aiReviewPage() === 0"
+            (click)="loadPrevAiReviewComments()"
+          >
+            Previous
+          </button>
+          <span class="text-base-content/50 self-center text-sm">
+            Page {{ aiReviewPage() + 1 }} of {{ review.comments.totalPages }}
+          </span>
+          <button
+            type="button"
+            class="btn btn-sm btn-ghost"
+            [disabled]="aiReviewPage() + 1 >= review.comments.totalPages"
+            (click)="loadMoreAiReviewComments()"
+          >
+            Next
+          </button>
+        </div>
+        } }
       </div>
       }
     </div>

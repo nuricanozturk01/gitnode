@@ -19,4 +19,13 @@ import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
-public record PullRequestCreatedEvent(UUID prId, UUID repoId, String sourceBranch) {}
+public record PullRequestCreatedEvent(
+    UUID prId,
+    UUID repoId,
+    int prNumber,
+    String ownerUsername,
+    String repoName,
+    String sourceBranch,
+    String targetBranch,
+    String sourceSha,
+    UUID authorId) {}

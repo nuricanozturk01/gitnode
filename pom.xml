@@ -24,6 +24,7 @@
     <spring-boot.version>4.0.6</spring-boot.version>
     <spring-cloud.version>2025.1.0</spring-cloud.version>
     <spring-modulith.version>2.0.2</spring-modulith.version>
+    <spring-ai.version>2.0.0</spring-ai.version>
     <!-- Plugin Versions -->
     <fmt-maven-plugin.version>2.29</fmt-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.6.0</maven-checkstyle-plugin.version>
@@ -75,6 +76,7 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+
 
     </dependencies>
   </dependencyManagement>

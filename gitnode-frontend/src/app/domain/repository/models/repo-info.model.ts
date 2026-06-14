@@ -44,6 +44,8 @@ export interface RepoInfo {
   deleteHeadBranchOnPrMerge?: boolean;
   /** When true, the PR head branch is removed when the PR is closed without merging. */
   deleteHeadBranchOnPrClose?: boolean;
+  /** When true, new pull requests are reviewed automatically by AI. */
+  aiPrReviewEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
   forkedFrom?: RepoForkedFromInfo | null;

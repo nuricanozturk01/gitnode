@@ -36,7 +36,6 @@ gitnode:
       enabled: ${GITNODE_ADMIN_MODULITH_EVENTS_ENABLED:false}
   http:
     enabled: ${GITNODE_HTTP_ENABLED:true}
-    port: 8080
   ssh:
     port: 2222
     host-path: ${gitnode.git.repo-root}/.hosts
@@ -66,6 +65,9 @@ gitnode:
     secrets:
       # 32-byte AES-256 key, base64-encoded. Required to enable the secrets vault.
       encryption-key: ${ACTIONS_ENCRYPTION_KEY:}
+  ai:
+    # 32-byte AES-256 key, base64-encoded. Required to encrypt user AI API keys at rest.
+    encryption-key: ${GITNODE_AI_ENCRYPTION_KEY:}
   webhook:
     dlq:
       retry-cron: ${GITNODE_WEBHOOK_DLQ_RETRY_CRON:0 */5 * * * *}
@@ -202,7 +204,27 @@ resilience4j:
         wait-duration-in-open-state: 60s
         permitted-number-of-calls-in-half-open-state: 3
         automatic-transition-from-open-to-half-open-enabled: true
+
+      ai-provider:
+        register-health-indicator: true
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 5
+        failure-rate-threshold: 60
+        slow-call-duration-threshold: 30s
+        slow-call-rate-threshold: 80
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
     instances:
+      ai-openai:
+        base-config: ai-provider
+      ai-anthropic:
+        base-config: ai-provider
+      ai-gemini:
+        base-config: ai-provider
+      ai-local:
+        base-config: ai-provider
+        wait-duration-in-open-state: 30s
       saml-metadata:
         register-health-indicator: true
         sliding-window-type: COUNT_BASED
@@ -242,6 +264,6 @@ logging:
   level:
     root: warn
     org.apache.sshd.server.session.ServerSessionImpl: error
-    com.nuricanozturk.gitnode.ssh: info
-    com.nuricanozturk.gitnode: warn
+    dev.gitnode.os.ssh: info
+    dev.gitnode.os: warn
 

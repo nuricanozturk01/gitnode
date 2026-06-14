@@ -100,6 +100,7 @@ import {
   Unlock,
   Clock,
   FileX2,
+  RefreshCw,
 } from 'lucide-angular';
 
 export const LUCIDE_ICONS = {
@@ -188,4 +189,5 @@ export const LUCIDE_ICONS = {
   Unlock,
   Clock,
   FileX2,
+  RefreshCw,
 };

@@ -71,6 +71,9 @@ export class RepoService {
     if (form.deleteHeadBranchOnPrClose !== undefined) {
       body['deleteHeadBranchOnPrClose'] = form.deleteHeadBranchOnPrClose;
     }
+    if (form.aiPrReviewEnabled !== undefined) {
+      body['aiPrReviewEnabled'] = form.aiPrReviewEnabled;
+    }
     return firstValueFrom(this.http.patch<RepoInfo>(`${this.api}/${owner}/${repo}`, body)).then((r) =>
       this.normalizeRepo(r),
     );
@@ -94,7 +97,13 @@ export class RepoService {
     } else if (typeof raw.private === 'boolean') {
       isPrivate = raw.private;
     }
-    return isPrivate === undefined ? raw : { ...raw, isPrivate };
+    return {
+      ...raw,
+      ...(isPrivate === undefined ? {} : { isPrivate }),
+      aiPrReviewEnabled: raw.aiPrReviewEnabled === true,
+      deleteHeadBranchOnPrMerge: raw.deleteHeadBranchOnPrMerge === true,
+      deleteHeadBranchOnPrClose: raw.deleteHeadBranchOnPrClose === true,
+    };
   }
 
   private toCreateBody(form: RepoForm): Record<string, unknown> {

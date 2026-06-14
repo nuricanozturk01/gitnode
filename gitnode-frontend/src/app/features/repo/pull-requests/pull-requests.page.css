@@ -1,3 +1,40 @@
 :host {
   display: block;
 }
+
+.ai-review-accordion__trigger {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.ai-review-accordion__trigger:hover {
+  background: color-mix(in oklch, var(--color-base-content) 4%, transparent);
+}
+
+.ai-review-accordion__trigger:focus-visible {
+  outline: 2px solid color-mix(in oklch, var(--color-primary) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.ai-review-accordion__panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.ai-review-accordion__panel--open {
+  grid-template-rows: 1fr;
+}
+
+.ai-review-accordion__panel-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-review-accordion__panel {
+    transition: none;
+  }
+}

@@ -81,15 +81,6 @@ services:
       prometheus:
         condition: service_started
 
-  # ── CI/CD Runner (optional) ──────────────────────────────────────────────────
-  # Prerequisites:
-  #   1. Build the runner: make runner-build
-  #   2. Register it once to generate the config file:
-  #        ./gitnode-runner/dist/gitnode-runner start \
-  #          --server-url http://localhost:8080 --token <registration-token> \
-  #          --name docker-runner --labels self-hosted,linux,docker \
-  #          --executor docker --config ~/.gitnode-runner/config.yml
-  #   3. Start via Compose: docker compose --profile runner up -d runner
   runner:
     container_name: gitnode-runner
     build:

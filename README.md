@@ -511,16 +511,6 @@ GitNode is designed to run as multiple stateless app instances behind a load bal
 
 Without shared storage, requests routed to a different instance than the one that wrote the file will return 404. Mount a network filesystem (NFS, AWS EFS, GCP Filestore, Azure Files) at both paths, or use a `ReadWriteMany` Kubernetes PVC.
 
-### Docker Compose HA (built-in)
-
-```bash
-make up-ha N=3    # infra + 3 app instances + HAProxy (HTTP :8080, SSH :2222)
-make proxy        # start HAProxy only (if instances already running)
-make app-scale N=3
-```
-
-HAProxy config is in `haproxy.cfg` at the project root.
-
 ### Kubernetes example
 
 ```yaml

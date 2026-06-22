@@ -389,16 +389,31 @@ make test    # unit tests + lint
 
 ```bash
 SECRET=$(openssl rand -base64 64 | tr -d '\n')
+ACTIONS_KEY=$(openssl rand -base64 32 | tr -d '\n')
+AI_KEY=$(openssl rand -base64 32 | tr -d '\n')
 
-# Infrastructure (Postgres with pgAudit, Redis) — creates the gitnode network
-docker compose up -d
+# Network
+docker network create gitnode
 
-# Optional: Prometheus + Grafana
-docker compose --profile monitoring up -d
+# Postgres
+docker run -d \
+  --name gitnode-postgres \
+  --hostname gitnode-postgres \
+  --network gitnode \
+  -e POSTGRES_DB=gitnode \
+  -e POSTGRES_USER=admin \
+  -e POSTGRES_PASSWORD=admin123 \
+  -p 5432:5432 \
+  postgres:17-alpine
 
-# Optional: admin panel UI (dev, separate terminal)
-# cd gitnode-admin-panel && pnpm install && pnpm start   → http://localhost:4300
+# Redis
+docker run -d \
+  --name gitnode-redis \
+  --network gitnode \
+  -p 6379:6379 \
+  redis:7-alpine redis-server --save "" --maxmemory 512mb --maxmemory-policy volatile-lru
 
+# App
 docker run -d \
   --name gitnode \
   --network gitnode \
@@ -416,6 +431,8 @@ docker run -d \
   -e GITNODE_BOOTSTRAP_ADMIN_USERNAME=admin \
   -e GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123 \
   -e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
+  -e "ACTIONS_ENCRYPTION_KEY=$ACTIONS_KEY" \
+  -e "GITNODE_AI_ENCRYPTION_KEY=$AI_KEY" \
   -e GITNODE_FRONTEND_BASE_URL=http://localhost:8080 \
   -e GITNODE_AUDIT_ENABLED=true \
   -e GITNODE_OBSERVABILITY_ENABLED=false \

@@ -13,11 +13,16 @@ LDAP_NAME      := gitnode-ldap
 LDAP_IMAGE     := ghcr.io/rroemhild/docker-test-openldap:master
 LDAP_PORT      := 389
 IMAGE          := repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
+POSTGRES_IMAGE := gitnode-postgres-pgaudit
+PROMETHEUS_IMAGE := prom/prometheus:v3.4.0
+GRAFANA_IMAGE  := grafana/grafana:12.0.1
 
 POSTGRES_DB    := gitnode
 POSTGRES_USER  := admin
 POSTGRES_PASS  := admin123
 REDIS_PORT     := 6379
+PROMETHEUS_PORT := 9090
+GRAFANA_PORT   := 3000
 
 JWT_SECRET     := 995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0
 GIT_REPO_ROOT  := /data/repos
@@ -77,40 +82,87 @@ restart: stop start
 # ── Infrastructure (Postgres · Redis) ───────────────────────────────────────
 
 infra:
-	docker compose up -d --build
+	@docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
+	@docker image inspect $(POSTGRES_IMAGE) >/dev/null 2>&1 || docker build -t $(POSTGRES_IMAGE) ./postgres
+	@docker start $(POSTGRES_NAME) 2>/dev/null || docker run -d \
+		--name $(POSTGRES_NAME) \
+		--hostname $(POSTGRES_NAME) \
+		--network $(NETWORK) \
+		-e POSTGRES_DB=$(POSTGRES_DB) \
+		-e POSTGRES_USER=$(POSTGRES_USER) \
+		-e POSTGRES_PASSWORD=$(POSTGRES_PASS) \
+		-p 5432:5432 \
+		-v $(POSTGRES_LOGS_VOLUME):/var/log/postgresql \
+		$(POSTGRES_IMAGE) \
+		postgres \
+		  -c shared_preload_libraries=pgaudit \
+		  -c pgaudit.log=write,ddl,role \
+		  -c log_destination=stderr \
+		  -c logging_collector=on \
+		  -c log_directory=/var/log/postgresql \
+		  -c log_filename=postgresql-%Y-%m-%d.log \
+		  -c log_rotation_age=1d \
+		  -c log_truncate_on_rotation=on \
+		  -c log_min_duration_statement=500
+	@docker start $(REDIS_NAME) 2>/dev/null || docker run -d \
+		--name $(REDIS_NAME) \
+		--network $(NETWORK) \
+		-p $(REDIS_PORT):6379 \
+		redis:7-alpine redis-server --save "" --maxmemory 512mb --maxmemory-policy volatile-lru
 	@echo "Waiting for Postgres to be ready..."
 	@until docker exec $(POSTGRES_NAME) pg_isready -U $(POSTGRES_USER) > /dev/null 2>&1; do sleep 1; done
 	@echo "Postgres ready."
 
 infra-stop:
-	docker compose stop
+	-docker stop $(POSTGRES_NAME) $(REDIS_NAME)
 
 infra-start:
-	docker compose start
+	docker start $(POSTGRES_NAME) $(REDIS_NAME)
 
 infra-down:
-	docker compose down
+	-docker rm -f $(POSTGRES_NAME) $(REDIS_NAME)
 
 # ── Observability (optional) ──────────────────────────────────────────────────
 
 monitoring:
-	docker compose --profile monitoring up -d prometheus grafana
+	@docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
+	@docker start $(PROMETHEUS_NAME) 2>/dev/null || docker run -d \
+		--name $(PROMETHEUS_NAME) \
+		--network $(NETWORK) \
+		--add-host host.docker.internal:host-gateway \
+		-p $(PROMETHEUS_PORT):9090 \
+		-v $$(pwd)/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
+		$(PROMETHEUS_IMAGE) \
+		  --config.file=/etc/prometheus/prometheus.yml \
+		  --storage.tsdb.retention.time=7d
+	@docker start $(GRAFANA_NAME) 2>/dev/null || docker run -d \
+		--name $(GRAFANA_NAME) \
+		--network $(NETWORK) \
+		-p $(GRAFANA_PORT):3000 \
+		-e GF_SECURITY_ADMIN_PASSWORD=admin \
+		-e GF_USERS_ALLOW_SIGN_UP=false \
+		-v $$(pwd)/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro \
+		$(GRAFANA_IMAGE)
 	@echo ""
 	@echo "  Monitoring stack is up"
-	@echo "  Prometheus  → http://localhost:9090"
-	@echo "  Grafana     → http://localhost:3000  (admin / admin)"
+	@echo "  Prometheus  → http://localhost:$(PROMETHEUS_PORT)"
+	@echo "  Grafana     → http://localhost:$(GRAFANA_PORT)  (admin / admin)"
 	@echo ""
 
 monitoring-down:
-	docker compose --profile monitoring stop prometheus grafana
+	-docker stop $(PROMETHEUS_NAME) $(GRAFANA_NAME)
 
 # ── App container ─────────────────────────────────────────────────────────────
 
-ACTIONS_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.gitnode/actions-encryption-key 2>/dev/null)
-GITNODE_AI_ENCRYPTION_KEY ?= $(shell cat $(HOME)/.gitnode/ai-encryption-key 2>/dev/null)
-
 app:
-	@docker ps --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
+	@mkdir -p $(HOME)/.gitnode
+	@test -f $(HOME)/.gitnode/actions-encryption-key \
+		|| openssl rand -base64 32 | tr -d '\n' > $(HOME)/.gitnode/actions-encryption-key
+	@test -f $(HOME)/.gitnode/ai-encryption-key \
+		|| openssl rand -base64 32 | tr -d '\n' > $(HOME)/.gitnode/ai-encryption-key
+	@ACTIONS_KEY=$$(cat $(HOME)/.gitnode/actions-encryption-key); \
+	AI_KEY=$$(cat $(HOME)/.gitnode/ai-encryption-key); \
+	docker ps --format "{{.Names}}" | grep -q "^$(APP_NAME)$$" \
 		&& echo "$(APP_NAME) already running – skipping." \
 		|| (docker rm -f $(APP_NAME) 2>/dev/null; docker run -d \
 			--name $(APP_NAME) \
@@ -127,8 +179,8 @@ app:
 			-e SPRING_DATA_REDIS_PORT=$(REDIS_PORT) \
 			-e SPRING_PROFILES_ACTIVE=$(SPRING_PROFILE) \
 			-e GITNODE_ADMIN_MODULITH_EVENTS_ENABLED=true \
-			$(if $(ACTIONS_ENCRYPTION_KEY),-e ACTIONS_ENCRYPTION_KEY=$(ACTIONS_ENCRYPTION_KEY),) \
-			$(if $(GITNODE_AI_ENCRYPTION_KEY),-e GITNODE_AI_ENCRYPTION_KEY=$(GITNODE_AI_ENCRYPTION_KEY),) \
+			-e ACTIONS_ENCRYPTION_KEY=$$ACTIONS_KEY \
+			-e GITNODE_AI_ENCRYPTION_KEY=$$AI_KEY \
 			-e OAUTH2_GOOGLE_CLIENT_ID=$(GOOGLE_CLIENT_ID) \
 			-e OAUTH2_GOOGLE_CLIENT_SECRET=$(GOOGLE_CLIENT_SECRET) \
 			-e OAUTH2_GITHUB_CLIENT_ID=$(GITHUB_CLIENT_ID) \
@@ -209,7 +261,7 @@ runner-build-all:
 # ── Misc ──────────────────────────────────────────────────────────────────────
 
 build:
-	docker compose build --no-cache
+	docker build --no-cache -t $(POSTGRES_IMAGE) ./postgres
 
 ldap-up:
 	-docker rm -f $(LDAP_NAME)
@@ -268,7 +320,8 @@ ps:
 purge: down
 	-docker volume rm $(REPOS_VOLUME)
 	-docker volume rm $(POSTGRES_LOGS_VOLUME)
-	@echo "All GitNode resources removed (containers + volumes)."
+	-docker network rm $(NETWORK)
+	@echo "All GitNode resources removed (containers + volumes + network)."
 
 help:
 	@echo ""
@@ -280,12 +333,12 @@ help:
 	@echo "  make stop              → Stop containers (keep them)"
 	@echo "  make restart           → stop + start"
 	@echo "  ──────────────────────────────────────────────────────"
-	@echo "  make infra             → docker compose up (pg + redis only)"
+	@echo "  make infra             → Start Postgres + Redis (docker run)"
 	@echo "  make monitoring        → Start Prometheus + Grafana (optional)"
 	@echo "  make monitoring-down   → Stop Prometheus + Grafana"
-	@echo "  make infra-down        → docker compose down"
-	@echo "  make infra-stop        → docker compose stop"
-	@echo "  make infra-start       → docker compose start"
+	@echo "  make infra-down        → Remove Postgres + Redis containers"
+	@echo "  make infra-stop        → Stop Postgres + Redis"
+	@echo "  make infra-start       → Start stopped Postgres + Redis"
 	@echo "  make app               → Start app container only"
 	@echo "  make app-stop          → Stop & remove app container"
 	@echo "  ──────────────────────────────────────────────────────"
@@ -295,9 +348,9 @@ help:
 	@echo "  make logs-prometheus   → Follow Prometheus logs"
 	@echo "  make logs-grafana      → Follow Grafana logs"
 	@echo "  ──────────────────────────────────────────────────────"
-	@echo "  make build             → Rebuild images (no cache)"
+	@echo "  make build             → Rebuild Postgres image (no cache)"
 	@echo "  make ps                → Show running containers"
-	@echo "  make purge             → down + delete volumes ⚠"
+	@echo "  make purge             → down + delete volumes + network ⚠"
 	@echo "  make runner-build      → Build runner binary for local arch ($(RUNNER_DIR)/dist/)"
 	@echo "  make runner-build-all  → Build runner for Linux amd64/arm64, macOS arm64, Windows amd64"
 	@echo "  ──────────────────────────────────────────────────────"

@@ -532,6 +532,9 @@ Without shared storage, requests routed to a different instance than the one tha
 
 <img width="1887" height="910" alt="Screenshot from 2026-07-12 22-06-50" src="https://github.com/user-attachments/assets/2aafc3fc-d007-4291-ba24-18cf81040d63" />
 
+### AI Feature Example (Project (All Codebase))
+
+<img width="1350" height="877" alt="Screenshot from 2026-07-12 22-16-20" src="https://github.com/user-attachments/assets/a16e0656-d73c-43e3-84b5-ab5d2207374d" />
 
 ---
 

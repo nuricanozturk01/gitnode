@@ -528,34 +528,10 @@ GitNode is designed to run as multiple stateless app instances behind a load bal
 
 Without shared storage, requests routed to a different instance than the one that wrote the file will return 404. Mount a network filesystem (NFS, AWS EFS, GCP Filestore, Azure Files) at both paths, or use a `ReadWriteMany` Kubernetes PVC.
 
-### Kubernetes example
+### AI Feature Example (for MR)
 
-```yaml
-# Shared PVC for repos + artifacts — mount on all app pods
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: gitnode-data
-spec:
-  accessModes: [ReadWriteMany]   # requires NFS / EFS / GCP Filestore / Azure Files
-  resources:
-    requests:
-      storage: 100Gi
----
-# In your Deployment / StatefulSet:
-volumeMounts:
-  - name: data
-    mountPath: /data/repos          # GITNODE_GIT_REPO__ROOT
-  - name: data
-    mountPath: /data/artifacts      # gitnode.actions.artifacts.local-path
-    subPath: artifacts
-volumes:
-  - name: data
-    persistentVolumeClaim:
-      claimName: gitnode-data
-```
+<img width="1887" height="910" alt="Screenshot from 2026-07-12 22-06-50" src="https://github.com/user-attachments/assets/2aafc3fc-d007-4291-ba24-18cf81040d63" />
 
-Redis and PostgreSQL must also be external (not per-pod) in a multi-instance setup — use a managed service or a dedicated StatefulSet with persistence.
 
 ---
 

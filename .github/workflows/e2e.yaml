@@ -1,12 +1,12 @@
 name: E2E | GitNode
 
 on:
-#  schedule:
-#    # Four runs per day (UTC): 06:00, 14:00, 16:00, 22:00
-#    - cron: "0 6 * * *"
-#    - cron: "0 14 * * *"
-#    - cron: "0 16 * * *"
-#    - cron: "0 22 * * *"
+  schedule:
+    # Four runs per day (UTC): 06:00, 14:00, 16:00, 22:00
+    - cron: "0 6 * * *"
+    - cron: "0 14 * * *"
+    - cron: "0 16 * * *"
+    - cron: "0 22 * * *"
   workflow_dispatch:
     inputs:
       suite:
@@ -25,8 +25,8 @@ concurrency:
 
 env:
   CI: "true"
-  GITNODE_API_BASE_URL: https://originhub.nuricanozturk.com
-  GITNODE_FRONTEND_BASE_URL: https://originhub.nuricanozturk.com
+  GITNODE_API_BASE_URL: https://api.gitnode.dev
+  GITNODE_FRONTEND_BASE_URL: https://gitnode.dev
 
 jobs:
   e2e-api:

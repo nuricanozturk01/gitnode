@@ -59,7 +59,9 @@ public class ProjectWebhookService {
   private final WebhookMapper webhookMapper;
 
   public List<WebhookInfo> list(final String ownerUsername, final String projectCode) {
+
     final var projectId = this.resolveProject(ownerUsername, projectCode).id();
+
     return this.projectWebhookRepository.findAllByProjectId(projectId).stream()
         .map(this.webhookMapper::toInfoFromProject)
         .toList();
@@ -73,7 +75,9 @@ public class ProjectWebhookService {
   @Transactional
   public WebhookInfo create(
       final String ownerUsername, final String projectCode, final WebhookForm form) {
+
     final var project = this.resolveProject(ownerUsername, projectCode);
+
     this.requireOwner(project.ownerUsername(), ownerUsername);
 
     if (this.projectWebhookRepository.countByProjectId(project.id())
@@ -81,9 +85,11 @@ public class ProjectWebhookService {
       throw new ErrorOccurredException(
           "Maximum of " + WebhookValidator.MAX_WEBHOOKS + " webhooks per project allowed");
     }
+
     if (this.projectWebhookRepository.existsByProjectIdAndUrl(project.id(), form.url())) {
       throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
+
     WebhookValidator.validateEvents(form.events(), PROJECT_VALID_EVENTS);
 
     final var webhook = new ProjectWebhook();
@@ -102,19 +108,25 @@ public class ProjectWebhookService {
       final String projectCode,
       final UUID webhookId,
       final WebhookUpdateForm form) {
+
     final var project = this.resolveProject(ownerUsername, projectCode);
+
     this.requireOwner(project.ownerUsername(), ownerUsername);
+
     final var webhook = this.findWebhook(webhookId, project.id());
 
     if (form.url() != null) {
       this.applyUrlUpdate(webhook, project.id(), form.url());
     }
+
     if (form.secret() != null) {
       webhook.setSecret(form.secret().isBlank() ? null : form.secret());
     }
+
     if (form.enabled() != null) {
       webhook.setEnabled(form.enabled());
     }
+
     if (form.events() != null) {
       WebhookValidator.validateEvents(form.events(), PROJECT_VALID_EVENTS);
       webhook.setSubscribedEvents(new HashSet<>(form.events()));
@@ -130,39 +142,50 @@ public class ProjectWebhookService {
       detailsSpEL = "'project=' + #ownerUsername + '/' + #projectCode")
   @Transactional
   public void delete(final String ownerUsername, final String projectCode, final UUID webhookId) {
+
     final var project = this.resolveProject(ownerUsername, projectCode);
+
     this.requireOwner(project.ownerUsername(), ownerUsername);
+
     final var webhook = this.findWebhook(webhookId, project.id());
+
     this.projectWebhookRepository.delete(webhook);
   }
 
   private void applyUrlUpdate(
       final ProjectWebhook webhook, final UUID projectId, final String newUrl) {
+
     if (!newUrl.equals(webhook.getUrl())
         && this.projectWebhookRepository.existsByProjectIdAndUrl(projectId, newUrl)) {
       throw new ErrorOccurredException(WebhookValidator.ERR_URL_EXISTS);
     }
+
     webhook.setUrl(newUrl);
   }
 
   private ProjectSummary resolveProject(final String ownerUsername, final String projectCode) {
+
     return this.projectAccessService
         .findByOwnerAndCode(ownerUsername, projectCode)
         .orElseThrow(() -> new ItemNotFoundException("Project not found"));
   }
 
   private ProjectWebhook findWebhook(final UUID webhookId, final UUID projectId) {
+
     final var webhook =
         this.projectWebhookRepository
             .findById(webhookId)
             .orElseThrow(() -> new ItemNotFoundException(WebhookValidator.ERR_NOT_FOUND));
+
     if (!projectId.equals(webhook.getProjectId())) {
       throw new AccessNotAllowedException(WebhookValidator.ERR_NOT_AUTHORIZED);
     }
+
     return webhook;
   }
 
   private void requireOwner(final String actualOwner, final String callerUsername) {
+
     if (!actualOwner.equals(callerUsername)) {
       throw new AccessNotAllowedException(WebhookValidator.ERR_NOT_AUTHORIZED);
     }

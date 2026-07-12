@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.notification.services;
 
-import dev.gitnode.os.notification.dtos.NotificationPreferenceDto;
+import dev.gitnode.os.notification.dtos.NotificationPreferenceInfo;
 import dev.gitnode.os.notification.entities.NotificationPreference;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.repositories.NotificationPreferenceRepository;
@@ -35,37 +35,51 @@ public class NotificationPreferenceService {
 
   private final NotificationPreferenceRepository repository;
 
-  public List<NotificationPreferenceDto> getAll(final UUID tenantId) {
+  public List<NotificationPreferenceInfo> getAll(final UUID tenantId) {
+
     final var saved = this.repository.findAllByTenantId(tenantId);
+
     return Arrays.stream(NotificationType.values())
-        .map(
-            type -> {
-              final var pref = saved.stream().filter(p -> p.getType() == type).findFirst();
-              return new NotificationPreferenceDto(
-                  type, pref.map(NotificationPreference::isEnabled).orElse(true));
-            })
+        .map(type -> this.toNotificationPreferenceDto(saved, type))
         .toList();
   }
 
-  public boolean isEnabled(final UUID tenantId, final NotificationType type) {
-    return !this.repository.existsByTenantIdAndTypeAndEnabled(tenantId, type, false);
-  }
-
   @Transactional
-  public NotificationPreferenceDto set(
+  public NotificationPreferenceInfo set(
       final UUID tenantId, final NotificationType type, final boolean enabled) {
+
     final var pref =
         this.repository
             .findByTenantIdAndType(tenantId, type)
-            .orElseGet(
-                () -> {
-                  final var p = new NotificationPreference();
-                  p.setTenantId(tenantId);
-                  p.setType(type);
-                  return p;
-                });
+            .orElseGet(() -> this.createNotificationPreference(tenantId, type));
+
     pref.setEnabled(enabled);
     this.repository.save(pref);
-    return new NotificationPreferenceDto(type, enabled);
+
+    return new NotificationPreferenceInfo(type, enabled);
+  }
+
+  public boolean isEnabled(final UUID tenantId, final NotificationType type) {
+
+    return !this.repository.existsByTenantIdAndTypeAndEnabled(tenantId, type, false);
+  }
+
+  private NotificationPreferenceInfo toNotificationPreferenceDto(
+      final List<NotificationPreference> saved, final NotificationType type) {
+
+    final var pref = saved.stream().filter(p -> p.getType() == type).findFirst();
+
+    return new NotificationPreferenceInfo(
+        type, pref.map(NotificationPreference::isEnabled).orElse(true));
+  }
+
+  private NotificationPreference createNotificationPreference(
+      final UUID tenantId, final NotificationType type) {
+
+    final var p = new NotificationPreference();
+    p.setTenantId(tenantId);
+    p.setType(type);
+
+    return p;
   }
 }

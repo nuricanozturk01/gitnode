@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.notification.services;
 
-import dev.gitnode.os.notification.dtos.NotificationDto;
+import dev.gitnode.os.notification.dtos.NotificationInfo;
 import dev.gitnode.os.notification.entities.Notification;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.repositories.NotificationRepository;
@@ -75,7 +75,7 @@ public class NotificationService {
     this.sseRegistry.push(recipientId, dto);
   }
 
-  public PageResponse<NotificationDto> list(
+  public PageResponse<NotificationInfo> list(
       final UUID recipientId, final int page, final int size) {
     final var pageable = PageRequest.of(page, Math.clamp(size, 1, MAX_PAGE_SIZE));
     return PageResponse.from(
@@ -123,8 +123,8 @@ public class NotificationService {
     this.repository.deleteAllByRecipientId(recipientId);
   }
 
-  private NotificationDto toDto(final Notification n) {
-    return new NotificationDto(
+  private NotificationInfo toDto(final Notification n) {
+    return new NotificationInfo(
         n.getId(),
         n.getType(),
         n.getTitle(),

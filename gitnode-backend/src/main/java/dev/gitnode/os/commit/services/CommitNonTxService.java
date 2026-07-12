@@ -194,23 +194,22 @@ public class CommitNonTxService {
       final var newTree = prepareTreeParser(gitRepo, commit.getId());
       final var diffs = formatter.scan(oldTree, newTree);
 
-      if (diffs.size() > MAX_FILES_PER_COMMIT) {
-
-        return diffs.stream()
-            .map(
-                entry ->
-                    new FileDiff(
-                        entry.getOldPath(),
-                        entry.getNewPath(),
-                        entry.getChangeType(),
-                        0,
-                        0,
-                        List.of(),
-                        true))
-            .toList();
+      if (diffs.size() <= MAX_FILES_PER_COMMIT) {
+        return diffs.stream().map(entry -> parseFileDiff(gitRepo, formatter, entry)).toList();
       }
 
-      return diffs.stream().map(entry -> parseFileDiff(gitRepo, formatter, entry)).toList();
+      return diffs.stream()
+          .map(
+              entry ->
+                  new FileDiff(
+                      entry.getOldPath(),
+                      entry.getNewPath(),
+                      entry.getChangeType(),
+                      0,
+                      0,
+                      List.of(),
+                      true))
+          .toList();
     }
   }
 
@@ -358,6 +357,7 @@ public class CommitNonTxService {
 
       for (final var entry : diffs) {
         final var editList = formatter.toFileHeader(entry).toEditList();
+
         for (final var edit : editList) {
           additions += edit.getLengthB();
           deletions += edit.getLengthA();

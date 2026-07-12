@@ -37,9 +37,12 @@ public class NotificationEventListener {
 
   @ApplicationModuleListener
   public void onIssueComment(final IssueCommentedEvent event) {
+
     final var link =
         "/" + event.ownerUsername() + "/" + event.repoName() + "/issues/" + event.issueNumber();
+
     final var body = truncate(event.body(), 200);
+
     for (final var recipientId : event.participantIds()) {
       this.notificationService.send(
           recipientId,
@@ -54,8 +57,10 @@ public class NotificationEventListener {
 
   @ApplicationModuleListener
   public void onPrComment(final PullRequestCommentedEvent event) {
+
     final var link =
         "/" + event.ownerUsername() + "/" + event.repoName() + "/pulls/" + event.prNumber();
+
     for (final var recipientId : event.participantIds()) {
       this.notificationService.send(
           recipientId,
@@ -70,21 +75,26 @@ public class NotificationEventListener {
 
   @ApplicationModuleListener
   public void onPrStatusChanged(final PullRequestStatusChangedEvent event) {
+
     final var type =
         switch (event.newStatus()) {
           case "MERGED" -> NotificationType.PR_MERGED;
           case "CLOSED" -> NotificationType.PR_CLOSED;
           default -> null;
         };
+
     if (type == null) {
       return;
     }
+
     final var title =
         type == NotificationType.PR_MERGED
             ? "PR #" + event.prNumber() + " was merged"
             : "PR #" + event.prNumber() + " was closed";
+
     final var link =
         "/" + event.ownerUsername() + "/" + event.repoName() + "/pulls/" + event.prNumber();
+
     for (final var recipientId : event.participantIds()) {
       this.notificationService.send(
           recipientId, event.actorId(), type, title, null, link, event.prId());
@@ -93,10 +103,13 @@ public class NotificationEventListener {
 
   @ApplicationModuleListener
   public void onAiCodeReviewCompleted(final AiCodeReviewCompletedEvent event) {
+
     final var recipientId = event.prAuthorId();
+
     if (recipientId == null) {
       return;
     }
+
     this.notificationService.send(
         recipientId,
         null,
@@ -109,14 +122,17 @@ public class NotificationEventListener {
 
   @ApplicationModuleListener
   public void onAiAnalysisCompleted(final AiCodebaseAnalysisCompletedEvent event) {
+
     final var type =
         "COMPLETED".equals(event.status())
             ? NotificationType.AI_ANALYSIS_COMPLETED
             : NotificationType.AI_ANALYSIS_FAILED;
+
     final var title =
         type == NotificationType.AI_ANALYSIS_COMPLETED
             ? "AI codebase analysis completed for " + event.repoName()
             : "AI codebase analysis failed for " + event.repoName();
+
     this.notificationService.send(
         event.triggeredBy(),
         null,
@@ -129,6 +145,7 @@ public class NotificationEventListener {
 
   @ApplicationModuleListener
   public void onCollaboratorInvited(final CollaboratorInvitedEvent event) {
+
     this.notificationService.send(
         event.tenantId(),
         event.invitedById(),
@@ -140,9 +157,11 @@ public class NotificationEventListener {
   }
 
   private static String truncate(final String text, final int max) {
+
     if (text.length() <= max) {
       return text;
     }
+
     return text.substring(0, max - 1) + "…";
   }
 }

@@ -58,8 +58,11 @@ public class CommitController {
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+
     final var commits = this.commitNonTxService.getCommits(owner, repo, branch, page, size);
+
     return ResponseEntity.ok(commits);
   }
 
@@ -73,8 +76,11 @@ public class CommitController {
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+
     final var commit = this.commitNonTxService.getCommit(owner, repo, sha);
+
     return ResponseEntity.ok(commit);
   }
 
@@ -88,8 +94,11 @@ public class CommitController {
       throws IOException {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
+
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+
     final var diff = this.commitNonTxService.getCommitDiff(owner, repo, sha);
+
     return ResponseEntity.ok(diff);
   }
 }

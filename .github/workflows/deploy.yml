@@ -57,7 +57,7 @@ jobs:
             repo.repsy.io/nuricanozturk/gitnode/gitnode-os:${{ inputs.version }}-vps
             repo.repsy.io/nuricanozturk/gitnode/gitnode-os:vps-latest
           build-args: |
-            API_URL=https://originhub.nuricanozturk.com
-            GIT_SSH_URL=git@originhub.nuricanozturk.com
+            API_URL=https://api.gitnode.dev
+            GIT_SSH_URL=git@gitnode.dev
           cache-from: type=gha
           cache-to: type=gha,mode=max

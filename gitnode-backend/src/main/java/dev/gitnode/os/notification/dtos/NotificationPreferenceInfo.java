@@ -16,19 +16,7 @@
 package dev.gitnode.os.notification.dtos;
 
 import dev.gitnode.os.notification.entities.NotificationType;
-import java.time.Instant;
-import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
 
 @NullMarked
-public record NotificationDto(
-    UUID id,
-    NotificationType type,
-    String title,
-    @Nullable String body,
-    @Nullable String link,
-    boolean read,
-    @Nullable UUID actorId,
-    @Nullable UUID entityId,
-    Instant createdAt) {}
+public record NotificationPreferenceInfo(NotificationType type, boolean enabled) {}

@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.notification.controllers;
 
-import dev.gitnode.os.notification.dtos.NotificationDto;
+import dev.gitnode.os.notification.dtos.NotificationInfo;
 import dev.gitnode.os.notification.services.NotificationService;
 import dev.gitnode.os.notification.services.NotificationSseRegistry;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
@@ -49,18 +49,22 @@ public class NotificationController {
   private final JwtUtils jwtUtils;
 
   @GetMapping
-  public ResponseEntity<PageResponse<NotificationDto>> list(
+  public ResponseEntity<PageResponse<NotificationInfo>> list(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size) {
+
     final var recipientId = this.jwtUtils.extractUserId(authHeader);
+
     return ResponseEntity.ok(this.notificationService.list(recipientId, page, size));
   }
 
   @GetMapping("/unread-count")
   public ResponseEntity<Map<String, Long>> unreadCount(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
     final var recipientId = this.jwtUtils.extractUserId(authHeader);
+
     return ResponseEntity.ok(Map.of("count", this.notificationService.unreadCount(recipientId)));
   }
 
@@ -68,16 +72,22 @@ public class NotificationController {
   public ResponseEntity<Void> markRead(
       @PathVariable final UUID id,
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
     final var recipientId = this.jwtUtils.extractUserId(authHeader);
+
     this.notificationService.markRead(id, recipientId);
+
     return ResponseEntity.noContent().build();
   }
 
   @PutMapping("/read-all")
   public ResponseEntity<Void> markAllRead(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
     final var recipientId = this.jwtUtils.extractUserId(authHeader);
+
     this.notificationService.markAllRead(recipientId);
+
     return ResponseEntity.noContent().build();
   }
 
@@ -85,16 +95,22 @@ public class NotificationController {
   public ResponseEntity<Void> delete(
       @PathVariable final UUID id,
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
     final var recipientId = this.jwtUtils.extractUserId(authHeader);
+
     this.notificationService.delete(id, recipientId);
+
     return ResponseEntity.noContent().build();
   }
 
   @DeleteMapping
   public ResponseEntity<Void> deleteAll(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
     final var recipientId = this.jwtUtils.extractUserId(authHeader);
+
     this.notificationService.deleteAll(recipientId);
+
     return ResponseEntity.noContent().build();
   }
 
@@ -103,12 +119,16 @@ public class NotificationController {
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
       @RequestParam(value = "token", required = false) final @Nullable String tokenParam) {
+
     final var raw = authHeader != null ? authHeader : tokenParam;
+
     if (raw == null || raw.isBlank()) {
       throw new dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException(
           "Missing authentication token");
     }
+
     final var recipientId = this.jwtUtils.extractUserId(raw);
+
     return this.sseRegistry.subscribe(recipientId);
   }
 }

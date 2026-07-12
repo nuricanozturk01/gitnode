@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.notification.controllers;
 
-import dev.gitnode.os.notification.dtos.NotificationPreferenceDto;
+import dev.gitnode.os.notification.dtos.NotificationPreferenceInfo;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.services.NotificationPreferenceService;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
@@ -43,19 +43,24 @@ public class NotificationPreferenceController {
   private final JwtUtils jwtUtils;
 
   @GetMapping
-  public ResponseEntity<List<NotificationPreferenceDto>> getAll(
+  public ResponseEntity<List<NotificationPreferenceInfo>> getAll(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
+
     return ResponseEntity.ok(this.preferenceService.getAll(tenantId));
   }
 
   @PutMapping("/{type}")
-  public ResponseEntity<NotificationPreferenceDto> set(
+  public ResponseEntity<NotificationPreferenceInfo> set(
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @PathVariable final NotificationType type,
       @RequestBody final Map<String, Boolean> body) {
+
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
+
     final var enabled = Boolean.TRUE.equals(body.get("enabled"));
+
     return ResponseEntity.ok(this.preferenceService.set(tenantId, type, enabled));
   }
 }

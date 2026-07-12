@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.notification.services;
 
-import dev.gitnode.os.notification.dtos.NotificationDto;
+import dev.gitnode.os.notification.dtos.NotificationInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -75,7 +75,7 @@ public class NotificationSseRegistry {
     return emitter;
   }
 
-  public void push(final UUID recipientId, final NotificationDto dto) {
+  public void push(final UUID recipientId, final NotificationInfo dto) {
     final var list = this.emitters.get(recipientId);
     if (list == null || list.isEmpty()) {
       return;

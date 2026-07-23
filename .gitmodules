@@ -1,0 +1,3 @@
+[submodule "registries/repsy"]
+	path = registries/repsy
+	url = git@github.com:nuricanozturk01/repsy.git

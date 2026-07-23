@@ -12,6 +12,12 @@ server:
     min-response-size: 1024
 
 gitnode:
+  registries:
+    repsy:
+      admin:
+        username: admin
+        password: Test123
+      base-url: http://localhost:7979/api
   platform:
     admin-usernames: ${GITNODE_PLATFORM_ADMIN_USERNAMES:}
   bootstrap:
@@ -117,8 +123,8 @@ spring:
 
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gitnode}
-    username: ${SPRING_DATASOURCE_USERNAME:admin}
-    password: ${SPRING_DATASOURCE_PASSWORD:admin123}
+    username: ${SPRING_DATASOURCE_USERNAME:repsy_os}
+    password: ${SPRING_DATASOURCE_PASSWORD:repsy_os123}
     hikari:
       maximum-pool-size: 15
       minimum-idle: 3

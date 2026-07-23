@@ -19,6 +19,7 @@ import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
+import dev.gitnode.os.events.auth.TenantRegisteredEvent;
 import dev.gitnode.os.shared.audit.services.AuditLogService;
 import dev.gitnode.os.shared.auth.dtos.LoginInfo;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
@@ -38,6 +39,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -58,6 +60,7 @@ public class AuthService {
   private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
   private final AuditLogService auditLogService;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Value("${gitnode.audit.enabled:true}")
   private boolean auditEnabled;
@@ -91,6 +94,8 @@ public class AuthService {
     this.checkUsernameAndEmailInReserved(formUsername, email);
 
     final var tenant = this.createTenant(formUsername, email, Optional.of(form.getPassword()));
+
+    this.eventPublisher.publishEvent(new TenantRegisteredEvent(tenant.getUsername(), form.getPassword(), tenant.getSalt()));
 
     return this.createLoginInfo(tenant);
   }

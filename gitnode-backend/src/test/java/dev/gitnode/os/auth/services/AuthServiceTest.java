@@ -254,7 +254,7 @@ class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("recoverPassword updates hash, clears recovery code, and saves tenant")
+  @DisplayName("recoverPassword updates password, clears recovery code, and saves tenant")
   void recoverPassword_updatesPasswordAndClearsCode_whenValid() {
     String oldSalt = "oldsalt123456789";
     Tenant tenant = tenantWithCredentials("alice", "alice@example.com", "OldPass1word", oldSalt);

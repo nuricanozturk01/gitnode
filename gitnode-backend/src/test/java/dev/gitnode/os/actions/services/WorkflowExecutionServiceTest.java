@@ -355,7 +355,7 @@ class WorkflowExecutionServiceTest {
     runner.setName("test-runner");
     runner.setLabels(List.of("self-hosted"));
     runner.setStatus(RunnerStatus.BUSY);
-    runner.setTokenHash("hash");
+    runner.setTokenHash("password");
     return runner;
   }
 }

@@ -226,7 +226,7 @@ class ProfileServiceTest {
   }
 
   @Test
-  @DisplayName("changePassword updates hash and salt on success")
+  @DisplayName("changePassword updates password and salt on success")
   void changePassword_updatesHashAndSalt_whenSuccess() {
     UUID tenantId = UUID.randomUUID();
     Tenant tenant = new Tenant();

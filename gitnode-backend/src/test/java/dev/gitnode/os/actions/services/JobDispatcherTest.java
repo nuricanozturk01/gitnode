@@ -260,7 +260,7 @@ class JobDispatcherTest {
     runner.setStatus(status);
     runner.setTenantId(tenantId);
     runner.setLastHeartbeat(Instant.now());
-    runner.setTokenHash("hash");
+    runner.setTokenHash("password");
     return runner;
   }
 }

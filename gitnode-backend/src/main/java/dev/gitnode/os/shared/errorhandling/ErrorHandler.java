@@ -15,12 +15,7 @@
  */
 package dev.gitnode.os.shared.errorhandling;
 
-import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
-import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
-import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
-import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
-import dev.gitnode.os.shared.errorhandling.exceptions.TooManyRequestsException;
+import dev.gitnode.os.shared.errorhandling.exceptions.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ValidationException;
@@ -152,6 +147,26 @@ public class ErrorHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .contentType(MediaType.APPLICATION_JSON)
         .body(messageText);
+  }
+
+  @ExceptionHandler(RepsyErrorOccurredException.class)
+  @Nullable ResponseEntity<String> handleException(
+    final RepsyErrorOccurredException ex,
+    final HttpServletRequest request,
+    final @Nullable HttpServletResponse response) {
+
+    if (response == null) {
+      log.debug("An error occurred in repsy", ex);
+
+      return null;
+    }
+
+    final var exceptionMessage = ex.getMessage();
+    final var messageText = exceptionMessage != null ? exceptionMessage : ERR_ERROR_OCCURRED;
+
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+      .contentType(MediaType.APPLICATION_JSON)
+      .body(messageText);
   }
 
   @ExceptionHandler(HttpMessageNotReadableException.class)

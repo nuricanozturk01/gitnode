@@ -1,0 +1,3 @@
+[submodule "repsy"]
+	path = repsy
+	url = git@github.com:nuricanozturk01/repsy.git

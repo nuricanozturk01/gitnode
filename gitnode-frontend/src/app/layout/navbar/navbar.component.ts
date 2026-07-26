@@ -33,6 +33,7 @@ import { TokenService } from '../../core/auth/services/token.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { UserService } from '../../core/user/services/user.service';
 import { NotificationService } from '../../core/notification/notification.service';
+import { environment } from '../../../environments/environment';
 import type { User } from '../../domain/auth/models/user.model';
 
 @Component({
@@ -50,6 +51,8 @@ export class NavbarComponent {
   private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
   readonly theme = inject(ThemeService);
+
+  readonly repsyUrl = environment.repsyUrl;
 
   /** 0 at page top, 1 after ~72px scroll — drives glass + compact sizing. */
   readonly scrollProgress = signal(0);

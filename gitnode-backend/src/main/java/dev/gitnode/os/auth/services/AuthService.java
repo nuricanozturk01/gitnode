@@ -19,6 +19,7 @@ import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
+import dev.gitnode.os.auth.dtos.RepsyCredentials;
 import dev.gitnode.os.events.queue.RepsyEvent;
 import dev.gitnode.os.events.queue.TenantRegisteredEvent;
 import dev.gitnode.os.shared.audit.services.AuditLogService;
@@ -184,6 +185,16 @@ public class AuthService {
     TenantAuthGuard.requireEnabled(tenant);
 
     return this.createLoginInfo(tenant);
+  }
+
+  public RepsyCredentials getRepsyCredentials(final UUID tenantId) {
+
+    final var tenant =
+        this.tenantRepository
+            .findById(tenantId)
+            .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
+
+    return new RepsyCredentials(tenant.getUsername(), tenant.getHash());
   }
 
   private void checkPasswordRecoveryCode(final Tenant tenant) {

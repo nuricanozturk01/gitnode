@@ -33,6 +33,7 @@ import { TokenService } from '../../core/auth/services/token.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { UserService } from '../../core/user/services/user.service';
 import { NotificationService } from '../../core/notification/notification.service';
+import { RepsyService } from '../../core/repsy/services/repsy.service';
 import { environment } from '../../../environments/environment';
 import type { User } from '../../domain/auth/models/user.model';
 
@@ -49,6 +50,7 @@ export class NavbarComponent {
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
   private readonly notificationService = inject(NotificationService);
+  private readonly repsyService = inject(RepsyService);
   private readonly destroyRef = inject(DestroyRef);
   readonly theme = inject(ThemeService);
 
@@ -116,5 +118,11 @@ export class NavbarComponent {
 
   async logout(): Promise<void> {
     await this.authService.logout();
+  }
+
+  openRepsy(event: Event): void {
+    if (!this.isLoggedIn()) return;
+    event.preventDefault();
+    void this.repsyService.openDashboard();
   }
 }

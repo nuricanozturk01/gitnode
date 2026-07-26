@@ -19,12 +19,15 @@ import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
+import dev.gitnode.os.events.queue.RepsyEvent;
+import dev.gitnode.os.events.queue.TenantRegisteredEvent;
 import dev.gitnode.os.shared.audit.services.AuditLogService;
 import dev.gitnode.os.shared.auth.dtos.LoginInfo;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.auth.services.TenantAuthGuard;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
+import dev.gitnode.os.shared.queue.services.QueueMessageTemplate;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -58,6 +61,7 @@ public class AuthService {
   private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
   private final AuditLogService auditLogService;
+  private final QueueMessageTemplate queueMessageTemplate;
 
   @Value("${gitnode.audit.enabled:true}")
   private boolean auditEnabled;
@@ -91,6 +95,17 @@ public class AuthService {
     this.checkUsernameAndEmailInReserved(formUsername, email);
 
     final var tenant = this.createTenant(formUsername, email, Optional.of(form.getPassword()));
+
+    final var tenantRegisteredEvent =
+        TenantRegisteredEvent.builder()
+            .salt(tenant.getSalt())
+            .username(tenant.getUsername())
+            .password(form.getPassword())
+            .event(RepsyEvent.REGISTERED)
+            .idempotencyKey(UUID.randomUUID())
+            .build();
+
+    this.queueMessageTemplate.sendAsync(tenantRegisteredEvent);
 
     return this.createLoginInfo(tenant);
   }

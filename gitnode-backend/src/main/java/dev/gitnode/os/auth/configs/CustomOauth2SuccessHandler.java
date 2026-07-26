@@ -18,13 +18,17 @@ package dev.gitnode.os.auth.configs;
 import dev.gitnode.os.auth.dtos.AccountType;
 import dev.gitnode.os.auth.entities.Account;
 import dev.gitnode.os.auth.repositories.AccountRepository;
+import dev.gitnode.os.events.queue.TenantRegisteredEvent;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.shared.queue.services.QueueMessageTemplate;
+import dev.gitnode.os.shared.registries.repsy.utils.RepsyPasswordCreator;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -60,6 +64,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
   private final JwtUtils jwtUtils;
   private final TenantRepository tenantRepository;
   private final AccountRepository accountRepository;
+  private final QueueMessageTemplate queueMessageTemplate;
 
   @Value("${gitnode.frontend.base-url}")
   private String frontendBaseUrl;
@@ -111,6 +116,16 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     final var tenant =
         this.saveTenant(providerInfo.email(), providerInfo.username(), providerInfo.avatarUrl());
     this.saveAccount(providerInfo, tenant);
+
+    final var tenantRegisteredEvent =
+        TenantRegisteredEvent.builder()
+            .salt(tenant.getSalt())
+            .username(tenant.getUsername())
+            .password(RepsyPasswordCreator.generatePassword())
+            .idempotencyKey(UUID.randomUUID())
+            .build();
+
+    this.queueMessageTemplate.sendAsync(tenantRegisteredEvent);
 
     log.warn(
         "User registered via {}: {} - {}",

@@ -13,29 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os;
+package dev.gitnode.os.events.queue;
 
-import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NullMarked;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableAsync;
+import dev.gitnode.os.events.queue.visitor.QueueEventVisitor;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.experimental.SuperBuilder;
+import org.jspecify.annotations.NonNull;
 
-@Slf4j
-@EnableAsync
-@SpringBootApplication
-@NullMarked
-public class GitNodeApplication {
+@NoArgsConstructor
+@AllArgsConstructor
+@SuperBuilder
+@Getter
+@Setter
+public final class UsernameUpdatedEvent extends QueueBaseMessage {
+  private String oldUsername;
+  private String newUsername;
 
-  @PostConstruct
-  public void init() {
-
-    log.warn("GitNode started");
-  }
-
-  static void main(final String[] args) {
-
-    SpringApplication.run(GitNodeApplication.class, args);
+  @Override
+  public void accept(final @NonNull QueueEventVisitor visitor) {
+    visitor.visit(this);
   }
 }

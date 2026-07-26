@@ -97,12 +97,32 @@ services:
       - gitnode
     restart: unless-stopped
 
+  rabbitmq:
+    container_name: gitnode-rabbitmq
+    hostname: gitnode-rabbitmq
+    image: rabbitmq:4-management
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123
+      - RABBITMQ_DEFAULT_VHOST=/gitnode
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   gitnode:
     name: gitnode
     driver: bridge
 
 volumes:
+  rabbitmq_data:
   postgres-logs:
     name: gitnode-postgres-logs
   gitnode-repos:

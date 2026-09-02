@@ -13,29 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os;
+package dev.gitnode.os.shared.queue.utils;
 
-import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
-import org.jspecify.annotations.NullMarked;
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableAsync;
+import lombok.experimental.UtilityClass;
 
-@Slf4j
-@EnableAsync
-@SpringBootApplication
-@NullMarked
-public class GitNodeApplication {
+@UtilityClass
+public class RabbitQueueUtils {
 
-  @PostConstruct
-  public void init() {
-
-    log.warn("GitNode started");
-  }
-
-  static void main(final String[] args) {
-
-    SpringApplication.run(GitNodeApplication.class, args);
-  }
+  public static final String USER_MANAGEMENT_EVENT = "user-management";
+  public static final String REPSY_ROUTING_KEY = "repsy.routing";
 }

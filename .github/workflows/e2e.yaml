@@ -2,10 +2,8 @@ name: E2E | GitNode
 
 on:
   schedule:
-    # Four runs per day (UTC): 06:00, 14:00, 16:00, 22:00
-    # - cron: "32 15 * * *"
-    #   timezone: 'Europe/Istanbul'
-     - cron: "*/10 * * * *"
+    - cron: "00 16 * * *"
+      timezone: 'Europe/Istanbul'
   workflow_dispatch:
     inputs:
       suite:

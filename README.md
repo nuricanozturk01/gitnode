@@ -556,4 +556,8 @@ the commits coming.
 </a>
 
 <!-- GitAds-Verify: 4V4RJMV5C2SW7APUQFPGSNJQZNX8DRMP -->
+
+<a href="https://gitads.dev/v1/ad-track?source=nuricanozturk01/gitnode@github">
+  <img src="https://gitads.dev/v1/ad-serve?source=nuricanozturk01/gitnode@github" alt="Sponsored by GitAds" width="300" />
+</a>
 </div>

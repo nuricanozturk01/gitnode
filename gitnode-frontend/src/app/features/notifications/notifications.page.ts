@@ -16,7 +16,7 @@
 
 import { Component, ChangeDetectionStrategy, inject, signal, OnInit } from '@angular/core';
 import { DatePipe } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { NotificationService } from '../../core/notification/notification.service';
 import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.service';
@@ -27,7 +27,7 @@ import type { NotificationDto } from '../../domain/notification/notification.mod
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-notifications',
   standalone: true,
-  imports: [LucideAngularModule, DatePipe, RouterLink],
+  imports: [LucideAngularModule, DatePipe],
   template: `
     <div class="container mx-auto max-w-3xl px-4 py-8">
       <!-- Header -->

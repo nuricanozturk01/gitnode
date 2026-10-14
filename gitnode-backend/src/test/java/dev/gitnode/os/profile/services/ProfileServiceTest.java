@@ -33,6 +33,7 @@ import dev.gitnode.os.profile.dtos.UpdateUsernameForm;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.queue.services.QueueMessageTemplate;
 import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.mappers.TenantMapper;
@@ -57,6 +58,7 @@ class ProfileServiceTest {
   @Mock private TenantRepository tenantRepository;
   @Mock private TenantMapper tenantMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private QueueMessageTemplate queueMessageTemplate;
 
   @InjectMocks private ProfileService profileService;
 

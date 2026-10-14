@@ -1,0 +1,68 @@
+/*
+ * Copyright 2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package dev.gitnode.os.shared.registries.repsy.utils;
+
+import java.util.List;
+import lombok.experimental.UtilityClass;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.jspecify.annotations.NonNull;
+import org.passay.data.CharacterData;
+import org.passay.data.EnglishCharacterData;
+import org.passay.generate.PasswordGenerator;
+import org.passay.rule.CharacterRule;
+
+@UtilityClass
+public class RepsyPasswordCreator {
+
+  private static final int DEFAULT_PASSWORD_LENGTH = 12;
+  private static final int SALT_LENGTH = 16;
+  private static final String SPECIAL_CHARS = "!@#$%^&*";
+
+  private static final List<CharacterRule> RULES =
+      List.of(
+          new CharacterRule(EnglishCharacterData.LowerCase, 1),
+          new CharacterRule(EnglishCharacterData.UpperCase, 1),
+          new CharacterRule(EnglishCharacterData.Digit, 1),
+          new CharacterRule(
+              new CharacterData() {
+                @Override
+                public String getErrorCode() {
+                  return "CUSTOM_SPECIAL";
+                }
+
+                @Override
+                public String getCharacters() {
+                  return SPECIAL_CHARS;
+                }
+              },
+              1));
+
+  private static final PasswordGenerator PASSWORD_GENERATOR =
+      new PasswordGenerator(DEFAULT_PASSWORD_LENGTH, RULES);
+
+  public @NonNull String generatePassword() {
+    return PASSWORD_GENERATOR.generate().toString();
+  }
+
+  public @NonNull String generateSalt() {
+    return RandomStringUtils.secure().nextAlphanumeric(SALT_LENGTH);
+  }
+
+  public @NonNull String hashPassword(final @NonNull String password, final @NonNull String salt) {
+    return DigestUtils.sha256Hex(password + salt);
+  }
+}

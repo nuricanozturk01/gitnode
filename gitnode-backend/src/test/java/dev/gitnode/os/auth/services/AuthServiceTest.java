@@ -32,6 +32,7 @@ import dev.gitnode.os.shared.auth.dtos.LoginInfo;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
+import dev.gitnode.os.shared.queue.services.QueueMessageTemplate;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Optional;
@@ -53,6 +54,7 @@ class AuthServiceTest {
 
   @Mock private TenantRepository tenantRepository;
   @Mock private JwtUtils jwtUtils;
+  @Mock private QueueMessageTemplate queueMessageTemplate;
 
   @InjectMocks private AuthService authService;
 

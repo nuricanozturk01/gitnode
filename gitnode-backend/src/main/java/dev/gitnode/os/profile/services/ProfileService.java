@@ -17,6 +17,10 @@ package dev.gitnode.os.profile.services;
 
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
+import dev.gitnode.os.events.queue.AccountDeletedEvent;
+import dev.gitnode.os.events.queue.PasswordUpdatedEvent;
+import dev.gitnode.os.events.queue.RepsyEvent;
+import dev.gitnode.os.events.queue.UsernameUpdatedEvent;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.UpdateDisplayNameForm;
@@ -25,6 +29,7 @@ import dev.gitnode.os.profile.dtos.UpdateUsernameForm;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.queue.services.QueueMessageTemplate;
 import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
 import dev.gitnode.os.shared.tenant.mappers.TenantMapper;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
@@ -51,6 +56,8 @@ public class ProfileService {
   private final TenantRepository tenantRepository;
   private final TenantMapper tenantMapper;
   private final ApplicationEventPublisher eventPublisher;
+  private final QueueMessageTemplate queueMessageTemplate;
+
   private static final String USER_NOT_FOUND = "userNotFound";
 
   @Transactional
@@ -76,6 +83,16 @@ public class ProfileService {
     final var saved = this.tenantRepository.save(tenant);
 
     this.eventPublisher.publishEvent(new UsernameChangedEvent(oldUsername, newUsername));
+
+    final var event =
+        UsernameUpdatedEvent.builder()
+            .oldUsername(oldUsername)
+            .newUsername(newUsername)
+            .event(RepsyEvent.UPDATE_USERNAME)
+            .idempotencyKey(UUID.randomUUID())
+            .build();
+
+    this.queueMessageTemplate.sendAsync(event);
 
     return this.tenantMapper.toTenantInfo(saved);
   }
@@ -115,6 +132,18 @@ public class ProfileService {
     final var salt = RandomStringUtils.secure().nextAlphanumeric(16);
     tenant.setHash(DigestUtils.sha256Hex(form.getNewPassword() + salt));
     tenant.setSalt(salt);
+
+    final var event =
+        PasswordUpdatedEvent.builder()
+            .username(tenant.getUsername())
+            .password(form.getNewPassword())
+            .salt(salt)
+            .event(RepsyEvent.UPDATE_PASSWORD)
+            .idempotencyKey(UUID.randomUUID())
+            .build();
+
+    this.queueMessageTemplate.sendAsync(event);
+
     this.tenantRepository.save(tenant);
   }
 
@@ -133,6 +162,14 @@ public class ProfileService {
 
     this.eventPublisher.publishEvent(new TenantDeletedEvent(tenant.getUsername()));
 
+    final var event =
+        AccountDeletedEvent.builder()
+            .username(tenant.getUsername())
+            .event(RepsyEvent.DELETE_ACCOUNT)
+            .idempotencyKey(UUID.randomUUID())
+            .build();
+
+    this.queueMessageTemplate.sendAsync(event);
     log.warn("User {} deleted account.", tenant.getUsername());
   }
 

@@ -20,7 +20,7 @@
 [![Grafana](https://img.shields.io/badge/Grafana-ready-F46800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-
+<a href="https://status.gitnode.dev" target="_blank" rel="noopener noreferrer"><img src="https://api.cronbeat.dev/badge/A1HG1-tT7Jvw49lO_2d8tmVU/uptime.svg?range=90d" alt="GitNode uptime"></a>
 <br/>
 
 [✨ Features](#-features) · [🛠 Tech Stack](#-tech-stack) · [🚀 Getting Started](#-getting-started) · [📄 License](#-license)

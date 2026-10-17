@@ -555,8 +555,6 @@ the commits coming.
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="50" />
 </a>
 
-<!-- GitAds-Verify: 4V4RJMV5C2SW7APUQFPGSNJQZNX8DRMP -->
-
 <a href="https://gitads.dev/v1/ad-track?source=nuricanozturk01/gitnode@github">
   <img src="https://gitads.dev/v1/ad-serve?source=nuricanozturk01/gitnode@github" alt="Sponsored by GitAds" width="300" />
 </a>

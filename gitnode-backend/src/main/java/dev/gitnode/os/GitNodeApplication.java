@@ -20,8 +20,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @Slf4j
+@EnableAsync
 @SpringBootApplication
 @NullMarked
 public class GitNodeApplication {

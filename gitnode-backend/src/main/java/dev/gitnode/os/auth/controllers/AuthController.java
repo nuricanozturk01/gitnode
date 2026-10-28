@@ -20,6 +20,7 @@ import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RefreshTokenForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
+import dev.gitnode.os.auth.dtos.RepsyCredentials;
 import dev.gitnode.os.auth.services.AuthService;
 import dev.gitnode.os.shared.auth.dtos.LoginInfo;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
@@ -28,9 +29,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -84,6 +88,15 @@ class AuthController {
     final var loginInfo = this.authService.getTenantById(tenantId);
 
     return ResponseEntity.ok(loginInfo);
+  }
+
+  @GetMapping("/repsy-credentials")
+  public ResponseEntity<RepsyCredentials> getRepsyCredentials(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+
+    final var tenantId = this.jwtUtils.extractUserId(authHeader);
+
+    return ResponseEntity.ok(this.authService.getRepsyCredentials(tenantId));
   }
 
   @PostMapping("/send-password-recovery-mail")

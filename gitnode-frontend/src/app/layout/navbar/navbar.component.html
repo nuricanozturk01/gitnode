@@ -44,6 +44,16 @@
             </li>
           }
           <li>
+            <a
+              [href]="repsyUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="no-underline"
+              (click)="openRepsy($event)"
+              >Repsy</a
+            >
+          </li>
+          <li>
             <a href="https://status.gitnode.dev" target="_blank" rel="noopener noreferrer" class="no-underline"
               >Status</a
             >
@@ -151,6 +161,16 @@
           </li>
           <li>
             <a
+              [href]="repsyUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-base-content/70 hover:text-base-content hover:bg-base-200 rounded-lg font-medium no-underline"
+              (click)="openRepsy($event)"
+              >Repsy</a
+            >
+          </li>
+          <li>
+            <a
               href="https://status.gitnode.dev"
               target="_blank"
               rel="noopener noreferrer"
@@ -210,11 +230,28 @@
             <li><a routerLink="/dashboard" class="no-underline">Dashboard</a></li>
             <li><a routerLink="/migrate" class="no-underline">Migrate from GitHub</a></li>
             <li><a routerLink="/docs" class="no-underline">Docs</a></li>
+            <li>
+              <a
+                [href]="repsyUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="no-underline"
+                (click)="openRepsy($event)"
+                >Repsy</a
+              >
+            </li>
             <li><hr class="my-1" /></li>
             <li><button type="button" (click)="logout()">Sign out</button></li>
           </ul>
         </div>
       } @else {
+        <a
+          [href]="repsyUrl"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="btn btn-ghost btn-sm hidden md:inline-flex"
+          >Repsy</a
+        >
         <a
           href="https://status.gitnode.dev"
           target="_blank"

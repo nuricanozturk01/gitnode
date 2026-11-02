@@ -34,7 +34,7 @@ export class ModalFocusDirective implements AfterViewInit, OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private previous: HTMLElement | null = null;
 
-  readonly dismiss = output<void>({ alias: 'appModalDismiss' });
+  readonly appModalDismiss = output<void>();
 
   ngAfterViewInit(): void {
     this.previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -50,7 +50,7 @@ export class ModalFocusDirective implements AfterViewInit, OnDestroy {
   onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.stopPropagation();
-      this.dismiss.emit();
+      this.appModalDismiss.emit();
       return;
     }
     if (event.key !== 'Tab') return;

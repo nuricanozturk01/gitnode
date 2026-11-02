@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { ChangeDetectionStrategy, Component, inject, input, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, signal, type OnInit } from '@angular/core';
 import { ReleaseService } from '../../../core/release/services/release.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../../core/toast/toast.service';
@@ -27,7 +27,7 @@ import type { ReleaseAssetInfo } from '../../../domain/release/models/release-in
   standalone: true,
   templateUrl: './release-assets.component.html',
 })
-export class ReleaseAssetsComponent {
+export class ReleaseAssetsComponent implements OnInit {
   private readonly releaseService = inject(ReleaseService);
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);

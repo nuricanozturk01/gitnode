@@ -1,4 +1,4 @@
-<div class="drawer lg:drawer-open app-shell min-h-screen" (keydown.escape)="drawerOpen.set(false)">
+<div class="drawer lg:drawer-open app-shell min-h-screen">
   <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded focus:bg-base-100 focus:p-2">Skip to main content</a>
   <input id="admin-drawer" type="checkbox" class="drawer-toggle" aria-label="Toggle sidebar" tabindex="-1" [checked]="drawerOpen()" />
 
@@ -69,7 +69,7 @@
           <lucide-icon name="x" class="size-4" aria-hidden="true"></lucide-icon>
         </button>
       </div>
-      <ul class="menu menu-md flex-1 gap-1 p-3" (click)="drawerOpen.set(false)">
+      <ul class="menu menu-md flex-1 gap-1 p-3">
         <li>
           <a routerLink="/dashboard" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
             <lucide-icon name="layoutDashboard" class="size-4"></lucide-icon>

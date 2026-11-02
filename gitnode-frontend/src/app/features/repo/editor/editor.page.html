@@ -37,7 +37,7 @@
         @for (entry of entries; track entry.path) {
         <li role="none">
           @if (entry.type === 'TREE') {
-          <button type="button" role="treeitem" class="ed-node" [style.padding-left.rem]="0.5 + depth * 0.9" [attr.aria-expanded]="expanded().has(entry.path)" (click)="toggleDir(entry)">
+          <button type="button" role="treeitem" class="ed-node" [style.padding-left.rem]="0.5 + depth * 0.9" [attr.aria-expanded]="expanded().has(entry.path)" aria-selected="false" (click)="toggleDir(entry)">
             <span class="ed-caret" aria-hidden="true">{{ expanded().has(entry.path) ? '▾' : '▸' }}</span>
             <lucide-icon name="folder" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
             <span>{{ entry.name }}</span>
@@ -46,7 +46,7 @@
           <ng-container *ngTemplateOutlet="nodes; context: { $implicit: children()[entry.path], depth: depth + 1 }"></ng-container>
           }
           } @else {
-          <button type="button" role="treeitem" class="ed-node" [class.ed-node--active]="activePath() === entry.path" [style.padding-left.rem]="0.5 + depth * 0.9" (click)="openFile(entry.path)">
+          <button type="button" role="treeitem" class="ed-node" [class.ed-node--active]="activePath() === entry.path" [attr.aria-selected]="activePath() === entry.path" [style.padding-left.rem]="0.5 + depth * 0.9" (click)="openFile(entry.path)">
             <lucide-icon name="fileText" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
             <span>{{ entry.name }}</span>
             @if (isChanged(entry.path)) { <span class="ed-dot" title="Changed">●</span> }

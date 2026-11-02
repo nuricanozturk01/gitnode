@@ -252,7 +252,8 @@ export class EditorPage implements OnDestroy {
     const file = this.files()[path];
     if (file && !file.deleted && file.original !== null && file.content === file.original) {
       this.files.update((f) => {
-        const { [path]: _removed, ...rest } = f;
+        const rest = { ...f };
+        delete rest[path];
         return rest;
       });
     }
@@ -317,7 +318,8 @@ export class EditorPage implements OnDestroy {
     if (!(await this.confirmModal.confirm('Delete file', `Delete ${file.path}?`, { confirmLabel: 'Delete', variant: 'danger' }))) return;
     if (file.original === null) {
       this.files.update((f) => {
-        const { [file.path]: _removed, ...rest } = f;
+        const rest = { ...f };
+        delete rest[file.path];
         return rest;
       });
     } else {
@@ -334,7 +336,8 @@ export class EditorPage implements OnDestroy {
     if (file.original === null) {
       this.closeTab(path);
       this.files.update((f) => {
-        const { [path]: _removed, ...rest } = f;
+        const rest = { ...f };
+        delete rest[path];
         return rest;
       });
       return;

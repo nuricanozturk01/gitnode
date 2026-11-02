@@ -706,7 +706,8 @@ export class PrDetailPage {
 
   onTabKeydown(event: KeyboardEvent): void {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-    const container = event.currentTarget as HTMLElement;
+    const container = (event.currentTarget as HTMLElement).parentElement;
+    if (!container) return;
     const tabs = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
     const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
     if (current < 0 || tabs.length === 0) return;

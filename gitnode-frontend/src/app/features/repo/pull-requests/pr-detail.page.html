@@ -350,11 +350,11 @@
       role="tablist"
       class="border-base-300/70 bg-base-100 flex gap-0 overflow-x-auto border-b px-2 sm:px-4"
       aria-label="Pull request sections"
-      (keydown)="onTabKeydown($event)"
     >
       <button
         type="button"
         role="tab"
+        (keydown)="onTabKeydown($event)"
         id="pr-tab-conversation"
         aria-controls="pr-panel-conversation"
         [attr.tabindex]="activeTab() === 'conversation' ? 0 : -1"
@@ -372,6 +372,7 @@
       <button
         type="button"
         role="tab"
+        (keydown)="onTabKeydown($event)"
         id="pr-tab-commits"
         aria-controls="pr-panel-commits"
         [attr.tabindex]="activeTab() === 'commits' ? 0 : -1"
@@ -389,6 +390,7 @@
       <button
         type="button"
         role="tab"
+        (keydown)="onTabKeydown($event)"
         id="pr-tab-files"
         aria-controls="pr-panel-files"
         [attr.tabindex]="activeTab() === 'files' ? 0 : -1"
@@ -406,6 +408,7 @@
       <button
         type="button"
         role="tab"
+        (keydown)="onTabKeydown($event)"
         id="pr-tab-actions"
         aria-controls="pr-panel-actions"
         [attr.tabindex]="activeTab() === 'actions' ? 0 : -1"
@@ -423,6 +426,7 @@
       <button
         type="button"
         role="tab"
+        (keydown)="onTabKeydown($event)"
         id="pr-tab-ai-review"
         aria-controls="pr-panel-ai-review"
         [attr.tabindex]="activeTab() === 'ai-review' ? 0 : -1"

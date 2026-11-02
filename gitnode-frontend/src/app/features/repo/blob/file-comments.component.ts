@@ -29,6 +29,7 @@ import type { FileComment } from '../../../domain/file-comment/file-comment.mode
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-file-comments',
+  host: { class: 'block' },
   standalone: true,
   imports: [NgTemplateOutlet, FormsModule, LucideAngularModule, AvatarComponent, RelativeTimePipe],
   templateUrl: './file-comments.component.html',

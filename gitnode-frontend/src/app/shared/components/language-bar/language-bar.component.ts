@@ -100,6 +100,7 @@ const DEFAULT_COLOR = '#8b949e';
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-language-bar',
+  host: { class: 'block' },
   standalone: true,
   templateUrl: './language-bar.component.html',
 })

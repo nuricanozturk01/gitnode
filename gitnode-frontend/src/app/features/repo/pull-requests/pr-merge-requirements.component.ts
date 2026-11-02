@@ -33,6 +33,7 @@ const CHECK_LABELS: Record<string, string> = {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pr-merge-requirements',
+  host: { class: 'block' },
   standalone: true,
   imports: [LucideAngularModule],
   templateUrl: './pr-merge-requirements.component.html',

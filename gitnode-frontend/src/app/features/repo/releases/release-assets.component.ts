@@ -24,6 +24,7 @@ import type { ReleaseAssetInfo } from '../../../domain/release/models/release-in
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-release-assets',
+  host: { class: 'block' },
   standalone: true,
   templateUrl: './release-assets.component.html',
 })

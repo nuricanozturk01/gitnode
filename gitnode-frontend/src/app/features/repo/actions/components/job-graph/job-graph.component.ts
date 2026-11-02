@@ -10,6 +10,7 @@ interface JobLayer {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-job-graph',
+  host: { class: 'block' },
   standalone: true,
   imports: [LucideAngularModule],
   templateUrl: './job-graph.component.html',

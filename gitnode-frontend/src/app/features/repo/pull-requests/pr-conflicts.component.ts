@@ -52,6 +52,7 @@ export function hasMarkers(content: string): boolean {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pr-conflicts',
+  host: { class: 'block' },
   standalone: true,
   imports: [FormsModule, LucideAngularModule],
   templateUrl: './pr-conflicts.component.html',

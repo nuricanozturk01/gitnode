@@ -26,6 +26,7 @@ export interface BreadcrumbItem {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-breadcrumb',
+  host: { class: 'block' },
   standalone: true,
   imports: [RouterLink],
   template: `

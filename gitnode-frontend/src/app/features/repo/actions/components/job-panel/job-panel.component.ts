@@ -13,6 +13,7 @@ import {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-job-panel',
+  host: { class: 'block' },
   standalone: true,
   imports: [LucideAngularModule],
   templateUrl: './job-panel.component.html',

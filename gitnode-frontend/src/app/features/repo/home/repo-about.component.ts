@@ -7,6 +7,7 @@ import { ToastService } from '../../../core/toast/toast.service';
 
 @Component({
   selector: 'app-repo-about',
+  host: { class: 'block' },
   standalone: true,
   imports: [FormsModule, LucideAngularModule],
   changeDetection: ChangeDetectionStrategy.OnPush,

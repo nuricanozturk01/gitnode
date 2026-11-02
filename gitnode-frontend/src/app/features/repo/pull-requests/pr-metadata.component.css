@@ -1,3 +1,6 @@
+:host {
+  display: block;
+}
 .pm-head {
   display: flex;
   align-items: center;

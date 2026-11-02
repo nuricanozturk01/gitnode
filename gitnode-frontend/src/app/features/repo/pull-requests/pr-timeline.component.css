@@ -1,3 +1,6 @@
+:host {
+  display: block;
+}
 .pt-head {
   margin: 0;
   padding: 0.65rem 1rem;

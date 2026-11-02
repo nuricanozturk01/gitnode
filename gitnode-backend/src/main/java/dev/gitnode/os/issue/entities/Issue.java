@@ -9,9 +9,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -59,6 +63,25 @@ public class Issue {
   @OnDelete(action = OnDeleteAction.SET_NULL)
   @JoinColumn(name = "assignee_id")
   private Tenant assignee;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @OnDelete(action = OnDeleteAction.SET_NULL)
+  @JoinColumn(name = "milestone_id")
+  private IssueMilestone milestone;
+
+  @ManyToMany
+  @JoinTable(
+      name = "issue_assignees",
+      joinColumns = @JoinColumn(name = "issue_id"),
+      inverseJoinColumns = @JoinColumn(name = "tenant_id"))
+  private Set<Tenant> assignees = new HashSet<>();
+
+  @ManyToMany
+  @JoinTable(
+      name = "issue_label_assignments",
+      joinColumns = @JoinColumn(name = "issue_id"),
+      inverseJoinColumns = @JoinColumn(name = "label_id"))
+  private Set<IssueLabel> labels = new HashSet<>();
 
   @CreationTimestamp
   @Column(name = "created_at")

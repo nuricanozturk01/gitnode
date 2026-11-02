@@ -4,7 +4,7 @@
     <div class="auth-page__brand-accent" aria-hidden="true"></div>
     <div class="auth-page__brand-inner">
       <a routerLink="/" class="auth-page__brand-logo no-underline" aria-label="GitNode home">
-        <img src="/icon.png" alt="" width="40" height="40" class="size-10 object-contain" decoding="async" />
+        <img src="/gitnode-mark.svg" alt="" width="40" height="40" class="size-10 object-contain" decoding="async" />
         <span class="gitnode-mark text-2xl">
           <span class="gitnode-mark__origin">Git</span><span class="gitnode-mark__hub">Node</span>
         </span>
@@ -29,8 +29,8 @@
     <div class="auth-page__main-inner">
       <div class="auth-card">
         <div class="auth-card__body">
-          <a routerLink="/" class="auth-card__mobile-brand no-underline lg:hidden" aria-label="GitNode home">
-            <img src="/icon.png" alt="" width="36" height="36" class="size-9 object-contain" decoding="async" />
+          <a routerLink="/" class="auth-card__mobile-brand no-underline" aria-label="GitNode home">
+            <img src="/gitnode-mark.svg" alt="" width="36" height="36" class="size-9 object-contain" decoding="async" />
             <span class="gitnode-mark text-xl">
               <span class="gitnode-mark__origin">Git</span><span class="gitnode-mark__hub">Node</span>
             </span>
@@ -60,10 +60,12 @@
                 placeholder="username"
                 class="input input-bordered w-full"
                 autocomplete="username"
+                [attr.aria-invalid]="form.get('username')?.invalid && form.get('username')?.touched ? 'true' : null"
+                [attr.aria-describedby]="form.get('username')?.invalid && form.get('username')?.touched ? 'register-username-error' : null"
               />
               @if (form.get('username')?.invalid && form.get('username')?.touched) {
               <span class="label">
-                <span class="label-text-alt text-error">3+ chars, letters, numbers, -_</span>
+                <span id="register-username-error" class="label-text-alt text-error">3–25 characters: lowercase letters, numbers, - and _.</span>
               </span>
               }
             </div>
@@ -79,10 +81,12 @@
                 placeholder="mail@example.com"
                 class="input input-bordered w-full"
                 autocomplete="email"
+                [attr.aria-invalid]="form.get('email')?.invalid && form.get('email')?.touched ? 'true' : null"
+                [attr.aria-describedby]="form.get('email')?.invalid && form.get('email')?.touched ? 'register-email-error' : null"
               />
               @if (form.get('email')?.invalid && form.get('email')?.touched) {
               <span class="label">
-                <span class="label-text-alt text-error">Valid email required</span>
+                <span id="register-email-error" class="label-text-alt text-error">Valid email required</span>
               </span>
               }
             </div>
@@ -98,10 +102,12 @@
                 placeholder="••••••••"
                 class="input input-bordered w-full"
                 autocomplete="new-password"
+                [attr.aria-invalid]="form.get('password')?.invalid && form.get('password')?.touched ? 'true' : null"
+                [attr.aria-describedby]="form.get('password')?.invalid && form.get('password')?.touched ? 'register-password-error' : null"
               />
               @if (form.get('password')?.invalid && form.get('password')?.touched) {
               <span class="label">
-                <span class="label-text-alt text-error">Min 6 characters</span>
+                <span id="register-password-error" class="label-text-alt text-error">8–128 characters with uppercase, lowercase and a number; no spaces.</span>
               </span>
               }
             </div>

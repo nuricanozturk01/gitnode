@@ -29,6 +29,7 @@ public record PrCommentInfo(
     @Nullable String commitSha,
     @Nullable Integer lineNumber,
     @Nullable String lineSide,
+    @Nullable UUID parentId,
     boolean isResolved,
     @NonNull Instant createdAt,
     @NonNull Instant updatedAt) {}

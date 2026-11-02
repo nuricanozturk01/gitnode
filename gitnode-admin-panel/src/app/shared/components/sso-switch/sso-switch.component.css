@@ -109,7 +109,7 @@
 }
 
 .sso-switch__input:not(:checked) ~ .sso-switch__label-off {
-  color: color-mix(in oklch, var(--color-base-content) 55%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-base-content) 72%, var(--color-base-100));
 }
 
 .sso-switch__input:checked ~ .sso-switch__label-off,

@@ -24,6 +24,7 @@ export interface User {
   website: string | null;
   location: string | null;
   profileReadme: string | null;
+  timezone?: string | null;
   createdAt: string;
   updatedAt: string;
 }

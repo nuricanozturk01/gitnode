@@ -49,8 +49,18 @@ public interface ReleaseRepository extends JpaRepository<Release, UUID> {
   Optional<Release> findByRepoIdAndTagName(
       @Param("repoId") UUID repoId, @Param("tagName") String tagName);
 
+  Optional<Release> findByIdAndRepoId(UUID id, UUID repoId);
+
   Optional<Release> findFirstByRepoIdAndIsDraftFalseAndIsPrereleaseFalseOrderByPublishedAtDesc(
       UUID repoId);
+
+  Optional<Release> findFirstByRepoIdAndPinnedLatestTrueAndIsDraftFalseAndIsPrereleaseFalse(
+      UUID repoId);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @Query(
+      "UPDATE Release r SET r.pinnedLatest = FALSE WHERE r.repo.id = :repoId AND r.pinnedLatest = TRUE")
+  void clearPinnedLatest(@Param("repoId") UUID repoId);
 
   boolean existsByRepoIdAndTagName(UUID repoId, String tagName);
 

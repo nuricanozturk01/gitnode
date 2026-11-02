@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 
 import dev.gitnode.os.events.repo.RepoInitRollbackRequestedEvent;
+import dev.gitnode.os.events.repo.RepoRenameRollbackRequstedEvent;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import java.io.IOException;
@@ -87,6 +88,33 @@ class RepoStorageServiceTest {
 
     assertThat(Files.exists(repoRoot.resolve("alice").resolve("new.git"))).isTrue();
     assertThat(Files.exists(oldPath)).isFalse();
+  }
+
+  @Test
+  @DisplayName("renameRepo publishes rollback with owner when move fails")
+  void renameRepo_publishesRollback_whenMoveFails() {
+    assertThatThrownBy(() -> repoStorageService.renameRepo("alice", "old", "new"))
+        .isInstanceOf(ErrorOccurredException.class)
+        .hasMessageContaining("Failed to rename repository on disk");
+
+    verify(eventPublisher).publishEvent(new RepoRenameRollbackRequstedEvent("alice", "old", "new"));
+  }
+
+  @Test
+  @DisplayName("renameBaseDir preserves both directories when destination already exists")
+  void renameBaseDir_preservesDirectories_whenDestinationExists() throws IOException {
+    Path oldPath = repoRoot.resolve("alice");
+    Path newPath = repoRoot.resolve("bob");
+    Files.createDirectories(oldPath);
+    Files.createDirectories(newPath);
+    Files.writeString(oldPath.resolve("old-marker"), "old");
+    Files.writeString(newPath.resolve("new-marker"), "new");
+
+    assertThatThrownBy(() -> repoStorageService.renameBaseDir("alice", "bob"))
+        .isInstanceOf(ErrorOccurredException.class);
+
+    assertThat(Files.readString(oldPath.resolve("old-marker"))).isEqualTo("old");
+    assertThat(Files.readString(newPath.resolve("new-marker"))).isEqualTo("new");
   }
 
   @Test

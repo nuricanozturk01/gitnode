@@ -29,7 +29,7 @@ type DocsTab = 'git' | 'actions' | 'features';
   standalone: true,
   imports: [RouterLink, LucideAngularModule],
   templateUrl: './docs.page.html',
-  styleUrl: './docs.page.css',
+  styleUrls: ['./docs.base.css', './docs.content.css', './docs.extras.css'],
 })
 export class DocsPage implements OnDestroy {
   private readonly toast = inject(ToastService);

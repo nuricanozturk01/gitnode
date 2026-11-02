@@ -4,60 +4,67 @@ import { DOCUMENT } from '@angular/common';
 export const THEME_DARK = 'gitnode' as const;
 export const THEME_LIGHT = 'gitnode-light' as const;
 export type GitNodeTheme = typeof THEME_DARK | typeof THEME_LIGHT;
+export type ThemePreference = GitNodeTheme | 'system';
 
-const STORAGE_KEY = 'gitnode-admin-theme';
+const STORAGE_KEY = 'gitnode-theme';
 
-function isGitNodeTheme(value: string | null): value is GitNodeTheme {
-  return value === THEME_DARK || value === THEME_LIGHT;
+function isThemePreference(value: string | null): value is ThemePreference {
+  return value === THEME_DARK || value === THEME_LIGHT || value === 'system';
 }
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   private readonly document = inject(DOCUMENT);
+  private readonly media = this.document.defaultView?.matchMedia('(prefers-color-scheme: dark)');
+  private readonly preferenceSignal = signal<ThemePreference>(this.readInitialPreference());
+  private readonly themeSignal = signal<GitNodeTheme>(this.resolveTheme(this.preferenceSignal()));
 
-  private readonly themeSignal = signal<GitNodeTheme>(this.readInitialTheme());
-
+  readonly preference = this.preferenceSignal.asReadonly();
   readonly theme = this.themeSignal.asReadonly();
   readonly isDark = computed(() => this.themeSignal() === THEME_DARK);
 
   constructor() {
-    this.applyTheme(this.themeSignal(), false);
-  }
-
-  setTheme(next: GitNodeTheme): void {
-    this.applyTheme(next, true);
-  }
-
-  toggle(): void {
-    this.setTheme(this.themeSignal() === THEME_DARK ? THEME_LIGHT : THEME_DARK);
-  }
-
-  private readInitialTheme(): GitNodeTheme {
-    const fromDom = this.document.documentElement.getAttribute('data-theme');
-    if (isGitNodeTheme(fromDom)) {
-      return fromDom;
-    }
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (isGitNodeTheme(stored)) {
-        return stored;
+    this.applyTheme();
+    this.media?.addEventListener('change', () => {
+      if (this.preferenceSignal() === 'system') this.applyTheme();
+    });
+    this.document.defaultView?.addEventListener('storage', (event) => {
+      if (event.key === STORAGE_KEY && (isThemePreference(event.newValue) || event.newValue === null)) {
+        this.preferenceSignal.set(isThemePreference(event.newValue) ? event.newValue : 'system');
+        this.applyTheme();
       }
+    });
+  }
+
+  setPreferenceFromEvent(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    if (!isThemePreference(value)) return;
+    this.preferenceSignal.set(value);
+    this.applyTheme();
+    try {
+      localStorage.setItem(STORAGE_KEY, value);
     } catch {
       /* storage unavailable */
     }
-    return THEME_DARK;
   }
 
-  private applyTheme(next: GitNodeTheme, persist: boolean): void {
+  private readInitialPreference(): ThemePreference {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem('gitnode-admin-theme');
+      return isThemePreference(stored) ? stored : 'system';
+    } catch {
+      return 'system';
+    }
+  }
+
+  private resolveTheme(preference: ThemePreference): GitNodeTheme {
+    return preference === 'system' ? (this.media?.matches ? THEME_DARK : THEME_LIGHT) : preference;
+  }
+
+  private applyTheme(): void {
+    const next = this.resolveTheme(this.preferenceSignal());
     this.themeSignal.set(next);
     this.document.documentElement.setAttribute('data-theme', next);
     this.document.documentElement.style.colorScheme = next === THEME_LIGHT ? 'light' : 'dark';
-    if (persist) {
-      try {
-        localStorage.setItem(STORAGE_KEY, next);
-      } catch {
-        /* private mode */
-      }
-    }
   }
 }

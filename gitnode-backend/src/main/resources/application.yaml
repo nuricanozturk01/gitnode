@@ -65,6 +65,13 @@ gitnode:
     secrets:
       # 32-byte AES-256 key, base64-encoded. Required to enable the secrets vault.
       encryption-key: ${ACTIONS_ENCRYPTION_KEY:}
+  releases:
+    assets:
+      local-path: ${gitnode.git.repo-root}/release-assets
+      max-bytes: ${GITNODE_RELEASE_ASSET_MAX_BYTES:524288000}
+      max-per-release: ${GITNODE_RELEASE_ASSET_MAX_PER_RELEASE:25}
+      # Total bytes of release files per repository (default 5 GiB).
+      max-total-bytes: ${GITNODE_RELEASE_ASSET_MAX_TOTAL_BYTES:5368709120}
   ai:
     # 32-byte AES-256 key, base64-encoded. Required to encrypt user AI API keys at rest.
     encryption-key: ${GITNODE_AI_ENCRYPTION_KEY:}

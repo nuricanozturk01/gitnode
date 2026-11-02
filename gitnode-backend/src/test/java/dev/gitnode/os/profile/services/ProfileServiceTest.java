@@ -58,6 +58,10 @@ class ProfileServiceTest {
   @Mock private TenantMapper tenantMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
 
+  @org.mockito.Spy
+  private dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher =
+      new dev.gitnode.os.shared.auth.services.PasswordHasher();
+
   @InjectMocks private ProfileService profileService;
 
   @Test
@@ -101,6 +105,7 @@ class ProfileServiceTest {
             "newuser",
             "e@e.com",
             "newuser",
+            null,
             null,
             null,
             null,
@@ -154,6 +159,7 @@ class ProfileServiceTest {
             null,
             null,
             null,
+            null,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
@@ -180,6 +186,7 @@ class ProfileServiceTest {
                 "u",
                 "e@e.com",
                 "My Name",
+                null,
                 null,
                 null,
                 null,
@@ -239,8 +246,10 @@ class ProfileServiceTest {
     profileService.changePassword(tenantId, new ChangePasswordForm("current", "newpass123"));
 
     verify(tenantRepository).save(tenant);
-    assertThat(tenant.getSalt()).isNotEqualTo("oldSalt");
-    assertThat(tenant.getHash()).isNotEqualTo(DigestUtils.sha256Hex("current" + "oldSalt"));
+    assertThat(tenant.getSalt()).isNull();
+    assertThat(tenant.getHash()).startsWith("$2");
+    verify(eventPublisher)
+        .publishEvent(new dev.gitnode.os.events.profile.TenantPasswordChangedEvent(tenantId));
   }
 
   @Test
@@ -292,6 +301,7 @@ class ProfileServiceTest {
             "u",
             "e@e.com",
             "Display",
+            null,
             null,
             null,
             null,
@@ -379,7 +389,8 @@ class ProfileServiceTest {
     assertThatThrownBy(
             () ->
                 profileService.updateProfile(
-                    tenantId, new UpdateProfileForm("bio", "https://site.com", "Istanbul", "# Me")))
+                    tenantId,
+                    new UpdateProfileForm("bio", "https://site.com", "Istanbul", "# Me", null)))
         .isInstanceOf(ItemNotFoundException.class)
         .hasMessageContaining("userNotFound");
   }
@@ -401,6 +412,7 @@ class ProfileServiceTest {
             "https://site.com",
             "Istanbul",
             "# Me",
+            null,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
@@ -410,7 +422,8 @@ class ProfileServiceTest {
     TenantInfo result =
         profileService.updateProfile(
             tenantId,
-            new UpdateProfileForm("  My bio  ", "  https://site.com  ", "  Istanbul  ", "# Me"));
+            new UpdateProfileForm(
+                "  My bio  ", "  https://site.com  ", "  Istanbul  ", "# Me", null));
 
     assertThat(result).isSameAs(expected);
     assertThat(tenant.getBio()).isEqualTo("My bio");
@@ -440,13 +453,14 @@ class ProfileServiceTest {
             null,
             null,
             null,
+            null,
             Instant.EPOCH,
             Instant.EPOCH);
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     when(tenantRepository.save(any(Tenant.class))).thenAnswer(i -> i.getArgument(0));
     when(tenantMapper.toTenantInfo(any(Tenant.class))).thenReturn(expected);
 
-    profileService.updateProfile(tenantId, new UpdateProfileForm("  ", "  ", "  ", "  "));
+    profileService.updateProfile(tenantId, new UpdateProfileForm("  ", "  ", "  ", "  ", null));
 
     assertThat(tenant.getBio()).isNull();
     assertThat(tenant.getWebsite()).isNull();

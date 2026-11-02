@@ -1,3 +1,4 @@
+import { ModalFocusDirective } from '../../../shared/directives/modal-focus.directive';
 import { Component, ChangeDetectionStrategy, computed, inject, signal, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -38,7 +39,7 @@ interface BranchModalRepo {
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-task-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, LucideAngularModule, RelativeTimePipe],
+  imports: [RouterLink, FormsModule, LucideAngularModule, RelativeTimePipe, ModalFocusDirective],
   templateUrl: './task-detail.page.html',
 })
 export class TaskDetailPage implements OnInit {

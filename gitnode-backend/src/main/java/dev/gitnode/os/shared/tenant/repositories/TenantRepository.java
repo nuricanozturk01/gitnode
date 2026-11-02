@@ -44,8 +44,10 @@ public interface TenantRepository extends JpaRepository<Tenant, UUID> {
   Optional<Tenant> findByPasswordRecoveryCode(@NotNull String recoveryCode);
 
   @Modifying
-  @Query("update Tenant t set t.passwordRecoveryCode = :recoveryCode where t.id = :id")
-  void updatePasswordRecoveryCode(UUID id, String recoveryCode);
+  @Query(
+      "update Tenant t set t.passwordRecoveryCode = :recoveryCode,"
+          + " t.passwordRecoveryExpiresAt = :expiresAt where t.id = :id")
+  void updatePasswordRecoveryCode(UUID id, String recoveryCode, java.time.Instant expiresAt);
 
   Optional<Tenant> findByUsername(String username);
 

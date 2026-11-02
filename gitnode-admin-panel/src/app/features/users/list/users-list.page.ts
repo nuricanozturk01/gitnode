@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AdminUserService } from '../../../core/admin/admin-user.service';
@@ -21,6 +21,7 @@ export class UsersListPage implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly users = signal<AdminUser[]>([]);
   readonly search = signal('');
   readonly page = signal(0);
@@ -31,6 +32,14 @@ export class UsersListPage implements OnInit {
   readonly pageSize = ADMIN_PAGE_SIZE;
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private loadVersion = 0;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      this.loadVersion++;
+    });
+  }
 
   ngOnInit(): void {
     void this.load();
@@ -39,6 +48,7 @@ export class UsersListPage implements OnInit {
   onSearchInput(event: Event): void {
     const value = (event.target as HTMLInputElement).value;
     this.search.set(value);
+    this.loadVersion++;
     this.page.set(0);
 
     if (this.searchTimer) {
@@ -90,20 +100,27 @@ export class UsersListPage implements OnInit {
   }
 
   private async load(): Promise<void> {
+    const version = ++this.loadVersion;
     this.loading.set(true);
+    this.loadFailed.set(false);
     try {
       const res = await this.adminUserService.list({
         page: this.page(),
         size: this.pageSize,
         q: this.search().trim() || undefined,
       });
+      if (version !== this.loadVersion) return;
       this.users.set(res.content);
       this.totalPages.set(res.totalPages);
       this.totalElements.set(res.totalElements);
     } catch {
-      this.toast.error('Failed to load users');
+      if (version === this.loadVersion) this.loadFailed.set(true);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.load();
   }
 }

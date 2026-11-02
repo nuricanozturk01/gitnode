@@ -20,8 +20,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.shared.branch.BranchProtectionService;
 import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.git.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.tree.dtos.BlobResponse;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +60,8 @@ class TreeNonTxServiceTest {
   @Mock private GitProvider gitProvider;
 
   @Mock private RepoCacheInvalidator cacheInvalidator;
+  @Mock private BranchProtectionService branchProtection;
+  @Mock private TreeCommitEventPublisher treeCommitEvents;
 
   @InjectMocks private TreeNonTxService service;
 
@@ -167,6 +172,27 @@ class TreeNonTxServiceTest {
   @Nested
   @DisplayName("updateFile()")
   class UpdateFile {
+
+    @Test
+    @DisplayName("rejects a save when the branch reference is locked")
+    void rejectsSave_whenBranchReferenceIsLocked() throws Exception {
+      writeAndCommit("Initial commit", "README.md", "original");
+      Files.createFile(gitDir.resolve("refs/heads/" + branch + ".lock"));
+      final var author =
+          new PersonIdent("Editor", "editor@test.com", Instant.now(), ZoneOffset.UTC);
+      assertThatThrownBy(
+              () ->
+                  service.updateFile(
+                      "owner",
+                      "repo",
+                      branch,
+                      "README.md",
+                      "updated".getBytes(StandardCharsets.UTF_8),
+                      "Update",
+                      author))
+          .isInstanceOf(BadRequestException.class)
+          .hasMessageContaining("Could not update branch");
+    }
 
     @Test
     @DisplayName("returns BlobResponse with updated content after commit")

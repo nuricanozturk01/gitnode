@@ -13,37 +13,36 @@
   <div class="flex justify-center py-12">
     <span class="loading loading-spinner loading-md text-primary"></span>
   </div>
+  } @else if (loadFailed()) {
+  <div role="alert" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <p>Directory could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
+  </div>
+  } @else if (tree().length === 0) {
+  <p class="text-base-content/60 px-4 py-12 text-center text-sm">This directory is empty.</p>
   } @else {
-  <div class="overflow-x-auto">
-    <table class="table">
-      <tbody>
+  <ul class="divide-base-300 divide-y">
         @for (entry of tree(); track entry.path) {
-        <tr class="hover">
-          <td class="w-10">
+        <li class="hover:bg-base-200/40 flex min-w-0 items-center gap-3 px-4 py-3">
+          <span class="shrink-0">
             @if (isTree(entry)) {
-            <lucide-icon name="folder" class="text-primary size-5"></lucide-icon>
+            <lucide-icon name="folder" class="text-primary size-4"></lucide-icon>
             } @else {
-            <lucide-icon name="fileText" class="text-base-content/60 size-5"></lucide-icon>
+            <lucide-icon name="fileText" class="text-base-content/60 size-4"></lucide-icon>
             }
-          </td>
-          <td>
+          </span>
             <a
               [routerLink]="entryRoute(entry)"
-              class="text-primary flex items-center gap-1 font-medium no-underline hover:underline"
+              class="text-base-content hover:text-primary min-w-0 flex-1 break-all text-sm font-medium no-underline hover:underline sm:max-w-[40%]"
             >
-              {{ entry.name }} @if (isTree(entry)) {
-              <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
-              }
+              {{ entry.name }}
             </a>
-          </td>
-          <td class="text-base-content/60 text-sm">{{ entry.lastCommitMessage ?? 'Latest update' }}</td>
-          <td class="text-base-content/60 text-right text-sm">
+          <span class="text-base-content/60 hidden min-w-0 flex-1 truncate text-sm sm:block">{{ entry.lastCommitMessage ?? '' }}</span>
+          <span class="text-base-content/60 shrink-0 text-right text-xs">
             @if (entry.size !== null && entry.size > 0) { {{ entry.size | fileSize }} }
-          </td>
-        </tr>
+          </span>
+        </li>
         }
-      </tbody>
-    </table>
-  </div>
+  </ul>
   }
 </section>

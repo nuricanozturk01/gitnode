@@ -20,6 +20,7 @@ import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.shared.repo.services.RepoService;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
 import dev.gitnode.os.tag.dtos.TagInfo;
+import dev.gitnode.os.tag.services.ReleaseTxService;
 import dev.gitnode.os.tag.services.TagNonTxService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -48,6 +49,7 @@ public class TagController {
   private final TagNonTxService tagNonTxService;
   private final JwtUtils jwtUtils;
   private final RepoService repoService;
+  private final ReleaseTxService releaseTxService;
 
   @GetMapping
   public ResponseEntity<List<TagInfo>> getAll(
@@ -59,7 +61,9 @@ public class TagController {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.tagNonTxService.getAll(owner, repo));
+    final var tags = this.tagNonTxService.getAll(owner, repo);
+    if (this.releaseTxService.canManage(owner, repo, requesterId)) return ResponseEntity.ok(tags);
+    return ResponseEntity.ok(tags.stream().map(TagInfo::withoutDraftRelease).toList());
   }
 
   @GetMapping("/{tag}")
@@ -73,7 +77,11 @@ public class TagController {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.tagNonTxService.get(owner, repo, tag));
+    final var result = this.tagNonTxService.get(owner, repo, tag);
+    return ResponseEntity.ok(
+        this.releaseTxService.canManage(owner, repo, requesterId)
+            ? result
+            : result.withoutDraftRelease());
   }
 
   @PostMapping
@@ -87,6 +95,7 @@ public class TagController {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.releaseTxService.assertCanManage(owner, repo, requesterId);
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(this.tagNonTxService.create(owner, repo, form));
   }
@@ -101,6 +110,7 @@ public class TagController {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.releaseTxService.assertCanManage(owner, repo, requesterId);
     this.tagNonTxService.delete(owner, repo, tag);
     return ResponseEntity.noContent().build();
   }

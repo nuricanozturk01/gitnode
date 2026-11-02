@@ -19,11 +19,14 @@ import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public record ContributionBreakdown(
+    int commits,
     int issues,
     int issueComments,
     int pullRequests,
     int pullRequestComments,
     int pullRequestMerges,
+    int pullRequestReviews,
+    int fileComments,
     int releases,
     int snippets,
     int snippetRevisions,
@@ -31,11 +34,14 @@ public record ContributionBreakdown(
 
   public int total() {
 
-    return this.issues
+    return this.commits
+        + this.issues
         + this.issueComments
         + this.pullRequests
         + this.pullRequestComments
         + this.pullRequestMerges
+        + this.pullRequestReviews
+        + this.fileComments
         + this.releases
         + this.snippets
         + this.snippetRevisions

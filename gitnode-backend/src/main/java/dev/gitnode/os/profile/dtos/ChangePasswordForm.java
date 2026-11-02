@@ -32,6 +32,7 @@ public class ChangePasswordForm {
   private String currentPassword;
 
   @NotBlank(message = "newPasswordRequired")
-  @Size(min = 6, max = 50)
+  @Size(min = 8, max = 128)
+  @jakarta.validation.constraints.Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).+$")
   private String newPassword;
 }

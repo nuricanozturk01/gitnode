@@ -18,11 +18,15 @@ package dev.gitnode.os.notification.listeners;
 import dev.gitnode.os.events.ai.AiCodeReviewCompletedEvent;
 import dev.gitnode.os.events.ai.AiCodebaseAnalysisCompletedEvent;
 import dev.gitnode.os.events.collaborator.CollaboratorInvitedEvent;
+import dev.gitnode.os.events.filecomment.FileCommentedEvent;
 import dev.gitnode.os.events.issue.IssueCommentedEvent;
 import dev.gitnode.os.events.pr.PullRequestCommentedEvent;
+import dev.gitnode.os.events.pr.PullRequestMetadataChangedEvent;
+import dev.gitnode.os.events.pr.PullRequestReviewEvent;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.services.NotificationService;
+import dev.gitnode.os.notification.services.NotificationSseRegistry;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.modulith.events.ApplicationModuleListener;
@@ -34,6 +38,7 @@ import org.springframework.stereotype.Component;
 public class NotificationEventListener {
 
   private final NotificationService notificationService;
+  private final NotificationSseRegistry sseRegistry;
 
   @ApplicationModuleListener
   public void onIssueComment(final IssueCommentedEvent event) {
@@ -56,6 +61,11 @@ public class NotificationEventListener {
   }
 
   @ApplicationModuleListener
+  public void onTenantDisabled(final dev.gitnode.os.events.profile.TenantDisabledEvent event) {
+    this.sseRegistry.closeAll(event.tenantId());
+  }
+
+  @ApplicationModuleListener
   public void onPrComment(final PullRequestCommentedEvent event) {
 
     final var link =
@@ -67,6 +77,82 @@ public class NotificationEventListener {
           event.commenterId(),
           NotificationType.PR_COMMENT,
           "New comment on PR #" + event.prNumber(),
+          null,
+          link,
+          event.prId());
+    }
+  }
+
+  @ApplicationModuleListener
+  public void onFileComment(final FileCommentedEvent event) {
+
+    final var link =
+        "/"
+            + event.ownerUsername()
+            + "/"
+            + event.repoName()
+            + "/blob/"
+            + event.branch()
+            + "/"
+            + event.path();
+    final var title =
+        (event.reply() ? "New reply on a comment in " : "New comment on ")
+            + event.repoName()
+            + "/"
+            + event.path();
+    for (final var recipientId : event.recipientIds()) {
+      this.notificationService.send(
+          recipientId,
+          event.actorId(),
+          NotificationType.FILE_COMMENT,
+          title,
+          null,
+          link,
+          event.commentId());
+    }
+  }
+
+  @ApplicationModuleListener
+  public void onPrMetadataChanged(final PullRequestMetadataChangedEvent event) {
+
+    final var link =
+        "/" + event.ownerUsername() + "/" + event.repoName() + "/pulls/" + event.prNumber();
+    final var assigned = "ASSIGNED".equals(event.kind());
+    final var title =
+        assigned
+            ? "You were assigned to PR #" + event.prNumber()
+            : "Labels or milestone changed on PR #" + event.prNumber();
+    for (final var recipientId : event.recipientIds()) {
+      this.notificationService.send(
+          recipientId,
+          event.actorId(),
+          assigned ? NotificationType.PR_ASSIGNED : NotificationType.PR_METADATA_CHANGED,
+          title,
+          null,
+          link,
+          event.prId());
+    }
+  }
+
+  @ApplicationModuleListener
+  public void onPrReview(final PullRequestReviewEvent event) {
+
+    final var link =
+        "/" + event.ownerUsername() + "/" + event.repoName() + "/pulls/" + event.prNumber();
+    final var requested = "REVIEW_REQUESTED".equals(event.kind());
+    final var title =
+        switch (event.kind()) {
+          case "REVIEW_REQUESTED" -> "Review requested on PR #" + event.prNumber();
+          case "APPROVED" -> "PR #" + event.prNumber() + " was approved";
+          case "CHANGES_REQUESTED" -> "Changes requested on PR #" + event.prNumber();
+          default -> "New review on PR #" + event.prNumber();
+        };
+    for (final var recipientId : event.recipientIds()) {
+      this.notificationService.send(
+          recipientId,
+          event.actorId(),
+          requested ? NotificationType.PR_REVIEW_REQUESTED : NotificationType.PR_REVIEW_SUBMITTED,
+          title,
           null,
           link,
           event.prId());

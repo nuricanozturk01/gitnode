@@ -20,7 +20,7 @@ import java.util.UUID;
 import lombok.Builder;
 import org.jspecify.annotations.Nullable;
 
-@Builder
+@Builder(toBuilder = true)
 public record ReleaseInfo(
     UUID id,
     String tagName,
@@ -28,6 +28,7 @@ public record ReleaseInfo(
     @Nullable String body,
     boolean isDraft,
     boolean isPrerelease,
+    boolean isLatest,
     TenantReleaseInfo author,
     @Nullable Instant publishedAt,
     Instant createdAt,

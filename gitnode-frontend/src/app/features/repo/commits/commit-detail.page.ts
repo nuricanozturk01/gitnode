@@ -15,6 +15,7 @@
 ///
 
 import { Component, ChangeDetectionStrategy, effect, inject, signal, computed } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { LucideAngularModule } from 'lucide-angular';
@@ -29,7 +30,7 @@ import type { DiffLine } from '../../../domain/commit/models/diff-line.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-commit-detail',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent],
+  imports: [FormsModule, RouterLink, LucideAngularModule, RelativeTimePipe, AvatarComponent],
   templateUrl: './commit-detail.page.html',
   styleUrl: './commit-detail.page.css',
 })
@@ -39,9 +40,16 @@ export class CommitDetailPage {
   private readonly repoContext = inject(RepoContextService);
 
   readonly commit = signal<CommitDetail | null>(null);
+  readonly fileQuery = signal('');
+
+  matchingFiles<T extends { newPath?: string | null; oldPath?: string | null }>(files: T[]): T[] {
+    const q = this.fileQuery().trim().toLowerCase();
+    return q ? files.filter((f) => (f.newPath || f.oldPath || '').toLowerCase().includes(q)) : files;
+  }
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
   readonly expandedFiles = signal<Set<string>>(new Set());
+  private loadVersion = 0;
 
   private readonly parentPm = parentParamMapSignal(this.route);
   private readonly localPm = paramMapSignal(this.route);
@@ -64,6 +72,7 @@ export class CommitDetailPage {
   }
 
   private async loadCommit(): Promise<void> {
+    const version = ++this.loadVersion;
     const owner = this.owner();
     const repo = this.repoName();
     const sha = this.sha();
@@ -79,16 +88,22 @@ export class CommitDetailPage {
         const diff = await this.commitService.getCommitDiff(owner, repo, sha);
         data = { ...data, files: diff };
       }
+      if (version !== this.loadVersion) return;
       this.commit.set(data);
       if (data.files?.length) {
         this.expandedFiles.set(new Set(data.files.map((f) => f.newPath || f.oldPath)));
       }
     } catch {
+      if (version !== this.loadVersion) return;
       this.error.set('Failed to load commit');
       this.commit.set(null);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.loadCommit();
   }
 
   toggleFile(path: string): void {

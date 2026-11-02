@@ -24,9 +24,13 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -71,6 +75,30 @@ public class PullRequest {
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "merged_by_id")
   private Tenant mergedBy;
+
+  @ManyToMany
+  @JoinTable(
+      name = "pr_reviewers",
+      joinColumns = @JoinColumn(name = "pr_id"),
+      inverseJoinColumns = @JoinColumn(name = "tenant_id"))
+  private Set<Tenant> reviewers = new HashSet<>();
+
+  @ManyToMany
+  @JoinTable(
+      name = "pr_assignees",
+      joinColumns = @JoinColumn(name = "pr_id"),
+      inverseJoinColumns = @JoinColumn(name = "tenant_id"))
+  private Set<Tenant> assignees = new HashSet<>();
+
+  @jakarta.persistence.ElementCollection
+  @jakarta.persistence.CollectionTable(
+      name = "pr_label_assignments",
+      joinColumns = @JoinColumn(name = "pr_id"))
+  @Column(name = "label_id")
+  private Set<java.util.UUID> labelIds = new HashSet<>();
+
+  @Column(name = "milestone_id")
+  private java.util.UUID milestoneId;
 
   @Column(name = "source_branch", nullable = false)
   private String sourceBranch;

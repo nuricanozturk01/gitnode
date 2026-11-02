@@ -62,6 +62,9 @@ public class Tenant {
   @Nullable
   private String passwordRecoveryCode;
 
+  @Column(name = "password_recovery_expires_at")
+  private java.time.Instant passwordRecoveryExpiresAt;
+
   @Column(name = "bio", length = 300)
   private String bio;
 
@@ -70,6 +73,10 @@ public class Tenant {
 
   @Column(name = "location", length = 100)
   private String location;
+
+  /** IANA zone id used to assign contributions to calendar days; null means UTC. */
+  @Column(name = "timezone", length = 64)
+  private String timezone;
 
   @Column(name = "profile_readme", columnDefinition = "TEXT")
   private String profileReadme;

@@ -116,6 +116,21 @@ public class NotificationSseRegistry {
         });
   }
 
+  /** Ends every open stream of a user, for example when the account was disabled. */
+  public void closeAll(final UUID recipientId) {
+    final var removed = this.emitters.remove(recipientId);
+    if (removed == null) {
+      return;
+    }
+    for (final var emitter : removed) {
+      try {
+        emitter.complete();
+      } catch (final RuntimeException ignored) {
+        // already closed
+      }
+    }
+  }
+
   private void remove(final UUID recipientId, final SseEmitter emitter) {
     this.emitters.computeIfPresent(
         recipientId,

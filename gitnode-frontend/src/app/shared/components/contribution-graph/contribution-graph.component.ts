@@ -30,8 +30,9 @@ interface TooltipState {
 }
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
-const MONTH_FORMAT = new Intl.DateTimeFormat(undefined, { month: 'short' });
+const MONTH_FORMAT = new Intl.DateTimeFormat(undefined, { month: 'short', timeZone: 'UTC' });
 const DAY_FORMAT = new Intl.DateTimeFormat(undefined, {
+  timeZone: 'UTC',
   weekday: 'short',
   month: 'short',
   day: 'numeric',
@@ -85,6 +86,7 @@ export class ContributionGraphComponent {
   breakdownLines(day: ContributionDay): string[] {
     const lines: string[] = [];
     const b = day.breakdown;
+    if (b.commits > 0) lines.push(formatCount(b.commits, 'commit', 'commits'));
     if (b.issues > 0) lines.push(formatCount(b.issues, 'issue opened', 'issues opened'));
     if (b.issueComments > 0) lines.push(formatCount(b.issueComments, 'issue comment', 'issue comments'));
     if (b.pullRequests > 0) lines.push(formatCount(b.pullRequests, 'pull request opened', 'pull requests opened'));
@@ -96,6 +98,8 @@ export class ContributionGraphComponent {
     if (b.releases > 0) lines.push(formatCount(b.releases, 'release published', 'releases published'));
     if (b.snippets > 0) lines.push(formatCount(b.snippets, 'snippet created', 'snippets created'));
     if (b.snippetRevisions > 0) lines.push(formatCount(b.snippetRevisions, 'snippet edit', 'snippet edits'));
+    if (b.pullRequestReviews > 0) lines.push(formatCount(b.pullRequestReviews, 'review', 'reviews'));
+    if (b.fileComments > 0) lines.push(formatCount(b.fileComments, 'file comment', 'file comments'));
     if (b.snippetComments > 0) lines.push(formatCount(b.snippetComments, 'snippet comment', 'snippet comments'));
     return lines;
   }
@@ -175,6 +179,7 @@ function formatCount(count: number, singular: string, plural: string): string {
 
 function emptyBreakdown() {
   return {
+    commits: 0,
     issues: 0,
     issueComments: 0,
     pullRequests: 0,
@@ -183,6 +188,8 @@ function emptyBreakdown() {
     releases: 0,
     snippets: 0,
     snippetRevisions: 0,
+    pullRequestReviews: 0,
+    fileComments: 0,
     snippetComments: 0,
   };
 }

@@ -69,6 +69,9 @@ class UserContributionServiceTest {
   private static ContributionDay day(final String isoDate, final int count) {
 
     return new ContributionDay(
-        LocalDate.parse(isoDate), count, 0, new ContributionBreakdown(0, 0, 0, 0, 0, 0, 0, 0, 0));
+        LocalDate.parse(isoDate),
+        count,
+        0,
+        new ContributionBreakdown(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0));
   }
 }

@@ -20,10 +20,14 @@ import static dev.gitnode.os.shared.util.FileDiffParser.prepareTreeParser;
 
 import dev.gitnode.os.events.pr.PullRequestCreatedEvent;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
+import dev.gitnode.os.issue.api.RepoMetadataQueryPort;
 import dev.gitnode.os.pr.dtos.PrDetail;
+import dev.gitnode.os.pr.dtos.PrFilter;
 import dev.gitnode.os.pr.dtos.PrForm;
 import dev.gitnode.os.pr.dtos.PrInfo;
 import dev.gitnode.os.pr.dtos.PrMergeForm;
+import dev.gitnode.os.pr.dtos.PrMergeRequirements;
+import dev.gitnode.os.pr.dtos.PrMetadata;
 import dev.gitnode.os.pr.dtos.PrUpdateForm;
 import dev.gitnode.os.pr.entities.PrStatus;
 import dev.gitnode.os.pr.entities.PullRequest;
@@ -31,11 +35,17 @@ import dev.gitnode.os.pr.mappers.PrMapper;
 import dev.gitnode.os.pr.repositories.PrCommentRepository;
 import dev.gitnode.os.pr.repositories.PrRepository;
 import dev.gitnode.os.shared.audit.annotations.Audited;
+import dev.gitnode.os.shared.branch.BranchProtectionService;
+import dev.gitnode.os.shared.branch.RequiredChecksPort;
 import dev.gitnode.os.shared.cache.CacheNames;
+import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
 import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
 import dev.gitnode.os.shared.commit.dtos.CommitInfo;
 import dev.gitnode.os.shared.commit.dtos.CommitStats;
 import dev.gitnode.os.shared.commit.dtos.FileDiff;
+import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
@@ -45,8 +55,12 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.Spliterator;
@@ -63,6 +77,7 @@ import org.eclipse.jgit.lib.CommitBuilder;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.merge.MergeStrategy;
 import org.eclipse.jgit.merge.RecursiveMerger;
@@ -91,6 +106,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PullRequestService {
 
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
+  private static final UUID NO_ID = new UUID(0L, 0L);
 
   private final PrRepository prRepository;
   private final PrCommentRepository commentRepository;
@@ -98,6 +114,12 @@ public class PullRequestService {
   private final GitProvider gitProvider;
   private final PrMapper prMapper;
   private final ApplicationEventPublisher eventPublisher;
+  private final CollaboratorAccessPort collaboratorAccessPort;
+  private final PrReviewerService reviewerService;
+  private final PrReviewService reviewService;
+  private final BranchProtectionService branchProtection;
+  private final RequiredChecksPort requiredChecks;
+  private final RepoMetadataQueryPort repoMetadata;
 
   @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
@@ -112,7 +134,7 @@ public class PullRequestService {
       final String owner, final String repoName, final UUID authorId, final PrForm form)
       throws IOException {
 
-    final var repo = this.findRepo(owner, repoName);
+    final var repo = this.prFinder.findRepoForUpdate(owner, repoName);
     final var author = this.findTenant(authorId);
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -144,10 +166,15 @@ public class PullRequestService {
 
   @Transactional
   public PrDetail update(
-      final String owner, final String repoName, final int number, final PrUpdateForm form) {
+      final String owner,
+      final String repoName,
+      final int number,
+      final PrUpdateForm form,
+      final UUID requesterId) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
+    this.assertCanModify(repo, pr, requesterId);
 
     if (!pr.getStatus().equals(PrStatus.OPEN.name())) {
       throw new ErrorOccurredException("Cannot update a closed or merged pull request");
@@ -179,6 +206,7 @@ public class PullRequestService {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.getId(), number);
+    this.assertCanModify(repo, pr, closedById);
 
     if (!pr.getStatus().equals(PrStatus.OPEN.name())) {
       throw new ErrorOccurredException("Pull request is already closed or merged");
@@ -211,6 +239,111 @@ public class PullRequestService {
 
   @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
+      action = "REOPEN_PR",
+      entityType = "PULL_REQUEST",
+      entityIdSpEL = "#result.id().toString()",
+      detailsSpEL = "'repo=' + #owner + '/' + #repoName + ', number=' + #number")
+  @Transactional
+  public PrDetail reopen(
+      final String owner, final String repoName, final int number, final UUID requesterId)
+      throws IOException {
+
+    final var repo = this.prFinder.findRepoForUpdate(owner, repoName);
+    final var pr = this.prFinder.findPrForUpdate(repo.getId(), number);
+    this.assertCanModify(repo, pr, requesterId);
+
+    if (!PrStatus.CLOSED.name().equals(pr.getStatus())) {
+      throw new BadRequestException("Only closed pull requests can be reopened");
+    }
+    if (this.prRepository.existsByRepoIdAndSourceBranchAndTargetBranchAndStatus(
+        repo.getId(), pr.getSourceBranch(), pr.getTargetBranch(), PrStatus.OPEN.name())) {
+      throw new BadRequestException("Another open pull request already exists for these branches");
+    }
+    try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
+      final var source = gitRepo.exactRef(Constants.R_HEADS + pr.getSourceBranch());
+      if (source == null || gitRepo.exactRef(Constants.R_HEADS + pr.getTargetBranch()) == null) {
+        throw new BadRequestException("A branch of this pull request no longer exists");
+      }
+      pr.setSourceSha(Objects.requireNonNull(source.getObjectId()).getName());
+    }
+    pr.setStatus(PrStatus.OPEN.name());
+    pr.setClosedAt(null);
+    return this.toDetail(this.prRepository.save(pr));
+  }
+
+  private void assertCanModify(final Repo repo, final PullRequest pr, final UUID requesterId) {
+    if (requesterId.equals(pr.getAuthor().getId())
+        || requesterId.equals(repo.getOwner().getId())
+        || this.collaboratorAccessPort.hasPermission(
+            repo.getId(), requesterId, CollaboratorPermission.PULL_REQUEST_MERGE)) {
+      return;
+    }
+    throw new AccessNotAllowedException("notAuthorized");
+  }
+
+  public PrMergeRequirements mergeRequirements(
+      final String owner, final String repoName, final int number) throws IOException {
+    final var repo = this.prFinder.findRepo(owner, repoName);
+    final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var rule = this.branchProtection.find(repo.getId(), pr.getTargetBranch());
+    if (rule.isEmpty()) {
+      return new PrMergeRequirements(false, 0, 0, List.of(), List.of(), false, 0, true);
+    }
+    final var heads = this.reviewService.branchHeads(owner, repoName, pr);
+    final var summary = this.reviewService.summarize(repo, pr, heads);
+    final var required = rule.get().getRequiredApprovals();
+    final var states =
+        this.requiredChecks.states(repo.getId(), heads.source(), rule.get().requiredCheckNames());
+    final var checks =
+        states.entrySet().stream()
+            .map(entry -> new PrMergeRequirements.Check(entry.getKey(), entry.getValue()))
+            .toList();
+    final var conversations = rule.get().isRequireConversationResolution();
+    final var unresolved =
+        conversations ? (int) this.commentRepository.countUnresolvedConversations(pr.getId()) : 0;
+    final var satisfied =
+        (required == 0 || (summary.current() >= required && summary.changesRequestedBy().isEmpty()))
+            && checks.stream().allMatch(check -> "SUCCESS".equals(check.state()))
+            && unresolved == 0;
+    return new PrMergeRequirements(
+        true,
+        required,
+        summary.current(),
+        summary.changesRequestedBy(),
+        checks,
+        conversations,
+        unresolved,
+        satisfied);
+  }
+
+  private PrReviewService.@Nullable BranchHeads checkProtection(
+      final String owner, final String repoName, final Repo repo, final PullRequest pr)
+      throws IOException {
+    final var protection = this.branchProtection.find(repo.getId(), pr.getTargetBranch());
+    if (protection.isEmpty()) {
+      return null;
+    }
+    final var rule = protection.get();
+    final var heads = this.reviewService.branchHeads(owner, repoName, pr);
+    this.reviewService.assertApprovals(repo, pr, heads, rule.getRequiredApprovals());
+    final var failing =
+        this.requiredChecks.notPassing(repo.getId(), heads.source(), rule.requiredCheckNames());
+    if (!failing.isEmpty()) {
+      throw new BadRequestException(
+          "Required checks have not passed: " + String.join(", ", failing));
+    }
+    if (rule.isRequireConversationResolution()) {
+      final var unresolved = this.commentRepository.countUnresolvedConversations(pr.getId());
+      if (unresolved > 0) {
+        throw new BadRequestException(
+            "All review conversations must be resolved before merging (" + unresolved + " open)");
+      }
+    }
+    return heads;
+  }
+
+  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
+  @Audited(
       action = "MERGE_PR",
       entityType = "PULL_REQUEST",
       entityIdSpEL = "#result.id().toString()",
@@ -224,19 +357,26 @@ public class PullRequestService {
       final PrMergeForm form)
       throws IOException {
 
-    final var repo = this.findRepo(owner, repoName);
-    final var pr = this.findPr(repo.getId(), number);
+    final var repo = this.prFinder.findRepoForUpdate(owner, repoName);
+    final var pr = this.prFinder.findPrForUpdate(repo.getId(), number);
     final var mergedBy = this.findTenant(mergedById);
 
     if (!pr.getStatus().equals(PrStatus.OPEN.name())) {
       throw new ErrorOccurredException("Pull request is not open");
     }
+    if (pr.isDraft()) {
+      throw new BadRequestException("Draft pull request cannot be merged");
+    }
+
+    this.reviewerService.assertEligibleReviewer(repo, pr);
+
+    final var checkedHeads = this.checkProtection(owner, repoName, repo, pr);
 
     final var mergeSha =
         switch (form.getStrategy()) {
-          case MERGE_COMMIT -> this.mergeCommit(owner, repoName, pr, form, mergedBy);
-          case SQUASH -> this.squashCommit(owner, repoName, pr, form, mergedBy);
-          case REBASE -> this.rebaseCommit(owner, repoName, pr, mergedBy);
+          case MERGE_COMMIT -> this.mergeCommit(owner, repoName, pr, form, mergedBy, checkedHeads);
+          case SQUASH -> this.squashCommit(owner, repoName, pr, form, mergedBy, checkedHeads);
+          case REBASE -> this.rebaseCommit(owner, repoName, pr, mergedBy, checkedHeads);
         };
 
     pr.setStatus(PrStatus.MERGED.name());
@@ -271,15 +411,43 @@ public class PullRequestService {
       final String owner,
       final String repoName,
       final String status,
+      final PrFilter filter,
       final int page,
       final int size) {
 
     final var repo = this.findRepo(owner, repoName);
     final var pageable = PageRequest.of(page, size);
+    final var assignee =
+        filter.assignee() == null || filter.assignee().isBlank()
+            ? null
+            : filter.assignee().strip().toLowerCase(Locale.ROOT);
 
-    return this.prRepository
-        .findAllByRepoIdAndStatusOrderByCreatedAtDesc(repo.getId(), status, pageable)
-        .map(this::toInfo);
+    final var prs =
+        this.prRepository.search(
+            repo.getId(),
+            status,
+            filter.labelId() != null,
+            filter.labelId() != null ? filter.labelId() : NO_ID,
+            filter.milestoneId() != null,
+            filter.milestoneId() != null ? filter.milestoneId() : NO_ID,
+            assignee != null,
+            assignee != null ? assignee : "",
+            pageable);
+
+    final Set<UUID> labelIds = new HashSet<>();
+    prs.forEach(pr -> labelIds.addAll(pr.getLabelIds()));
+    final Map<UUID, PrMetadata.Label> labelsById = new HashMap<>();
+    if (!labelIds.isEmpty()) {
+      this.repoMetadata
+          .findLabels(repo.getId(), labelIds)
+          .forEach(
+              l ->
+                  labelsById.put(
+                      l.id(), new PrMetadata.Label(l.id(), l.name(), l.color(), l.description())));
+    }
+    final Map<UUID, PrMetadata.Milestone> milestonesById = new HashMap<>();
+
+    return prs.map(pr -> this.toInfo(repo, pr, labelsById, milestonesById));
   }
 
   public PrDetail get(final String owner, final String repoName, final int number) {
@@ -347,7 +515,8 @@ public class PullRequestService {
       final String repoName,
       final PullRequest pr,
       final PrMergeForm form,
-      final Tenant mergedBy)
+      final Tenant mergedBy,
+      final PrReviewService.@Nullable BranchHeads checkedHeads)
       throws IOException {
 
     final var msg =
@@ -363,7 +532,7 @@ public class PullRequestService {
           return commit;
         };
 
-    return this.doMergeCommit(owner, repoName, pr, mergedBy, commitBuilder);
+    return this.doMergeCommit(owner, repoName, pr, mergedBy, commitBuilder, checkedHeads);
   }
 
   private String squashCommit(
@@ -371,7 +540,8 @@ public class PullRequestService {
       final String repoName,
       final PullRequest pr,
       final PrMergeForm form,
-      final Tenant mergedBy)
+      final Tenant mergedBy,
+      final PrReviewService.@Nullable BranchHeads checkedHeads)
       throws IOException {
 
     final var msg =
@@ -387,11 +557,15 @@ public class PullRequestService {
           return commit;
         };
 
-    return this.doMergeCommit(owner, repoName, pr, mergedBy, commitBuilder);
+    return this.doMergeCommit(owner, repoName, pr, mergedBy, commitBuilder, checkedHeads);
   }
 
   private String rebaseCommit(
-      final String owner, final String repoName, final PullRequest pr, final Tenant mergedBy)
+      final String owner,
+      final String repoName,
+      final PullRequest pr,
+      final Tenant mergedBy,
+      final PrReviewService.@Nullable BranchHeads checkedHeads)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
@@ -402,6 +576,7 @@ public class PullRequestService {
           Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getTargetBranch()));
       final var sourceObjectId = sourceRef.getObjectId();
       final var targetObjectId = targetRef.getObjectId();
+      this.assertCheckedHeads(checkedHeads, sourceObjectId, targetObjectId);
 
       final var commitIds = this.collectRebaseCommits(gitRepo, sourceObjectId, targetObjectId);
 
@@ -416,7 +591,8 @@ public class PullRequestService {
 
         final var refUpdate = gitRepo.updateRef(Constants.R_HEADS + pr.getTargetBranch());
         refUpdate.setNewObjectId(lastCommitId);
-        refUpdate.update(walk);
+        refUpdate.setExpectedOldObjectId(targetObjectId);
+        this.assertMergeRefUpdated(refUpdate.update(walk));
 
         return lastCommitId.getName();
       }
@@ -501,7 +677,8 @@ public class PullRequestService {
       final String repoName,
       final PullRequest pr,
       final Tenant mergedBy,
-      final BiFunction<RevCommit, RevCommit, CommitBuilder> commitBuilderFactory)
+      final BiFunction<RevCommit, RevCommit, CommitBuilder> commitBuilderFactory,
+      final PrReviewService.@Nullable BranchHeads checkedHeads)
       throws IOException {
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName);
@@ -511,6 +688,7 @@ public class PullRequestService {
           Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getSourceBranch()));
       final var targetRef =
           Objects.requireNonNull(gitRepo.findRef(Constants.R_HEADS + pr.getTargetBranch()));
+      this.assertCheckedHeads(checkedHeads, sourceRef.getObjectId(), targetRef.getObjectId());
       final var sourceCommit = walk.parseCommit(sourceRef.getObjectId());
       final var targetCommit = walk.parseCommit(targetRef.getObjectId());
       final var merger = (RecursiveMerger) MergeStrategy.RECURSIVE.newMerger(gitRepo, true);
@@ -535,11 +713,29 @@ public class PullRequestService {
 
         final var refUpdate = gitRepo.updateRef(Constants.R_HEADS + pr.getTargetBranch());
         refUpdate.setNewObjectId(commitId);
+        refUpdate.setExpectedOldObjectId(targetCommit.getId());
         refUpdate.setRefLogMessage("merge: " + pr.getSourceBranch(), false);
-        refUpdate.update(walk);
+        this.assertMergeRefUpdated(refUpdate.update(walk));
 
         return commitId.getName();
       }
+    }
+  }
+
+  private void assertMergeRefUpdated(final RefUpdate.Result result) {
+    if (result != RefUpdate.Result.FAST_FORWARD && result != RefUpdate.Result.NO_CHANGE) {
+      throw new BadRequestException(
+          "Target branch changed or could not be updated. Retry the merge.");
+    }
+  }
+
+  private void assertCheckedHeads(
+      final PrReviewService.@Nullable BranchHeads checked,
+      final ObjectId source,
+      final ObjectId target) {
+    if (checked != null
+        && (!checked.source().equals(source.name()) || !checked.target().equals(target.name()))) {
+      throw new BadRequestException("Pull request branches changed; retry the merge");
     }
   }
 
@@ -602,13 +798,41 @@ public class PullRequestService {
         commitStats);
   }
 
-  private PrInfo toInfo(final PullRequest pr) {
+  private PrInfo toInfo(
+      final Repo repo,
+      final PullRequest pr,
+      final Map<UUID, PrMetadata.Label> labelsById,
+      final Map<UUID, PrMetadata.Milestone> milestonesById) {
 
     final var commentCount = (int) this.commentRepository.countByPrId(pr.getId());
     final var author = this.toAuthorInfo(pr.getAuthor());
     final var mergedBy = pr.getMergedBy() != null ? this.toAuthorInfo(pr.getMergedBy()) : null;
+    final var labels =
+        pr.getLabelIds().stream()
+            .map(labelsById::get)
+            .filter(Objects::nonNull)
+            .sorted(Comparator.comparing(PrMetadata.Label::name, String.CASE_INSENSITIVE_ORDER))
+            .toList();
+    final var assignees =
+        pr.getAssignees().stream()
+            .sorted(Comparator.comparing(Tenant::getUsername, String.CASE_INSENSITIVE_ORDER))
+            .map(this::toAuthorInfo)
+            .toList();
+    final var milestoneId = pr.getMilestoneId();
+    final var milestone =
+        milestoneId == null
+            ? null
+            : milestonesById.computeIfAbsent(
+                milestoneId,
+                id ->
+                    this.repoMetadata
+                        .findMilestone(repo.getId(), id)
+                        .map(m -> new PrMetadata.Milestone(m.id(), m.title(), m.status()))
+                        .orElse(null));
 
-    return this.prMapper.toInfo(pr, commentCount, author, mergedBy);
+    return this.prMapper
+        .toInfo(pr, commentCount, author, mergedBy)
+        .withMetadata(labels, assignees, milestone);
   }
 
   private PrDetail toDetail(final PullRequest pr) {
@@ -649,7 +873,7 @@ public class PullRequestService {
 
     if (this.prRepository.existsByRepoIdAndSourceBranchAndTargetBranchAndStatus(
         repo.getId(), form.getSourceBranch(), form.getTargetBranch(), "OPEN")) {
-      throw new ErrorOccurredException("A pull request already exists for this branch pair");
+      throw new BadRequestException("A pull request already exists for this branch pair");
     }
   }
 }

@@ -44,9 +44,22 @@ class PrFinder {
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
   }
 
+  Repo findRepoForUpdate(final String owner, final String repoName) {
+    final var repo = this.findRepo(owner, repoName);
+    return this.repoRepository
+        .findByIdForUpdate(repo.getId())
+        .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
+  }
+
   PullRequest findPr(final UUID repoId, final int number) {
     return this.prRepository
         .findByRepoIdAndNumber(repoId, number)
+        .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
+  }
+
+  PullRequest findPrForUpdate(final UUID repoId, final int number) {
+    return this.prRepository
+        .findByRepoIdAndNumberForUpdate(repoId, number)
         .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
   }
 

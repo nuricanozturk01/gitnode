@@ -2,8 +2,14 @@
 <div class="flex justify-center py-20">
   <span class="loading loading-spinner loading-md text-primary"></span>
 </div>
+} @else if (loadFailed()) {
+<section role="alert" class="repo-panel flex flex-col items-center gap-3 px-4 py-16 text-center">
+  <p>Repository contents could not be loaded.</p>
+  <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
+</section>
 } @else if (isEmpty()) {
-<section class="repo-panel p-8">
+<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
+<section class="repo-panel min-w-0 flex-1 p-4 sm:p-8">
   <div class="mx-auto max-w-2xl">
     <h2 class="text-base-content mb-2 text-xl font-semibold">Get started with {{ repoName() }}</h2>
     <p class="text-base-content/60 mb-6 text-sm">This repository is empty. Push your first commit to get started.</p>
@@ -33,7 +39,7 @@
       </div>
       <div>
         <h3 class="text-base-content mb-2 text-sm font-semibold">Create a new repository on the command line</h3>
-        <div class="bg-base-200 border-base-300 text-base-content/80 space-y-1 rounded-lg border p-4 font-mono text-sm">
+        <div class="bg-base-200 border-base-300 text-base-content/80 space-y-1 overflow-x-auto rounded-lg border p-4 font-mono text-sm whitespace-nowrap">
           <p>echo "# {{ repoName() }}" >> README.md</p>
           <p>git init</p>
           <p>git add README.md</p>
@@ -45,15 +51,17 @@
       </div>
       <div>
         <h3 class="text-base-content mb-2 text-sm font-semibold">Push an existing repository from the command line</h3>
-        <div class="bg-base-200 border-base-300 text-base-content/80 space-y-1 rounded-lg border p-4 font-mono text-sm">
+        <div class="bg-base-200 border-base-300 text-base-content/80 space-y-1 overflow-x-auto rounded-lg border p-4 font-mono text-sm whitespace-nowrap">
           <p>git remote add origin {{ httpsCloneUrl() }}</p>
           <p>git branch -M main</p>
-          <p>git push -u origin main --force</p>
+          <p>git push -u origin main</p>
         </div>
       </div>
     </div>
   </div>
 </section>
+<aside class="w-full shrink-0 lg:w-72"><app-repo-about /></aside>
+</div>
 } @else {
 
 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-5">
@@ -64,6 +72,7 @@
         <div class="flex flex-wrap items-center gap-2">
           <select
             class="select select-bordered select-sm w-40"
+            aria-label="Select branch"
             [value]="branch()"
             (change)="onBranchChange($any($event.target).value)"
           >
@@ -76,7 +85,7 @@
           </span>
         </div>
         <div class="flex items-center gap-2">
-          <button type="button" class="btn btn-sm btn-outline h-8 min-w-[5rem] gap-1.5" (click)="openCloneDialog()">
+          <button type="button" class="btn btn-sm btn-outline h-8 min-w-[5rem] gap-1.5" (click)="openCloneDialog($event)">
             <lucide-icon name="gitBranch" class="size-3.5"></lucide-icon>
             Clone
           </button>
@@ -122,6 +131,12 @@
                 @if (entry.size !== null && entry.size! > 0) { {{ entry.size | fileSize }} }
               </td>
             </tr>
+            } @empty {
+            <tr>
+              <td colspan="4" class="text-base-content/60 py-6 text-center text-sm">
+                This branch has no files yet.
+              </td>
+            </tr>
             }
           </tbody>
         </table>
@@ -147,20 +162,7 @@
   <!-- ── RIGHT SIDEBAR ── -->
   <aside class="w-full shrink-0 space-y-4 lg:sticky lg:top-4 lg:w-72">
     <!-- About -->
-    @if (repoContext.repo()?.description || repoContext.repo()?.topics?.length) {
-    <div class="repo-panel p-4">
-      <h3 class="text-base-content mb-3 text-sm font-semibold">About</h3>
-      @if (repoContext.repo()?.description) {
-      <p class="text-base-content/70 mb-3 text-sm leading-relaxed">{{ repoContext.repo()!.description }}</p>
-      } @if (repoContext.repo()?.topics?.length) {
-      <div class="flex flex-wrap gap-1.5">
-        @for (topic of repoContext.repo()!.topics; track topic) {
-        <span class="badge-pill badge-pill--topic">{{ topic }}</span>
-        }
-      </div>
-      }
-    </div>
-    }
+    <app-repo-about />
 
     <!-- Latest Release -->
     @if (latestRelease(); as lr) {
@@ -247,17 +249,16 @@
   />
 </div>
 } @if (cloneDialogOpen()) {
+<!-- Backdrop is pointer-only; the dialog provides a close button and Escape support. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
 <div
   class="modal modal-open"
-  role="button"
-  tabindex="0"
   (click)="closeCloneDialog()"
-  (keydown.enter)="closeCloneDialog()"
-  (keydown.space)="closeCloneDialog(); $event.preventDefault()"
 >
-  <div class="modal-box" tabindex="0" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+  <div id="clone-dialog" class="modal-box" role="dialog" aria-modal="true" aria-labelledby="clone-dialog-title"
+    (click)="$event.stopPropagation()" (keydown)="onCloneDialogKeydown($event)">
     <div class="mb-4 flex items-center justify-between">
-      <h3 class="text-base-content text-lg font-semibold">Clone repository</h3>
+      <h3 id="clone-dialog-title" class="text-base-content text-lg font-semibold">Clone repository</h3>
       <button class="btn btn-sm btn-ghost" (click)="closeCloneDialog()">Close</button>
     </div>
     <p class="text-base-content/70 mb-4 text-sm">Clone with HTTPS or SSH (SSH key on your profile).</p>

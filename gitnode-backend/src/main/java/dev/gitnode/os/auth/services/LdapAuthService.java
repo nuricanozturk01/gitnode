@@ -59,6 +59,7 @@ public class LdapAuthService {
   private final TenantRepository tenantRepository;
   private final AccountRepository accountRepository;
   private final JwtUtils jwtUtils;
+  private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
 
   @Transactional
   public LoginInfo authenticate(final LdapLoginForm form) {
@@ -265,7 +266,7 @@ public class LdapAuthService {
 
     return LoginInfo.builder()
         .token(this.jwtUtils.generateToken(tenant))
-        .refreshToken(this.jwtUtils.generateRefreshToken(tenant))
+        .refreshToken(this.refreshTokens.issue(tenant))
         .email(tenant.getEmail())
         .username(tenant.getUsername())
         .expiresIn(JwtUtils.ACCESS_EXPIRATION_SECONDS)

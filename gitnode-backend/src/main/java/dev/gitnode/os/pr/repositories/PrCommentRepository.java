@@ -17,6 +17,7 @@ package dev.gitnode.os.pr.repositories;
 
 import dev.gitnode.os.pr.entities.PullRequestComment;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
@@ -39,6 +40,14 @@ public interface PrCommentRepository extends JpaRepository<PullRequestComment, U
   Page<PullRequestComment> findAllByPrIdOrderByCreatedAtAsc(UUID prId, Pageable pageable);
 
   long countByPrId(UUID prId);
+
+  @Query(
+      "SELECT count(c) FROM PullRequestComment c WHERE c.pr.id = :prId"
+          + " AND c.parentId IS NULL AND c.lineNumber IS NOT NULL AND c.isResolved = false")
+  long countUnresolvedConversations(UUID prId);
+
+  Optional<PullRequestComment> findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
+      UUID id, String owner, String repoName, int number);
 
   @Query("SELECT DISTINCT c.author.id FROM PullRequestComment c WHERE c.pr.id = :prId")
   List<UUID> findDistinctCommenterIdsByPrId(UUID prId);

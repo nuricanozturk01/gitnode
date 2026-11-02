@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.branch.BranchCreatedEvent;
 import dev.gitnode.os.events.branch.BranchDeletedEvent;
+import dev.gitnode.os.shared.branch.BranchProtectionService;
 import dev.gitnode.os.shared.branch.dtos.BranchForm;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -61,6 +62,7 @@ class BranchNonTxServiceTest {
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private BranchNonTxService branchNonTxService;
+  @Mock private BranchProtectionService branchProtection;
 
   private Git git;
   private Path gitDir;

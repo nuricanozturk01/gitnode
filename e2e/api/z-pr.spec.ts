@@ -116,6 +116,11 @@ test.describe.serial('Pull request API — all endpoints', () => {
   });
 
   test('POST /api/repos/{owner}/{repo}/pulls/{number}/merge', async ({ authedRequest, api }) => {
+    const reviewers = await authedRequest.put(
+      `${repoPullApi(api.owner, api.repo, prNumber)}/reviewers`,
+      { data: { usernames: [api.owner] } },
+    );
+    expect(reviewers.status()).toBe(200);
     const response = await authedRequest.post(
       `${repoPullApi(api.owner, api.repo, prNumber)}/merge`,
       { data: { strategy: 'MERGE_COMMIT', commitMessage: 'Merge E2E PR' } },

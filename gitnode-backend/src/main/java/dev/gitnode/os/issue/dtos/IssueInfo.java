@@ -2,6 +2,7 @@ package dev.gitnode.os.issue.dtos;
 
 import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import lombok.Builder;
 import org.jspecify.annotations.Nullable;
@@ -14,6 +15,9 @@ public record IssueInfo(
     String status,
     AuthorInfo author,
     @Nullable AuthorInfo assignee,
+    List<AuthorInfo> assignees,
+    List<IssueLabelInfo> labels,
+    @Nullable IssueMilestoneInfo milestone,
     int commentCount,
     @Nullable Instant createdAt,
     @Nullable Instant updatedAt,

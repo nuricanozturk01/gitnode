@@ -23,21 +23,25 @@ import dev.gitnode.os.profile.dtos.UpdateProfileForm;
 import dev.gitnode.os.profile.dtos.UpdateUsernameForm;
 import dev.gitnode.os.profile.dtos.UserContributionsResponse;
 import dev.gitnode.os.profile.services.ProfileService;
+import dev.gitnode.os.profile.services.TenantEmailService;
 import dev.gitnode.os.profile.services.TenantSearchService;
 import dev.gitnode.os.profile.services.UserContributionService;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -57,6 +61,7 @@ public class ProfileController {
   private final ProfileService profileService;
   private final UserContributionService userContributionService;
   private final JwtUtils jwtUtils;
+  private final TenantEmailService emailService;
 
   @GetMapping("/me")
   public ResponseEntity<TenantInfo> getMe(
@@ -103,6 +108,33 @@ public class ProfileController {
     final var user = this.profileService.updateProfile(tenantId, form);
 
     return ResponseEntity.ok(user);
+  }
+
+  public record EmailForm(
+      @jakarta.validation.constraints.NotBlank @jakarta.validation.constraints.Size(max = 254)
+          String email) {}
+
+  @GetMapping("/me/emails")
+  public List<TenantEmailService.ExtraEmail> listEmails(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader) {
+    return this.emailService.list(this.jwtUtils.extractUserId(authHeader));
+  }
+
+  @PostMapping("/me/emails")
+  public ResponseEntity<TenantEmailService.ExtraEmail> addEmail(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @Valid @RequestBody EmailForm form) {
+    final var created =
+        this.emailService.add(this.jwtUtils.extractUserId(authHeader), form.email());
+    return ResponseEntity.status(HttpStatus.CREATED).body(created);
+  }
+
+  @DeleteMapping("/me/emails/{emailId}")
+  public ResponseEntity<Void> removeEmail(
+      final @RequestHeader(HttpHeaders.AUTHORIZATION) String authHeader,
+      final @PathVariable UUID emailId) {
+    this.emailService.remove(this.jwtUtils.extractUserId(authHeader), emailId);
+    return ResponseEntity.noContent().build();
   }
 
   @PatchMapping("/me/password")

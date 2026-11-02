@@ -61,3 +61,6 @@ package-lock.json
 CLAUDE.md
 PLAN.md
 gitnode-runner/dist/gitnode-runner
+graphify-out/
+.codex/
+.agents/

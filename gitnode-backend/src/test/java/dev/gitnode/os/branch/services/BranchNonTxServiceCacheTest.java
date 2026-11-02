@@ -24,6 +24,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.shared.branch.BranchProtectionService;
 import dev.gitnode.os.shared.branch.dtos.BranchForm;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.git.provider.GitProvider;
@@ -66,6 +67,11 @@ class BranchNonTxServiceCacheTest {
     @Bean
     BranchTxService branchTxService() {
       return mock(BranchTxService.class);
+    }
+
+    @Bean
+    BranchProtectionService branchProtectionService() {
+      return mock(BranchProtectionService.class);
     }
 
     @Bean

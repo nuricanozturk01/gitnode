@@ -23,6 +23,11 @@
   <div class="flex justify-center py-16">
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
+  } @else if (loadFailed()) {
+  <div role="alert" class="repo-panel flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <p>Organizations could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
+  </div>
   } @else {
   <div class="repo-panel overflow-hidden">
     @if (organizations().length === 0) {
@@ -31,7 +36,32 @@
       <a routerLink="/organizations/new" class="btn btn-primary btn-sm">Create first organization</a>
     </div>
     } @else {
-    <div class="overflow-x-auto">
+    <ul class="divide-base-300 divide-y md:hidden">
+      @for (org of organizations(); track org.slug) {
+      <li class="space-y-3 p-4">
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0">
+            <a [routerLink]="['/organizations', org.slug]" class="text-primary break-all font-semibold hover:underline">{{ org.name }}</a>
+            <p class="text-base-content/60 mt-1 break-all text-xs">{{ org.slug }}</p>
+          </div>
+          <a [routerLink]="['/organizations', org.slug]" class="btn btn-ghost btn-sm" [attr.aria-label]="'Edit ' + org.name">Edit</a>
+        </div>
+        <p class="text-base-content/70 break-all text-sm">{{ formatDomains(org.emailDomains) }}</p>
+        <div class="flex flex-wrap gap-4">
+          <div class="flex items-center gap-2 text-sm"><span>SAML</span>
+            <app-sso-switch [checked]="org.ssoEnabled" [disabled]="togglingSlug() === org.slug || org.ldapEnabled"
+              size="sm" [showLabels]="true" [ariaLabel]="'Enable SAML for ' + org.name" (checkedChange)="onSsoToggle(org, $event)" />
+          </div>
+          <div class="flex items-center gap-2 text-sm"><span>LDAP</span>
+            <app-sso-switch [checked]="org.ldapEnabled"
+              [disabled]="togglingLdapSlug() === org.slug || org.ssoEnabled || (!org.ldapEnabled && !org.ldapConfigured)"
+              size="sm" [showLabels]="true" [ariaLabel]="'Enable LDAP for ' + org.name" (checkedChange)="onLdapToggle(org, $event)" />
+          </div>
+        </div>
+      </li>
+      }
+    </ul>
+    <div class="hidden overflow-x-auto md:block">
       <table class="table">
         <thead>
           <tr>

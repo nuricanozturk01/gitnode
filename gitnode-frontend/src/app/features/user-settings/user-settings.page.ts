@@ -24,8 +24,11 @@ import { MarkdownPipe } from '../../shared/pipes/markdown.pipe';
 import { SshKeyService } from '../../core/ssh/services/ssh-key.service';
 import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../core/toast/toast.service';
+import type { ExtraEmail } from '../../core/user/services/user.service';
+import { ModalFocusDirective } from '../../shared/directives/modal-focus.directive';
 import { profileErrorMessage, apiErrorMessage } from '../../shared/utils/api-error.utils';
 import { UserService } from '../../core/user/services/user.service';
+import { AuthService } from '../../core/auth/services/auth.service';
 import { TokenService } from '../../core/auth/services/token.service';
 import { UserWebhookService } from '../../core/webhook/user-webhook.service';
 import { RunnerService } from '../../core/actions/services/runner.service';
@@ -61,7 +64,7 @@ const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-settings',
   standalone: true,
-  imports: [LucideAngularModule, FormsModule, RouterLink, MarkdownPipe, RelativeTimePipe],
+  imports: [ModalFocusDirective, LucideAngularModule, FormsModule, RouterLink, MarkdownPipe, RelativeTimePipe],
   templateUrl: './user-settings.page.html',
   styleUrl: './user-settings.page.css',
 })
@@ -72,6 +75,7 @@ export class UserSettingsPage {
   private readonly confirmModal = inject(ConfirmModalService);
   private readonly toast = inject(ToastService);
   private readonly userService = inject(UserService);
+  private readonly authService = inject(AuthService);
   private readonly userWebhookService = inject(UserWebhookService);
   private readonly runnerService = inject(RunnerService);
   private readonly aiService = inject(AiService);
@@ -119,6 +123,12 @@ export class UserSettingsPage {
   readonly website = signal('');
   readonly location = signal('');
   readonly profileReadme = signal('');
+  readonly timezone = signal('');
+  readonly timezones: string[] = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
+  readonly extraEmails = signal<ExtraEmail[]>([]);
+  readonly newEmail = signal('');
+  readonly emailError = signal<string | null>(null);
+  readonly addingEmail = signal(false);
   readonly savingProfile = signal(false);
   readonly profileError = signal<string | null>(null);
 
@@ -205,6 +215,8 @@ export class UserSettingsPage {
       this.website.set(user.website ?? '');
       this.location.set(user.location ?? '');
       this.profileReadme.set(user.profileReadme ?? '');
+      this.timezone.set(user.timezone ?? '');
+      this.extraEmails.set(await this.userService.listEmails().catch(() => []));
     } catch {
       // ignore
     }
@@ -263,6 +275,7 @@ export class UserSettingsPage {
         website: this.website().trim() || null,
         location: this.location().trim() || null,
         profileReadme: this.profileReadme().trim() || null,
+        timezone: this.timezone(),
       });
       this.toast.success('Profile updated');
     } catch (err) {
@@ -271,6 +284,36 @@ export class UserSettingsPage {
       this.toast.error(msg);
     } finally {
       this.savingProfile.set(false);
+    }
+  }
+
+  detectTimezone(): void {
+    this.timezone.set(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }
+
+  async addEmail(): Promise<void> {
+    const email = this.newEmail().trim();
+    if (!email || this.addingEmail()) return;
+    this.addingEmail.set(true);
+    this.emailError.set(null);
+    try {
+      const created = await this.userService.addEmail(email);
+      this.extraEmails.update((list) => [...list, created]);
+      this.newEmail.set('');
+      this.toast.success('E-mail added. Earlier commits are attributed in the background.');
+    } catch (err) {
+      this.emailError.set(apiErrorMessage(err, 'Could not add the e-mail'));
+    } finally {
+      this.addingEmail.set(false);
+    }
+  }
+
+  async removeEmail(email: ExtraEmail): Promise<void> {
+    try {
+      await this.userService.removeEmail(email.id);
+      this.extraEmails.update((list) => list.filter((e) => e.id !== email.id));
+    } catch {
+      this.toast.error('Could not remove the e-mail');
     }
   }
 
@@ -293,17 +336,18 @@ export class UserSettingsPage {
     const current = this.currentPassword().trim();
     const newP = this.newPassword().trim();
     if (!current || !newP) return;
-    if (newP.length < 6) {
-      this.passwordError.set('Password must be at least 6 characters');
+    if (newP.length < 8 || newP.length > 128 || !/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).+$/.test(newP)) {
+      this.passwordError.set('Password must be at least 8 characters with a number, a lowercase and an uppercase letter, and no spaces');
       return;
     }
     this.savingPassword.set(true);
     this.passwordError.set(null);
     try {
       await this.userService.changePassword(current, newP);
-      this.toast.success('Password updated');
       this.currentPassword.set('');
       this.newPassword.set('');
+      this.toast.success('Password updated. Please sign in again.');
+      await this.authService.logout();
     } catch (err) {
       const msg = profileErrorMessage(err, 'Failed to update password');
       this.passwordError.set(msg);

@@ -17,6 +17,7 @@ package dev.gitnode.os.pr.controllers;
 
 import dev.gitnode.os.pr.dtos.PrCommentForm;
 import dev.gitnode.os.pr.dtos.PrCommentInfo;
+import dev.gitnode.os.pr.dtos.PrCommentResolveForm;
 import dev.gitnode.os.pr.dtos.PrCommentUpdateForm;
 import dev.gitnode.os.pr.services.PullRequestCommentService;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
@@ -36,6 +37,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -83,8 +85,24 @@ public class PullRequestCommitController {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var response = this.prService.updateComment(commentId, requesterId, form);
+    final var response =
+        this.prService.updateComment(owner, repo, number, commentId, requesterId, form);
     return ResponseEntity.ok(response);
+  }
+
+  @PutMapping("/comments/{commentId}/resolved")
+  public ResponseEntity<PrCommentInfo> setResolved(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final int number,
+      @PathVariable final UUID commentId,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final PrCommentResolveForm form) {
+
+    final var requesterId = this.tokenService.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(
+        this.prService.setResolved(owner, repo, number, commentId, requesterId, form.resolved()));
   }
 
   @DeleteMapping("/comments/{commentId}")
@@ -98,7 +116,7 @@ public class PullRequestCommitController {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    this.prService.deleteComment(commentId, requesterId);
+    this.prService.deleteComment(owner, repo, number, commentId, requesterId);
     return ResponseEntity.noContent().build();
   }
 

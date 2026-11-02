@@ -30,6 +30,7 @@ import { finalize } from 'rxjs';
 import { LucideAngularModule } from 'lucide-angular';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { marked } from 'marked';
+import { ReleaseAssetsComponent } from './release-assets.component';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { ReleaseService } from '../../../core/release/services/release.service';
@@ -45,7 +46,7 @@ marked.use({ gfm: true, breaks: false });
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-release-detail',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, RelativeTimePipe],
+  imports: [RouterLink, LucideAngularModule, RelativeTimePipe, ReleaseAssetsComponent],
   templateUrl: './release-detail.page.html',
 })
 export class ReleaseDetailPage {
@@ -59,6 +60,7 @@ export class ReleaseDetailPage {
   private readonly toast = inject(ToastService);
   private readonly sanitizer = inject(DomSanitizer);
 
+  readonly markingLatest = signal(false);
   readonly release = signal<ReleaseInfo | null>(null);
   readonly loading = signal(true);
   readonly zipDownloading = signal(false);
@@ -129,6 +131,20 @@ export class ReleaseDetailPage {
         },
         error: () => this.toast.error('Could not download ZIP'),
       });
+  }
+
+  async markLatest(): Promise<void> {
+    const r = this.release();
+    if (!r || this.markingLatest()) return;
+    this.markingLatest.set(true);
+    try {
+      this.release.set(await this.releaseService.markLatest(this.owner(), this.repoName(), r.id));
+      this.toast.success(`${r.name ?? r.tagName} is now the latest release`);
+    } catch {
+      this.toast.error('Could not set the latest release');
+    } finally {
+      this.markingLatest.set(false);
+    }
   }
 
   async deleteRelease(): Promise<void> {

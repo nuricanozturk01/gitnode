@@ -7,9 +7,9 @@
       [path]="path()"
       [items]="breadcrumbItems()"
     />
-    <div class="flex items-center justify-between gap-2">
-      <span class="mono text-base-content text-sm">{{ fileName() }}</span>
-      <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <span class="mono text-base-content min-w-0 break-all text-sm">{{ fileName() }}</span>
+      <div class="flex flex-wrap items-center gap-2">
         @if (blob(); as b) {
         <span class="text-base-content/60 text-xs">{{ b.size | fileSize }}</span>
         @if (b.lineCount > 0) {
@@ -22,7 +22,12 @@
           <lucide-icon name="copy" class="size-3"></lucide-icon>
           Copy }
         </button>
-        @if (repoContext.canEdit() && !isEditing()) {
+        @if (repoContext.hasPermission('PUSH') && canComment() && !isEditing()) {
+        <a class="btn btn-ghost btn-xs gap-1" [href]="'/' + owner() + '/' + repoName() + '/editor/' + branch() + '/' + path()" title="Open in the web editor (press .)">
+          <lucide-icon name="fileCode2" class="size-3"></lucide-icon>
+          Open in editor
+        </a>
+        } @if (repoContext.canEdit() && !isEditing()) {
         <button type="button" class="btn btn-ghost btn-xs gap-1" (click)="enterEditMode()">
           <lucide-icon name="pencil" class="size-3"></lucide-icon>
           Edit
@@ -37,6 +42,11 @@
   @if (loading()) {
   <div class="flex justify-center py-12">
     <span class="loading loading-spinner loading-md text-primary"></span>
+  </div>
+  } @else if (loadFailed()) {
+  <div role="alert" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <p>File could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
   </div>
   } @else if (blob(); as b) { @if (imageObjectUrl()) {
   <div class="flex flex-col items-center gap-3 p-6">
@@ -84,6 +94,7 @@
 
   <div class="border-base-300 flex flex-col gap-0">
     <textarea
+      aria-label="File content"
       class="bg-base-100 text-base-content border-base-300 min-h-[60vh] w-full resize-y border-0 border-b p-4 font-mono text-sm leading-6 outline-none focus:outline-none"
       style="
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -98,16 +109,18 @@
       autocapitalize="off"
     ></textarea>
 
-    <div class="bg-base-50 border-base-300 space-y-3 p-4">
+    <div class="bg-base-200 border-base-300 space-y-3 p-4">
       <h3 class="text-base-content text-sm font-semibold">Commit changes</h3>
       <input
         type="text"
+        aria-label="Commit message"
         class="input input-bordered input-sm w-full"
         placeholder="Update {{ fileName() }}"
         [value]="commitMessage()"
         (input)="commitMessage.set($any($event.target).value)"
       />
       <textarea
+        aria-label="Commit description"
         class="textarea textarea-bordered w-full resize-none text-sm"
         rows="3"
         placeholder="Add an optional extended description..."
@@ -138,11 +151,15 @@
     >
       <tbody>
         @for (line of highlightedLines(); track $index) {
-        <tr class="hover:bg-base-300/40">
+        <tr class="hover:bg-base-300/40" [class.blob-line--target]="commentLine() === $index + 1">
           <td
-            class="text-base-content/40 border-base-300 w-[1%] min-w-[52px] border-r px-4 py-0 text-right align-top leading-6 select-none"
+            class="text-base-content/40 border-base-300 w-[1%] min-w-[52px] whitespace-nowrap border-r px-3 py-0 text-right align-top leading-6 select-none"
           >
-            {{ $index + 1 }}
+            @if (commentedLines().has($index + 1)) {
+            <lucide-icon name="messageCircle" class="text-primary mr-1 inline size-3" aria-label="Has comments"></lucide-icon>
+            } @if (canComment()) {
+            <button type="button" class="blob-line-btn" [attr.aria-label]="'Comment on line ' + ($index + 1)" (click)="commentOnLine($index + 1)">{{ $index + 1 }}</button>
+            } @else { {{ $index + 1 }} }
           </td>
           <td class="px-4 py-0 align-top leading-6 whitespace-pre" [innerHTML]="line"></td>
         </tr>
@@ -150,5 +167,15 @@
       </tbody>
     </table>
   </div>
+  } @if (!isEditing()) {
+  <app-file-comments
+    [owner]="owner()"
+    [repoName]="repoName()"
+    [branch]="branch()"
+    [path]="path()"
+    [canComment]="canComment()"
+    [(targetLine)]="commentLine"
+    (commentedLines)="onCommentedLines($event)"
+  />
   } }
 </section>

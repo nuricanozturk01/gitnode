@@ -1,10 +1,10 @@
-<main class="docs-layout prose-docs text-base-content min-h-screen">
+<div class="docs-layout prose-docs text-base-content min-h-screen">
   <!-- Top bar -->
   <header class="docs-topbar">
     <div class="docs-topbar-inner">
       <a routerLink="/" class="docs-topbar-brand">
         <span class="docs-topbar-mark">
-          <lucide-icon name="bookOpen" class="size-3.5" aria-hidden="true"></lucide-icon>
+          <img src="/gitnode-mark.svg" alt="" width="28" height="28" />
         </span>
         GitNode Docs
       </a>
@@ -19,11 +19,10 @@
   <section class="docs-hero" aria-labelledby="docs-hero-title">
     <div class="docs-hero-accent" aria-hidden="true"></div>
     <div class="docs-hero-inner">
-      <p class="docs-hero-eyebrow">Product documentation</p>
+      <p class="docs-hero-eyebrow">YOUR GUIDE TO GITNODE</p>
       <h1 id="docs-hero-title" class="docs-hero-title">GitNode Documentation</h1>
       <p class="docs-hero-lead">
-        Official guides for Git transport, CI/CD Actions, collaboration workflows, and enterprise authentication —
-        written for teams running GitNode on their own infrastructure.
+        Everything you need to get started, build together, and run GitNode on your own infrastructure.
       </p>
       <div class="docs-hero-meta">
         <span class="docs-hero-meta-item">
@@ -49,7 +48,7 @@
   <!-- Tab bar -->
   <div class="docs-tabs-bar">
     <div class="docs-tabs-inner">
-      <button type="button" class="docs-tab" [class.docs-tab--active]="activeTab() === 'git'" (click)="setTab('git')">
+      <button type="button" class="docs-tab" [class.docs-tab--active]="activeTab() === 'git'" [attr.aria-pressed]="activeTab() === 'git'" (click)="setTab('git')">
         <lucide-icon name="gitBranch" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
         Git Transport
       </button>
@@ -57,6 +56,7 @@
         type="button"
         class="docs-tab"
         [class.docs-tab--active]="activeTab() === 'actions'"
+        [attr.aria-pressed]="activeTab() === 'actions'"
         (click)="setTab('actions')"
       >
         <lucide-icon name="workflow" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
@@ -66,6 +66,7 @@
         type="button"
         class="docs-tab"
         [class.docs-tab--active]="activeTab() === 'features'"
+        [attr.aria-pressed]="activeTab() === 'features'"
         (click)="setTab('features')"
       >
         <lucide-icon name="layers" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
@@ -147,6 +148,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('keygen', sshKeygenCmd)"
                   >
                     @if (copiedId() === 'keygen') {
@@ -170,6 +172,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('cat', catPubCmd)"
                   >
                     @if (copiedId() === 'cat') {
@@ -204,6 +207,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('ssh-clone', sshCloneLine())"
                   >
                     @if (copiedId() === 'ssh-clone') {
@@ -248,6 +252,7 @@
               <button
                 type="button"
                 class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                 (click)="copySnippet('https-clone', httpsCloneLine())"
               >
                 @if (copiedId() === 'https-clone') {
@@ -286,6 +291,7 @@
               <button
                 type="button"
                 class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                 (click)="copySnippet('ssh-config', sshConfigBlock)"
               >
                 @if (copiedId() === 'ssh-config') {
@@ -305,6 +311,7 @@
               <button
                 type="button"
                 class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                 (click)="copySnippet('alias-flow', sshAliasFlow)"
               >
                 @if (copiedId() === 'alias-flow') {
@@ -560,6 +567,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('actions-minimal', actionsMinimalYaml)"
                   >
                     @if (copiedId() === 'actions-minimal') {
@@ -598,6 +606,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('qs-runner', actionsRunnerCmd)"
                   >
                     @if (copiedId() === 'qs-runner') {
@@ -624,6 +633,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('qs-workflow', actionsMinimalYaml)"
                   >
                     @if (copiedId() === 'qs-workflow') {
@@ -820,6 +830,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('actions-full', actionsFullYaml)"
                   >
                     @if (copiedId() === 'actions-full') {
@@ -900,6 +911,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('actions-dispatch-ex', actionsDispatchYaml)"
                   >
                     @if (copiedId() === 'actions-dispatch-ex') {
@@ -1068,6 +1080,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('actions-cache', actionsCacheYaml)"
                   >
                     @if (copiedId() === 'actions-cache') {
@@ -1094,6 +1107,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('actions-artifact', actionsArtifactYaml)"
                   >
                     @if (copiedId() === 'actions-artifact') {
@@ -1128,6 +1142,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('actions-secrets', actionsSecretsYaml)"
                   >
                     @if (copiedId() === 'actions-secrets') {
@@ -1227,6 +1242,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('runner-cmd', actionsRunnerCmd)"
                   >
                     @if (copiedId() === 'runner-cmd') {
@@ -1784,6 +1800,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('wh-headers', webhookHeadersExample)"
                   >
                     @if (copiedId() === 'wh-headers') {
@@ -1804,6 +1821,7 @@
                   <button
                     type="button"
                     class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                     (click)="copySnippet('wh-verify', webhookVerifyPython)"
                   >
                     @if (copiedId() === 'wh-verify') {
@@ -2137,6 +2155,7 @@
                       <button
                         type="button"
                         class="docs-code-copy btn btn-ghost btn-xs gap-1"
+                    aria-label="Copy command"
                         (click)="copySnippet('saml-keygen', samlKeygenCmd)"
                       >
                         @if (copiedId() === 'saml-keygen') {
@@ -2225,4 +2244,4 @@
     </footer>
   </div>
   <!-- /content -->
-</main>
+</div>

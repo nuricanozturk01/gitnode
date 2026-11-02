@@ -310,6 +310,38 @@
         }
       </div>
     </section>
+    @if (canWriteSettings()) {
+    <section class="repo-panel repo-settings-section mt-4 p-5 sm:p-6" aria-labelledby="branch-protection-heading">
+      <h2 id="branch-protection-heading" class="text-lg font-semibold">Branch protection</h2>
+      <p class="text-base-content/65 mt-1 text-sm">Protected branches require pull requests and cannot be deleted directly.</p>
+      @if (protectionError()) {
+      <p role="alert" class="mt-3 text-sm">Could not load branch protection.</p>
+      <button type="button" class="btn btn-outline btn-sm mt-2" (click)="loadProtectionRules()">Retry</button>
+      } @else {
+      <ul class="mt-3 space-y-2">
+        @for (rule of protectionRules(); track rule.id) {
+        <li class="flex flex-wrap items-center gap-2 text-sm">
+          <strong>{{ rule.branchName }}</strong><span>{{ rule.requiredApprovals }} required approvals</span>
+          @if (rule.requireConversationResolution) { <span>Conversations must be resolved</span> }
+          @if (rule.requiredChecks.length) { <span>Required checks: {{ rule.requiredChecks.join(', ') }}</span> }
+          <button type="button" class="btn btn-ghost btn-xs" (click)="protectionBranch.set(rule.branchName); protectionApprovals.set(rule.requiredApprovals); protectionChecks.set(rule.requiredChecks.join(', ')); protectionConversations.set(rule.requireConversationResolution)">Edit {{ rule.branchName }}</button>
+          <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deleteProtectionRule(rule)">Remove {{ rule.branchName }}</button>
+        </li>
+        } @empty { <li class="text-base-content/60 text-sm">No protected branches.</li> }
+      </ul>
+      <form class="mt-4 flex flex-wrap items-end gap-3" (ngSubmit)="saveProtectionRule()">
+        <label class="text-sm">Branch name <input name="protectedBranch" class="input input-bordered input-sm" maxlength="255" [ngModel]="protectionBranch()" (ngModelChange)="protectionBranch.set($event)" /></label>
+        <label class="text-sm">Required approvals <input type="number" name="requiredApprovals" min="0" max="20" class="input input-bordered input-sm w-24" [ngModel]="protectionApprovals()" (ngModelChange)="protectionApprovals.set($event)" /></label>
+        <label class="text-sm">Required workflows
+          <input name="requiredChecks" list="protection-workflows" class="input input-bordered input-sm" maxlength="1000" placeholder="e.g. ci, lint" [ngModel]="protectionChecks()" (ngModelChange)="protectionChecks.set($event)" />
+          <datalist id="protection-workflows">@for (name of workflowNames(); track name) { <option [value]="name"></option> }</datalist>
+        </label>
+        <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="requireConversationResolution" class="checkbox checkbox-sm" [ngModel]="protectionConversations()" (ngModelChange)="protectionConversations.set($event)" /> Require conversation resolution</label>
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="protectionSaving() || !protectionBranch().trim()">Save protection</button>
+      </form>
+      }
+    </section>
+    }
   </div>
   } @if (activeTab() === 'webhooks') {
   <div

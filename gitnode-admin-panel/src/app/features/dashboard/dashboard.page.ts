@@ -38,6 +38,12 @@ export class DashboardPage implements OnInit {
 
   readonly loading = signal(true);
   readonly refreshing = signal(false);
+  readonly overviewFailed = signal(false);
+  readonly activityFailed = signal(false);
+  readonly auditFailed = signal(false);
+  readonly dlqFailed = signal(false);
+  readonly organizationsFailed = signal(false);
+  private periodVersion = 0;
   readonly period = signal<StatsPeriod>('week');
 
   readonly overview = signal<StatsOverview | null>(null);
@@ -140,7 +146,8 @@ export class DashboardPage implements OnInit {
     this.refreshing.set(true);
     try {
       await Promise.all([this.loadOverview(true), this.loadPeriodStats(true)]);
-      this.toast.success('Statistics refreshed from database');
+      if (this.overviewFailed() || this.activityFailed()) this.toast.error('Failed to refresh statistics');
+      else this.toast.success('Statistics refreshed from database');
     } catch {
       this.toast.error('Failed to refresh statistics');
     } finally {
@@ -157,6 +164,10 @@ export class DashboardPage implements OnInit {
   async onOrgPageChange(nextPage: number): Promise<void> {
     this.orgPage.set(nextPage);
     await this.loadOrganizations();
+  }
+
+  retryDashboard(): void {
+    void this.load(false);
   }
 
   formatStorage(bytes: number | undefined): string {
@@ -193,8 +204,10 @@ export class DashboardPage implements OnInit {
     try {
       const res = await this.adminAuditLogService.list({ page: 0, size: 8 });
       this.recentAudit.set(res.content);
+      this.auditFailed.set(false);
     } catch {
       this.recentAudit.set([]);
+      this.auditFailed.set(true);
     }
   }
 
@@ -202,8 +215,9 @@ export class DashboardPage implements OnInit {
     try {
       const summary = await this.adminWebhookDlqService.summary();
       this.dlqPending.set(summary.pending);
+      this.dlqFailed.set(false);
     } catch {
-      this.dlqPending.set(0);
+      this.dlqFailed.set(true);
     }
   }
 
@@ -214,24 +228,31 @@ export class DashboardPage implements OnInit {
       this.cachedAt.set(response.cachedAt);
       this.cacheTtlSeconds.set(response.cacheTtlSeconds);
       this.fromCache.set(response.fromCache);
+      this.overviewFailed.set(false);
     } catch {
       this.overview.set(null);
       this.cachedAt.set(null);
+      this.overviewFailed.set(true);
     }
   }
 
   private async loadPeriodStats(refresh: boolean): Promise<void> {
     const period = this.period();
+    const version = ++this.periodVersion;
     try {
       const [repos, uploads] = await Promise.all([
         this.adminStatsService.getRepos(period, refresh),
         this.adminStatsService.getUploads(period, refresh),
       ]);
+      if (version !== this.periodVersion) return;
       this.contributors.set(repos.contributors ?? []);
       this.activity.set(this.mergeActivity(repos.activity ?? [], uploads.activity ?? []));
+      this.activityFailed.set(false);
     } catch {
+      if (version !== this.periodVersion) return;
       this.contributors.set([]);
       this.activity.set([]);
+      this.activityFailed.set(true);
     }
   }
 
@@ -241,10 +262,12 @@ export class DashboardPage implements OnInit {
       this.organizations.set(res.content);
       this.orgTotalPages.set(res.totalPages);
       this.orgTotalElements.set(res.totalElements);
+      this.organizationsFailed.set(false);
     } catch {
       this.organizations.set([]);
       this.orgTotalPages.set(0);
       this.orgTotalElements.set(0);
+      this.organizationsFailed.set(true);
     }
   }
 

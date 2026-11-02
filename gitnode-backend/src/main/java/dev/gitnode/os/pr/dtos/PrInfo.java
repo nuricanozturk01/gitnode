@@ -17,6 +17,7 @@ package dev.gitnode.os.pr.dtos;
 
 import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -36,4 +37,34 @@ public record PrInfo(
     @NonNull Instant createdAt,
     @NonNull Instant updatedAt,
     @Nullable Instant mergedAt,
-    @Nullable Instant closedAt) {}
+    @Nullable Instant closedAt,
+    @NonNull List<PrMetadata.Label> labels,
+    @NonNull List<AuthorInfo> assignees,
+    PrMetadata.@Nullable Milestone milestone) {
+
+  /** Same pull request with its labels, assignees and milestone filled in. */
+  public PrInfo withMetadata(
+      final List<PrMetadata.Label> newLabels,
+      final List<AuthorInfo> newAssignees,
+      final PrMetadata.@Nullable Milestone newMilestone) {
+    return new PrInfo(
+        this.id,
+        this.number,
+        this.title,
+        this.status,
+        this.isDraft,
+        this.author,
+        this.mergedBy,
+        this.sourceBranch,
+        this.targetBranch,
+        this.mergeSha,
+        this.commentCount,
+        this.createdAt,
+        this.updatedAt,
+        this.mergedAt,
+        this.closedAt,
+        newLabels,
+        newAssignees,
+        newMilestone);
+  }
+}

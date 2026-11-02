@@ -63,7 +63,7 @@ class IssueServiceLinkedTasksTest {
 
   private static LinkedTaskData taskData(
       String code, String title, String status, String projectCode, String projectName) {
-    return new LinkedTaskData(code, title, status, projectCode, projectName);
+    return new LinkedTaskData(code, title, status, projectCode, projectName, "project-owner");
   }
 
   // -----------------------------------------------------------------------
@@ -82,9 +82,9 @@ class IssueServiceLinkedTasksTest {
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
-    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of(t1, t2));
+    when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of(t1, t2));
 
-    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 1);
+    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 1, null);
 
     assertThat(result).hasSize(2);
 
@@ -94,6 +94,7 @@ class IssueServiceLinkedTasksTest {
     assertThat(first.taskStatus()).isEqualTo("IN_PROGRESS");
     assertThat(first.projectCode()).isEqualTo("OH");
     assertThat(first.projectName()).isEqualTo("GitNode");
+    assertThat(first.projectOwner()).isEqualTo("project-owner");
 
     IssueLinkedTaskInfo second = result.get(1);
     assertThat(second.taskCode()).isEqualTo("OH-3");
@@ -110,9 +111,9 @@ class IssueServiceLinkedTasksTest {
 
     when(repoRepository.findByOwnerUsernameAndName("bob", "repo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 5)).thenReturn(Optional.of(iss));
-    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of());
+    when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of());
 
-    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("bob", "repo", 5);
+    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("bob", "repo", 5, null);
 
     assertThat(result).isEmpty();
   }
@@ -129,9 +130,9 @@ class IssueServiceLinkedTasksTest {
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 2)).thenReturn(Optional.of(iss));
-    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of(tA, tB));
+    when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of(tA, tB));
 
-    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 2);
+    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 2, null);
 
     assertThat(result).extracting(IssueLinkedTaskInfo::projectCode).containsExactly("AAA", "BB");
   }
@@ -146,7 +147,7 @@ class IssueServiceLinkedTasksTest {
     when(repoRepository.findByOwnerUsernameAndName("nobody", "missing"))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> issueService.getLinkedTasks("nobody", "missing", 1))
+    assertThatThrownBy(() -> issueService.getLinkedTasks("nobody", "missing", 1, null))
         .isInstanceOf(ItemNotFoundException.class);
   }
 
@@ -159,7 +160,7 @@ class IssueServiceLinkedTasksTest {
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 999)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> issueService.getLinkedTasks("alice", "myrepo", 999))
+    assertThatThrownBy(() -> issueService.getLinkedTasks("alice", "myrepo", 999, null))
         .isInstanceOf(ItemNotFoundException.class);
   }
 
@@ -174,9 +175,9 @@ class IssueServiceLinkedTasksTest {
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 3)).thenReturn(Optional.of(iss));
-    when(taskQueryPort.findByLinkedIssueId(issueId)).thenReturn(List.of(t));
+    when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of(t));
 
-    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 3);
+    List<IssueLinkedTaskInfo> result = issueService.getLinkedTasks("alice", "myrepo", 3, null);
 
     assertThat(result)
         .singleElement()

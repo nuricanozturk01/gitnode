@@ -22,9 +22,11 @@ import dev.gitnode.os.auth.dtos.RegistrationForm;
 import dev.gitnode.os.shared.audit.services.AuditLogService;
 import dev.gitnode.os.shared.auth.dtos.LoginInfo;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.shared.auth.services.PasswordHasher;
 import dev.gitnode.os.shared.auth.services.TenantAuthGuard;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
+import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,6 +52,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class AuthService {
 
   private static final int RECOVERY_CODE_LENGTH = 150;
+  static final java.time.Duration RECOVERY_TTL = java.time.Duration.ofMinutes(30);
   private static final int SALT_LENGTH = 16;
   private static final String AUTH_LOGIN_SUCCESS = "AUTH_LOGIN_SUCCESS";
   private static final String AUTH_LOGIN_FAILED = "AUTH_LOGIN_FAILED";
@@ -57,29 +60,31 @@ public class AuthService {
 
   private final TenantRepository tenantRepository;
   private final JwtUtils jwtUtils;
+  private final PasswordHasher passwordHasher;
+  private final PasswordRecoveryNotifier recoveryNotifier;
+  private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
   private final AuditLogService auditLogService;
 
   @Value("${gitnode.audit.enabled:true}")
   private boolean auditEnabled;
 
+  /**
+   * Starts a password recovery. The outcome is identical for unknown, disabled and valid accounts
+   * so the endpoint cannot be used to discover which accounts exist.
+   */
   @Transactional
-  public boolean getPasswordRecoveryCode(final RecoveryCodeRequestForm form) {
+  public void requestPasswordRecovery(final RecoveryCodeRequestForm form) {
 
-    final var tenantOptional =
-        this.tenantRepository.findByUsernameOrEmail(
-            form.getUsernameOrEmail().toLowerCase(Locale.getDefault()));
-
-    if (tenantOptional.isEmpty()) {
-      return false;
-    }
-
-    final var tenant = tenantOptional.get();
-
-    this.checkPasswordRecoveryCode(tenant);
-
-    // sent email
-
-    return true;
+    this.tenantRepository
+        .findByUsernameOrEmail(form.getUsernameOrEmail().toLowerCase(Locale.getDefault()))
+        .filter(Tenant::isEnabled)
+        .ifPresent(
+            tenant -> {
+              final var code = RandomStringUtils.secure().nextAlphanumeric(RECOVERY_CODE_LENGTH);
+              this.tenantRepository.updatePasswordRecoveryCode(
+                  tenant.getId(), DigestUtils.sha256Hex(code), Instant.now().plus(RECOVERY_TTL));
+              this.recoveryNotifier.send(tenant, code);
+            });
   }
 
   @Transactional
@@ -104,7 +109,12 @@ public class AuthService {
       final var tenant =
           this.tenantRepository
               .findByUsernameOrEmail(usernameOrEmail)
-              .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
+              .orElseThrow(
+                  () -> {
+                    // Same error and about the same time as a wrong password: no account probing.
+                    this.passwordHasher.spendTime(form.getPassword());
+                    return new AccessNotAllowedException("wrongPassword");
+                  });
 
       this.checkPassword(tenant, form);
       TenantAuthGuard.requireEnabled(tenant);
@@ -147,19 +157,37 @@ public class AuthService {
 
     final var tenant =
         this.tenantRepository
-            .findByPasswordRecoveryCode(form.getRecoveryCode())
+            .findByPasswordRecoveryCode(DigestUtils.sha256Hex(form.getRecoveryCode()))
+            .filter(
+                found ->
+                    found.getPasswordRecoveryExpiresAt() != null
+                        && found.getPasswordRecoveryExpiresAt().isAfter(Instant.now()))
+            .filter(Tenant::isEnabled)
             .orElseThrow(() -> new AccessNotAllowedException("accessDenied"));
 
-    final var salt = RandomStringUtils.secure().nextAlphanumeric(16);
-
-    tenant.setHash(DigestUtils.sha256Hex(form.getPassword() + salt));
-    tenant.setSalt(salt);
+    this.passwordHasher.setPassword(tenant, form.getPassword());
     tenant.setPasswordRecoveryCode(null);
+    tenant.setPasswordRecoveryExpiresAt(null);
 
     this.tenantRepository.save(tenant);
+    this.refreshTokens.revokeAll(tenant.getId());
   }
 
-  public LoginInfo getTenantById(final UUID tenantId) {
+  /** Exchanges a refresh token for a new access token and a rotated refresh token. */
+  @Transactional(noRollbackFor = TokenExpiredException.class)
+  public LoginInfo refresh(final String refreshToken) {
+
+    final var rotation = this.refreshTokens.rotate(refreshToken, this::findEnabledTenant);
+
+    return this.createLoginInfo(rotation.tenant(), rotation.refreshToken());
+  }
+
+  @Transactional
+  public void logout(final String refreshToken) {
+    this.refreshTokens.revoke(refreshToken);
+  }
+
+  private Tenant findEnabledTenant(final UUID tenantId) {
 
     final var tenant =
         this.tenantRepository
@@ -168,26 +196,16 @@ public class AuthService {
 
     TenantAuthGuard.requireEnabled(tenant);
 
-    return this.createLoginInfo(tenant);
-  }
-
-  private void checkPasswordRecoveryCode(final Tenant tenant) {
-
-    final var recoveryCode = tenant.getPasswordRecoveryCode();
-
-    if (recoveryCode != null) {
-      return;
-    }
-
-    final var verificationCode = RandomStringUtils.secure().nextAlphanumeric(RECOVERY_CODE_LENGTH);
-
-    this.tenantRepository.updatePasswordRecoveryCode(tenant.getId(), verificationCode);
+    return tenant;
   }
 
   private LoginInfo createLoginInfo(final Tenant tenant) {
+    return this.createLoginInfo(tenant, this.refreshTokens.issue(tenant));
+  }
+
+  private LoginInfo createLoginInfo(final Tenant tenant, final String refreshToken) {
 
     final var accessToken = this.jwtUtils.generateToken(tenant);
-    final var refreshToken = this.jwtUtils.generateRefreshToken(tenant);
 
     return LoginInfo.builder()
         .token(accessToken)
@@ -212,23 +230,21 @@ public class AuthService {
 
   private void checkPassword(final Tenant tenant, final LoginForm form) {
 
-    final var hash = DigestUtils.sha256Hex(form.getPassword() + tenant.getSalt());
-
-    if (!hash.equals(tenant.getHash())) {
+    if (!this.passwordHasher.matches(form.getPassword(), tenant)) {
       throw new AccessNotAllowedException("wrongPassword");
+    }
+    if (this.passwordHasher.upgradeIfNeeded(tenant, form.getPassword())) {
+      this.tenantRepository.save(tenant);
     }
   }
 
   private Tenant createTenant(
       final String formUsername, final String email, final Optional<String> password) {
 
-    final var salt = RandomStringUtils.secure().nextAlphanumeric(SALT_LENGTH);
-
     final var tenant = new Tenant();
     tenant.setUsername(formUsername);
     tenant.setEmail(email);
-    password.ifPresent(p -> tenant.setHash(DigestUtils.sha256Hex(p + salt)));
-    tenant.setSalt(salt);
+    password.ifPresent(p -> this.passwordHasher.setPassword(tenant, p));
     tenant.setEnabled(true);
     tenant.setCreatedAt(Instant.now());
 

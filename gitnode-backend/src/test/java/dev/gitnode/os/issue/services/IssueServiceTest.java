@@ -106,6 +106,7 @@ class IssueServiceTest {
     IssueForm form = new IssueForm("Bug", "details", null);
     when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
     when(tenantRepository.findById(authorId)).thenReturn(Optional.of(author));
+    when(repoRepository.findByIdForUpdate(repo.getId())).thenReturn(Optional.of(repo));
     when(issueRepository.findMaxNumberByRepoId(repo.getId())).thenReturn(3);
     Issue saved = new Issue();
     saved.setId(UUID.randomUUID());
@@ -132,6 +133,7 @@ class IssueServiceTest {
     IssueForm form = new IssueForm("Bug", null, assigneeId);
     when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
     when(tenantRepository.findById(authorId)).thenReturn(Optional.of(author));
+    when(repoRepository.findByIdForUpdate(repo.getId())).thenReturn(Optional.of(repo));
     when(issueRepository.findMaxNumberByRepoId(repo.getId())).thenReturn(0);
     when(tenantRepository.findById(assigneeId)).thenReturn(Optional.empty());
 
@@ -215,7 +217,8 @@ class IssueServiceTest {
     Tenant author = tenant(requesterId, "alice");
     Issue issue = openIssue(repo, author, 1);
     when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
-    when(issueRepository.findByRepoIdAndNumber(repo.getId(), 1)).thenReturn(Optional.of(issue));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repo.getId(), 1))
+        .thenReturn(Optional.of(issue));
     when(issueRepository.save(issue)).thenReturn(issue);
     when(commentRepository.countByIssueId(issue.getId())).thenReturn(0);
     when(issueMapper.toDetail(issue, 0)).thenReturn(IssueDetail.builder().number(1).build());
@@ -243,7 +246,8 @@ class IssueServiceTest {
     issue.setStatus(IssueStatus.CLOSED.name());
     issue.setClosedAt(Instant.now());
     when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
-    when(issueRepository.findByRepoIdAndNumber(repo.getId(), 1)).thenReturn(Optional.of(issue));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repo.getId(), 1))
+        .thenReturn(Optional.of(issue));
     when(issueRepository.save(issue)).thenReturn(issue);
     when(commentRepository.countByIssueId(issue.getId())).thenReturn(0);
     when(issueMapper.toDetail(issue, 0)).thenReturn(IssueDetail.builder().number(1).build());

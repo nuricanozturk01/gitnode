@@ -49,7 +49,10 @@ export class CreateReleasePage implements OnInit {
   readonly tags = signal<TagInfo[]>([]);
   readonly branches = signal<BranchInfo[]>([]);
   readonly submitting = signal(false);
+  readonly generating = signal(false);
   readonly createNewTag = signal(false);
+  readonly metaLoading = signal(true);
+  readonly metaFailed = signal(false);
   readonly bodyTab = signal<'write' | 'preview'>('write');
 
   private readonly routeParams = parentParamMapSignal(this.route);
@@ -81,25 +84,57 @@ export class CreateReleasePage implements OnInit {
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) return;
-    const [tags, branches] = await Promise.all([
-      this.tagService.getAll(owner, repo).catch(() => []),
-      this.branchService.getAll(owner, repo).catch(() => []),
-    ]);
-    this.tags.set(tags);
-    this.branches.set(branches);
-    const defaultBranch = branches.find((b) => b.isDefault)?.name ?? 'main';
-    this.form.patchValue({ targetCommitish: defaultBranch });
+    this.metaLoading.set(true);
+    this.metaFailed.set(false);
+    try {
+      const [tags, branches] = await Promise.all([
+        this.tagService.getAll(owner, repo),
+        this.branchService.getAll(owner, repo),
+      ]);
+      const committedBranches = branches.filter((branch) => !!branch.lastCommitSha);
+      this.tags.set(tags);
+      this.branches.set(committedBranches);
+      this.createNewTag.set(tags.length === 0);
+      const defaultBranch = committedBranches.find((b) => b.isDefault)?.name ?? committedBranches[0]?.name ?? '';
+      this.form.patchValue({ targetCommitish: defaultBranch });
+    } catch {
+      this.metaFailed.set(true);
+    } finally {
+      this.metaLoading.set(false);
+    }
+  }
+
+  retryMeta(): void {
+    void this.loadMeta();
   }
 
   toggleCreateNewTag(): void {
     this.createNewTag.update((v) => !v);
-    if (!this.createNewTag()) {
-      this.form.patchValue({ targetCommitish: '' });
+  }
+
+  async generateNotes(): Promise<void> {
+    const tagName = (this.form.value.tagName ?? '').trim();
+    if (!tagName || this.generating()) return;
+    this.generating.set(true);
+    try {
+      const target = this.createNewTag() ? this.form.value.targetCommitish || undefined : undefined;
+      const notes = await this.releaseService.generateNotes(this.owner(), this.repoName(), tagName, target);
+      this.form.patchValue({ body: notes.body });
+      if (!this.form.value.name) this.form.patchValue({ name: notes.name });
+      this.bodyTab.set('write');
+      this.toast.success(
+        notes.commitCount === 0 ? 'No new commits since the previous tag' : `Generated notes from ${notes.commitCount} commits`,
+      );
+    } catch {
+      this.toast.error('Could not generate release notes. Check the tag and target branch.');
+    } finally {
+      this.generating.set(false);
     }
   }
 
   async submit(publish: boolean): Promise<void> {
-    if (this.form.invalid) return;
+    if (this.form.invalid || this.metaLoading() || this.metaFailed() || this.submitting()
+      || (this.createNewTag() && !this.form.value.targetCommitish)) return;
     this.submitting.set(true);
     const val = this.form.value;
     try {

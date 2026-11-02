@@ -16,6 +16,7 @@
 package dev.gitnode.os.shared.repo.repositories;
 
 import dev.gitnode.os.shared.repo.entities.Repo;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -26,6 +27,7 @@ import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -41,6 +43,10 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   Optional<Repo> findByIdWithOwner(@Param("id") UUID id);
 
   Optional<Repo> findByOwnerUsernameAndName(String repoOwner, String repoName);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT r FROM Repo r WHERE r.id = :id")
+  Optional<Repo> findByIdForUpdate(UUID id);
 
   Page<Repo> findAllByOwnerUsername(String ownerUsername, Pageable pageable);
 

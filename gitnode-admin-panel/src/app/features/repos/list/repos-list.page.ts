@@ -1,9 +1,8 @@
-import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
 import { AdminRepoService } from '../../../core/admin/admin-repo.service';
 import type { AdminRepoSummary } from '../../../core/admin/admin.models';
 import { ADMIN_PAGE_SIZE } from '../../../core/organization/organization.models';
-import { ToastService } from '../../../core/toast/toast.service';
 import { PaginationComponent } from '../../../shared/components/pagination/pagination.component';
 
 @Component({
@@ -15,9 +14,8 @@ import { PaginationComponent } from '../../../shared/components/pagination/pagin
 })
 export class ReposListPage implements OnInit {
   private readonly adminRepoService = inject(AdminRepoService);
-  private readonly toast = inject(ToastService);
-
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly repos = signal<AdminRepoSummary[]>([]);
   readonly search = signal('');
   readonly owner = signal('');
@@ -27,6 +25,14 @@ export class ReposListPage implements OnInit {
   readonly pageSize = ADMIN_PAGE_SIZE;
 
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private loadVersion = 0;
+
+  constructor() {
+    inject(DestroyRef).onDestroy(() => {
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      this.loadVersion++;
+    });
+  }
 
   ngOnInit(): void {
     void this.load();
@@ -56,12 +62,15 @@ export class ReposListPage implements OnInit {
   }
 
   private scheduleLoad(): void {
+    this.loadVersion++;
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(() => void this.load(), 300);
   }
 
   private async load(): Promise<void> {
+    const version = ++this.loadVersion;
     this.loading.set(true);
+    this.loadFailed.set(false);
     try {
       const res = await this.adminRepoService.list({
         page: this.page(),
@@ -69,13 +78,18 @@ export class ReposListPage implements OnInit {
         q: this.search().trim() || undefined,
         owner: this.owner().trim() || undefined,
       });
+      if (version !== this.loadVersion) return;
       this.repos.set(res.content);
       this.totalPages.set(res.totalPages);
       this.totalElements.set(res.totalElements);
     } catch {
-      this.toast.error('Failed to load repositories');
+      if (version === this.loadVersion) this.loadFailed.set(true);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.load();
   }
 }

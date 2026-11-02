@@ -15,11 +15,16 @@
  */
 package dev.gitnode.os.pr.controllers;
 
+import dev.gitnode.os.pr.dtos.PrConflictInfo;
+import dev.gitnode.os.pr.dtos.PrConflictResolveForm;
 import dev.gitnode.os.pr.dtos.PrDetail;
+import dev.gitnode.os.pr.dtos.PrFilter;
 import dev.gitnode.os.pr.dtos.PrForm;
 import dev.gitnode.os.pr.dtos.PrInfo;
 import dev.gitnode.os.pr.dtos.PrMergeForm;
+import dev.gitnode.os.pr.dtos.PrMergeRequirements;
 import dev.gitnode.os.pr.dtos.PrUpdateForm;
+import dev.gitnode.os.pr.services.PrConflictService;
 import dev.gitnode.os.pr.services.PullRequestService;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
@@ -31,6 +36,8 @@ import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -55,6 +62,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PullRequestController {
 
   private final PullRequestService prService;
+  private final PrConflictService conflictService;
   private final JwtUtils tokenService;
   private final RepoService repoService;
 
@@ -84,7 +92,7 @@ public class PullRequestController {
 
     final var requesterId = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var updatedPr = this.prService.update(owner, repo, number, form);
+    final var updatedPr = this.prService.update(owner, repo, number, form, requesterId);
     return ResponseEntity.ok(updatedPr);
   }
 
@@ -99,6 +107,19 @@ public class PullRequestController {
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     this.prService.close(owner, repo, number, requesterId);
     return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/{number}/reopen")
+  public ResponseEntity<PrDetail> reopen(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final int number,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader)
+      throws IOException {
+
+    final var requesterId = this.tokenService.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(this.prService.reopen(owner, repo, number, requesterId));
   }
 
   @PostMapping("/{number}/merge")
@@ -118,11 +139,58 @@ public class PullRequestController {
     return ResponseEntity.ok(mergedPr);
   }
 
+  @GetMapping("/{number}/merge-requirements")
+  public ResponseEntity<PrMergeRequirements> mergeRequirements(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
+      throws IOException {
+
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(this.prService.mergeRequirements(owner, repo, number));
+  }
+
+  @GetMapping("/{number}/conflicts")
+  public ResponseEntity<PrConflictInfo> conflicts(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final int number,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader)
+      throws IOException {
+
+    final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(this.conflictService.inspect(owner, repo, number));
+  }
+
+  @PostMapping("/{number}/conflicts/resolve")
+  @RateLimit(limit = 50, windowSeconds = 600, key = "pr.conflicts.resolve")
+  public ResponseEntity<Map<String, String>> resolveConflicts(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final int number,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @Valid @RequestBody final PrConflictResolveForm form)
+      throws IOException {
+
+    final var actorId = this.tokenService.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(actorId, owner, repo, CollaboratorPermission.PUSH);
+    final var sha = this.conflictService.resolve(owner, repo, number, actorId, form);
+    return ResponseEntity.ok(Map.of("commitSha", sha));
+  }
+
   @GetMapping
   public ResponseEntity<PageResponse<PrInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @RequestParam(defaultValue = "OPEN") final String status,
+      @RequestParam(required = false) final @Nullable UUID labelId,
+      @RequestParam(required = false) final @Nullable UUID milestoneId,
+      @RequestParam(required = false) final @Nullable String assignee,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "25") final int size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
@@ -130,7 +198,9 @@ public class PullRequestController {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var prs = this.prService.getAll(owner, repo, status, page, size);
+    final var prs =
+        this.prService.getAll(
+            owner, repo, status, new PrFilter(labelId, milestoneId, assignee), page, size);
     return ResponseEntity.ok(PageResponse.from(prs));
   }
 

@@ -51,6 +51,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class SamlAuthenticationSuccessHandlerTest {
 
   @Mock private JwtUtils jwtUtils;
+  @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
   @Mock private TenantRepository tenantRepository;
   @Mock private AccountRepository accountRepository;
   @Mock private OrganizationRepository organizationRepository;
@@ -87,7 +88,7 @@ class SamlAuthenticationSuccessHandlerTest {
         .thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(saved);
     when(jwtUtils.generateToken(saved)).thenReturn("jwt-access");
-    when(jwtUtils.generateRefreshToken(saved)).thenReturn("jwt-refresh");
+    when(refreshTokens.issue(saved)).thenReturn("jwt-refresh");
 
     handler.onAuthenticationSuccess(request, response, authentication);
 
@@ -121,7 +122,7 @@ class SamlAuthenticationSuccessHandlerTest {
     when(tenantRepository.findByUsernameOrEmail("alice@corp.example.com"))
         .thenReturn(Optional.of(existing));
     when(jwtUtils.generateToken(existing)).thenReturn("jwt-access");
-    when(jwtUtils.generateRefreshToken(existing)).thenReturn("jwt-refresh");
+    when(refreshTokens.issue(existing)).thenReturn("jwt-refresh");
 
     handler.onAuthenticationSuccess(request, response, authentication);
 
@@ -157,7 +158,7 @@ class SamlAuthenticationSuccessHandlerTest {
     assertThat(redirectCaptor.getValue())
         .isEqualTo("http://localhost:4200/login?error=userDisabled");
     verify(jwtUtils, never()).generateToken(any());
-    verify(jwtUtils, never()).generateRefreshToken(any());
+    verify(refreshTokens, never()).issue(any());
   }
 
   @Test
@@ -176,7 +177,7 @@ class SamlAuthenticationSuccessHandlerTest {
     when(tenantRepository.findByUsernameOrEmail(anyString())).thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(saved);
     when(jwtUtils.generateToken(any(Tenant.class))).thenReturn("token");
-    when(jwtUtils.generateRefreshToken(any(Tenant.class))).thenReturn("refresh");
+    when(refreshTokens.issue(any(Tenant.class))).thenReturn("refresh");
 
     handler.onAuthenticationSuccess(request, response, authentication);
 
@@ -204,7 +205,7 @@ class SamlAuthenticationSuccessHandlerTest {
         .thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(saved);
     when(jwtUtils.generateToken(any())).thenReturn("token");
-    when(jwtUtils.generateRefreshToken(any())).thenReturn("refresh");
+    when(refreshTokens.issue(any())).thenReturn("refresh");
 
     handler.onAuthenticationSuccess(request, response, authentication);
 
@@ -231,7 +232,7 @@ class SamlAuthenticationSuccessHandlerTest {
         .thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(saved);
     when(jwtUtils.generateToken(any())).thenReturn("token");
-    when(jwtUtils.generateRefreshToken(any())).thenReturn("refresh");
+    when(refreshTokens.issue(any())).thenReturn("refresh");
 
     handler.onAuthenticationSuccess(request, response, authentication);
 
@@ -258,7 +259,7 @@ class SamlAuthenticationSuccessHandlerTest {
     when(tenantRepository.findByUsernameOrEmail("saml-user@corp.com")).thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(saved);
     when(jwtUtils.generateToken(any())).thenReturn("token");
-    when(jwtUtils.generateRefreshToken(any())).thenReturn("refresh");
+    when(refreshTokens.issue(any())).thenReturn("refresh");
 
     handler.onAuthenticationSuccess(request, response, authentication);
 

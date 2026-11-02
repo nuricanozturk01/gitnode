@@ -15,6 +15,7 @@
 ///
 
 import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
+import { ModalFocusDirective } from '../../directives/modal-focus.directive';
 
 export type ConfirmVariant = 'danger' | 'primary';
 
@@ -22,15 +23,25 @@ export type ConfirmVariant = 'danger' | 'primary';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-confirm-modal',
   standalone: true,
+  imports: [ModalFocusDirective],
   template: `
     <div class="modal" [class.modal-open]="visible()">
-      <div class="modal-box">
-        <h3 class="text-base-content text-lg font-bold">{{ title() }}</h3>
+      @if (visible()) {
+      <div
+        class="modal-box"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        [attr.aria-describedby]="message() ? 'confirm-modal-message' : null"
+        appModalFocus
+        (appModalDismiss)="canceled.emit()"
+      >
+        <h3 id="confirm-modal-title" class="text-base-content text-lg font-bold">{{ title() }}</h3>
         @if (message()) {
-          <p class="text-base-content/80 py-4">{{ message() }}</p>
+          <p id="confirm-modal-message" class="text-base-content/80 py-4">{{ message() }}</p>
         }
         <div class="modal-action">
-          <button type="button" class="btn btn-ghost" (click)="canceled.emit()">
+          <button type="button" class="btn btn-ghost" data-modal-initial (click)="canceled.emit()">
             {{ cancelLabel() }}
           </button>
           <button type="button" [class]="confirmBtnClass()" (click)="confirm.emit()">
@@ -38,8 +49,9 @@ export type ConfirmVariant = 'danger' | 'primary';
           </button>
         </div>
       </div>
+      }
       <form method="dialog" class="modal-backdrop">
-        <button type="button" (click)="canceled.emit()">close</button>
+        <button type="button" tabindex="-1" aria-hidden="true" (click)="canceled.emit()">close</button>
       </form>
     </div>
   `,

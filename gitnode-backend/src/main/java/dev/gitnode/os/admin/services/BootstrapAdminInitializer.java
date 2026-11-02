@@ -22,8 +22,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
@@ -42,6 +40,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
   private static final Duration BOOTSTRAP_LOCK_TTL = Duration.ofSeconds(30);
 
   private final TenantRepository tenantRepository;
+  private final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher;
   private final DistributedLockService lockService;
   private final TransactionTemplate transactionTemplate;
   private final boolean enabled;
@@ -50,6 +49,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
 
   public BootstrapAdminInitializer(
       final TenantRepository tenantRepository,
+      final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher,
       final DistributedLockService lockService,
       final TransactionTemplate transactionTemplate,
       @Value("${gitnode.bootstrap.admin.enabled:true}") final boolean enabled,
@@ -57,6 +57,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
       @Value("${gitnode.bootstrap.admin.password:}") final String password) {
 
     this.tenantRepository = tenantRepository;
+    this.passwordHasher = passwordHasher;
     this.lockService = lockService;
     this.transactionTemplate = transactionTemplate;
     this.enabled = enabled;
@@ -89,12 +90,10 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
               log.info("Bootstrap admin already exists, skipping");
               return null;
             }
-            final var salt = RandomStringUtils.secure().nextAlphanumeric(SALT_LENGTH);
             final var tenant = new Tenant();
             tenant.setUsername(normalizedUsername);
             tenant.setEmail(normalizedUsername + BOOTSTRAP_EMAIL_DOMAIN);
-            tenant.setHash(DigestUtils.sha256Hex(this.password + salt));
-            tenant.setSalt(salt);
+            this.passwordHasher.setPassword(tenant, this.password);
             tenant.setEnabled(true);
             tenant.setCreatedAt(Instant.now());
             this.tenantRepository.save(tenant);

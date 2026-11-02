@@ -46,6 +46,9 @@ public interface WorkflowRunRepository extends JpaRepository<WorkflowRun, UUID> 
   List<WorkflowRun> findLatestRunPerDef(
       @Param("repoId") UUID repoId, @Param("defIds") List<UUID> defIds);
 
+  Optional<WorkflowRun> findFirstByRepoIdAndTriggerShaAndWorkflowNameOrderByCreatedAtDesc(
+      UUID repoId, String triggerSha, String workflowName);
+
   List<WorkflowRun> findByRepoIdAndConcurrencyGroupAndStatusIn(
       UUID repoId, String group, List<WorkflowRunStatus> statuses);
 

@@ -17,9 +17,12 @@ package dev.gitnode.os.tree.services;
 
 import static dev.gitnode.os.tree.utils.LanguageExtensionUtils.detectLanguage;
 
+import dev.gitnode.os.shared.branch.BranchProtectionService;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.git.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.tree.dtos.BlobResponse;
 import dev.gitnode.os.tree.dtos.EntryType;
@@ -50,6 +53,7 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.FileMode;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
@@ -71,6 +75,8 @@ public class TreeNonTxService {
 
   private final GitProvider gitProvider;
   private final RepoCacheInvalidator cacheInvalidator;
+  private final BranchProtectionService branchProtection;
+  private final TreeCommitEventPublisher treeCommitEvents;
 
   @Cacheable(
       cacheNames = CacheNames.TREE,
@@ -422,6 +428,23 @@ public class TreeNonTxService {
       final PersonIdent author)
       throws IOException {
 
+    return this.updateFile(
+        owner, repoName, branch, filePath, newContent, commitMessage, author, author.getName());
+  }
+
+  public BlobResponse updateFile(
+      final String owner,
+      final String repoName,
+      final String branch,
+      final String filePath,
+      final byte[] newContent,
+      final String commitMessage,
+      final PersonIdent author,
+      final String actorUsername)
+      throws IOException {
+
+    this.branchProtection.assertDirectWriteAllowed(owner, repoName, branch);
+
     try (final var gitRepo = this.gitProvider.open(owner, repoName);
         final var inserter = gitRepo.newObjectInserter()) {
 
@@ -476,9 +499,11 @@ public class TreeNonTxService {
         final var refUpdate = gitRepo.updateRef(Constants.R_HEADS + branch);
         refUpdate.setNewObjectId(newCommitId);
         refUpdate.setExpectedOldObjectId(headCommit.getId());
-        refUpdate.update();
+        final var result = refUpdate.update();
+        this.assertBranchUpdated(result);
 
         this.cacheInvalidator.evictBranchScoped(owner, repoName, branch);
+        this.treeCommitEvents.publish(owner, repoName, branch, actorUsername, newCommitId.name());
 
         final var fileName = Path.of(filePath).getFileName().toString();
         final var isBinary = this.isBinaryContent(newContent);
@@ -494,6 +519,13 @@ public class TreeNonTxService {
             .lineCount(isBinary ? 0 : this.countLines(newContent))
             .build();
       }
+    }
+  }
+
+  private void assertBranchUpdated(final RefUpdate.Result result) {
+    if (result != RefUpdate.Result.FAST_FORWARD && result != RefUpdate.Result.NEW) {
+      throw new BadRequestException(
+          "Could not update branch; it may have changed. Reload and try again.");
     }
   }
 

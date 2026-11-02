@@ -1,5 +1,5 @@
 # ─── Stage 1: Angular Build ───────────────────────────────────────────────
-FROM node:22-alpine AS frontend-build
+FROM node:24-alpine AS frontend-build
 
 ARG API_URL=http://localhost:8080
 ARG GIT_SSH_URL=git@localhost:2222

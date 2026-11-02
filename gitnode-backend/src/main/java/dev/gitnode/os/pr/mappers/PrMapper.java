@@ -51,6 +51,9 @@ public interface PrMapper {
   @Mapping(target = "mergedBy", source = "mergedBy")
   @Mapping(target = "commentCount", source = "commentCount")
   @Mapping(target = "isDraft", source = "pr.draft")
+  @Mapping(target = "labels", ignore = true)
+  @Mapping(target = "assignees", ignore = true)
+  @Mapping(target = "milestone", ignore = true)
   PrInfo toInfo(
       PullRequest pr, int commentCount, AuthorInfo authorInfo, @Nullable AuthorInfo mergedBy);
 

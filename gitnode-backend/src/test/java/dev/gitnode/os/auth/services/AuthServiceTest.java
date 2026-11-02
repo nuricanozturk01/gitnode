@@ -34,6 +34,7 @@ import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -53,6 +54,12 @@ class AuthServiceTest {
 
   @Mock private TenantRepository tenantRepository;
   @Mock private JwtUtils jwtUtils;
+  @Mock private PasswordRecoveryNotifier recoveryNotifier;
+  @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
+
+  @org.mockito.Spy
+  private dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher =
+      new dev.gitnode.os.shared.auth.services.PasswordHasher();
 
   @InjectMocks private AuthService authService;
 
@@ -112,7 +119,7 @@ class AuthServiceTest {
               return saved;
             });
     when(jwtUtils.generateToken(any(Tenant.class))).thenReturn("access-token");
-    when(jwtUtils.generateRefreshToken(any(Tenant.class))).thenReturn("refresh-token");
+    when(refreshTokens.issue(any(Tenant.class))).thenReturn("refresh-token");
 
     LoginInfo result = authService.register(form);
 
@@ -128,8 +135,9 @@ class AuthServiceTest {
     Tenant saved = tenantCaptor.getValue();
     assertThat(saved.getUsername()).isEqualTo("alice");
     assertThat(saved.getEmail()).isEqualTo("alice@example.com");
-    assertThat(saved.getSalt()).isNotBlank();
-    assertThat(saved.getHash()).isEqualTo(DigestUtils.sha256Hex(VALID_PASSWORD + saved.getSalt()));
+    assertThat(saved.getSalt()).isNull();
+    assertThat(saved.getHash()).startsWith("$2");
+    assertThat(passwordHasher.matches(VALID_PASSWORD, saved)).isTrue();
   }
 
   @Test
@@ -142,7 +150,7 @@ class AuthServiceTest {
 
     assertThatThrownBy(() -> authService.login(form))
         .isInstanceOf(AccessNotAllowedException.class)
-        .hasMessageContaining("userNotExist");
+        .hasMessageContaining("wrongPassword");
   }
 
   @Test
@@ -180,7 +188,7 @@ class AuthServiceTest {
     LoginForm form = LoginForm.builder().usernameOrEmail("Alice").password(VALID_PASSWORD).build();
     when(tenantRepository.findByUsernameOrEmail("alice")).thenReturn(Optional.of(tenant));
     when(jwtUtils.generateToken(tenant)).thenReturn("access-token");
-    when(jwtUtils.generateRefreshToken(tenant)).thenReturn("refresh-token");
+    when(refreshTokens.issue(tenant)).thenReturn("refresh-token");
 
     LoginInfo result = authService.login(form);
 
@@ -190,51 +198,92 @@ class AuthServiceTest {
   }
 
   @Test
-  @DisplayName("getPasswordRecoveryCode returns false when user is unknown")
-  void getPasswordRecoveryCode_returnsFalse_whenUserNotFound() {
-    RecoveryCodeRequestForm form =
-        RecoveryCodeRequestForm.builder().usernameOrEmail("nobody@example.com").build();
-    when(tenantRepository.findByUsernameOrEmail("nobody@example.com")).thenReturn(Optional.empty());
+  @DisplayName("login upgrades a legacy SHA-256 hash to bcrypt and keeps the password working")
+  void login_upgradesLegacyHash() {
+    Tenant tenant =
+        tenantWithCredentials("alice", "alice@example.com", VALID_PASSWORD, "fixedsalt1234567");
+    LoginForm form = LoginForm.builder().usernameOrEmail("alice").password(VALID_PASSWORD).build();
+    when(tenantRepository.findByUsernameOrEmail("alice")).thenReturn(Optional.of(tenant));
+    when(jwtUtils.generateToken(tenant)).thenReturn("access-token");
+    when(refreshTokens.issue(tenant)).thenReturn("refresh-token");
 
-    boolean result = authService.getPasswordRecoveryCode(form);
+    authService.login(form);
 
-    assertThat(result).isFalse();
-    verify(tenantRepository, never()).updatePasswordRecoveryCode(any(), anyString());
+    assertThat(tenant.getHash()).startsWith("$2");
+    assertThat(tenant.getSalt()).isNull();
+    assertThat(passwordHasher.matches(VALID_PASSWORD, tenant)).isTrue();
+    verify(tenantRepository).save(tenant);
   }
 
   @Test
-  @DisplayName("getPasswordRecoveryCode generates code when user exists and has no pending code")
-  void getPasswordRecoveryCode_updatesCode_whenNoPendingCode() {
-    UUID tenantId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(tenantId);
-    tenant.setUsername("alice");
-    tenant.setPasswordRecoveryCode(null);
-    RecoveryCodeRequestForm form =
-        RecoveryCodeRequestForm.builder().usernameOrEmail("alice").build();
+  @DisplayName("login with a wrong password never rewrites the stored hash")
+  void login_wrongPasswordKeepsHash() {
+    Tenant tenant =
+        tenantWithCredentials("alice", "alice@example.com", "OtherPass1", "fixedsalt1234567");
+    String before = tenant.getHash();
     when(tenantRepository.findByUsernameOrEmail("alice")).thenReturn(Optional.of(tenant));
 
-    boolean result = authService.getPasswordRecoveryCode(form);
+    assertThatThrownBy(
+            () ->
+                authService.login(
+                    LoginForm.builder().usernameOrEmail("alice").password(VALID_PASSWORD).build()))
+        .isInstanceOf(AccessNotAllowedException.class);
 
-    assertThat(result).isTrue();
-    verify(tenantRepository).updatePasswordRecoveryCode(eq(tenantId), anyString());
+    assertThat(tenant.getHash()).isEqualTo(before);
+    verify(tenantRepository, never()).save(any(Tenant.class));
   }
 
-  @Test
-  @DisplayName("getPasswordRecoveryCode skips update when recovery code already exists")
-  void getPasswordRecoveryCode_skipsUpdate_whenCodeAlreadySet() {
+  private static Tenant recoveryTenant(final boolean enabled) {
     Tenant tenant = new Tenant();
     tenant.setId(UUID.randomUUID());
     tenant.setUsername("alice");
-    tenant.setPasswordRecoveryCode("existing-code");
-    RecoveryCodeRequestForm form =
-        RecoveryCodeRequestForm.builder().usernameOrEmail("alice").build();
+    tenant.setEnabled(enabled);
+    return tenant;
+  }
+
+  @Test
+  @DisplayName("requestPasswordRecovery does nothing observable for unknown accounts")
+  void requestPasswordRecovery_ignoresUnknownAccount() {
+    when(tenantRepository.findByUsernameOrEmail("nobody@example.com")).thenReturn(Optional.empty());
+
+    authService.requestPasswordRecovery(
+        RecoveryCodeRequestForm.builder().usernameOrEmail("nobody@example.com").build());
+
+    verify(tenantRepository, never()).updatePasswordRecoveryCode(any(), anyString(), any());
+    verify(recoveryNotifier, never()).send(any(), anyString());
+  }
+
+  @Test
+  @DisplayName("requestPasswordRecovery stores only a hash with an expiry and mails the plain code")
+  void requestPasswordRecovery_storesHashAndSendsCode() {
+    Tenant tenant = recoveryTenant(true);
     when(tenantRepository.findByUsernameOrEmail("alice")).thenReturn(Optional.of(tenant));
 
-    boolean result = authService.getPasswordRecoveryCode(form);
+    authService.requestPasswordRecovery(
+        RecoveryCodeRequestForm.builder().usernameOrEmail("alice").build());
 
-    assertThat(result).isTrue();
-    verify(tenantRepository, never()).updatePasswordRecoveryCode(any(), anyString());
+    ArgumentCaptor<String> sent = ArgumentCaptor.forClass(String.class);
+    verify(recoveryNotifier).send(eq(tenant), sent.capture());
+    ArgumentCaptor<String> stored = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<Instant> expires = ArgumentCaptor.forClass(Instant.class);
+    verify(tenantRepository)
+        .updatePasswordRecoveryCode(eq(tenant.getId()), stored.capture(), expires.capture());
+    assertThat(stored.getValue()).isEqualTo(DigestUtils.sha256Hex(sent.getValue()));
+    assertThat(stored.getValue()).isNotEqualTo(sent.getValue());
+    assertThat(expires.getValue())
+        .isBetween(Instant.now().plusSeconds(29 * 60), Instant.now().plusSeconds(31 * 60));
+  }
+
+  @Test
+  @DisplayName("requestPasswordRecovery ignores disabled accounts")
+  void requestPasswordRecovery_ignoresDisabledAccount() {
+    when(tenantRepository.findByUsernameOrEmail("alice"))
+        .thenReturn(Optional.of(recoveryTenant(false)));
+
+    authService.requestPasswordRecovery(
+        RecoveryCodeRequestForm.builder().usernameOrEmail("alice").build());
+
+    verify(recoveryNotifier, never()).send(any(), anyString());
   }
 
   @Test
@@ -245,12 +294,34 @@ class AuthServiceTest {
             .recoveryCode("x".repeat(150))
             .password(VALID_PASSWORD)
             .build();
-    when(tenantRepository.findByPasswordRecoveryCode(form.getRecoveryCode()))
+    when(tenantRepository.findByPasswordRecoveryCode(DigestUtils.sha256Hex(form.getRecoveryCode())))
         .thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> authService.recoverPassword(form))
         .isInstanceOf(AccessNotAllowedException.class)
         .hasMessageContaining("accessDenied");
+  }
+
+  @Test
+  @DisplayName("recoverPassword rejects an expired recovery code")
+  void recoverPassword_throws_whenCodeExpired() {
+    Tenant tenant =
+        tenantWithCredentials("alice", "alice@example.com", "OldPass1word", "oldsalt123456789");
+    String recoveryCode = "d".repeat(150);
+    tenant.setPasswordRecoveryCode(DigestUtils.sha256Hex(recoveryCode));
+    tenant.setPasswordRecoveryExpiresAt(Instant.now().minusSeconds(1));
+    when(tenantRepository.findByPasswordRecoveryCode(DigestUtils.sha256Hex(recoveryCode)))
+        .thenReturn(Optional.of(tenant));
+
+    assertThatThrownBy(
+            () ->
+                authService.recoverPassword(
+                    RecoverPasswordForm.builder()
+                        .recoveryCode(recoveryCode)
+                        .password(VALID_PASSWORD)
+                        .build()))
+        .isInstanceOf(AccessNotAllowedException.class);
+    verify(tenantRepository, never()).save(any(Tenant.class));
   }
 
   @Test
@@ -260,47 +331,51 @@ class AuthServiceTest {
     Tenant tenant = tenantWithCredentials("alice", "alice@example.com", "OldPass1word", oldSalt);
     tenant.setPasswordRecoveryCode("valid-recovery-code");
     String recoveryCode = "c".repeat(150);
-    tenant.setPasswordRecoveryCode(recoveryCode);
+    tenant.setPasswordRecoveryCode(DigestUtils.sha256Hex(recoveryCode));
+    tenant.setPasswordRecoveryExpiresAt(Instant.now().plusSeconds(600));
     RecoverPasswordForm form =
         RecoverPasswordForm.builder().recoveryCode(recoveryCode).password(VALID_PASSWORD).build();
-    when(tenantRepository.findByPasswordRecoveryCode(recoveryCode)).thenReturn(Optional.of(tenant));
+    when(tenantRepository.findByPasswordRecoveryCode(DigestUtils.sha256Hex(recoveryCode)))
+        .thenReturn(Optional.of(tenant));
     when(tenantRepository.save(tenant)).thenReturn(tenant);
 
     authService.recoverPassword(form);
 
     assertThat(tenant.getPasswordRecoveryCode()).isNull();
-    assertThat(tenant.getSalt()).isNotEqualTo(oldSalt);
-    assertThat(tenant.getHash())
-        .isEqualTo(DigestUtils.sha256Hex(VALID_PASSWORD + tenant.getSalt()));
+    assertThat(tenant.getSalt()).isNull();
+    assertThat(passwordHasher.matches(VALID_PASSWORD, tenant)).isTrue();
     verify(tenantRepository).save(tenant);
   }
 
   @Test
-  @DisplayName("getTenantById throws AccessNotAllowedException when tenant not found")
-  void getTenantById_throws_whenTenantMissing() {
+  @DisplayName("refresh rejects tokens whose account no longer exists")
+  void refresh_throws_whenTenantMissing() {
     UUID tenantId = UUID.randomUUID();
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.empty());
+    when(refreshTokens.rotate(eq("old"), any()))
+        .thenAnswer(
+            invocation ->
+                invocation.<RefreshTokenService.TenantLookup>getArgument(1).find(tenantId));
 
-    assertThatThrownBy(() -> authService.getTenantById(tenantId))
+    assertThatThrownBy(() -> authService.refresh("old"))
         .isInstanceOf(AccessNotAllowedException.class)
         .hasMessageContaining("userNotExist");
   }
 
   @Test
-  @DisplayName("getTenantById returns LoginInfo for existing tenant")
-  void getTenantById_returnsLoginInfo_whenTenantExists() {
-    UUID tenantId = UUID.randomUUID();
+  @DisplayName("refresh returns a rotated refresh token for an existing tenant")
+  void refresh_returnsRotatedLoginInfo() {
     Tenant tenant =
         tenantWithCredentials("alice", "alice@example.com", VALID_PASSWORD, "salt123456789012");
-    tenant.setId(tenantId);
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+    tenant.setId(UUID.randomUUID());
+    when(refreshTokens.rotate(eq("old"), any()))
+        .thenReturn(new RefreshTokenService.Rotation(tenant, "rotated"));
     when(jwtUtils.generateToken(tenant)).thenReturn("access-token");
-    when(jwtUtils.generateRefreshToken(tenant)).thenReturn("refresh-token");
 
-    LoginInfo result = authService.getTenantById(tenantId);
+    LoginInfo result = authService.refresh("old");
 
     assertThat(result.getToken()).isEqualTo("access-token");
-    assertThat(result.getRefreshToken()).isEqualTo("refresh-token");
+    assertThat(result.getRefreshToken()).isEqualTo("rotated");
     assertThat(result.getUsername()).isEqualTo("alice");
   }
 

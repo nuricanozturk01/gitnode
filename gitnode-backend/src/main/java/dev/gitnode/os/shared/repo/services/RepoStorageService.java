@@ -71,7 +71,7 @@ public class RepoStorageService {
     } catch (final IOException _) {
       log.warn("Repo Rename operation was unsuccessful!. Rollback operation started.");
       this.eventPublisher.publishEvent(
-          new RepoRenameRollbackRequstedEvent(oldName, oldName, newRepoName));
+          new RepoRenameRollbackRequstedEvent(owner, oldName, newRepoName));
       throw new ErrorOccurredException("Failed to rename repository on disk");
     }
   }
@@ -98,8 +98,7 @@ public class RepoStorageService {
     final var newPath = Path.of(this.repoRoot, newUsername);
 
     try {
-      FileSystemUtils.deleteRecursively(newPath);
-      Files.move(oldPath, newPath, StandardCopyOption.ATOMIC_MOVE);
+      Files.move(oldPath, newPath);
     } catch (final IOException e) {
       log.error("IO Exception: ", e);
       throw new ErrorOccurredException("IO Exception Occurred: " + e.getMessage());

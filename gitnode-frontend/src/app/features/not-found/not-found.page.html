@@ -1,0 +1,35 @@
+<main class="nf" aria-labelledby="nf-title">
+  <svg class="nf-graph" viewBox="0 0 320 120" role="img" aria-label="A branch that ends before reaching its destination">
+    <path class="nf-line" d="M10 60 H130" />
+    <path class="nf-line" d="M130 60 C160 60 160 24 190 24 H230" />
+    <path class="nf-line nf-line--lost" d="M130 60 C160 60 160 96 190 96 H236" />
+    <circle class="nf-dot" cx="10" cy="60" r="7" />
+    <circle class="nf-dot" cx="130" cy="60" r="7" />
+    <circle class="nf-dot" cx="230" cy="24" r="7" />
+    <circle class="nf-dot nf-dot--lost" cx="240" cy="96" r="7" />
+    <text class="nf-q" x="262" y="104" aria-hidden="true">?</text>
+  </svg>
+
+  <p class="nf-code" aria-hidden="true">404</p>
+  <h1 id="nf-title" class="nf-title">This page took a wrong branch</h1>
+  <p class="nf-lead">
+    The page you are looking for does not exist, was moved, or is private. Check the address or head back.
+  </p>
+
+  <div class="nf-term" role="note">
+    <p><span class="nf-prompt" aria-hidden="true">$</span> git checkout <span class="nf-path">{{ path }}</span></p>
+    <p class="nf-err">error: pathspec did not match any page known to GitNode</p>
+  </div>
+
+  <div class="nf-actions">
+    <a routerLink="/" class="btn btn-primary btn-sm">
+      <lucide-icon name="home" class="size-4" aria-hidden="true"></lucide-icon>
+      Go to home
+    </a>
+    <button type="button" class="btn btn-outline btn-sm" (click)="back()">
+      <lucide-icon name="arrowLeft" class="size-4" aria-hidden="true"></lucide-icon>
+      Go back
+    </button>
+    <a routerLink="/docs" class="btn btn-ghost btn-sm">Read the docs</a>
+  </div>
+</main>

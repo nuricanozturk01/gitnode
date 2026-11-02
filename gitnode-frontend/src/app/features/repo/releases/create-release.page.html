@@ -7,6 +7,12 @@
     <h1 class="text-base-content text-xl font-semibold">Create a new release</h1>
   </div>
 
+  @if (metaFailed()) {
+  <div role="alert" class="repo-panel flex flex-col items-start gap-3 p-5">
+    <p>Tags and branches could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryMeta()">Try again</button>
+  </div>
+  }
   <form [formGroup]="form" class="space-y-4">
     <section class="repo-panel overflow-hidden">
       <div class="repo-toolbar px-5 py-3">
@@ -42,16 +48,20 @@
             type="checkbox"
             class="checkbox checkbox-sm mt-0.5"
             [checked]="createNewTag()"
+            [disabled]="tags().length === 0 || metaLoading() || metaFailed()"
             (change)="toggleCreateNewTag()"
           />
           <div>
-            <span class="text-base-content text-sm font-medium">Create new tag on publish</span>
+            <span class="text-base-content text-sm font-medium">Create a new tag</span>
             <p class="text-base-content/50 text-xs">A new git tag will be created at the selected target.</p>
           </div>
         </label>
 
         @if (createNewTag()) {
         <div class="border-base-300 space-y-4 border-l-2 pl-4">
+          @if (branches().length === 0 && !metaLoading() && !metaFailed()) {
+          <p class="text-error text-sm">A branch with a commit is required to create a tag.</p>
+          }
           <div class="form-control">
             <label class="label pb-1" for="targetCommitish">
               <span class="label-text font-medium">Target branch</span>
@@ -101,7 +111,17 @@
         </div>
 
         <div class="form-control">
-          <span class="label-text mb-1 block font-medium">Release notes</span>
+          <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+            <label for="releaseBody" class="label-text block font-medium">Release notes</label>
+            <button
+              type="button"
+              class="btn btn-outline btn-xs"
+              [disabled]="generating() || !form.value.tagName"
+              (click)="generateNotes()"
+            >
+              @if (generating()) { <span class="loading loading-spinner loading-xs"></span> } Generate release notes
+            </button>
+          </div>
           <div class="border-base-300 overflow-hidden rounded-lg border">
             <div class="border-base-300 flex gap-0 border-b">
               <button
@@ -170,7 +190,7 @@
       <button
         type="button"
         class="btn btn-primary gap-1.5"
-        [disabled]="form.invalid || submitting()"
+        [disabled]="form.invalid || submitting() || metaLoading() || metaFailed() || (createNewTag() && !form.value.targetCommitish)"
         (click)="submit(true)"
       >
         @if (submitting()) { <span class="loading loading-spinner loading-xs"></span> }
@@ -180,7 +200,7 @@
       <button
         type="button"
         class="btn btn-outline gap-1.5"
-        [disabled]="form.invalid || submitting()"
+        [disabled]="form.invalid || submitting() || metaLoading() || metaFailed() || (createNewTag() && !form.value.targetCommitish)"
         (click)="submit(false)"
       >
         <lucide-icon name="save" class="size-4"></lucide-icon>

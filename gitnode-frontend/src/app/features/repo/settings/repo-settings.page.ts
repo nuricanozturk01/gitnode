@@ -41,6 +41,8 @@ import { ActionsSettingsComponent } from './actions-settings/actions-settings.co
 import { parseUrlTabPrefix, replaceUrlFragment } from '../../../shared/utils/url-tab.utils';
 import { AiService } from '../../../core/ai/services/ai.service';
 import type { CodebaseAnalysis, CodebaseAnalysisDimension } from '../../../domain/ai/ai-settings.model';
+import { WorkflowService } from '../../../core/actions/services/workflow.service';
+import { BranchProtectionService, type BranchProtection } from '../../../core/branch/services/branch-protection.service';
 
 type RepoSettingsTab = 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'actions' | 'ai-analysis' | 'danger';
 const REPO_SETTINGS_TABS = [
@@ -74,6 +76,8 @@ export class RepoSettingsPage {
   private readonly collaboratorService = inject(CollaboratorService);
   private readonly aiService = inject(AiService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly branchProtectionService = inject(BranchProtectionService);
+  private readonly workflowService = inject(WorkflowService);
 
   readonly activeTab = signal<RepoSettingsTab>(DEFAULT_REPO_SETTINGS_TAB);
 
@@ -99,6 +103,14 @@ export class RepoSettingsPage {
   readonly deleteHeadBranchOnPrClose = signal(false);
   readonly savingPullSettings = signal(false);
   readonly pullSettingsError = signal<string | null>(null);
+  readonly protectionRules = signal<BranchProtection[]>([]);
+  readonly protectionError = signal(false);
+  readonly protectionSaving = signal(false);
+  readonly protectionBranch = signal('');
+  readonly protectionApprovals = signal(1);
+  readonly protectionChecks = signal('');
+  readonly protectionConversations = signal(false);
+  readonly workflowNames = signal<string[]>([]);
 
   // Collaborators
   readonly collaboratorPage = signal<CollaboratorPage | null>(null);
@@ -161,7 +173,10 @@ export class RepoSettingsPage {
       const tab = this.activeTab();
       if (!r) return;
       if (tab === 'general') this.syncGeneralFromRepo();
-      if (tab === 'pullRequests') this.syncPullSettingsFromRepo();
+      if (tab === 'pullRequests') {
+        this.syncPullSettingsFromRepo();
+        if (this.canWriteSettings()) void this.loadProtectionRules();
+      }
       if (tab === 'danger') this.syncVisibilityFromRepo();
       if (tab === 'webhooks') void this.loadWebhooks();
       if (tab === 'collaborators') void this.loadCollaborators();
@@ -170,6 +185,62 @@ export class RepoSettingsPage {
         void this.loadLatestAnalysis();
       }
     });
+  }
+
+  async loadProtectionRules(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    this.protectionError.set(false);
+    try {
+      const rules = await this.branchProtectionService.list(owner, repo);
+      if (owner === this.owner() && repo === this.repoName()) this.protectionRules.set(rules);
+      void this.workflowService
+        .list(owner, repo)
+        .then((list) => {
+          if (owner === this.owner() && repo === this.repoName()) this.workflowNames.set(list.map((w) => w.name));
+        })
+        .catch(() => undefined);
+    } catch {
+      if (owner === this.owner() && repo === this.repoName()) this.protectionError.set(true);
+    }
+  }
+
+  async saveProtectionRule(): Promise<void> {
+    const branch = this.protectionBranch().trim();
+    const approvals = Number(this.protectionApprovals());
+    if (!branch || !Number.isInteger(approvals) || approvals < 0 || approvals > 20 || this.protectionSaving()) return;
+    this.protectionSaving.set(true);
+    try {
+      const checks = [
+        ...new Set(
+          this.protectionChecks()
+            .split(',')
+            .map((name) => name.trim())
+            .filter(Boolean),
+        ),
+      ];
+      await this.branchProtectionService.save(this.owner(), this.repoName(), branch, approvals, checks, this.protectionConversations());
+      this.protectionBranch.set('');
+      this.protectionChecks.set('');
+      this.protectionConversations.set(false);
+      await this.loadProtectionRules();
+      this.toast.success('Branch protection saved');
+    } catch {
+      this.toast.error('Could not save branch protection');
+    } finally {
+      this.protectionSaving.set(false);
+    }
+  }
+
+  async deleteProtectionRule(rule: BranchProtection): Promise<void> {
+    if (!await this.confirmModal.confirm('Remove branch protection', `Allow direct writes to ${rule.branchName}?`,
+      { confirmLabel: 'Remove protection', variant: 'danger' })) return;
+    try {
+      await this.branchProtectionService.delete(this.owner(), this.repoName(), rule.id);
+      await this.loadProtectionRules();
+    } catch {
+      this.toast.error('Could not remove branch protection');
+    }
   }
 
   private syncGeneralFromRepo(): void {

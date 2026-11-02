@@ -21,8 +21,10 @@ import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.shared.repo.services.RepoService;
 import dev.gitnode.os.tag.dtos.CreateReleaseForm;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
+import dev.gitnode.os.tag.dtos.GeneratedReleaseNotes;
 import dev.gitnode.os.tag.dtos.ReleaseInfo;
 import dev.gitnode.os.tag.dtos.UpdateReleaseForm;
+import dev.gitnode.os.tag.services.ReleaseNotesService;
 import dev.gitnode.os.tag.services.ReleaseTxService;
 import dev.gitnode.os.tag.services.TagNonTxService;
 import jakarta.validation.Valid;
@@ -43,6 +45,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -53,6 +56,7 @@ public class ReleaseController {
 
   private final ReleaseTxService releaseTxService;
   private final TagNonTxService tagNonTxService;
+  private final ReleaseNotesService releaseNotesService;
   private final JwtUtils jwtUtils;
   private final RepoService repoService;
 
@@ -65,7 +69,28 @@ public class ReleaseController {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.releaseTxService.getAll(owner, repo));
+    final var canManage = this.releaseTxService.canManage(owner, repo, requesterId);
+    return ResponseEntity.ok(
+        this.releaseTxService.getAll(owner, repo).stream()
+            .filter(release -> canManage || !release.isDraft())
+            .toList());
+  }
+
+  @GetMapping("/generate-notes")
+  public ResponseEntity<GeneratedReleaseNotes> generateNotes(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestParam final String tagName,
+      @RequestParam(required = false) final @Nullable String targetCommitish,
+      @RequestParam(required = false) final @Nullable String previousTag,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader)
+      throws IOException {
+
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.releaseTxService.assertCanManage(owner, repo, requesterId);
+    return ResponseEntity.ok(
+        this.releaseNotesService.generate(owner, repo, tagName, targetCommitish, previousTag));
   }
 
   @GetMapping("/latest")
@@ -95,6 +120,9 @@ public class ReleaseController {
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     return this.releaseTxService
         .findByTagName(owner, repo, tagName)
+        .filter(
+            release ->
+                !release.isDraft() || this.releaseTxService.canManage(owner, repo, requesterId))
         .map(ResponseEntity::ok)
         .orElseThrow(() -> new ItemNotFoundException("releaseNotFound: " + tagName));
   }
@@ -109,7 +137,23 @@ public class ReleaseController {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.releaseTxService.getById(id));
+    final var release = this.releaseTxService.getById(owner, repo, id);
+    if (release.isDraft() && !this.releaseTxService.canManage(owner, repo, requesterId)) {
+      throw new ItemNotFoundException("Release not found.");
+    }
+    return ResponseEntity.ok(release);
+  }
+
+  @PostMapping("/{id}/latest")
+  public ResponseEntity<ReleaseInfo> markLatest(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID id,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
+
+    final var requesterId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    return ResponseEntity.ok(this.releaseTxService.markLatest(id, requesterId, owner, repo));
   }
 
   @PostMapping
@@ -123,6 +167,7 @@ public class ReleaseController {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.releaseTxService.assertCanManage(owner, repo, requesterId);
 
     if (form.isCreateNewTag()) {
       this.createTagIfNeeded(owner, repo, form);
@@ -142,7 +187,7 @@ public class ReleaseController {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.releaseTxService.update(id, requesterId, owner, form));
+    return ResponseEntity.ok(this.releaseTxService.update(id, requesterId, owner, repo, form));
   }
 
   @DeleteMapping("/{id}")
@@ -154,7 +199,7 @@ public class ReleaseController {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    this.releaseTxService.delete(id, requesterId, owner);
+    this.releaseTxService.delete(id, requesterId, owner, repo);
     return ResponseEntity.noContent().build();
   }
 

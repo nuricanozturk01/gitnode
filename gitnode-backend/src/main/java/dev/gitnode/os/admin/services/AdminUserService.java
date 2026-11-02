@@ -38,6 +38,7 @@ public class AdminUserService {
 
   private final TenantRepository tenantRepository;
   private final PlatformAdminService platformAdminService;
+  private final org.springframework.context.ApplicationEventPublisher events;
 
   @Transactional(readOnly = true)
   public Page<AdminUserSummary> listUsers(final Pageable pageable, final @Nullable String query) {
@@ -74,7 +75,11 @@ public class AdminUserService {
     }
 
     tenant.setEnabled(enabled);
-    return this.toDetail(this.tenantRepository.save(tenant));
+    final var saved = this.tenantRepository.save(tenant);
+    if (!enabled) {
+      this.events.publishEvent(new dev.gitnode.os.events.profile.TenantDisabledEvent(id));
+    }
+    return this.toDetail(saved);
   }
 
   private Tenant requireTenant(final UUID id) {

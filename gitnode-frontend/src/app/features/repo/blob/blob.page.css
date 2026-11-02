@@ -33,3 +33,20 @@
 [data-blob-syntax='dark'] td .hljs-built_in {
   color: #ffa657;
 }
+
+.blob-line-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.blob-line-btn:hover,
+.blob-line-btn:focus-visible {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.blob-line--target {
+  background: color-mix(in oklch, var(--color-primary) 14%, transparent);
+}

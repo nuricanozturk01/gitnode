@@ -52,6 +52,7 @@ import { postProcessReadmeHtml } from '../shared/readme-markdown.utils';
 import { LanguageService } from '../../../core/language/services/language.service';
 import { LanguageBarComponent } from '../../../shared/components/language-bar/language-bar.component';
 import type { LanguageStats } from '../../../domain/language/models/language-stats.model';
+import { RepoAboutComponent } from './repo-about.component';
 
 marked.use({ gfm: true, breaks: false });
 
@@ -59,7 +60,7 @@ marked.use({ gfm: true, breaks: false });
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-repo-home',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, FileSizePipe, RelativeTimePipe, LanguageBarComponent],
+  imports: [RouterLink, LucideAngularModule, FileSizePipe, RelativeTimePipe, LanguageBarComponent, RepoAboutComponent],
   templateUrl: './repo-home.page.html',
   styleUrl: './repo-home.page.css',
 })
@@ -78,6 +79,7 @@ export class RepoHomePage implements OnDestroy {
   readonly tree = signal<TreeResponseEntry[]>([]);
   readonly branches = signal<BranchInfo[]>([]);
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly isEmpty = signal(false);
   readonly selectedBranch = signal('');
   readonly readmeHtml = signal<SafeHtml | null>(null);
@@ -107,6 +109,7 @@ export class RepoHomePage implements OnDestroy {
   readonly copied = signal<'https' | 'ssh' | null>(null);
   readonly zipDownloading = signal(false);
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
+  private cloneDialogTrigger: HTMLElement | null = null;
 
   private readonly repoRouteParams = parentParamMapSignal(this.route);
   readonly owner = computed(() => this.repoRouteParams().get('owner') ?? '');
@@ -144,6 +147,11 @@ export class RepoHomePage implements OnDestroy {
 
   @HostListener('document:keydown.escape', ['$event'])
   onDocumentEscape(event: Event): void {
+    if (this.cloneDialogOpen()) {
+      event.preventDefault();
+      this.closeCloneDialog();
+      return;
+    }
     if (!this.readmeImageLightboxOpen()) return;
     event.preventDefault();
     this.closeReadmeImageLightbox();
@@ -187,6 +195,7 @@ export class RepoHomePage implements OnDestroy {
       return;
     }
     this.loading.set(true);
+    this.loadFailed.set(false);
     this.isEmpty.set(false);
     this.allTags.set([]);
     this.latestRelease.set(null);
@@ -229,10 +238,14 @@ export class RepoHomePage implements OnDestroy {
       ]);
     } catch {
       this.branches.set([]);
-      this.isEmpty.set(true);
+      this.loadFailed.set(true);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.loadData();
   }
 
   private loadTreeOnce(owner: string, repo: string, branch: string): Promise<void> {
@@ -329,12 +342,33 @@ export class RepoHomePage implements OnDestroy {
     }, 2000);
   }
 
-  openCloneDialog(): void {
+  openCloneDialog(event: MouseEvent): void {
+    this.cloneDialogTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     this.cloneDialogOpen.set(true);
+    setTimeout(() => {
+      if (this.cloneDialogOpen()) document.querySelector<HTMLElement>('#clone-dialog button')?.focus();
+    });
   }
 
   closeCloneDialog(): void {
     this.cloneDialogOpen.set(false);
+    this.cloneDialogTrigger?.focus();
+    this.cloneDialogTrigger = null;
+  }
+
+  onCloneDialogKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget as HTMLElement;
+    const controls = dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])');
+    const first = controls.item(0);
+    const last = controls.item(controls.length - 1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
   }
 
   downloadBranchZip(): void {

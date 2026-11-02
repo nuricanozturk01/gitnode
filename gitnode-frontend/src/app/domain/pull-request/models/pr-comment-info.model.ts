@@ -24,6 +24,7 @@ export interface PrCommentInfo {
   commitSha: string | null;
   lineNumber: number | null;
   lineSide: string | null;
+  parentId: string | null;
   isResolved: boolean;
   createdAt: string;
   updatedAt: string;

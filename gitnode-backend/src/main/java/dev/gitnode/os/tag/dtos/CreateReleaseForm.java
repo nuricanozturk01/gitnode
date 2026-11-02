@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.tag.dtos;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -35,8 +36,10 @@ public class CreateReleaseForm {
 
   @Nullable private String body;
 
+  @JsonProperty("isDraft")
   private boolean isDraft;
 
+  @JsonProperty("isPrerelease")
   private boolean isPrerelease;
 
   /** When true, creates the git tag at {@code targetCommitish} before saving the release. */

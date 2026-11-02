@@ -20,6 +20,7 @@ import dev.gitnode.os.branch.services.BranchNonTxService;
 import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.branch.dtos.BranchForm;
 import dev.gitnode.os.shared.branch.dtos.BranchInfo;
+import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
 import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -47,6 +48,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BranchController {
 
   private final BranchNonTxService branchNonTxService;
+  private final dev.gitnode.os.shared.branch.BranchProtectionService branchProtection;
   private final JwtUtils jwtUtils;
   private final RepoService repoService;
 
@@ -59,7 +61,7 @@ public class BranchController {
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.repoService.assertUserHasPermission(requesterId, owner, repo, CollaboratorPermission.PUSH);
     final var branch = this.branchNonTxService.create(owner, repo, form);
     return ResponseEntity.status(HttpStatus.CREATED).body(branch);
   }
@@ -73,7 +75,7 @@ public class BranchController {
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.repoService.assertUserHasPermission(requesterId, owner, repo, CollaboratorPermission.PUSH);
     this.branchNonTxService.delete(owner, repo, branch);
     return ResponseEntity.noContent().build();
   }
@@ -87,7 +89,8 @@ public class BranchController {
       throws IOException {
 
     final var requesterId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
+    this.repoService.assertUserHasPermission(
+        requesterId, owner, repo, CollaboratorPermission.SETTINGS_WRITE);
     this.branchNonTxService.setDefaultBranch(owner, repo, form.getBranchName());
     return ResponseEntity.noContent().build();
   }
@@ -102,7 +105,13 @@ public class BranchController {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var branches = this.branchNonTxService.getAll(owner, repo);
+    final var protectedNames = this.branchProtection.protectedBranchNames(owner, repo);
+    final var branches =
+        this.branchNonTxService.getAll(owner, repo).stream()
+            .map(
+                branch ->
+                    branch.toBuilder().isProtected(protectedNames.contains(branch.name())).build())
+            .toList();
     return ResponseEntity.ok(branches);
   }
 

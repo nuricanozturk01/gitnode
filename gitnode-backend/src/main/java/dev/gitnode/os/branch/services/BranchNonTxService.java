@@ -19,6 +19,7 @@ import static java.util.Comparator.comparing;
 
 import dev.gitnode.os.events.branch.BranchCreatedEvent;
 import dev.gitnode.os.events.branch.BranchDeletedEvent;
+import dev.gitnode.os.shared.branch.BranchProtectionService;
 import dev.gitnode.os.shared.branch.dtos.BranchForm;
 import dev.gitnode.os.shared.branch.dtos.BranchInfo;
 import dev.gitnode.os.shared.branch.services.BranchProtocolService;
@@ -39,6 +40,7 @@ import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevWalk;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
@@ -55,6 +57,7 @@ public class BranchNonTxService implements BranchProtocolService {
   private final BranchTxService branchTxService;
   private final GitProvider gitProvider;
   private final ApplicationEventPublisher eventPublisher;
+  private final BranchProtectionService branchProtection;
 
   @Override
   @CacheEvict(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
@@ -80,6 +83,8 @@ public class BranchNonTxService implements BranchProtocolService {
   @CacheEvict(cacheNames = CacheNames.BRANCHES, key = "#owner + ':' + #repoName")
   public void delete(final String owner, final String repoName, final String branchName)
       throws IOException {
+
+    this.branchProtection.assertDirectWriteAllowed(owner, repoName, branchName);
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
 
@@ -134,8 +139,10 @@ public class BranchNonTxService implements BranchProtocolService {
       final var comparator =
           comparing((BranchInfo b) -> b.isDefault() ? 0 : 1).thenComparing(BranchInfo::name);
 
+      final var defaultRef = gitRepo.exactRef(Constants.R_HEADS + repo.getDefaultBranch());
       return refs.stream()
           .map(ref -> this.buildBranchInfo(walk, ref, repo.getDefaultBranch()))
+          .map(info -> this.withDivergence(gitRepo, info, defaultRef))
           .sorted(comparator)
           .toList();
     }
@@ -274,6 +281,42 @@ public class BranchNonTxService implements BranchProtocolService {
 
     if (branchName.equals(defaultBranch)) {
       throw new ErrorOccurredException("defaultBranchCannotDelete: " + branchName);
+    }
+  }
+
+  /** Commits counted per side stop at this many, shown as "500+" by the UI. */
+  static final int MAX_DIVERGENCE = 500;
+
+  private BranchInfo withDivergence(
+      final Repository gitRepo, final BranchInfo info, final @Nullable Ref defaultRef) {
+    if (info.isDefault() || defaultRef == null || defaultRef.getObjectId() == null) {
+      return info;
+    }
+    try {
+      final var branch = ObjectId.fromString(info.lastCommitSha());
+      return info.toBuilder()
+          .ahead(this.countExclusive(gitRepo, branch, defaultRef.getObjectId()))
+          .behind(this.countExclusive(gitRepo, defaultRef.getObjectId(), branch))
+          .build();
+    } catch (final IOException | RuntimeException ex) {
+      log.debug("Could not compute divergence for {}: {}", info.name(), ex.getMessage());
+      return info;
+    }
+  }
+
+  /** Number of commits reachable from {@code tip} but not from {@code base}, capped. */
+  private int countExclusive(final Repository gitRepo, final ObjectId tip, final ObjectId base)
+      throws IOException {
+    try (final var walk = new RevWalk(gitRepo)) {
+      walk.markStart(walk.parseCommit(tip));
+      walk.markUninteresting(walk.parseCommit(base));
+      var count = 0;
+      for (final var ignored : walk) {
+        if (++count >= MAX_DIVERGENCE) {
+          break;
+        }
+      }
+      return count;
     }
   }
 

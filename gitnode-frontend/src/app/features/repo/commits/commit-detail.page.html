@@ -4,8 +4,9 @@
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
   } @else if (error()) {
-  <div class="alert alert-error mx-4">
+  <div role="alert" class="m-4 flex flex-col items-center gap-3 px-4 py-8 text-center">
     <span>{{ error() }}</span>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
   </div>
   } @else if (commit(); as c) {
   <div class="repo-toolbar space-y-4 px-4 py-4">
@@ -18,14 +19,16 @@
         size="lg"
       />
       <div class="min-w-0 flex-1">
-        <h1 class="text-base-content text-xl font-semibold">{{ c.message }}</h1>
+        <h1 class="text-base-content break-words text-xl font-semibold">{{ c.message }}</h1>
         @if (c.description) {
         <p class="text-base-content/70 mt-1 whitespace-pre-wrap">{{ c.description }}</p>
         }
         <div class="text-base-content/60 mt-2 flex flex-wrap items-center gap-3 text-sm">
-          <a [routerLink]="['/', owner(), repoName()]" class="text-primary font-medium hover:underline">
+          @if (c.author.username) {
+          <a [routerLink]="['/', c.author.username]" class="text-primary font-medium hover:underline">
             {{ c.author.name || c.author.username || 'Unknown' }}
           </a>
+          } @else { <span>{{ c.author.name || 'Unknown' }}</span> }
           <span class="font-mono">{{ c.shortSha }}</span>
           <span>{{ c.committedAt | relativeTime }}</span>
           @if (c.stats) {
@@ -54,12 +57,21 @@
   @if (c.files.length) {
   <div class="px-4 py-4">
     <h2 class="text-base-content mb-3 text-lg font-semibold">Changed files</h2>
+    @if (c.files.length > 3) {
+    <div class="mb-3 flex flex-wrap items-center gap-2">
+      <label class="sr-only" for="commit-file-search">Filter changed files</label>
+      <input id="commit-file-search" type="search" class="input input-bordered input-sm w-full sm:max-w-xs" placeholder="Filter changed files" autocomplete="off" [ngModel]="fileQuery()" (ngModelChange)="fileQuery.set($event)" />
+      @if (fileQuery()) { <span class="text-base-content/70 text-xs" role="status">{{ matchingFiles(c.files).length }} of {{ c.files.length }} files</span> }
+    </div>
+    @if (matchingFiles(c.files).length === 0) { <p class="text-base-content/70 py-8 text-center text-sm">No changed files match "{{ fileQuery() }}".</p> }
+    }
     <div class="border-base-300 overflow-hidden rounded-lg border">
-      @for (file of c.files; track file.newPath || file.oldPath) {
+      @for (file of matchingFiles(c.files); track file.newPath || file.oldPath) {
       <div class="border-base-300 border-b last:border-b-0">
         <button
           type="button"
           class="hover:bg-base-200/50 flex w-full items-center justify-between gap-2 px-4 py-3 text-left"
+          [attr.aria-expanded]="isExpanded(file.newPath || file.oldPath)"
           (click)="toggleFile(file.newPath || file.oldPath)"
         >
           <div class="flex min-w-0 items-center gap-2">

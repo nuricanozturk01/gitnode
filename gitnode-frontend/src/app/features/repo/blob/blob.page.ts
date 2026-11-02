@@ -36,6 +36,8 @@ import { environment } from '../../../../environments/environment';
 import type { BlobResponse } from '../../../domain/repository/models/blob-response.model';
 import type { BreadcrumbItem } from '../shared/repo-breadcrumb.component';
 import { RepoBreadcrumbComponent } from '../shared/repo-breadcrumb.component';
+import { FileCommentsComponent } from './file-comments.component';
+import { TokenService } from '../../../core/auth/services/token.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { DomSanitizer, SafeHtml, SafeResourceUrl, SafeUrl } from '@angular/platform-browser';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
@@ -51,7 +53,7 @@ const TEXT_SIZE_LIMIT = 512 * 1024; // 512KB - avoid loading huge text into memo
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-blob',
   standalone: true,
-  imports: [LucideAngularModule, FileSizePipe, RepoBreadcrumbComponent],
+  imports: [LucideAngularModule, FileSizePipe, RepoBreadcrumbComponent, FileCommentsComponent],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './blob.page.html',
   styleUrl: './blob.page.css',
@@ -65,11 +67,16 @@ export class BlobPage implements OnDestroy {
   private readonly appTheme = inject(ThemeService);
   readonly repoContext = inject(RepoContextService);
   private readonly toast = inject(ToastService);
+  private readonly tokenService = inject(TokenService);
+  readonly canComment = this.tokenService.isLoggedIn;
+  readonly commentLine = signal<number | null>(null);
+  readonly commentedLines = signal<ReadonlySet<number>>(new Set());
 
   readonly blobSyntaxTheme = computed(() => (this.appTheme.isDark() ? 'dark' : 'light'));
 
   readonly blob = signal<BlobResponse | null>(null);
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly copied = signal(false);
   readonly branch = signal('');
   readonly path = signal('');
@@ -88,6 +95,7 @@ export class BlobPage implements OnDestroy {
   private copiedTimer: ReturnType<typeof setTimeout> | null = null;
   private hljsModule: Promise<HLJSApi> | null = null;
   private highlightGeneration = 0;
+  private loadVersion = 0;
 
   private readonly repoRootParams = grandParentParamMapSignal(this.route);
   private readonly urlSegments = toSignal(this.route.url, { initialValue: this.route.snapshot.url });
@@ -128,7 +136,7 @@ export class BlobPage implements OnDestroy {
   readonly decodedContent = computed(() => {
     const b = this.blob();
     if (!b?.content || b.isBinary) return '';
-    return atob(b.content);
+    return decodeBase64Utf8(b.content);
   });
 
   constructor() {
@@ -159,6 +167,7 @@ export class BlobPage implements OnDestroy {
   }
 
   private async loadBlob(): Promise<void> {
+    const version = ++this.loadVersion;
     const owner = this.owner();
     const repo = this.repoName();
     const branch = this.branch();
@@ -173,21 +182,24 @@ export class BlobPage implements OnDestroy {
     this.imageObjectUrl.set(null);
     this.rawBlobUrl.set(null);
     this.isEditing.set(false);
+    this.blob.set(null);
+    this.loadFailed.set(false);
     this.loading.set(true);
 
     const ext = path.toLowerCase().split('.').pop() ?? '';
     if (ext === 'pdf') {
-      await this.loadPdfAsBlob(owner, repo, branch, path);
+      await this.loadPdfAsBlob(owner, repo, branch, path, version);
       return;
     }
     if (IMAGE_EXTENSIONS.has(ext)) {
-      await this.loadImageAsBlob(owner, repo, branch, path);
+      await this.loadImageAsBlob(owner, repo, branch, path, version);
       return;
     }
 
     const url = `${environment.apiUrl}/api/repos/${owner}/${repo}/blob/${branch}/${path}`;
     try {
       const data = await firstValueFrom(this.http.get<BlobResponse>(url));
+      if (version !== this.loadVersion) return;
       this.blob.set(data);
       this.loading.set(false);
       if (!data.isBinary && data.size <= TEXT_SIZE_LIMIT) {
@@ -197,18 +209,25 @@ export class BlobPage implements OnDestroy {
         this.rawBlobUrl.set(this.buildRawUrl(owner, repo, branch, path));
       }
     } catch {
+      if (version !== this.loadVersion) return;
+      this.loadFailed.set(true);
       this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.loadBlob();
   }
 
   private buildRawUrl(owner: string, repo: string, branch: string, path: string): string {
     return `${environment.apiUrl}/api/repos/${owner}/${repo}/raw/${branch}/${path}`;
   }
 
-  private async loadPdfAsBlob(owner: string, repo: string, branch: string, path: string): Promise<void> {
+  private async loadPdfAsBlob(owner: string, repo: string, branch: string, path: string, version: number): Promise<void> {
     const rawUrl = this.buildRawUrl(owner, repo, branch, path);
     try {
       const blob = await firstValueFrom(this.http.get(rawUrl, { responseType: 'blob' }));
+      if (version !== this.loadVersion) return;
       const objectUrl = URL.createObjectURL(blob);
       this.objectUrlToRevoke = objectUrl;
       this.pdfObjectUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(objectUrl));
@@ -224,14 +243,17 @@ export class BlobPage implements OnDestroy {
       });
       this.loading.set(false);
     } catch {
+      if (version !== this.loadVersion) return;
+      this.loadFailed.set(true);
       this.loading.set(false);
     }
   }
 
-  private async loadImageAsBlob(owner: string, repo: string, branch: string, path: string): Promise<void> {
+  private async loadImageAsBlob(owner: string, repo: string, branch: string, path: string, version: number): Promise<void> {
     const rawUrl = this.buildRawUrl(owner, repo, branch, path);
     try {
       const blob = await firstValueFrom(this.http.get(rawUrl, { responseType: 'blob' }));
+      if (version !== this.loadVersion) return;
       const objectUrl = URL.createObjectURL(blob);
       this.objectUrlToRevoke = objectUrl;
       this.imageObjectUrl.set(this.sanitizer.bypassSecurityTrustUrl(objectUrl));
@@ -247,6 +269,8 @@ export class BlobPage implements OnDestroy {
       });
       this.loading.set(false);
     } catch {
+      if (version !== this.loadVersion) return;
+      this.loadFailed.set(true);
       this.loading.set(false);
     }
   }
@@ -265,6 +289,19 @@ export class BlobPage implements OnDestroy {
     this.editContent.set('');
     this.commitMessage.set('');
     this.commitDescription.set('');
+  }
+
+  onCommentedLines(lines: number[]): void {
+    this.commentedLines.set(new Set(lines));
+  }
+
+  commentOnLine(line: number): void {
+    this.commentLine.set(line);
+    queueMicrotask(() => {
+      const field = document.getElementById('fc-new');
+      field?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      field?.focus({ preventScroll: true });
+    });
   }
 
   async commitFile(): Promise<void> {
@@ -305,6 +342,8 @@ export class BlobPage implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.loadVersion++;
+    this.highlightGeneration++;
     this.revokeBlobUrl();
     if (this.copiedTimer !== null) {
       clearTimeout(this.copiedTimer);
@@ -329,7 +368,7 @@ export class BlobPage implements OnDestroy {
   }
 
   private async applySyntaxHighlight(b: BlobResponse, generation: number): Promise<void> {
-    const raw = atob(b.content);
+    const raw = decodeBase64Utf8(b.content);
     let highlighted: string;
 
     if (b.language && b.language !== 'plaintext') {

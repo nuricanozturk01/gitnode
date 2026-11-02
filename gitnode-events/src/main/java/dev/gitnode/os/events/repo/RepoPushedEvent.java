@@ -17,6 +17,12 @@ package dev.gitnode.os.events.repo;
 
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 @NullMarked
-public record RepoPushedEvent(UUID repoId, String branchName, String pusherUsername) {}
+public record RepoPushedEvent(
+    UUID repoId, String branchName, String pusherUsername, @Nullable String commitSha) {
+  public RepoPushedEvent(final UUID repoId, final String branchName, final String pusherUsername) {
+    this(repoId, branchName, pusherUsername, null);
+  }
+}

@@ -62,9 +62,9 @@
             }
           </div>
 
-          <div class="contrib-graph__grid" role="grid" aria-label="Daily contributions">
+          <div class="contrib-graph__grid" role="group" aria-label="Daily contributions">
             @for (week of weeks(); track week.key) {
-              <div class="contrib-graph__week" role="row">
+              <div class="contrib-graph__week">
                 @for (day of week.days; track $index) {
                   @if (day) {
                     <button
@@ -95,7 +95,7 @@
 
     <div class="contrib-graph__footer">
       <p class="contrib-graph__footnote">
-        Counts issues, pull requests, releases, snippets, and related comments on visible repositories.
+        Counts commits to the default branch, issues, pull requests, reviews, releases, snippets, and related comments on visible repositories.
       </p>
       <div class="contrib-graph__legend" aria-label="Contribution intensity legend">
         <span>Less</span>

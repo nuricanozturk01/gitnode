@@ -48,12 +48,19 @@ test.describe('Auth API — all endpoints', () => {
     const session = loadSession();
     const ctx = await playwrightRequest.newContext({ baseURL: session.baseUrl });
     try {
+      // Sign in again: other tests change the shared user's password, which ends older sessions.
+      const login = await ctx.post(`${authApi}/login`, {
+        data: { usernameOrEmail: session.username, password: session.password },
+      });
+      expect(login.status()).toBe(200);
+      const fresh = (await login.json()) as LoginInfo;
       const response = await ctx.post(`${authApi}/refresh-token`, {
-        data: { refreshToken: session.refreshToken },
+        data: { refreshToken: fresh.refreshToken },
       });
       expect(response.status()).toBe(200);
       const body = (await response.json()) as LoginInfo;
       expect(body.token).toBeTruthy();
+      expect(body.refreshToken).not.toBe(fresh.refreshToken);
     } finally {
       await ctx.dispose();
     }
@@ -66,7 +73,12 @@ test.describe('Auth API — all endpoints', () => {
       const response = await ctx.post(`${authApi}/send-password-recovery-mail`, {
         data: { usernameOrEmail: session.email },
       });
-      expect([200, 401, 500]).toContain(response.status());
+      expect(response.status()).toBe(200);
+      const unknown = await ctx.post(`${authApi}/send-password-recovery-mail`, {
+        data: { usernameOrEmail: 'nobody-here@example.org' },
+      });
+      expect(unknown.status()).toBe(200);
+      expect(await unknown.text()).toBe(await response.text());
     } finally {
       await ctx.dispose();
     }

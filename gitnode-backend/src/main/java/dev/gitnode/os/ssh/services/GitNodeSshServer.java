@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.ssh.services;
 
+import dev.gitnode.os.shared.branch.ProtectedBranchReceiveHook;
 import dev.gitnode.os.shared.git.GitPushEventPublisher;
 import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
@@ -59,6 +60,7 @@ public class GitNodeSshServer {
   private final SshKeyService sshKeyService;
   private final RepoRepository repoRepository;
   private final GitPushEventPublisher pushEventPublisher;
+  private final ProtectedBranchReceiveHook protectionHook;
 
   @Nullable private SshServer sshServer;
 
@@ -77,10 +79,12 @@ public class GitNodeSshServer {
   public GitNodeSshServer(
       final SshKeyService sshKeyService,
       final RepoRepository repoRepository,
-      final GitPushEventPublisher pushEventPublisher) {
+      final GitPushEventPublisher pushEventPublisher,
+      final ProtectedBranchReceiveHook protectionHook) {
     this.sshKeyService = sshKeyService;
     this.repoRepository = repoRepository;
     this.pushEventPublisher = pushEventPublisher;
+    this.protectionHook = protectionHook;
   }
 
   @PostConstruct
@@ -228,6 +232,8 @@ public class GitNodeSshServer {
           public void configureReceivePack(final ServerSession session, final ReceivePack pack) {
             final var tenant = session.getAttribute(TENANT_KEY);
             final var pusher = tenant.getUsername();
+
+            pack.setPreReceiveHook(GitNodeSshServer.this.protectionHook);
 
             pack.setPostReceiveHook(
                 (rp, commands) ->

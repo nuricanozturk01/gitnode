@@ -34,4 +34,7 @@ public class PrCommentForm {
   private String commitSha;
   private Integer lineNumber;
   private String lineSide;
+
+  /** Id of the top-level line comment this comment replies to. */
+  private java.util.UUID parentId;
 }

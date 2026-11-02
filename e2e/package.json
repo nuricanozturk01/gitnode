@@ -13,6 +13,7 @@
     "test:e2e:ldap": "E2E_LDAP_ENABLED=1 playwright test --project=ldap",
     "test:e2e:teardown": "E2E_TEARDOWN_ONLY=1 playwright test --project=teardown",
     "test:e2e:ui": "playwright test --ui",
+    "test:ui": "playwright test --config=playwright.ui.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . && tsc --noEmit",
     "lint:eslint": "eslint .",

@@ -19,6 +19,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
+import { ReleaseAssetsComponent } from './release-assets.component';
 import { MarkdownPipe } from '../../../shared/pipes/markdown.pipe';
 import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { ReleaseService } from '../../../core/release/services/release.service';
@@ -30,7 +31,7 @@ import type { ReleaseInfo } from '../../../domain/release/models/release-info.mo
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-edit-release',
   standalone: true,
-  imports: [RouterLink, ReactiveFormsModule, LucideAngularModule, MarkdownPipe],
+  imports: [RouterLink, ReactiveFormsModule, LucideAngularModule, MarkdownPipe, ReleaseAssetsComponent],
   templateUrl: './edit-release.page.html',
 })
 export class EditReleasePage {
@@ -44,6 +45,7 @@ export class EditReleasePage {
   readonly release = signal<ReleaseInfo | null>(null);
   readonly loading = signal(true);
   readonly submitting = signal(false);
+  readonly generating = signal(false);
   readonly bodyTab = signal<'write' | 'preview'>('write');
 
   private readonly routeParams = parentParamMapSignal(this.route);
@@ -83,6 +85,25 @@ export class EditReleasePage {
       await this.router.navigate(['/', owner, repo, 'releases']);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async generateNotes(): Promise<void> {
+    const r = this.release();
+    if (!r || this.generating()) return;
+    this.generating.set(true);
+    try {
+      const notes = await this.releaseService.generateNotes(this.owner(), this.repoName(), r.tagName);
+      this.form.patchValue({ body: notes.body });
+      if (!this.form.value.name) this.form.patchValue({ name: notes.name });
+      this.bodyTab.set('write');
+      this.toast.success(
+        notes.commitCount === 0 ? 'No new commits since the previous tag' : `Generated notes from ${notes.commitCount} commits`,
+      );
+    } catch {
+      this.toast.error('Could not generate release notes.');
+    } finally {
+      this.generating.set(false);
     }
   }
 

@@ -1,0 +1,128 @@
+<section class="ed" aria-label="Web editor">
+  <header class="ed-bar">
+    <div class="ed-title">
+      <lucide-icon name="pencil" class="size-4" aria-hidden="true"></lucide-icon>
+      <strong>Editing</strong>
+      <code>{{ branch() }}</code>
+      <span class="ed-hint">Ctrl/⌘+S to commit</span>
+    </div>
+    <div class="ed-bar-actions">
+      <button type="button" class="btn btn-ghost btn-xs sm:hidden" [attr.aria-expanded]="treeOpen()" (click)="treeOpen.set(!treeOpen())">Files</button>
+      <button type="button" class="btn btn-primary btn-sm" [disabled]="!dirty()" (click)="openCommit()">
+        Commit changes @if (dirty()) { ({{ changes().length }}) }
+      </button>
+      <button type="button" class="btn btn-outline btn-sm" (click)="exit()">Exit editor</button>
+    </div>
+  </header>
+
+  @if (loading()) {
+  <p class="ed-note">Loading the editor…</p>
+  } @else if (loadFailed()) {
+  <div class="ed-note" role="alert">
+    The editor could not be opened. The branch may not exist or you may not have access.
+    <button type="button" class="btn btn-outline btn-sm" (click)="retry()">Try again</button>
+  </div>
+  } @else {
+  <div class="ed-body">
+    <nav class="ed-tree" [class.ed-tree--hidden]="!treeOpen()" aria-label="Repository files">
+      <div class="ed-tree-head">
+        <span>Files</span>
+        <button type="button" class="btn btn-ghost btn-xs" (click)="newFile()">New file</button>
+      </div>
+      <ng-container *ngTemplateOutlet="nodes; context: { $implicit: rootEntries(), depth: 0 }"></ng-container>
+    </nav>
+
+    <ng-template #nodes let-entries let-depth="depth">
+      <ul class="ed-list" [attr.role]="depth === 0 ? 'tree' : 'group'">
+        @for (entry of entries; track entry.path) {
+        <li role="none">
+          @if (entry.type === 'TREE') {
+          <button type="button" role="treeitem" class="ed-node" [style.padding-left.rem]="0.5 + depth * 0.9" [attr.aria-expanded]="expanded().has(entry.path)" (click)="toggleDir(entry)">
+            <span class="ed-caret" aria-hidden="true">{{ expanded().has(entry.path) ? '▾' : '▸' }}</span>
+            <lucide-icon name="folder" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+            <span>{{ entry.name }}</span>
+          </button>
+          @if (expanded().has(entry.path) && children()[entry.path]) {
+          <ng-container *ngTemplateOutlet="nodes; context: { $implicit: children()[entry.path], depth: depth + 1 }"></ng-container>
+          }
+          } @else {
+          <button type="button" role="treeitem" class="ed-node" [class.ed-node--active]="activePath() === entry.path" [style.padding-left.rem]="0.5 + depth * 0.9" (click)="openFile(entry.path)">
+            <lucide-icon name="fileText" class="size-3.5 shrink-0" aria-hidden="true"></lucide-icon>
+            <span>{{ entry.name }}</span>
+            @if (isChanged(entry.path)) { <span class="ed-dot" title="Changed">●</span> }
+          </button>
+          }
+        </li>
+        }
+      </ul>
+    </ng-template>
+
+    <div class="ed-main">
+      @if (openPaths().length) {
+      <div class="ed-tabs" role="group" aria-label="Open files">
+        @for (path of openPaths(); track path) {
+        <div class="ed-tab" [class.ed-tab--active]="path === activePath()">
+          <button type="button" [attr.aria-current]="path === activePath() ? 'true' : null" (click)="activePath.set(path)">
+            {{ baseName(path) }} @if (isChanged(path)) { <span class="ed-dot" aria-label="changed">●</span> }
+          </button>
+          <button type="button" class="ed-close" [attr.aria-label]="'Close ' + path" (click)="closeTab(path)">×</button>
+        </div>
+        }
+      </div>
+      } @if (active(); as file) {
+      <div class="ed-file-bar">
+        <span class="ed-path">{{ file.path }}</span>
+        @if (file.renamedFrom) { <span class="ed-chip">Renamed from {{ file.renamedFrom }}</span> } @else if (file.original === null) { <span class="ed-chip">New file</span> }
+        <span class="ed-spacer"></span>
+        @if (isChanged(file.path)) { <button type="button" class="btn btn-ghost btn-xs" (click)="revert(file.path)">Revert</button> }
+        @if (file.editable) { <button type="button" class="btn btn-ghost btn-xs" (click)="renameActive()">Rename</button> }
+        <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deleteActive()">Delete</button>
+      </div>
+      @if (file.editable) {
+      <div class="ed-code">
+        <div class="ed-gutter" aria-hidden="true">
+          @for (n of [].constructor(lineCount(file.content)).fill(0); track $index) { <span>{{ $index + 1 }}</span> }
+        </div>
+        <label class="sr-only" for="ed-text">Contents of {{ file.path }}</label>
+        <div class="ed-stack">
+          <pre #overlay class="ed-hl hljs" aria-hidden="true" data-testid="editor-highlight" [innerHTML]="highlighted()"></pre>
+          <textarea id="ed-text" class="ed-text" spellcheck="false" wrap="off" [ngModel]="file.content" (ngModelChange)="setContent($event)" (scroll)="onEditorScroll($event, overlay)"></textarea>
+        </div>
+      </div>
+      } @else {
+      <p class="ed-note">{{ file.reason }}</p>
+      }
+      } @else {
+      <p class="ed-note">Pick a file from the list, or create a new one, to start editing.</p>
+      }
+    </div>
+  </div>
+  }
+
+  @if (commitOpen()) {
+  <div class="ed-backdrop">
+    <div class="ed-dialog" role="dialog" aria-modal="true" aria-labelledby="ed-commit-title" appModalFocus (appModalDismiss)="committing() || commitOpen.set(false)">
+      <h2 id="ed-commit-title" class="text-base font-semibold">Commit changes to {{ branch() }}</h2>
+      <ul class="ed-changes" aria-label="Changed files">
+        @for (change of changes(); track change.path) {
+        <li><span class="ed-chip">{{ change.delete ? 'Deleted' : (files()[change.path].original === null ? 'Added' : 'Modified') }}</span> {{ change.path }}</li>
+        }
+      </ul>
+      <label for="ed-msg" class="text-sm font-medium">Commit message</label>
+      <input id="ed-msg" class="input input-bordered w-full" maxlength="500" data-modal-initial [ngModel]="message()" (ngModelChange)="message.set($event)" (keydown.enter)="commit()" />
+      <label for="ed-desc" class="text-sm font-medium">Description (optional)</label>
+      <textarea id="ed-desc" class="textarea textarea-bordered w-full" rows="3" maxlength="5000" [ngModel]="description()" (ngModelChange)="description.set($event)"></textarea>
+      @if (commitError()) {
+      <p role="alert" class="text-error text-sm">{{ commitError() }}</p>
+      @if (stale()) { <button type="button" class="btn btn-outline btn-sm" (click)="reloadLatest()">Reload latest version</button> }
+      }
+      <div class="ed-dialog-actions">
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="committing() || !message().trim()" (click)="commit()">
+          @if (committing()) { <span class="loading loading-spinner loading-xs"></span> } Commit changes
+        </button>
+        <button type="button" class="btn btn-ghost btn-sm" [disabled]="committing()" (click)="commitOpen.set(false)">Cancel</button>
+      </div>
+    </div>
+  </div>
+  }
+</section>

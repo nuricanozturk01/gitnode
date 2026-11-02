@@ -29,6 +29,7 @@ import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.model.JobModel;
 import dev.gitnode.os.actions.model.MatrixStrategy;
 import dev.gitnode.os.actions.model.OnTriggerModel;
+import dev.gitnode.os.actions.model.PullRequestTriggerModel;
 import dev.gitnode.os.actions.model.PushTriggerModel;
 import dev.gitnode.os.actions.model.StrategyModel;
 import dev.gitnode.os.actions.model.WorkflowModel;
@@ -78,6 +79,41 @@ class WorkflowTriggerServiceTest {
   private static final UUID REPO_ID = UUID.randomUUID();
   private static final String OWNER = "alice";
   private static final String REPO_NAME = "myapp";
+
+  @Test
+  void pullRequestRunUsesEventCommitForWorkflowAndCheckout() {
+    final var tenant = new Tenant();
+    tenant.setUsername(OWNER);
+    final var repo = new Repo();
+    repo.setId(REPO_ID);
+    repo.setName(REPO_NAME);
+    repo.setOwner(tenant);
+    final var sha = "a".repeat(40);
+    final var actor = UUID.randomUUID();
+    final var model =
+        new WorkflowModel(
+            "CI",
+            new OnTriggerModel(null, new PullRequestTriggerModel(null, null, null), null),
+            null,
+            null,
+            Map.of("build", jobWithNeeds(null)));
+    when(repoRepository.findByIdWithOwner(REPO_ID)).thenReturn(Optional.of(repo));
+    when(parserService.parseWorkflows(OWNER, REPO_NAME, sha)).thenReturn(List.of(parsed(model)));
+    when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
+        .thenReturn(Optional.empty());
+    stubDefinitionSave();
+    stubRunSave();
+    stubJobSave();
+    when(runRepository.nextRunNumber(REPO_ID)).thenReturn(1);
+
+    triggerService.triggerOnPullRequest(REPO_ID, "feature", "main", sha, actor);
+
+    final var run = ArgumentCaptor.forClass(WorkflowRun.class);
+    verify(runRepository).save(run.capture());
+    assertThat(run.getValue().getTriggerSha()).isEqualTo(sha);
+    assertThat(run.getValue().getTriggerRef()).isEqualTo("refs/heads/feature");
+    assertThat(run.getValue().getTriggerActor()).isEqualTo(actor);
+  }
 
   // ── Pure unit tests: no repo stub needed ─────────────────────────────────
 

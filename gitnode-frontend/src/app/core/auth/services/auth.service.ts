@@ -128,6 +128,13 @@ export class AuthService {
 
   async logout(): Promise<void> {
     this.cancelAutoLogout();
+    const refresh = this.tokenService.getRefreshToken();
+    if (refresh) {
+      // Best effort: revoke the login on the server before forgetting it locally.
+      void firstValueFrom(this.http.post<void>(`${this.api}/api/auth/logout`, { refreshToken: refresh })).catch(
+        () => undefined,
+      );
+    }
     this.tokenService.clearTokens();
     this.userService.invalidateMe();
     this.router.navigate(['/login']);
@@ -159,9 +166,20 @@ export class AuthService {
       void this.logout();
       throw new Error('Refresh token expired');
     }
-    const res = await firstValueFrom(
-      this.http.post<TokenResponse>(`${this.api}/api/auth/refresh-token`, { refreshToken: refresh }),
-    );
+    let res: TokenResponse;
+    try {
+      res = await firstValueFrom(
+        this.http.post<TokenResponse>(`${this.api}/api/auth/refresh-token`, { refreshToken: refresh }),
+      );
+    } catch (error) {
+      // Refresh tokens are single-use: another tab may have rotated it a moment ago.
+      const current = this.tokenService.getRefreshToken();
+      const token = this.tokenService.getAccessToken();
+      if (current && token && current !== refresh) {
+        return { token, refreshToken: current };
+      }
+      throw error;
+    }
     this.tokenService.saveTokens(res);
     this.scheduleAutoLogout();
     return res;

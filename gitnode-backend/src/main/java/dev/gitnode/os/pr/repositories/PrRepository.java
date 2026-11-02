@@ -16,12 +16,15 @@
 package dev.gitnode.os.pr.repositories;
 
 import dev.gitnode.os.pr.entities.PullRequest;
+import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -44,6 +47,39 @@ public interface PrRepository extends JpaRepository<PullRequest, UUID> {
       UUID repoId, String status, Pageable pageable);
 
   @Query(
+      value =
+          """
+    SELECT pr FROM PullRequest pr
+    JOIN FETCH pr.author
+    LEFT JOIN FETCH pr.mergedBy
+    WHERE pr.repo.id = :repoId AND pr.status = :status
+      AND (:hasLabel = false OR :labelId MEMBER OF pr.labelIds)
+      AND (:hasMilestone = false OR pr.milestoneId = :milestoneId)
+      AND (:hasAssignee = false OR EXISTS (
+        SELECT 1 FROM pr.assignees a WHERE lower(a.username) = :assignee))
+    ORDER BY pr.createdAt DESC
+    """,
+      countQuery =
+          """
+    SELECT count(pr) FROM PullRequest pr
+    WHERE pr.repo.id = :repoId AND pr.status = :status
+      AND (:hasLabel = false OR :labelId MEMBER OF pr.labelIds)
+      AND (:hasMilestone = false OR pr.milestoneId = :milestoneId)
+      AND (:hasAssignee = false OR EXISTS (
+        SELECT 1 FROM pr.assignees a WHERE lower(a.username) = :assignee))
+    """)
+  Page<PullRequest> search(
+      UUID repoId,
+      String status,
+      boolean hasLabel,
+      UUID labelId,
+      boolean hasMilestone,
+      UUID milestoneId,
+      boolean hasAssignee,
+      String assignee,
+      Pageable pageable);
+
+  @Query(
       """
     SELECT pr FROM PullRequest pr
     JOIN FETCH pr.author
@@ -51,6 +87,15 @@ public interface PrRepository extends JpaRepository<PullRequest, UUID> {
     WHERE pr.repo.id = :repoId AND pr.number = :number
     """)
   Optional<PullRequest> findByRepoIdAndNumber(UUID repoId, int number);
+
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("SELECT pr FROM PullRequest pr WHERE pr.repo.id = :repoId AND pr.number = :number")
+  Optional<PullRequest> findByRepoIdAndNumberForUpdate(UUID repoId, int number);
+
+  @Query(
+      "SELECT DISTINCT pr.targetBranch FROM PullRequest pr WHERE pr.repo.id = :repoId "
+          + "AND pr.sourceBranch = :sourceBranch AND pr.status = 'OPEN'")
+  List<String> findOpenTargetBranches(UUID repoId, String sourceBranch);
 
   boolean existsByRepoIdAndSourceBranchAndTargetBranchAndStatus(
       UUID repoId, String sourceBranch, String targetBranch, String status);

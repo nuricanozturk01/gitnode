@@ -1,5 +1,6 @@
 package dev.gitnode.os.issue.services;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -12,11 +13,17 @@ import dev.gitnode.os.issue.dtos.IssueCommentUpdateForm;
 import dev.gitnode.os.issue.dtos.IssueUpdateForm;
 import dev.gitnode.os.issue.entities.Issue;
 import dev.gitnode.os.issue.entities.IssueComment;
+import dev.gitnode.os.issue.entities.IssueLabel;
+import dev.gitnode.os.issue.entities.IssueMilestone;
 import dev.gitnode.os.issue.mappers.IssueMapper;
 import dev.gitnode.os.issue.repositories.IssueCommentRepository;
+import dev.gitnode.os.issue.repositories.IssueLabelRepository;
+import dev.gitnode.os.issue.repositories.IssueMilestoneRepository;
 import dev.gitnode.os.issue.repositories.IssueRepository;
 import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
+import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.repo.entities.Repo;
 import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
@@ -38,6 +45,8 @@ class IssueServiceModifyAccessTest {
 
   @Mock private IssueRepository issueRepository;
   @Mock private IssueCommentRepository commentRepository;
+  @Mock private IssueLabelRepository labelRepository;
+  @Mock private IssueMilestoneRepository milestoneRepository;
   @Mock private RepoRepository repoRepository;
   @Mock private TenantRepository tenantRepository;
   @Mock private IssueMapper issueMapper;
@@ -46,6 +55,40 @@ class IssueServiceModifyAccessTest {
   @Mock private CollaboratorAccessPort collaboratorAccessPort;
 
   @InjectMocks private IssueService issueService;
+
+  @Test
+  void updateAssignsMilestoneOnlyFromIssueRepository() {
+    var authorId = UUID.randomUUID();
+    var repoId = UUID.randomUUID();
+    var author = tenant(authorId, "alice");
+    var issue = issue(UUID.randomUUID(), author, repo(repoId));
+    var milestone = new IssueMilestone();
+    milestone.setId(UUID.randomUUID());
+    var form = new IssueUpdateForm();
+    form.setMilestoneId(milestone.getId());
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo"))
+        .thenReturn(Optional.of(issue.getRepo()));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(issue));
+    when(milestoneRepository.findByIdAndRepoId(milestone.getId(), repoId))
+        .thenReturn(Optional.of(milestone));
+    when(issueRepository.save(issue)).thenReturn(issue);
+    issueService.update("alice", "myrepo", 1, form, authorId);
+    assertThat(issue.getMilestone()).isSameAs(milestone);
+  }
+
+  @Test
+  void updateRejectsMilestoneFromAnotherRepository() {
+    var authorId = UUID.randomUUID();
+    var repoId = UUID.randomUUID();
+    var issue = issue(UUID.randomUUID(), tenant(authorId, "alice"), repo(repoId));
+    var form = new IssueUpdateForm();
+    form.setMilestoneId(UUID.randomUUID());
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo"))
+        .thenReturn(Optional.of(issue.getRepo()));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(issue));
+    assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, authorId))
+        .isInstanceOf(ItemNotFoundException.class);
+  }
 
   // -----------------------------------------------------------------------
   // helpers
@@ -99,7 +142,7 @@ class IssueServiceModifyAccessTest {
     Issue iss = issue(UUID.randomUUID(), author, r);
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
-    when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(issueRepository.save(iss)).thenReturn(iss);
     when(commentRepository.countByIssueId(iss.getId())).thenReturn(0);
     when(issueMapper.toDetail(any(), anyInt())).thenReturn(null);
@@ -122,7 +165,7 @@ class IssueServiceModifyAccessTest {
     Issue iss = issue(UUID.randomUUID(), author, r);
 
     when(repoRepository.findByOwnerUsernameAndName("owner", "myrepo")).thenReturn(Optional.of(r));
-    when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(repoOwner));
     when(issueRepository.save(iss)).thenReturn(iss);
     when(commentRepository.countByIssueId(iss.getId())).thenReturn(0);
@@ -145,7 +188,7 @@ class IssueServiceModifyAccessTest {
     Issue iss = issue(UUID.randomUUID(), author, r);
 
     when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
-    when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
 
     IssueUpdateForm form = new IssueUpdateForm();
@@ -153,6 +196,202 @@ class IssueServiceModifyAccessTest {
 
     assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, strangerId))
         .isInstanceOf(AccessNotAllowedException.class);
+  }
+
+  @Test
+  void update_canAssignAndClearWithoutChangingAssignmentOnUnrelatedUpdates() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Tenant assignee = tenant(UUID.randomUUID(), "bob");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(issueRepository.save(iss)).thenReturn(iss);
+    when(tenantRepository.findById(assignee.getId())).thenReturn(Optional.of(assignee));
+
+    IssueUpdateForm assign = new IssueUpdateForm();
+    assign.setAssigneeId(assignee.getId());
+    issueService.update("alice", "myrepo", 1, assign, authorId);
+    assertThat(iss.getAssignee()).isSameAs(assignee);
+
+    IssueUpdateForm title = new IssueUpdateForm();
+    title.setTitle("Updated");
+    issueService.update("alice", "myrepo", 1, title, authorId);
+    assertThat(iss.getAssignee()).isSameAs(assignee);
+
+    IssueUpdateForm clear = new IssueUpdateForm();
+    clear.setClearAssignee(true);
+    issueService.update("alice", "myrepo", 1, clear, authorId);
+    assertThat(iss.getAssignee()).isNull();
+    assertThat(iss.getAssignees()).isEmpty();
+  }
+
+  @Test
+  void update_rejectsConflictingAssignmentOperations() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    IssueUpdateForm form = new IssueUpdateForm();
+    form.setAssigneeId(UUID.randomUUID());
+    form.setClearAssignee(true);
+
+    assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, authorId))
+        .isInstanceOf(BadRequestException.class);
+    verify(issueRepository, org.mockito.Mockito.never()).save(any());
+  }
+
+  @Test
+  void update_assignsAnotherUserByUsername() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Tenant assignee = tenant(UUID.randomUUID(), "bob");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(tenantRepository.findByUsername("bob")).thenReturn(Optional.of(assignee));
+    when(issueRepository.save(iss)).thenReturn(iss);
+
+    IssueUpdateForm form = new IssueUpdateForm();
+    form.setAssigneeUsername(" bob ");
+    issueService.update("alice", "myrepo", 1, form, authorId);
+    assertThat(iss.getAssignee()).isSameAs(assignee);
+  }
+
+  @Test
+  void update_rejectsUsernameTogetherWithOtherAssignmentOperations() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    IssueUpdateForm form = new IssueUpdateForm();
+    form.setAssigneeUsername("bob");
+    form.setAssigneeId(UUID.randomUUID());
+
+    assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, authorId))
+        .isInstanceOf(BadRequestException.class);
+    verify(issueRepository, org.mockito.Mockito.never()).save(any());
+  }
+
+  @Test
+  void update_rejectsUnknownAssigneeUsername() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(tenantRepository.findByUsername("missing")).thenReturn(Optional.empty());
+    IssueUpdateForm form = new IssueUpdateForm();
+    form.setAssigneeUsername("missing");
+
+    assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, authorId))
+        .isInstanceOf(ItemNotFoundException.class);
+    verify(issueRepository, org.mockito.Mockito.never()).save(any());
+  }
+
+  @Test
+  void update_addsMultipleAssigneesAndRemovesOnlySelectedUser() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Tenant bob = tenant(UUID.randomUUID(), "bob");
+    Tenant carol = tenant(UUID.randomUUID(), "carol");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(tenantRepository.findByUsername("bob")).thenReturn(Optional.of(bob));
+    when(tenantRepository.findByUsername("carol")).thenReturn(Optional.of(carol));
+    when(issueRepository.save(iss)).thenReturn(iss);
+
+    IssueUpdateForm addBob = new IssueUpdateForm();
+    addBob.setAddAssigneeUsername("bob");
+    issueService.update("alice", "myrepo", 1, addBob, authorId);
+    issueService.update("alice", "myrepo", 1, addBob, authorId);
+    IssueUpdateForm addCarol = new IssueUpdateForm();
+    addCarol.setAddAssigneeUsername("carol");
+    issueService.update("alice", "myrepo", 1, addCarol, authorId);
+    assertThat(iss.getAssignees()).containsExactlyInAnyOrder(bob, carol);
+    assertThat(iss.getAssignee()).isSameAs(bob);
+
+    IssueUpdateForm removeBob = new IssueUpdateForm();
+    removeBob.setRemoveAssigneeUsername("bob");
+    issueService.update("alice", "myrepo", 1, removeBob, authorId);
+    assertThat(iss.getAssignees()).containsExactly(carol);
+    assertThat(iss.getAssignee()).isSameAs(carol);
+  }
+
+  @Test
+  void update_rejectsUnauthorizedMultiAssigneeChange() {
+    UUID authorId = UUID.randomUUID();
+    UUID strangerId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
+    IssueUpdateForm form = new IssueUpdateForm();
+    form.setAddAssigneeUsername("bob");
+
+    assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, strangerId))
+        .isInstanceOf(AccessNotAllowedException.class);
+    verify(tenantRepository, org.mockito.Mockito.never()).findByUsername("bob");
+    verify(issueRepository, org.mockito.Mockito.never()).save(any());
+  }
+
+  @Test
+  void updateAddsAndRemovesRepositoryLabel() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    IssueLabel label = new IssueLabel();
+    label.setId(UUID.randomUUID());
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(labelRepository.findByIdAndRepoId(label.getId(), repoId)).thenReturn(Optional.of(label));
+    when(issueRepository.save(iss)).thenReturn(iss);
+    IssueUpdateForm add = new IssueUpdateForm();
+    add.setAddLabelId(label.getId());
+    issueService.update("alice", "myrepo", 1, add, authorId);
+    assertThat(iss.getLabels()).containsExactly(label);
+    IssueUpdateForm remove = new IssueUpdateForm();
+    remove.setRemoveLabelId(label.getId());
+    issueService.update("alice", "myrepo", 1, remove, authorId);
+    assertThat(iss.getLabels()).isEmpty();
+  }
+
+  @Test
+  void updateRejectsLabelFromAnotherRepository() {
+    UUID authorId = UUID.randomUUID();
+    UUID repoId = UUID.randomUUID();
+    UUID labelId = UUID.randomUUID();
+    Tenant author = tenant(authorId, "alice");
+    Repo r = repo(repoId);
+    Issue iss = issue(UUID.randomUUID(), author, r);
+    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
+    when(labelRepository.findByIdAndRepoId(labelId, repoId)).thenReturn(Optional.empty());
+    IssueUpdateForm form = new IssueUpdateForm();
+    form.setAddLabelId(labelId);
+    assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, authorId))
+        .isInstanceOf(ItemNotFoundException.class);
+    verify(issueRepository, org.mockito.Mockito.never()).save(any());
   }
 
   // -----------------------------------------------------------------------

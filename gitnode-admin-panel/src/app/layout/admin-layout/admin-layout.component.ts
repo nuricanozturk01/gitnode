@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { AuthService } from '../../core/auth/services/auth.service';
@@ -16,6 +16,7 @@ export class AdminLayoutComponent {
   readonly authService = inject(AuthService);
   readonly tokenService = inject(TokenService);
   readonly theme = inject(ThemeService);
+  readonly drawerOpen = signal(false);
 
   logout(): void {
     void this.authService.logout();

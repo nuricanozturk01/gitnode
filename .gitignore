@@ -64,3 +64,6 @@ gitnode-runner/dist/gitnode-runner
 graphify-out/
 .codex/
 .agents/
+docs/
+skills-lock.json
+AGENTS.md

@@ -29,7 +29,6 @@ import java.util.Base64;
 import java.util.Locale;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
@@ -40,14 +39,17 @@ public class HttpGitAuthenticationFilter implements Filter {
   private static final String RUNNER_USERNAME = "x-token";
 
   private final TenantRepository tenantRepository;
+  private final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher;
   private final RepoRepository repoRepository;
   @Nullable private final RunnerTokenPort runnerTokenPort;
 
   public HttpGitAuthenticationFilter(
       final TenantRepository tenantRepository,
+      final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher,
       final RepoRepository repoRepository,
       final @Nullable RunnerTokenPort runnerTokenPort) {
     this.tenantRepository = tenantRepository;
+    this.passwordHasher = passwordHasher;
     this.repoRepository = repoRepository;
     this.runnerTokenPort = runnerTokenPort;
   }
@@ -140,16 +142,22 @@ public class HttpGitAuthenticationFilter implements Filter {
       final var tenant =
           this.tenantRepository
               .findByUsername(username)
-              .orElseThrow(() -> new IllegalArgumentException("User not found"));
+              .orElseThrow(
+                  () -> {
+                    this.passwordHasher.spendTime(password);
+                    return new IllegalArgumentException("User not found");
+                  });
 
-      if (tenant.getSalt() == null || tenant.getHash() == null) {
+      if (!this.passwordHasher.hasPassword(tenant)) {
+        this.passwordHasher.spendTime(password);
         throw new IllegalArgumentException("User password not configured");
       }
 
-      final var hash = DigestUtils.sha256Hex(password + tenant.getSalt());
-
-      if (!hash.equals(tenant.getHash())) {
+      if (!this.passwordHasher.matches(password, tenant)) {
         throw new IllegalArgumentException("Invalid password");
+      }
+      if (this.passwordHasher.upgradeIfNeeded(tenant, password)) {
+        this.tenantRepository.save(tenant);
       }
 
       log.info("HTTP Git auth success: {}", username);

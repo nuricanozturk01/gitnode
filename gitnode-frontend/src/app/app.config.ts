@@ -15,7 +15,8 @@
 ///
 
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, TitleStrategy } from '@angular/router';
+import { PageTitleStrategy } from './core/title/page-title.strategy';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
 import { LUCIDE_ICONS as ICON_OBJECT } from './lucide-icons';
@@ -28,6 +29,7 @@ export const appConfig: ApplicationConfig = {
     { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(ICON_OBJECT) },
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
+    { provide: TitleStrategy, useClass: PageTitleStrategy },
     provideHttpClient(withInterceptors([authInterceptor, refreshInterceptor])),
   ],
 };

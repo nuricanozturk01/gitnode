@@ -27,7 +27,6 @@ import io.jsonwebtoken.security.Keys;
 import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Function;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.time.DateUtils;
@@ -49,6 +48,10 @@ public class JwtUtils {
   private static final int REFRESH_EXPIRATION_HOUR = 48;
   private static final String ISSUER = "gitnode-application";
   private static final String EMAIL = "email";
+  private static final String TOKEN_USE = "token_use";
+  private static final String ACCESS = "access";
+  private static final String REFRESH = "refresh";
+  private static final String FAMILY = "fam";
 
   @Value("${gitnode.jwt.secret}")
   private String secret;
@@ -63,8 +66,8 @@ public class JwtUtils {
 
     try {
       final var jwt = isBearerToken(token) ? getJwtToken(token) : token;
-      return UUID.fromString(this.extractClaim(jwt, Claims::getSubject));
-    } catch (final JwtException ex) {
+      return UUID.fromString(this.extractClaims(jwt, ACCESS).getSubject());
+    } catch (final JwtException | IllegalArgumentException ex) {
       throw new TokenExpiredException("invalidToken");
     }
   }
@@ -82,14 +85,11 @@ public class JwtUtils {
     }
   }
 
-  private <T> T extractClaim(final String token, final Function<Claims, T> claimsResolver) {
-    final Claims claims = this.extractAllClaims(token);
-    return claimsResolver.apply(claims);
-  }
-
-  private Claims extractAllClaims(final String token) {
+  private Claims extractClaims(final String token, final String tokenUse) {
     return Jwts.parser()
         .verifyWith(this.getSigningKey())
+        .requireIssuer(ISSUER)
+        .require(TOKEN_USE, tokenUse)
         .build()
         .parseSignedClaims(token)
         .getPayload();
@@ -97,20 +97,44 @@ public class JwtUtils {
 
   public String generateToken(final Tenant user) {
 
-    final var claims = Map.of(EMAIL, user.getEmail());
+    final var claims = Map.of(EMAIL, user.getEmail(), TOKEN_USE, ACCESS);
 
     return this.createToken(claims, user.getId(), ACCESS_EXPIRATION_HOUR);
   }
 
-  public String generateRefreshToken(final Tenant user) {
+  /** Identity of a refresh token: who it belongs to, its own id and the rotation family. */
+  public record RefreshClaims(UUID userId, UUID tokenId, UUID familyId) {}
 
-    final var claims = Map.of(EMAIL, user.getEmail());
+  public String generateRefreshToken(final Tenant user, final UUID tokenId, final UUID familyId) {
 
-    return this.createToken(claims, user.getId(), REFRESH_EXPIRATION_HOUR);
+    final var claims =
+        Map.of(EMAIL, user.getEmail(), TOKEN_USE, REFRESH, FAMILY, familyId.toString());
+
+    return this.createToken(claims, user.getId(), REFRESH_EXPIRATION_HOUR, tokenId);
+  }
+
+  public RefreshClaims extractRefreshClaims(final String token) {
+    try {
+      final var claims = this.extractClaims(token, REFRESH);
+      return new RefreshClaims(
+          UUID.fromString(claims.getSubject()),
+          UUID.fromString(claims.getId()),
+          UUID.fromString(claims.get(FAMILY, String.class)));
+    } catch (final JwtException | IllegalArgumentException | NullPointerException ex) {
+      throw new TokenExpiredException("invalidToken");
+    }
   }
 
   private String createToken(
       final Map<String, String> claims, final UUID subject, final int expiration) {
+    return this.createToken(claims, subject, expiration, UUID.randomUUID());
+  }
+
+  private String createToken(
+      final Map<String, String> claims,
+      final UUID subject,
+      final int expiration,
+      final UUID tokenId) {
 
     final var currentTimeMillis = System.currentTimeMillis();
 
@@ -122,7 +146,7 @@ public class JwtUtils {
         .header()
         .type(OAuth2AccessToken.TokenType.BEARER.getValue())
         .and()
-        .id(UUID.randomUUID().toString())
+        .id(tokenId.toString())
         .subject(subject.toString())
         .issuer(ISSUER)
         .issuedAt(tokenIssuedAt)
@@ -135,7 +159,7 @@ public class JwtUtils {
   public void verifyAndValidate(final String jwt) {
 
     try {
-      Jwts.parser().verifyWith(this.getSigningKey()).build().parseSignedClaims(jwt);
+      this.extractClaims(jwt, ACCESS);
     } catch (final JwtException e) {
       log.info("Token rejected: {}", e.getMessage());
       throw new TokenExpiredException("invalidToken");

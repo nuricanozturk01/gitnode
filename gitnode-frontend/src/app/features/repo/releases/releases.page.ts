@@ -48,6 +48,8 @@ export class ReleasesPage {
   readonly releases = signal<ReleaseInfo[]>([]);
   readonly tags = signal<TagInfo[]>([]);
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
+  private loadVersion = 0;
   readonly releasePage = signal(0);
   readonly tagPage = signal(0);
 
@@ -74,17 +76,20 @@ export class ReleasesPage {
   }
 
   private async loadData(): Promise<void> {
+    const version = ++this.loadVersion;
     const owner = this.owner();
     const repo = this.repoName();
     if (!owner || !repo) return;
     const routeKey = `${owner}/${repo}`;
 
     this.loading.set(true);
+    this.loadFailed.set(false);
     try {
       const [tags, releases] = await Promise.all([
-        this.tagService.getAll(owner, repo).catch(() => []),
+        this.tagService.getAll(owner, repo),
         this.releaseService.getAll(owner, repo),
       ]);
+      if (version !== this.loadVersion) return;
       this.releases.set(releases);
       this.tags.set(tags);
       this.releasePage.set(0);
@@ -98,10 +103,15 @@ export class ReleasesPage {
         });
       }
     } catch {
-      this.releases.set([]);
+      if (version !== this.loadVersion) return;
+      this.loadFailed.set(true);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.loadData();
   }
 
   prevReleasePage(): void {
@@ -134,6 +144,8 @@ export class ReleasesPage {
         this.syncReleasesCache(next);
         return next;
       });
+      this.tags.update((list) => list.map((tag) => tag.release?.id === release.id ? { ...tag, release: null } : tag));
+      this.releasePage.update((page) => Math.min(page, Math.max(0, this.totalReleasePages() - 1)));
       this.toast.success('Release deleted');
     } catch {
       this.toast.error('Could not delete release');
@@ -161,6 +173,7 @@ export class ReleasesPage {
     try {
       await this.tagService.delete(this.owner(), this.repoName(), tagName);
       this.tags.update((list) => list.filter((t) => t.name !== tagName));
+      this.tagPage.update((page) => Math.min(page, Math.max(0, this.totalTagPages() - 1)));
       this.toast.success('Tag deleted');
     } catch {
       this.toast.error('Could not delete tag');

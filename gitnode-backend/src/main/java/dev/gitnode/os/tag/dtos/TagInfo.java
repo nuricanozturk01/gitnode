@@ -29,4 +29,18 @@ public record TagInfo(
     Instant taggerDate,
     @Nullable String tagMessage,
     boolean isAnnotated,
-    @Nullable ReleaseInfo release) {}
+    @Nullable ReleaseInfo release) {
+  public TagInfo withoutDraftRelease() {
+    if (this.release == null || !this.release.isDraft()) return this;
+    return new TagInfo(
+        this.name,
+        this.commitSha,
+        this.commitShortSha,
+        this.commitMessage,
+        this.taggerName,
+        this.taggerDate,
+        this.tagMessage,
+        this.isAnnotated,
+        null);
+  }
+}

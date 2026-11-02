@@ -1,0 +1,55 @@
+.pt-head {
+  margin: 0;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+}
+.pt-list {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  list-style: none;
+}
+.pt-item {
+  display: flex;
+  gap: 0.65rem;
+  padding: 0.4rem 0;
+}
+.pt-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: var(--color-base-300);
+}
+.pt-icon[data-tone='success'] {
+  background: color-mix(in oklch, var(--color-success) 28%, transparent);
+}
+.pt-icon[data-tone='danger'] {
+  background: color-mix(in oklch, var(--color-error) 26%, transparent);
+}
+.pt-icon[data-tone='warning'] {
+  background: color-mix(in oklch, var(--color-warning) 30%, transparent);
+}
+.pt-icon[data-tone='primary'] {
+  background: color-mix(in oklch, var(--color-primary) 24%, transparent);
+}
+.pt-text {
+  margin: 0;
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+.pt-time,
+.pt-detail {
+  font-size: 0.75rem;
+  color: color-mix(in oklch, var(--color-base-content) 74%, transparent);
+}
+.pt-time {
+  margin-left: 0.4rem;
+}
+.pt-detail {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}

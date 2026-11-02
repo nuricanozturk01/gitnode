@@ -52,6 +52,7 @@ export class CommitsPage {
   readonly totalPages = signal(0);
   readonly hasNext = signal(false);
   readonly hasPrevious = signal(false);
+  private loadVersion = 0;
 
   private readonly parentPm = parentParamMapSignal(this.route);
   private readonly localPm = paramMapSignal(this.route);
@@ -63,7 +64,8 @@ export class CommitsPage {
   readonly defaultBranch = this.repoContext.defaultBranch;
   readonly currentPage = computed(() => {
     const p = this.queryPm().get('page');
-    return p ? parseInt(p, 10) : 0;
+    const page = p ? Number(p) : 0;
+    return Number.isInteger(page) && page >= 0 ? page : 0;
   });
 
   private readonly routeKey = computed(
@@ -82,6 +84,7 @@ export class CommitsPage {
   }
 
   async loadData(): Promise<void> {
+    const version = ++this.loadVersion;
     const owner = this.owner();
     const repo = this.repoName();
     const branch = this.branch();
@@ -97,16 +100,18 @@ export class CommitsPage {
         this.commitService.getCommits(owner, repo, branch, page, 20),
         this.branchService.getAll(owner, repo),
       ]);
+      if (version !== this.loadVersion) return;
       this.commits.set(commitsRes.items);
       this.totalPages.set(commitsRes.totalPages);
       this.hasNext.set(commitsRes.hasNext);
       this.hasPrevious.set(commitsRes.hasPrevious);
       this.branches.set(branchesData);
     } catch {
+      if (version !== this.loadVersion) return;
       this.error.set('Failed to load commits');
       this.commits.set([]);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
   }
 

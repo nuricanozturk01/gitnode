@@ -66,6 +66,7 @@ class LdapAuthServiceTest {
   @Mock private TenantRepository tenantRepository;
   @Mock private AccountRepository accountRepository;
   @Mock private JwtUtils jwtUtils;
+  @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
 
   @InjectMocks private LdapAuthService ldapAuthService;
 
@@ -181,7 +182,7 @@ class LdapAuthServiceTest {
     when(tenantRepository.findByUsernameOrEmail("alice@ldap.gitnode-os.com"))
         .thenReturn(Optional.of(existing));
     when(jwtUtils.generateToken(existing)).thenReturn("access-token");
-    when(jwtUtils.generateRefreshToken(existing)).thenReturn("refresh-token");
+    when(refreshTokens.issue(existing)).thenReturn("refresh-token");
 
     final LoginInfo result = ldapAuthService.authenticate(form);
 
@@ -211,7 +212,7 @@ class LdapAuthServiceTest {
     when(tenantRepository.findByUsernameOrEmail(anyString())).thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(saved);
     when(jwtUtils.generateToken(saved)).thenReturn("access-token");
-    when(jwtUtils.generateRefreshToken(saved)).thenReturn("refresh-token");
+    when(refreshTokens.issue(saved)).thenReturn("refresh-token");
 
     final LoginInfo result = ldapAuthService.authenticate(form);
 
@@ -261,7 +262,7 @@ class LdapAuthServiceTest {
         .thenReturn(List.of());
     when(tenantRepository.findByUsernameOrEmail(anyString())).thenReturn(Optional.of(tenant));
     when(jwtUtils.generateToken(tenant)).thenReturn("access-token");
-    when(jwtUtils.generateRefreshToken(tenant)).thenReturn("refresh-token");
+    when(refreshTokens.issue(tenant)).thenReturn("refresh-token");
 
     final LoginInfo result = ldapAuthService.authenticate(form);
 
@@ -287,7 +288,7 @@ class LdapAuthServiceTest {
     when(tenantRepository.findByUsernameOrEmail(anyString())).thenReturn(Optional.empty());
     when(tenantRepository.save(any(Tenant.class))).thenReturn(tenant);
     when(jwtUtils.generateToken(tenant)).thenReturn("tok");
-    when(jwtUtils.generateRefreshToken(tenant)).thenReturn("ref");
+    when(refreshTokens.issue(tenant)).thenReturn("ref");
 
     ldapAuthService.authenticate(form);
 
@@ -320,7 +321,7 @@ class LdapAuthServiceTest {
     when(accountRepository.findByAccountTypeAndSubjectId(eq("LDAP"), eq("alice")))
         .thenReturn(Optional.of(existingAccount));
     when(jwtUtils.generateToken(tenant)).thenReturn("tok");
-    when(jwtUtils.generateRefreshToken(tenant)).thenReturn("ref");
+    when(refreshTokens.issue(tenant)).thenReturn("ref");
 
     ldapAuthService.authenticate(form);
 

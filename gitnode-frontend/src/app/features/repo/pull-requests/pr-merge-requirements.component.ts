@@ -1,0 +1,88 @@
+///
+/// Copyright 2026 the original author or authors.
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///      https://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+
+import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { LucideAngularModule } from 'lucide-angular';
+import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
+import type { PrMergeRequirements } from '../../../domain/pull-request/models/pr-conflict.model';
+
+const CHECK_LABELS: Record<string, string> = {
+  SUCCESS: 'Passed',
+  FAILURE: 'Failed',
+  CANCELLED: 'Cancelled',
+  SKIPPED: 'Skipped',
+  QUEUED: 'Queued',
+  IN_PROGRESS: 'Running',
+  MISSING: 'Not run for this commit',
+};
+
+/** Shows what the protected target branch still needs, so merge blockers are visible before clicking. */
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-pr-merge-requirements',
+  standalone: true,
+  imports: [LucideAngularModule],
+  templateUrl: './pr-merge-requirements.component.html',
+  styleUrl: './pr-merge-requirements.component.css',
+})
+export class PrMergeRequirementsComponent {
+  readonly owner = input.required<string>();
+  readonly repoName = input.required<string>();
+  readonly number = input.required<number>();
+  readonly targetBranch = input.required<string>();
+  readonly refreshKey = input<string>('');
+
+  /** True while the rule has unmet requirements, so the parent can disable merging. */
+  readonly blocked = output<boolean>();
+
+  private readonly prService = inject(PullRequestService);
+  readonly data = signal<PrMergeRequirements | null>(null);
+  readonly failed = signal(false);
+  private requestId = 0;
+
+  readonly visible = computed(() => this.data()?.protectedBranch === true);
+  readonly approvalsMet = computed(() => {
+    const d = this.data();
+    return !!d && d.currentApprovals >= d.requiredApprovals;
+  });
+
+  constructor() {
+    effect(() => {
+      this.refreshKey();
+      if (this.owner() && this.repoName() && this.number()) void this.load();
+    });
+  }
+
+  label(state: string): string {
+    return CHECK_LABELS[state] ?? state;
+  }
+
+  async load(): Promise<void> {
+    const id = ++this.requestId;
+    this.failed.set(false);
+    try {
+      const value = await this.prService.getMergeRequirements(this.owner(), this.repoName(), this.number());
+      if (id !== this.requestId) return;
+      this.data.set(value);
+      this.blocked.emit(!value.satisfied);
+    } catch {
+      if (id !== this.requestId) return;
+      this.data.set(null);
+      this.failed.set(true);
+      this.blocked.emit(false);
+    }
+  }
+}

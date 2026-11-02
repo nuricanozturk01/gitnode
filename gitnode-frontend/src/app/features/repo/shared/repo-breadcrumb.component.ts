@@ -29,7 +29,7 @@ export interface BreadcrumbItem {
   standalone: true,
   imports: [RouterLink],
   template: `
-    <div class="breadcrumbs min-h-6 text-sm">
+    <nav class="breadcrumbs min-h-6 max-w-full text-sm" aria-label="Repository path">
       <ul>
         <li>
           <a [routerLink]="treeRootLink()" class="text-primary hover:underline">
@@ -39,7 +39,7 @@ export interface BreadcrumbItem {
         @for (crumb of items(); track crumb.path || crumb.name) {
           <li>
             @if (crumb.isLast) {
-              <span class="text-base-content font-medium">{{ crumb.name }}</span>
+              <span class="text-base-content font-medium" aria-current="page">{{ crumb.name }}</span>
             } @else {
               <a [routerLink]="crumbLink(crumb.path)" class="text-primary hover:underline">
                 {{ crumb.name }}
@@ -48,7 +48,7 @@ export interface BreadcrumbItem {
           </li>
         }
       </ul>
-    </div>
+    </nav>
   `,
 })
 export class RepoBreadcrumbComponent {

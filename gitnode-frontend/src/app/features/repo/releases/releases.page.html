@@ -2,6 +2,11 @@
 <div class="flex justify-center py-20">
   <span class="loading loading-spinner loading-md text-primary"></span>
 </div>
+} @else if (loadFailed()) {
+<div role="alert" class="repo-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
+  <p class="text-base-content font-medium">Releases and tags could not be loaded.</p>
+  <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
+</div>
 } @else { @if (releases().length === 0 && tagsWithoutRelease().length === 0) {
 <div class="repo-panel flex flex-col items-center gap-3 px-6 py-16 text-center">
   <lucide-icon name="tag" class="text-base-content/25 size-12"></lucide-icon>
@@ -9,7 +14,7 @@
     <h2 class="text-base-content mb-1 text-base font-semibold">No releases yet</h2>
     <p class="text-base-content/55 text-sm">Tag a commit and publish a release to share it with users.</p>
   </div>
-  @if (repoContext.canEdit()) {
+  @if (repoContext.hasPermission('PUSH')) {
   <a [routerLink]="['/', owner(), repoName(), 'releases', 'new']" class="btn btn-primary btn-sm mt-1 gap-1.5">
     <lucide-icon name="plus" class="size-4"></lucide-icon>
     Create release
@@ -24,7 +29,7 @@
     <span class="text-base-content/45 ml-1.5 text-sm font-normal">({{ releases().length }})</span>
     }
   </h2>
-  @if (repoContext.canEdit()) {
+  @if (repoContext.hasPermission('PUSH')) {
   <a
     [routerLink]="['/', owner(), repoName(), 'releases', 'new']"
     class="btn btn-primary btn-sm gap-1.5 self-start sm:self-auto"
@@ -56,6 +61,8 @@
           </a>
           @if (release.isDraft) {
           <span class="badge-pill badge-pill--neutral">Draft</span>
+          } @if (release.isLatest) {
+          <span class="badge-pill badge-pill--success">Latest</span>
           } @if (release.isPrerelease) {
           <span class="badge-pill badge-pill--warning">Pre-release</span>
           }
@@ -74,7 +81,7 @@
         }
       </div>
 
-      @if (repoContext.canEdit()) {
+      @if (repoContext.hasPermission('PUSH')) {
       <div class="flex shrink-0 items-center gap-1.5 sm:flex-col sm:items-end sm:gap-2">
         <a [routerLink]="['/', owner(), repoName(), 'releases', release.id, 'edit']" class="btn btn-ghost btn-xs gap-1">
           <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
@@ -132,7 +139,7 @@
         </div>
       </div>
       <div class="flex shrink-0 items-center gap-1.5 pl-7 sm:pl-0">
-        @if (repoContext.canEdit()) {
+        @if (repoContext.hasPermission('PUSH')) {
         <a
           [routerLink]="['/', owner(), repoName(), 'releases', 'new']"
           [queryParams]="{ tag: tag.name }"
@@ -141,7 +148,7 @@
           <lucide-icon name="plus" class="size-3.5"></lucide-icon>
           Create release
         </a>
-        <button class="btn btn-ghost btn-xs text-error gap-1" (click)="deleteTag(tag.name)">
+        <button class="btn btn-ghost btn-xs text-error gap-1" [attr.aria-label]="'Delete tag ' + tag.name" (click)="deleteTag(tag.name)">
           <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
         </button>
         }

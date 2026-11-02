@@ -28,8 +28,20 @@ export interface ReleaseInfo {
   body: string | null;
   isDraft: boolean;
   isPrerelease: boolean;
+  /** True for the release shown as the repository's latest. */
+  isLatest?: boolean;
   author: ReleaseAuthor;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ReleaseAssetInfo {
+  id: string;
+  name: string;
+  contentType: string;
+  size: number;
+  sha256: string;
+  downloadCount: number;
+  createdAt: string;
 }

@@ -15,6 +15,7 @@
 ///
 
 export interface ContributionBreakdown {
+  commits: number;
   issues: number;
   issueComments: number;
   pullRequests: number;
@@ -23,6 +24,8 @@ export interface ContributionBreakdown {
   releases: number;
   snippets: number;
   snippetRevisions: number;
+  pullRequestReviews: number;
+  fileComments: number;
   snippetComments: number;
 }
 

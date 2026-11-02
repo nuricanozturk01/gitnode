@@ -77,13 +77,16 @@ class AuthController {
   @RateLimit(limit = 60, windowSeconds = 60, key = "auth.refresh-token")
   public ResponseEntity<LoginInfo> refreshToken(@RequestBody @Valid final RefreshTokenForm form) {
 
-    this.jwtUtils.verifyAndValidate(form.getRefreshToken());
+    return ResponseEntity.ok(this.authService.refresh(form.getRefreshToken()));
+  }
 
-    final var tenantId = this.jwtUtils.extractUserId(form.getRefreshToken());
+  @PostMapping("/logout")
+  @RateLimit(limit = 60, windowSeconds = 60, key = "auth.logout")
+  public ResponseEntity<Void> logout(@RequestBody @Valid final RefreshTokenForm form) {
 
-    final var loginInfo = this.authService.getTenantById(tenantId);
+    this.authService.logout(form.getRefreshToken());
 
-    return ResponseEntity.ok(loginInfo);
+    return ResponseEntity.noContent().build();
   }
 
   @PostMapping("/send-password-recovery-mail")
@@ -91,11 +94,7 @@ class AuthController {
   public ResponseEntity<Boolean> sendPasswordRecoveryMail(
       @RequestBody @Valid final RecoveryCodeRequestForm form) {
 
-    final var response = this.authService.getPasswordRecoveryCode(form);
-
-    if (!response) {
-      return ResponseEntity.internalServerError().body(false);
-    }
+    this.authService.requestPasswordRecovery(form);
 
     return ResponseEntity.ok(true);
   }

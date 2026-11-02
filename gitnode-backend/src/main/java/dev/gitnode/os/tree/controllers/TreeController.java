@@ -16,13 +16,17 @@
 package dev.gitnode.os.tree.controllers;
 
 import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.shared.repo.services.RepoService;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.tree.dtos.BlobResponse;
+import dev.gitnode.os.tree.dtos.CommitChangesRequest;
 import dev.gitnode.os.tree.dtos.LanguageStats;
 import dev.gitnode.os.tree.dtos.TreeResponse;
 import dev.gitnode.os.tree.dtos.UpdateFileRequest;
+import dev.gitnode.os.tree.services.ChangeCommitService;
 import dev.gitnode.os.tree.services.LanguageService;
 import dev.gitnode.os.tree.services.TreeNonTxService;
 import dev.gitnode.os.tree.utils.ArchivePathSupport;
@@ -34,6 +38,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +51,7 @@ import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -70,6 +76,7 @@ public class TreeController {
   private final LanguageService languageService;
   private final RepoService repoService;
   private final TenantRepository tenantRepository;
+  private final ChangeCommitService changeCommitService;
   private final JwtUtils jwtUtils;
 
   @GetMapping({"/tree/{branch}", "/tree/{branch}/**"})
@@ -77,9 +84,13 @@ public class TreeController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String branch,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       final HttpServletRequest request)
       throws IOException {
 
+    this.repoService.assertUserCanAccessRepo(
+        authHeader == null ? null : this.jwtUtils.extractUserId(authHeader), owner, repo);
     final var path = this.extractPath(request, branch, TREE);
 
     final var treeResponse = this.treeNonTxService.getTree(owner, repo, branch, path);
@@ -92,9 +103,13 @@ public class TreeController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String branch,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       final HttpServletRequest request)
       throws IOException {
 
+    this.repoService.assertUserCanAccessRepo(
+        authHeader == null ? null : this.jwtUtils.extractUserId(authHeader), owner, repo);
     final var path = this.extractPath(request, branch, BLOB);
 
     final var blobResponse = this.treeNonTxService.getBlob(owner, repo, branch, path);
@@ -107,9 +122,13 @@ public class TreeController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String branch,
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
       final HttpServletRequest request)
       throws IOException {
 
+    this.repoService.assertUserCanAccessRepo(
+        authHeader == null ? null : this.jwtUtils.extractUserId(authHeader), owner, repo);
     final var path = this.extractPath(request, branch, RAW);
 
     final var content = this.treeNonTxService.getRawContent(owner, repo, branch, path);
@@ -178,6 +197,7 @@ public class TreeController {
       throws IOException {
 
     final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(userId, owner, repo, CollaboratorPermission.PUSH);
     final var tenant =
         this.tenantRepository
             .findById(userId)
@@ -201,9 +221,36 @@ public class TreeController {
 
     final var result =
         this.treeNonTxService.updateFile(
-            owner, repo, branch, path, rawContent, fullMessage, author);
+            owner, repo, branch, path, rawContent, fullMessage, author, tenant.getUsername());
 
     return ResponseEntity.ok(result);
+  }
+
+  @PostMapping(value = "/changes", consumes = MediaType.APPLICATION_JSON_VALUE)
+  @RateLimit(limit = 60, windowSeconds = 600, key = "tree.changes")
+  public ResponseEntity<Map<String, String>> commitChanges(
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @RequestBody @Valid final CommitChangesRequest body,
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader)
+      throws IOException {
+
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(userId, owner, repo, CollaboratorPermission.PUSH);
+    final var tenant =
+        this.tenantRepository
+            .findById(userId)
+            .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
+    final var authorName =
+        StringUtils.isNotBlank(tenant.getDisplayName())
+            ? tenant.getDisplayName()
+            : tenant.getUsername();
+    final var author =
+        new PersonIdent(authorName, tenant.getEmail(), Instant.now(), ZoneOffset.UTC);
+
+    final var sha =
+        this.changeCommitService.commit(owner, repo, author, tenant.getUsername(), body);
+    return ResponseEntity.ok(Map.of("commitSha", sha));
   }
 
   private String extractPath(

@@ -18,7 +18,7 @@ package dev.gitnode.os.shared.branch.dtos;
 import java.time.Instant;
 import lombok.Builder;
 
-@Builder
+@Builder(toBuilder = true)
 public record BranchInfo(
     String name,
     String lastCommitSha,
@@ -26,4 +26,7 @@ public record BranchInfo(
     String lastCommitMessage,
     String lastCommitAuthor,
     Instant lastCommitDate,
-    boolean isDefault) {}
+    boolean isDefault,
+    boolean isProtected,
+    int ahead,
+    int behind) {}

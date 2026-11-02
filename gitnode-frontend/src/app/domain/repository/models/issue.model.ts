@@ -1,5 +1,20 @@
 export type IssueStatus = 'OPEN' | 'CLOSED';
 
+export interface IssueMilestone {
+  id: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  status: IssueStatus;
+}
+
+export interface IssueLabel {
+  id: string;
+  name: string;
+  color: string;
+  description: string | null;
+}
+
 export interface IssueAuthor {
   name: string | null;
   email: string;
@@ -22,6 +37,9 @@ export interface IssueInfo {
   status: IssueStatus;
   author: IssueAuthor;
   assignee: IssueAuthor | null;
+  assignees?: IssueAuthor[];
+  labels?: IssueLabel[];
+  milestone?: IssueMilestone | null;
   commentCount: number;
   createdAt: string | null;
   updatedAt: string | null;
@@ -36,6 +54,9 @@ export interface IssueDetail {
   status: IssueStatus;
   author: IssueAuthor;
   assignee: IssueAuthor | null;
+  assignees?: IssueAuthor[];
+  labels?: IssueLabel[];
+  milestone?: IssueMilestone | null;
   commentCount: number;
   createdAt: string | null;
   updatedAt: string | null;
@@ -69,6 +90,14 @@ export interface IssueUpdateForm {
   description?: string;
   status?: IssueStatus;
   assigneeId?: string;
+  assigneeUsername?: string;
+  addAssigneeUsername?: string;
+  removeAssigneeUsername?: string;
+  addLabelId?: string;
+  removeLabelId?: string;
+  clearAssignee?: boolean;
+  milestoneId?: string;
+  clearMilestone?: boolean;
 }
 
 export interface IssueCommentForm {
@@ -85,4 +114,5 @@ export interface IssueLinkedTaskInfo {
   taskStatus: string;
   projectCode: string;
   projectName: string;
+  projectOwner: string;
 }

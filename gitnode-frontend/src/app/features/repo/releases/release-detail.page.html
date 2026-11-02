@@ -10,7 +10,9 @@
         <h1 class="text-base-content text-2xl font-bold">{{ r.name ?? r.tagName }}</h1>
         @if (r.isDraft) {
         <span class="badge-pill badge-pill--neutral">Draft</span>
-        } @if (r.isPrerelease) {
+        } @if (r.isLatest) {
+          <span class="badge-pill badge-pill--success">Latest</span>
+          } @if (r.isPrerelease) {
         <span class="badge-pill badge-pill--warning">Pre-release</span>
         }
       </div>
@@ -23,12 +25,15 @@
         <span>by {{ r.author.displayName ?? r.author.username }}</span>
       </div>
     </div>
-    @if (repoContext.canEdit()) {
+    @if (repoContext.hasPermission('PUSH')) {
     <div class="flex gap-2">
       <a [routerLink]="['/', owner(), repoName(), 'releases', r.id, 'edit']" class="btn btn-outline btn-sm gap-1.5">
         <lucide-icon name="pencil" class="size-3.5"></lucide-icon>
         Edit
       </a>
+      @if (!r.isDraft && !r.isPrerelease && !r.isLatest) {
+      <button type="button" class="btn btn-outline btn-sm" [disabled]="markingLatest()" (click)="markLatest()">Set as latest</button>
+      }
       <button class="btn btn-error btn-sm gap-1.5" (click)="deleteRelease()">
         <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
         Delete
@@ -61,6 +66,7 @@
         } Source code (ZIP)
       </button>
     </div>
+    <app-release-assets [owner]="owner()" [repo]="repoName()" [releaseId]="r.id" [canManage]="repoContext.hasPermission('PUSH')" />
   </div>
 </div>
 } @else {

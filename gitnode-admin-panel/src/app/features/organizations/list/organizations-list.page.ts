@@ -20,6 +20,7 @@ export class OrganizationsListPage implements OnInit {
   private readonly toast = inject(ToastService);
 
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
   readonly organizations = signal<OrganizationSummary[]>([]);
   readonly page = signal(0);
   readonly totalPages = signal(0);
@@ -28,6 +29,7 @@ export class OrganizationsListPage implements OnInit {
   readonly togglingLdapSlug = signal<string | null>(null);
 
   readonly pageSize = ADMIN_PAGE_SIZE;
+  private loadVersion = 0;
 
   ngOnInit(): void {
     void this.load();
@@ -80,16 +82,23 @@ export class OrganizationsListPage implements OnInit {
   }
 
   private async load(): Promise<void> {
+    const version = ++this.loadVersion;
     this.loading.set(true);
+    this.loadFailed.set(false);
     try {
       const res = await this.organizationService.list({ page: this.page(), size: this.pageSize });
+      if (version !== this.loadVersion) return;
       this.organizations.set(res.content);
       this.totalPages.set(res.totalPages);
       this.totalElements.set(res.totalElements);
     } catch {
-      this.toast.error('Failed to load organizations');
+      if (version === this.loadVersion) this.loadFailed.set(true);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.load();
   }
 }

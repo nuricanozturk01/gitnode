@@ -19,6 +19,11 @@ export type NotificationType =
   | 'PR_COMMENT'
   | 'PR_MERGED'
   | 'PR_CLOSED'
+  | 'PR_REVIEW_REQUESTED'
+  | 'PR_REVIEW_SUBMITTED'
+  | 'FILE_COMMENT'
+  | 'PR_ASSIGNED'
+  | 'PR_METADATA_CHANGED'
   | 'AI_CODE_REVIEW_COMPLETED'
   | 'AI_CODE_REVIEW_FAILED'
   | 'AI_ANALYSIS_COMPLETED'
@@ -55,6 +60,11 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   PR_COMMENT: 'Pull request comments',
   PR_MERGED: 'Pull request merged',
   PR_CLOSED: 'Pull request closed',
+  PR_REVIEW_REQUESTED: 'Review requested',
+  PR_REVIEW_SUBMITTED: 'Pull request reviewed',
+  FILE_COMMENT: 'Comments on files',
+  PR_ASSIGNED: 'Pull request assigned to you',
+  PR_METADATA_CHANGED: 'Pull request labels or milestone changed',
   AI_CODE_REVIEW_COMPLETED: 'AI code review completed',
   AI_CODE_REVIEW_FAILED: 'AI code review failed',
   AI_ANALYSIS_COMPLETED: 'AI codebase analysis completed',

@@ -27,7 +27,7 @@ import { copyTextToClipboard } from '../../shared/utils/clipboard.util';
   standalone: true,
   imports: [RouterLink, LucideAngularModule],
   templateUrl: './landing.page.html',
-  styleUrl: './landing.page.css',
+  styleUrls: ['./landing.hero.css', './landing.sections.css', './landing.footer.css'],
 })
 export class LandingPage implements OnDestroy {
   private readonly toast = inject(ToastService);

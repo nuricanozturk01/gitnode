@@ -17,6 +17,7 @@ package dev.gitnode.os.actions.listeners;
 
 import dev.gitnode.os.actions.services.WorkflowTriggerService;
 import dev.gitnode.os.events.repo.RepoPushedEvent;
+import dev.gitnode.os.shared.branch.OpenPullRequestQueryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PushEventListener {
 
   private final WorkflowTriggerService workflowTriggerService;
+  private final OpenPullRequestQueryPort pullRequests;
 
   @ApplicationModuleListener
   void onRepoPushed(final RepoPushedEvent event) {
@@ -39,6 +41,13 @@ public class PushEventListener {
     log.debug("Handling push for repoId={} branch={}", event.repoId(), event.branchName());
 
     this.workflowTriggerService.triggerOnPush(
-        event.repoId(), event.branchName(), event.pusherUsername(), null);
+        event.repoId(), event.branchName(), event.pusherUsername(), null, event.commitSha());
+    if (event.commitSha() != null) {
+      for (final var target :
+          this.pullRequests.findTargetBranches(event.repoId(), event.branchName())) {
+        this.workflowTriggerService.triggerOnPullRequest(
+            event.repoId(), event.branchName(), target, event.commitSha(), null);
+      }
+    }
   }
 }

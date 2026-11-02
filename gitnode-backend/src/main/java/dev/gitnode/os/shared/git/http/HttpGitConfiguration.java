@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.shared.git.http;
 
+import dev.gitnode.os.shared.branch.ProtectedBranchReceiveHook;
 import dev.gitnode.os.shared.git.GitPushEventPublisher;
 import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
@@ -48,11 +49,13 @@ public class HttpGitConfiguration {
 
   @Bean
   public ServletRegistrationBean<GitServlet> gitServletRegistration(
-      final RepoRepository repoRepository, final GitPushEventPublisher pushEventPublisher) {
+      final RepoRepository repoRepository,
+      final GitPushEventPublisher pushEventPublisher,
+      final ProtectedBranchReceiveHook protectionHook) {
 
     final var gitServlet = new GitServlet();
     gitServlet.setReceivePackFactory(
-        (_, repo) -> this.setReceivePackFactory(repo, pushEventPublisher));
+        (_, repo) -> this.setReceivePackFactory(repo, pushEventPublisher, protectionHook));
     gitServlet.setRepositoryResolver((_, name) -> this.setRepositoryResolver(repoRepository, name));
 
     final var registration = new ServletRegistrationBean<>(gitServlet, "/git/*");
@@ -65,12 +68,13 @@ public class HttpGitConfiguration {
   @Bean
   public FilterRegistrationBean<HttpGitAuthenticationFilter> httpGitAuthenticationFilter(
       final TenantRepository tenantRepository,
+      final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher,
       final RepoRepository repoRepository,
       final Optional<RunnerTokenPort> runnerTokenPort) {
 
     final var filter =
         new HttpGitAuthenticationFilter(
-            tenantRepository, repoRepository, runnerTokenPort.orElse(null));
+            tenantRepository, passwordHasher, repoRepository, runnerTokenPort.orElse(null));
     final var registration = new FilterRegistrationBean<>(filter);
 
     registration.addUrlPatterns("/git/*");
@@ -108,12 +112,15 @@ public class HttpGitConfiguration {
   }
 
   private ReceivePack setReceivePackFactory(
-      final Repository repository, final GitPushEventPublisher pushEventPublisher) {
+      final Repository repository,
+      final GitPushEventPublisher pushEventPublisher,
+      final ProtectedBranchReceiveHook protectionHook) {
 
     final var rp = new ReceivePack(repository);
     rp.setAllowCreates(true);
     rp.setAllowDeletes(true);
     rp.setAllowNonFastForwards(true);
+    rp.setPreReceiveHook(protectionHook);
     rp.setPostReceiveHook(pushEventPublisher);
 
     return rp;

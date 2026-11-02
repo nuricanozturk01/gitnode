@@ -78,6 +78,10 @@ export class UserService {
     return firstValueFrom(this.http.get<UserPublicProfile>(`${this.api}/${encodeURIComponent(username)}`));
   }
 
+  searchUsers(query: string): Promise<UserSearchResult[]> {
+    return firstValueFrom(this.http.get<UserSearchResult[]>(`${this.api}/search`, { params: { q: query } }));
+  }
+
   getContributions(username: string): Promise<UserContributionsResponse> {
     return firstValueFrom(
       this.http.get<UserContributionsResponse>(`${this.api}/${encodeURIComponent(username)}/contributions`),
@@ -86,6 +90,18 @@ export class UserService {
 
   updateProfile(form: UpdateProfileForm): Promise<User> {
     return this.patchMeAndCache(`${this.api}/me/profile`, form);
+  }
+
+  listEmails(): Promise<ExtraEmail[]> {
+    return firstValueFrom(this.http.get<ExtraEmail[]>(`${this.api}/me/emails`));
+  }
+
+  addEmail(email: string): Promise<ExtraEmail> {
+    return firstValueFrom(this.http.post<ExtraEmail>(`${this.api}/me/emails`, { email }));
+  }
+
+  removeEmail(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.api}/me/emails/${id}`));
   }
 
   private patchMeAndCache(url: string, body: unknown): Promise<User> {
@@ -107,9 +123,23 @@ export interface UserPublicProfile {
   profileReadme: string | null;
 }
 
+export interface UserSearchResult {
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+}
+
 export interface UpdateProfileForm {
   bio?: string | null;
   website?: string | null;
   location?: string | null;
   profileReadme?: string | null;
+  /** IANA zone id; empty string resets to UTC, omitted leaves it unchanged. */
+  timezone?: string;
+}
+
+export interface ExtraEmail {
+  id: string;
+  email: string;
+  createdAt: string;
 }

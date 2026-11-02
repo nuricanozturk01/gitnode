@@ -373,7 +373,7 @@
           (click)="onLinkIssueBackdropClick($event)"
           (keydown.escape)="closeLinkIssueModal()"
         >
-          <div class="bg-base-100 border-base-300 w-full max-w-sm rounded-2xl border p-6 shadow-2xl">
+          <div class="bg-base-100 border-base-300 w-full max-w-sm rounded-2xl border p-6 shadow-2xl" appModalFocus (appModalDismiss)="closeLinkIssueModal()">
             <div class="mb-4 flex items-center justify-between">
               <h3 id="link-issue-modal-title" class="text-base-content text-base font-semibold">Link an issue</h3>
               <button type="button" class="btn btn-ghost btn-sm btn-square" (click)="closeLinkIssueModal()">

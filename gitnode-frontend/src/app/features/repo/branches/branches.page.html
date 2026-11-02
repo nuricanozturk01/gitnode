@@ -2,7 +2,7 @@
   <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
     <h2 class="text-base-content text-lg font-semibold">Branches</h2>
     @if (canEdit()) {
-    <button type="button" class="btn btn-primary btn-sm gap-1" (click)="openCreateModal()">
+    <button type="button" class="btn btn-primary btn-sm gap-1" (click)="openCreateModal($event)">
       <lucide-icon name="plus" class="size-4"></lucide-icon>
       New branch
     </button>
@@ -10,62 +10,79 @@
   </div>
 
   @if (error()) {
-  <div class="alert alert-error mx-4 mb-4">
+  <div role="alert" class="alert alert-error m-4 w-auto">
     <span>{{ error() }}</span>
+    @if (loadFailed()) { <button type="button" class="btn btn-sm" (click)="loadBranches()">Try again</button> }
   </div>
   } @if (loading()) {
   <div class="flex justify-center py-16">
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
+  } @else if (loadFailed()) {
   } @else if (branches().length === 0) {
   <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16">
     <lucide-icon name="gitBranch" class="size-12"></lucide-icon>
-    <p class="font-medium">No Content</p>
-    <p class="text-center text-sm">No branches yet. Create your first branch to get started.</p>
+    <p class="font-medium">No branches yet</p>
+    <p class="text-center text-sm">Branches appear here after the first commit.</p>
   </div>
   } @else {
-  <div class="grid gap-4 p-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-    @for (b of branches(); track b.name) {
-    <div class="card bg-base-100 border-base-300 border shadow-sm">
-      <div class="card-body p-4">
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0 flex-1">
+  <div class="border-base-300 border-b px-4 py-2">
+    <label class="sr-only" for="branch-search">Search branches</label>
+    <input id="branch-search" type="search" class="input input-bordered input-sm w-full sm:max-w-xs" placeholder="Search branches" autocomplete="off" [ngModel]="query()" (ngModelChange)="query.set($event)" />
+  </div>
+  @if (visible().length === 0) {
+  <p class="text-base-content/70 px-4 py-8 text-center text-sm" role="status">No branches match "{{ query() }}".</p>
+  }
+  <ul class="divide-base-300 divide-y">
+    @for (b of visible(); track b.name) {
+    <li class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-5">
+      <div class="flex min-w-0 flex-1 items-start gap-3">
+        <lucide-icon name="gitBranch" class="text-base-content/50 mt-1 size-4 shrink-0"></lucide-icon>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
             <a
               [routerLink]="['/', owner(), repoName(), 'tree', b.name]"
-              class="link link-primary font-medium no-underline"
+              class="text-base-content hover:text-primary min-w-0 break-all text-sm font-semibold no-underline hover:underline"
             >
               {{ b.name }}
             </a>
-            <div class="mt-1 flex flex-wrap gap-1">
-              @if (b.isDefault) {
-              <span class="badge-pill badge-pill--primary">default</span>
-              } @if (b.isProtected) {
-              <span class="badge-pill badge-pill--neutral">protected</span>
-              }
-            </div>
+            @if (b.isDefault) { <span class="badge-pill badge-pill--primary">Default</span> }
+            @if (b.isProtected) { <span class="badge-pill badge-pill--neutral">Protected</span> }
           </div>
-          <lucide-icon name="gitBranch" class="text-primary size-5 shrink-0"></lucide-icon>
-        </div>
-        <div class="text-base-content/70 mt-3 flex flex-col gap-0.5 text-sm">
+          @if (b.lastCommitSha) {
+          <p class="text-base-content/65 mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
           <a
             [routerLink]="['/', owner(), repoName(), 'commit', b.lastCommitSha]"
-            class="text-primary font-mono text-sm hover:underline"
+            class="text-primary font-mono hover:underline"
           >
             {{ b.lastCommitShortSha }}
           </a>
-          <span class="line-clamp-2">{{ b.lastCommitMessage }}</span>
-          <span class="text-base-content/60 text-xs">{{ b.lastCommitAuthor }}</span>
-          <span class="text-base-content/60 text-xs">
-            @if (b.lastCommitSha) { {{ b.lastCommitDate | relativeTime }} } @else { No commits yet }
-          </span>
+          <span class="min-w-0 break-words">{{ b.lastCommitMessage }}</span>
+          <span>· {{ b.lastCommitAuthor }} · {{ b.lastCommitDate | relativeTime }}</span>
+          </p>
+          @if (!b.isDefault && (b.ahead || b.behind)) {
+          <p class="text-base-content/70 mt-1 text-xs" aria-label="Divergence from the default branch">
+            <span>{{ b.ahead ?? 0 }}{{ (b.ahead ?? 0) >= maxDivergence ? '+' : '' }} ahead</span>
+            <span aria-hidden="true"> | </span>
+            <span>{{ b.behind ?? 0 }}{{ (b.behind ?? 0) >= maxDivergence ? '+' : '' }} behind</span>
+            of <code>{{ defaultBranch() }}</code>
+          </p>
+          }
+          } @else { <p class="text-base-content/60 mt-1 text-sm">No commits yet</p> }
         </div>
-        @if (!b.isDefault && canEdit()) {
-        <div class="card-actions mt-3 justify-end">
+      </div>
+        @if (!b.isDefault && (canEdit() || (isLoggedIn() && (b.ahead ?? 0) > 0))) {
+        <div class="flex flex-wrap gap-1 pl-7 sm:shrink-0 sm:pl-0">
+          @if (isLoggedIn() && (b.ahead ?? 0) > 0) {
+          <a class="btn btn-outline btn-xs" [routerLink]="['/', owner(), repoName(), 'pulls', 'new']" [queryParams]="{ head: b.name, base: defaultBranch() }" [attr.aria-label]="'New pull request from ' + b.name">New pull request</a>
+          }
+          @if (canEdit()) {
           <button
             type="button"
             class="btn btn-ghost btn-xs"
-            (click)="openSetDefaultModal(b)"
+            (click)="openSetDefaultModal(b, $event)"
             [disabled]="actionLoading()"
+            [attr.aria-label]="'Set ' + b.name + ' as default branch'"
           >
             Set default
           </button>
@@ -73,23 +90,25 @@
             type="button"
             class="btn btn-ghost btn-xs text-error"
             (click)="deleteBranch(b)"
-            [disabled]="actionLoading()"
+            [disabled]="actionLoading() || b.isProtected"
+            [attr.title]="b.isProtected ? 'Protected branches cannot be deleted. Remove the protection rule first.' : null"
+            [attr.aria-label]="'Delete branch ' + b.name"
           >
             Delete
           </button>
+          }
         </div>
         }
-      </div>
-    </div>
+    </li>
     }
-  </div>
+  </ul>
   }
 </section>
 
 @if (createModalOpen()) {
 <div class="modal modal-open">
-  <div class="modal-box">
-    <h3 class="text-base-content mb-4 text-lg font-semibold">Create branch</h3>
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="create-branch-title" (keydown)="onDialogKeydown($event)">
+    <h3 id="create-branch-title" class="text-base-content mb-4 text-lg font-semibold">Create branch</h3>
     <form [formGroup]="createForm" (ngSubmit)="onCreateSubmit()" class="space-y-4">
       <div class="form-control">
         <label class="label" for="branch-name">
@@ -130,19 +149,12 @@
       </div>
     </form>
   </div>
-  <div
-    class="modal-backdrop"
-    role="button"
-    tabindex="0"
-    (click)="closeCreateModal()"
-    (keydown.enter)="closeCreateModal()"
-    (keydown.space)="closeCreateModal(); $event.preventDefault()"
-  ></div>
+  <button type="button" class="modal-backdrop" tabindex="-1" aria-hidden="true" (click)="closeCreateModal()"></button>
 </div>
 } @if (setDefaultModalOpen() && branchToSetDefault(); as branch) {
 <div class="modal modal-open">
-  <div class="modal-box">
-    <h3 class="text-base-content mb-4 text-lg font-semibold">Set default branch</h3>
+  <div id="default-branch-dialog" class="modal-box" role="dialog" aria-modal="true" aria-labelledby="default-branch-title" (keydown)="onDialogKeydown($event)">
+    <h3 id="default-branch-title" class="text-base-content mb-4 text-lg font-semibold">Set default branch</h3>
     <p class="text-base-content/70 mb-4">
       Set <strong>{{ branch.name }}</strong> as the default branch for this repository?
     </p>
@@ -155,13 +167,6 @@
       </button>
     </div>
   </div>
-  <div
-    class="modal-backdrop"
-    role="button"
-    tabindex="0"
-    (click)="closeSetDefaultModal()"
-    (keydown.enter)="closeSetDefaultModal()"
-    (keydown.space)="closeSetDefaultModal(); $event.preventDefault()"
-  ></div>
+  <button type="button" class="modal-backdrop" tabindex="-1" aria-hidden="true" (click)="closeSetDefaultModal()"></button>
 </div>
 }

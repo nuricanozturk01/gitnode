@@ -33,6 +33,7 @@ public interface ReleaseMapper {
   @BeanMapping(builder = @Builder())
   @Mapping(target = "isDraft", source = "draft")
   @Mapping(target = "isPrerelease", source = "prerelease")
+  @Mapping(target = "isLatest", ignore = true)
   ReleaseInfo toInfo(Release release);
 
   TenantReleaseInfo toTenantInfo(Tenant tenant);

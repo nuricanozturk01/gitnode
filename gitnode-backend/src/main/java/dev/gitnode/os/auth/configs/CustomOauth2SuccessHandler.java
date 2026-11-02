@@ -58,6 +58,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
   private static final String REFRESH_EXPIRES_IN = "refresh_expires_in";
 
   private final JwtUtils jwtUtils;
+  private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
   private final TenantRepository tenantRepository;
   private final AccountRepository accountRepository;
 
@@ -96,7 +97,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     final var redirectUrl =
         UriComponentsBuilder.fromUriString("%s/login".formatted(this.frontendBaseUrl))
             .queryParam(TOKEN, this.jwtUtils.generateToken(tenant))
-            .queryParam(REFRESH_TOKEN, this.jwtUtils.generateRefreshToken(tenant))
+            .queryParam(REFRESH_TOKEN, this.refreshTokens.issue(tenant))
             .queryParam(USERNAME, tenant.getUsername())
             .queryParam(EXPIRES_IN, JwtUtils.ACCESS_EXPIRATION_SECONDS)
             .queryParam(REFRESH_EXPIRES_IN, JwtUtils.REFRESH_EXPIRATION_SECONDS)

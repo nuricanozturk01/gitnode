@@ -32,6 +32,15 @@ export interface PullRequestInfo {
   updatedAt: string;
   mergedAt: string | null;
   closedAt: string | null;
+  labels: { id: string; name: string; color: string; description: string | null }[];
+  assignees: AuthorInfo[];
+  milestone: { id: string; title: string; status: string } | null;
+}
+
+export interface PrListFilter {
+  labelId?: string;
+  milestoneId?: string;
+  assignee?: string;
 }
 
 export interface PrPage {

@@ -8,16 +8,15 @@
 .navbar-shell {
   --navbar-scroll: 0;
   --navbar-border: color-mix(in oklch, var(--color-base-content) 6%, var(--color-base-300));
-  --navbar-pad-y: calc(0.875rem - 0.3rem * var(--navbar-scroll));
-  --navbar-pad-x: calc(1rem + 0.5rem * var(--navbar-scroll));
-  --navbar-logo: calc(1.75rem - 0.25rem * var(--navbar-scroll));
-  --navbar-mark: calc(1.375rem - 0.125rem * var(--navbar-scroll));
+  --navbar-pad-y: 0.625rem;
+  --navbar-pad-x: 1rem;
+  --navbar-logo: 1.625rem;
+  --navbar-mark: 1.3125rem;
   padding-block: var(--navbar-pad-y);
   border-bottom: 1px solid color-mix(in oklch, var(--navbar-border) calc(55% + 45% * var(--navbar-scroll)), transparent);
   background-color: var(--color-base-100);
   box-shadow: 0 1px 2px color-mix(in oklch, var(--color-base-content) calc(var(--navbar-scroll) * 6%), transparent);
   transition:
-    padding 0.2s ease,
     border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
@@ -30,22 +29,17 @@
 .navbar-shell__inner {
   min-width: 0;
   padding-inline: var(--navbar-pad-x);
-  transition: padding 0.2s ease;
 }
 
 @media (min-width: 640px) {
   .navbar-shell {
-    --navbar-pad-x: calc(1.5rem + 0.5rem * var(--navbar-scroll));
+    --navbar-pad-x: 1.5rem;
   }
 }
 
 @media (min-width: 1024px) {
   .navbar-shell {
-    --navbar-pad-x: calc(2rem + 0.25rem * var(--navbar-scroll));
-  }
-
-  .navbar-shell--compact .navbar-shell__inner {
-    max-width: calc(80rem - 2rem * var(--navbar-scroll));
+    --navbar-pad-x: 2rem;
   }
 }
 
@@ -57,25 +51,20 @@
   display: block;
   width: var(--navbar-logo);
   height: var(--navbar-logo);
-  transition:
-    width 0.2s ease,
-    height 0.2s ease;
 }
 
 .navbar-mark {
   font-size: var(--navbar-mark);
-  transition: font-size 0.2s ease;
 }
 
 @media (min-width: 640px) {
   .navbar-shell .navbar-mark {
-    --navbar-mark: calc(1.5rem - 0.125rem * var(--navbar-scroll));
+    --navbar-mark: 1.4375rem;
   }
 }
 
 .navbar-shell .btn-sm {
-  min-height: calc(2rem + 0.125rem * (1 - var(--navbar-scroll)));
-  transition: min-height 0.2s ease;
+  min-height: 2rem;
 }
 
 .navbar-shell .menu-horizontal > li > a {

@@ -36,7 +36,12 @@
       </div>
 
       <div class="form-control mb-4">
-        <span class="label-text mb-1 block font-medium">Release notes</span>
+        <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+          <span class="label-text block font-medium">Release notes</span>
+          <button type="button" class="btn btn-outline btn-xs" [disabled]="generating()" (click)="generateNotes()">
+            @if (generating()) { <span class="loading loading-spinner loading-xs"></span> } Generate release notes
+          </button>
+        </div>
         <div class="border-base-300 overflow-hidden rounded-lg border">
           <div class="border-base-300 flex gap-0 border-b">
             <button
@@ -91,6 +96,11 @@
           <span class="text-base-content/70 text-sm">This is a pre-release</span>
         </label>
       </div>
+    </section>
+
+    <section class="repo-panel p-5" aria-labelledby="edit-assets-heading">
+      <h2 id="edit-assets-heading" class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">Attached files</h2>
+      <app-release-assets [owner]="owner()" [repo]="repoName()" [releaseId]="r.id" [canManage]="repoContext.hasPermission('PUSH')" />
     </section>
 
     <div class="flex flex-wrap gap-3">

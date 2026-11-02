@@ -1,0 +1,957 @@
+# GitNode kod haritası
+
+Bu belge kaynak ağacından çıkarılmış bir gezinme haritasıdır; envanter statik olarak oluşturulmuştur ve sınıfların davranışlarının veya güvenliğinin doğrulandığı anlamına gelmez. Kod değiştikçe güncellenmelidir.
+
+Sistemin mevcut teknik eksikleri ve GitHub karşılaştırması için [uyumluluk analizine](GITHUB_UYUMLULUK_ANALIZI.md) bakın.
+
+## Mimari
+
+- `gitnode-backend`: Spring Boot uygulaması. Alan paketleri controller, service, repository, entity ve DTO katmanları etrafında örgütlenir. `shared` ortak Git, yetki, depo, kilit, önbellek, hata ve audit altyapısını içerir.
+- `gitnode-events`: bağımsız servis değil, backend'in kullandığı ortak Spring Modulith olay tiplerini içeren Maven modülü.
+- `gitnode-frontend` ve `gitnode-admin-panel`: bağımsız Angular uygulamaları. Başlangıç rotaları ilgili `src/app/app.routes.ts` dosyalarında; auth interceptor ve guard'ları `core` altındadır.
+- `gitnode-runner`: kayıt, WebSocket bağlantısı, iş yürütme, workspace, yerleşik action ve protokol paketlerinden oluşan Go ajanı.
+- `e2e`: Playwright API ve senaryo testleri; backend birim testleri `gitnode-backend/src/test`, Go testleri runner paketleri yanındadır.
+
+## Temel akışlar
+
+1. Kimlik: `auth/configs/SecurityConfig` URL kurallarını ve JWT filtresini kurar; OAuth2 ve isteğe bağlı SAML, LDAP akışları `auth` paketindedir. Açık URL tanımı tek başına veri erişimi yetkisi anlamına gelmez; controller ve servis kontrolleri ayrıca incelenmelidir.
+2. Git: `shared/repo/services/RepoStorageService` bare depoları dosya sisteminde yönetir. JGit HTTP/SSH push sonrası `shared/git/GitPushEventPublisher`, başarılı branch komutları için önbelleği temizler ve `RepoPushedEvent` yayınlar.
+3. Actions: `actions/listeners/PushEventListener` olayı `WorkflowTriggerService`'e iletir; workflow ayrıştırılır, run ve job kayıtları ile olayları oluşturulur. `JobDispatcher` ve Redis pub/sub, işi WebSocket bağlantısını tutan instance'a ulaştırır; Go runner `cmd/runner/main.go` içindeki handler ile yürütücüye aktarır.
+4. Bildirimler ve webhook'lar: Modulith olaylarını ilgili listener/dispatcher tüketir. Bildirimler SSE ile de sunulur; webhook başarısızlıkları için DLQ ve yeniden deneme altyapısı vardır.
+5. Kalıcılık: PostgreSQL şeması `gitnode-backend/src/main/resources/db/migration` altındaki Flyway geçişleriyle yönetilir. Redis önbellek ve dağıtık işlemlerde kullanılır. Depolar ve yerel artifact dosyaları çoklu instance için paylaşılan dosya sistemi gerektirir; `README.md` ölçekleme bölümüne bakın.
+
+## İnceleme ve doğrulama
+
+`CONTRIBUTING.md` kurulum, profiller ve test komutlarının ana kaynağıdır. `Makefile` içindeki `test-backend`, `test-runner`, `test-lint` ve `verify` hedeflerine bakın. `GitNodeArchitectureTest` Spring Modulith modül sınırlarını doğrular. Bu harita oluşturulurken testler çalıştırılmamıştır.
+
+## Kaynak dosyaları ve tanımlanan tipler
+
+Aşağıdaki liste Java, TypeScript ve Go kaynak dosyalarındaki üst düzey tipleri düzenli ifadelerle tarar; iç içe tipler dahil olabilir ve dil ayrıştırıcısı olmadığı için eksik veya fazla eşleşmeler bulunabilir. Dosya bağlantıları depo köküne göredir.
+
+### `gitnode-backend/src/main/java/dev`
+
+- [GitNodeApplication.java](../gitnode-backend/src/main/java/dev/gitnode/os/GitNodeApplication.java) — `GitNodeApplication`
+- [ActionsDispatchConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/ActionsDispatchConfig.java) — `ActionsDispatchConfig`
+- [ActionsEnumNames.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/ActionsEnumNames.java) — `ActionsEnumNames`
+- [ActionsAdminPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/api/ActionsAdminPort.java) — `ActionsAdminPort`
+- [RunnerAdminData.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/api/RunnerAdminData.java) — `RunnerAdminData`
+- [WorkflowRunStatsData.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/api/WorkflowRunStatsData.java) — `WorkflowRunStatsData`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/api/package-info.java)
+- [ArtifactController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/ArtifactController.java) — `ArtifactController`, `PageResponse`
+- [LogStreamController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/LogStreamController.java) — `LogStreamController`
+- [RunnerController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/RunnerController.java) — `RunnerController`
+- [RunnerGroupController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/RunnerGroupController.java) — `RunnerGroupController`, `PageResponse`
+- [SecretController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/SecretController.java) — `SecretController`
+- [WorkflowController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/WorkflowController.java) — `WorkflowController`
+- [WorkflowRunController.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/controllers/WorkflowRunController.java) — `WorkflowRunController`, `PageResponse`
+- [JobCancelledData.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/JobCancelledData.java) — `JobCancelledData`
+- [JobClaimRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/request/JobClaimRequest.java) — `JobClaimRequest`
+- [RunnerGroupRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/request/RunnerGroupRequest.java) — `RunnerGroupRequest`
+- [RunnerHeartbeatRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/request/RunnerHeartbeatRequest.java) — `RunnerHeartbeatRequest`
+- [RunnerRegistrationRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/request/RunnerRegistrationRequest.java) — `RunnerRegistrationRequest`
+- [StepLogRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/request/StepLogRequest.java) — `StepLogRequest`
+- [WorkflowDispatchRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/request/WorkflowDispatchRequest.java) — `WorkflowDispatchRequest`
+- [ArtifactResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/ArtifactResponse.java) — `ArtifactResponse`
+- [DispatchInputResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/DispatchInputResponse.java) — `DispatchInputResponse`
+- [RegistrationTokenResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/RegistrationTokenResponse.java) — `RegistrationTokenResponse`
+- [RunnerGroupResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/RunnerGroupResponse.java) — `RunnerGroupResponse`
+- [RunnerRegistrationResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/RunnerRegistrationResponse.java) — `RunnerRegistrationResponse`
+- [RunnerResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/RunnerResponse.java) — `RunnerResponse`
+- [SecretResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/SecretResponse.java) — `SecretResponse`
+- [WorkflowDetailResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/WorkflowDetailResponse.java) — `WorkflowDetailResponse`
+- [WorkflowJobResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/WorkflowJobResponse.java) — `WorkflowJobResponse`
+- [WorkflowRunResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/WorkflowRunResponse.java) — `WorkflowRunResponse`
+- [WorkflowStepResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/WorkflowStepResponse.java) — `WorkflowStepResponse`
+- [WorkflowSummaryResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/dtos/response/WorkflowSummaryResponse.java) — `WorkflowSummaryResponse`
+- [ExecutorType.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/ExecutorType.java) — `ExecutorType`
+- [Runner.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/Runner.java) — `Runner`
+- [RunnerGroup.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/RunnerGroup.java) — `RunnerGroup`
+- [RunnerRegistrationToken.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/RunnerRegistrationToken.java) — `RunnerRegistrationToken`
+- [RunnerStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/RunnerStatus.java) — `RunnerStatus`
+- [WorkflowArtifact.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowArtifact.java) — `WorkflowArtifact`
+- [WorkflowCache.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowCache.java) — `WorkflowCache`
+- [WorkflowDefinition.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowDefinition.java) — `WorkflowDefinition`
+- [WorkflowJob.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowJob.java) — `WorkflowJob`
+- [WorkflowJobStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowJobStatus.java) — `WorkflowJobStatus`
+- [WorkflowLog.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowLog.java) — `WorkflowLog`
+- [WorkflowRun.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowRun.java) — `WorkflowRun`
+- [WorkflowRunStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowRunStatus.java) — `WorkflowRunStatus`
+- [WorkflowSecret.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowSecret.java) — `WorkflowSecret`
+- [WorkflowStep.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/entities/WorkflowStep.java) — `WorkflowStep`
+- [PullRequestEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/listeners/PullRequestEventListener.java) — `PullRequestEventListener`
+- [PushEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/listeners/PushEventListener.java) — `PushEventListener`
+- [ConcurrencyModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/ConcurrencyModel.java) — `ConcurrencyModel`
+- [JobModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/JobModel.java) — `JobModel`
+- [MatrixStrategy.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/MatrixStrategy.java) — `MatrixStrategy`
+- [OnTriggerModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/OnTriggerModel.java) — `OnTriggerModel`
+- [PullRequestTriggerModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/PullRequestTriggerModel.java) — `PullRequestTriggerModel`
+- [PushTriggerModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/PushTriggerModel.java) — `PushTriggerModel`
+- [ServiceModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/ServiceModel.java) — `ServiceModel`
+- [StepModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/StepModel.java) — `StepModel`
+- [StrategyModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/StrategyModel.java) — `StrategyModel`
+- [WorkflowDispatchModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/WorkflowDispatchModel.java) — `WorkflowDispatchModel`, `DispatchInputModel`
+- [WorkflowModel.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/WorkflowModel.java) — `WorkflowModel`
+- [StringOrListDeserializer.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/model/deserializer/StringOrListDeserializer.java) — `StringOrListDeserializer`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/package-info.java)
+- [RunnerGroupRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/RunnerGroupRepository.java) — `RunnerGroupRepository`
+- [RunnerRegistrationTokenRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/RunnerRegistrationTokenRepository.java) — `RunnerRegistrationTokenRepository`
+- [RunnerRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/RunnerRepository.java) — `RunnerRepository`
+- [WorkflowArtifactRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowArtifactRepository.java) — `WorkflowArtifactRepository`
+- [WorkflowCacheRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowCacheRepository.java) — `WorkflowCacheRepository`
+- [WorkflowDefinitionRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowDefinitionRepository.java) — `WorkflowDefinitionRepository`
+- [WorkflowJobRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowJobRepository.java) — `WorkflowJobRepository`
+- [WorkflowLogRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowLogRepository.java) — `WorkflowLogRepository`
+- [WorkflowRunRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowRunRepository.java) — `WorkflowRunRepository`
+- [WorkflowSecretRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowSecretRepository.java) — `WorkflowSecretRepository`
+- [WorkflowStepRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/repositories/WorkflowStepRepository.java) — `WorkflowStepRepository`
+- [ActionsAdminService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/ActionsAdminService.java) — `ActionsAdminService`
+- [ArtifactStoreService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/ArtifactStoreService.java) — `ArtifactStoreService`
+- [CacheStoreService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/CacheStoreService.java) — `CacheStoreService`
+- [ExpressionEvaluator.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/ExpressionEvaluator.java) — `ExpressionEvaluator`
+- [JobDispatcher.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/JobDispatcher.java) — `JobDispatcher`, `CachedWorkflow`, `JobContext`, `JobPayload`, `StepPayload`
+- [MatrixExpander.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/MatrixExpander.java) — `MatrixExpander`
+- [RunnerGroupService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/RunnerGroupService.java) — `RunnerGroupService`
+- [RunnerRegistryService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/RunnerRegistryService.java) — `RunnerRegistryService`
+- [RunnerTokenGitAdapter.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/RunnerTokenGitAdapter.java) — `RunnerTokenGitAdapter`
+- [RunnerTokenService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/RunnerTokenService.java) — `RunnerTokenService`
+- [SecretVaultService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/SecretVaultService.java) — `SecretVaultService`
+- [WorkflowDefinitionService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/WorkflowDefinitionService.java) — `WorkflowDefinitionService`
+- [WorkflowExecutionService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/WorkflowExecutionService.java) — `WorkflowExecutionService`, `LogLine`
+- [WorkflowParserService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/WorkflowParserService.java) — `WorkflowParserService`, `ParsedWorkflow`
+- [WorkflowTriggerService.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/services/WorkflowTriggerService.java) — `WorkflowTriggerService`
+- [ActionsWebSocketConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/ActionsWebSocketConfig.java) — `ActionsWebSocketConfig`
+- [RunStatusSseRegistry.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/RunStatusSseRegistry.java) — `RunStatusSseRegistry`
+- [RunnerDispatchListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/RunnerDispatchListener.java) — `RunnerDispatchListener`
+- [RunnerHandshakeInterceptor.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/RunnerHandshakeInterceptor.java) — `RunnerHandshakeInterceptor`
+- [RunnerSession.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/RunnerSession.java) — `RunnerSession`
+- [RunnerSessionRegistry.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/RunnerSessionRegistry.java) — `RunnerSessionRegistry`
+- [RunnerWebSocketHandler.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/RunnerWebSocketHandler.java) — `RunnerWebSocketHandler`
+- [ServerMessage.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/ServerMessage.java) — `ServerMessage`, `JobAssignedData`
+- [SseEmitterRegistry.java](../gitnode-backend/src/main/java/dev/gitnode/os/actions/websocket/SseEmitterRegistry.java) — `SseEmitterRegistry`
+- [AdminActionsController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminActionsController.java) — `AdminActionsController`
+- [AdminAuditLogController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminAuditLogController.java) — `AdminAuditLogController`
+- [AdminAuthController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminAuthController.java) — `AdminAuthController`
+- [AdminModulithEventController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminModulithEventController.java) — `AdminModulithEventController`, `ModulithEventAvailabilityResponse`
+- [AdminPgAuditLogController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminPgAuditLogController.java) — `AdminPgAuditLogController`
+- [AdminPlatformSettingsController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminPlatformSettingsController.java) — `AdminPlatformSettingsController`
+- [AdminRepoController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminRepoController.java) — `AdminRepoController`
+- [AdminStatsController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminStatsController.java) — `AdminStatsController`
+- [AdminUserController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminUserController.java) — `AdminUserController`
+- [AdminWebhookDlqController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminWebhookDlqController.java) — `AdminWebhookDlqController`
+- [OrganizationAdminController.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/OrganizationAdminController.java) — `OrganizationAdminController`
+- [AdminActionsStatsResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminActionsStatsResponse.java) — `AdminActionsStatsResponse`
+- [AdminAuditLogFilters.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminAuditLogFilters.java) — `AdminAuditLogFilters`
+- [AdminFeatureTogglesForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminFeatureTogglesForm.java) — `AdminFeatureTogglesForm`
+- [AdminLoginForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminLoginForm.java) — `AdminLoginForm`
+- [AdminLoginInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminLoginInfo.java) — `AdminLoginInfo`
+- [AdminPlatformSettingsResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminPlatformSettingsResponse.java) — `AdminPlatformSettingsResponse`
+- [AdminRepoSummary.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminRepoSummary.java) — `AdminRepoSummary`
+- [AdminRunnerSummary.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminRunnerSummary.java) — `AdminRunnerSummary`
+- [AdminStatsOverview.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminStatsOverview.java) — `AdminStatsOverview`
+- [AdminStatsOverviewResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminStatsOverviewResponse.java) — `AdminStatsOverviewResponse`
+- [AdminUserDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminUserDetail.java) — `AdminUserDetail`
+- [AdminUserSummary.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/AdminUserSummary.java) — `AdminUserSummary`
+- [ModulithEventDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/ModulithEventDetail.java) — `ModulithEventDetail`
+- [ModulithEventFilters.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/ModulithEventFilters.java) — `ModulithEventFilters`
+- [ModulithEventLifecycleFilter.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/ModulithEventLifecycleFilter.java) — `ModulithEventLifecycleFilter`
+- [ModulithEventSearchResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/ModulithEventSearchResponse.java) — `ModulithEventSearchResponse`
+- [ModulithEventSummary.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/ModulithEventSummary.java) — `ModulithEventSummary`
+- [PeriodStats.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/PeriodStats.java) — `PeriodStats`
+- [PgAuditLogEntry.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/PgAuditLogEntry.java) — `PgAuditLogEntry`
+- [PgAuditLogSearchResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/PgAuditLogSearchResponse.java) — `PgAuditLogSearchResponse`
+- [PgAuditLogStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/PgAuditLogStatus.java) — `PgAuditLogStatus`
+- [PgAuditStatusReason.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/PgAuditStatusReason.java) — `PgAuditStatusReason`
+- [PlatformAdminsResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/PlatformAdminsResponse.java) — `PlatformAdminsResponse`
+- [RepoActivityResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/RepoActivityResponse.java) — `RepoActivityResponse`
+- [RepoActivityStat.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/RepoActivityStat.java) — `RepoActivityStat`
+- [StatsActivityPoint.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/StatsActivityPoint.java) — `StatsActivityPoint`
+- [StatsCacheTtlForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/StatsCacheTtlForm.java) — `StatsCacheTtlForm`
+- [StatsContributor.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/StatsContributor.java) — `StatsContributor`
+- [StatsReposResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/StatsReposResponse.java) — `StatsReposResponse`
+- [StatsUploadsResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/StatsUploadsResponse.java) — `StatsUploadsResponse`
+- [TimeSeriesPoint.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/TimeSeriesPoint.java) — `TimeSeriesPoint`
+- [UploadActivityResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/UploadActivityResponse.java) — `UploadActivityResponse`
+- [UploadActivityStat.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/UploadActivityStat.java) — `UploadActivityStat`
+- [UserEnabledForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/dtos/UserEnabledForm.java) — `UserEnabledForm`
+- [EventPublicationRecord.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/entities/EventPublicationRecord.java) — `EventPublicationRecord`
+- [PlatformSetting.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/entities/PlatformSetting.java) — `PlatformSetting`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/package-info.java)
+- [EventPublicationRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/repositories/EventPublicationRepository.java) — `EventPublicationRepository`
+- [PlatformSettingRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/repositories/PlatformSettingRepository.java) — `PlatformSettingRepository`
+- [AdminAuditLogService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminAuditLogService.java) — `AdminAuditLogService`
+- [AdminAuthService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminAuthService.java) — `AdminAuthService`
+- [AdminModulithEventService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminModulithEventService.java) — `AdminModulithEventService`
+- [AdminPlatformSettingsService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminPlatformSettingsService.java) — `AdminPlatformSettingsService`
+- [AdminRepoService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminRepoService.java) — `AdminRepoService`
+- [AdminStatsService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminStatsService.java) — `AdminStatsService`
+- [AdminUserService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/AdminUserService.java) — `AdminUserService`
+- [BootstrapAdminInitializer.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/BootstrapAdminInitializer.java) — `BootstrapAdminInitializer`
+- [PgAuditLocalLogSyncRunner.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/PgAuditLocalLogSyncRunner.java) — `PgAuditLocalLogSyncRunner`
+- [PgAuditLogReaderService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/PgAuditLogReaderService.java) — `PgAuditLogReaderService`, `ParsedPayload`, `SearchResult`
+- [PlatformAdminService.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/services/PlatformAdminService.java) — `PlatformAdminService`
+- [EventPublicationSpecifications.java](../gitnode-backend/src/main/java/dev/gitnode/os/admin/specifications/EventPublicationSpecifications.java) — `EventPublicationSpecifications`
+- [AiAsyncConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/configs/AiAsyncConfig.java) — `AiAsyncConfig`
+- [AiFeatureController.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/controllers/AiFeatureController.java) — `AiFeatureController`
+- [AiSettingsController.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/controllers/AiSettingsController.java) — `AiSettingsController`
+- [AiCodeReviewCommentDto.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/AiCodeReviewCommentDto.java) — `AiCodeReviewCommentDto`
+- [AiCodeReviewDto.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/AiCodeReviewDto.java) — `AiCodeReviewDto`
+- [CodebaseAnalysisDimensionDto.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/CodebaseAnalysisDimensionDto.java) — `CodebaseAnalysisDimensionDto`
+- [CodebaseAnalysisDto.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/CodebaseAnalysisDto.java) — `CodebaseAnalysisDto`
+- [CommitSuggestionRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/CommitSuggestionRequest.java) — `CommitSuggestionRequest`
+- [CommitSuggestionResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/CommitSuggestionResponse.java) — `CommitSuggestionResponse`
+- [PrDescriptionRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/PrDescriptionRequest.java) — `PrDescriptionRequest`
+- [PrDescriptionResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/PrDescriptionResponse.java) — `PrDescriptionResponse`
+- [TestAiConnectionRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/TestAiConnectionRequest.java) — `TestAiConnectionRequest`
+- [TestAiConnectionResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/TestAiConnectionResponse.java) — `TestAiConnectionResponse`
+- [UpdateAiSettingsRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/UpdateAiSettingsRequest.java) — `UpdateAiSettingsRequest`
+- [UserAiSettingsDto.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/dtos/UserAiSettingsDto.java) — `UserAiSettingsDto`
+- [AiCodeReview.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/AiCodeReview.java) — `AiCodeReview`
+- [AiCodeReviewComment.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/AiCodeReviewComment.java) — `AiCodeReviewComment`
+- [AiCodebaseAnalysis.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/AiCodebaseAnalysis.java) — `AiCodebaseAnalysis`
+- [AiProvider.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/AiProvider.java) — `AiProvider`
+- [ReviewCategory.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/ReviewCategory.java) — `ReviewCategory`
+- [ReviewSeverity.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/ReviewSeverity.java) — `ReviewSeverity`
+- [ReviewStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/ReviewStatus.java) — `ReviewStatus`
+- [UserAiSettings.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/entities/UserAiSettings.java) — `UserAiSettings`
+- [AiCodeReviewListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/listeners/AiCodeReviewListener.java) — `AiCodeReviewListener`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/package-info.java)
+- [AiCodeReviewCommentRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/repositories/AiCodeReviewCommentRepository.java) — `AiCodeReviewCommentRepository`
+- [AiCodeReviewRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/repositories/AiCodeReviewRepository.java) — `AiCodeReviewRepository`
+- [AiCodebaseAnalysisRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/repositories/AiCodebaseAnalysisRepository.java) — `AiCodebaseAnalysisRepository`
+- [UserAiSettingsRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/repositories/UserAiSettingsRepository.java) — `UserAiSettingsRepository`
+- [AiCodeReviewRunner.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiCodeReviewRunner.java) — `AiCodeReviewRunner`
+- [AiCodeReviewService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiCodeReviewService.java) — `AiCodeReviewService`, `MutableCommentFields`, `ParsedComment`
+- [AiDiffFormatter.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiDiffFormatter.java) — `AiDiffFormatter`, `DiffCandidate`, `DiffBuildStats`, `DiffBuildResult`
+- [AiInputBounds.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiInputBounds.java) — `AiInputBounds`
+- [AiPrompts.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiPrompts.java) — `AiPrompts`
+- [AiProviderService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiProviderService.java) — `AiProviderService`
+- [AiReviewStaleRecoveryScheduler.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiReviewStaleRecoveryScheduler.java) — `AiReviewStaleRecoveryScheduler`
+- [CodebaseAnalysisRunner.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/CodebaseAnalysisRunner.java) — `CodebaseAnalysisRunner`
+- [CodebaseAnalysisService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/CodebaseAnalysisService.java) — `CodebaseAnalysisService`, `DimensionDefinition`, `ParseState`
+- [CodebaseFileSampler.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/CodebaseFileSampler.java) — `CodebaseFileSampler`, `FileCandidate`, `FileSnippet`, `SamplingStats`, `SamplingResult`
+- [CommitSuggestionService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/CommitSuggestionService.java) — `CommitSuggestionService`
+- [PrDescriptionService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/PrDescriptionService.java) — `PrDescriptionService`
+- [UserAiSettingsService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/UserAiSettingsService.java) — `UserAiSettingsService`, `EncryptedKey`
+- [AiChatCompleter.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/providers/AiChatCompleter.java) — `AiChatCompleter`
+- [AnthropicProviderService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/providers/AnthropicProviderService.java) — `AnthropicProviderService`
+- [GeminiProviderService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/providers/GeminiProviderService.java) — `GeminiProviderService`
+- [LocalAiProviderService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/providers/LocalAiProviderService.java) — `LocalAiProviderService`
+- [OpenAiProviderService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ai/services/providers/OpenAiProviderService.java) — `OpenAiProviderService`
+- [AuthLoginAdapter.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/adapters/AuthLoginAdapter.java) — `AuthLoginAdapter`
+- [OrganizationAdminAdapter.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/adapters/OrganizationAdminAdapter.java) — `OrganizationAdminAdapter`
+- [AuthLoginPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/AuthLoginPort.java) — `AuthLoginPort`
+- [LdapConnectionTestResult.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/LdapConnectionTestResult.java) — `LdapConnectionTestResult`
+- [OrganizationAdminPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/OrganizationAdminPort.java) — `OrganizationAdminPort`
+- [OrganizationForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/OrganizationForm.java) — `OrganizationForm`
+- [OrganizationInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/OrganizationInfo.java) — `OrganizationInfo`
+- [OrganizationLdapForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/OrganizationLdapForm.java) — `OrganizationLdapForm`
+- [OrganizationSsoForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/OrganizationSsoForm.java) — `OrganizationSsoForm`
+- [OrganizationUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/OrganizationUpdateForm.java) — `OrganizationUpdateForm`
+- [SamlMetadataTestResult.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/SamlMetadataTestResult.java) — `SamlMetadataTestResult`
+- [SsoEnabledForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/SsoEnabledForm.java) — `SsoEnabledForm`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/api/package-info.java)
+- [CustomAuthenticationEntryPoint.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/CustomAuthenticationEntryPoint.java) — `CustomAuthenticationEntryPoint`
+- [CustomOauth2SuccessHandler.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/CustomOauth2SuccessHandler.java) — `CustomOauth2SuccessHandler`, `OAuthProviderInfo`
+- [DynamicRelyingPartyRegistrationRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/DynamicRelyingPartyRegistrationRepository.java) — `DynamicRelyingPartyRegistrationRepository`
+- [JwtAuthenticationFilter.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/JwtAuthenticationFilter.java) — `JwtAuthenticationFilter`
+- [SamlAuthenticationSuccessHandler.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/SamlAuthenticationSuccessHandler.java) — `SamlAuthenticationSuccessHandler`
+- [SamlSsoConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/SamlSsoConfig.java) — `SamlSsoConfig`
+- [SecurityConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/configs/SecurityConfig.java) — `SecurityConfig`
+- [AuthController.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/controllers/AuthController.java) — `AuthController`
+- [LdapSsoController.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/controllers/LdapSsoController.java) — `LdapSsoController`
+- [SamlSsoController.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/controllers/SamlSsoController.java) — `SamlSsoController`
+- [SsoController.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/controllers/SsoController.java) — `SsoController`
+- [AccountType.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/AccountType.java) — `AccountType`
+- [LdapDiscoverResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/LdapDiscoverResponse.java) — `LdapDiscoverResponse`
+- [LdapLoginForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/LdapLoginForm.java) — `LdapLoginForm`
+- [LoginForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/LoginForm.java) — `LoginForm`
+- [RecoverPasswordForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/RecoverPasswordForm.java) — `RecoverPasswordForm`
+- [RecoveryCodeRequestForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/RecoveryCodeRequestForm.java) — `RecoveryCodeRequestForm`
+- [RefreshTokenForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/RefreshTokenForm.java) — `RefreshTokenForm`
+- [RegistrationForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/RegistrationForm.java) — `RegistrationForm`
+- [SamlDiscoverResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/dtos/SamlDiscoverResponse.java) — `SamlDiscoverResponse`
+- [Account.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/entities/Account.java) — `Account`
+- [Organization.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/entities/Organization.java) — `Organization`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/package-info.java)
+- [AccountRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/repositories/AccountRepository.java) — `AccountRepository`
+- [OrganizationRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/repositories/OrganizationRepository.java) — `OrganizationRepository`
+- [AuthService.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/services/AuthService.java) — `AuthService`
+- [LdapAuthService.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/services/LdapAuthService.java) — `LdapAuthService`, `LdapUserInfo`
+- [LdapConnectionService.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/services/LdapConnectionService.java) — `LdapConnectionService`
+- [OrganizationService.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/services/OrganizationService.java) — `OrganizationService`
+- [SamlMetadataService.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/services/SamlMetadataService.java) — `SamlMetadataService`
+- [SamlRegistrationBuilder.java](../gitnode-backend/src/main/java/dev/gitnode/os/auth/services/SamlRegistrationBuilder.java) — `SamlRegistrationBuilder`
+- [BranchController.java](../gitnode-backend/src/main/java/dev/gitnode/os/branch/controllers/BranchController.java) — `BranchController`
+- [DefaultBranchForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/branch/dtos/DefaultBranchForm.java) — `DefaultBranchForm`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/branch/package-info.java)
+- [BranchNonTxService.java](../gitnode-backend/src/main/java/dev/gitnode/os/branch/services/BranchNonTxService.java) — `BranchNonTxService`
+- [BranchTxService.java](../gitnode-backend/src/main/java/dev/gitnode/os/branch/services/BranchTxService.java) — `BranchTxService`
+- [CollaboratorController.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/controllers/CollaboratorController.java) — `CollaboratorController`
+- [InviteLinkController.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/controllers/InviteLinkController.java) — `InviteLinkController`
+- [CollaboratorInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/dtos/CollaboratorInfo.java) — `CollaboratorInfo`
+- [InvitationTokenInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/dtos/InvitationTokenInfo.java) — `InvitationTokenInfo`
+- [InviteCollaboratorForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/dtos/InviteCollaboratorForm.java) — `InviteCollaboratorForm`
+- [InviteLinkResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/dtos/InviteLinkResponse.java) — `InviteLinkResponse`
+- [UpdateCollaboratorPermissionsForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/dtos/UpdateCollaboratorPermissionsForm.java) — `UpdateCollaboratorPermissionsForm`
+- [CollaboratorStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/entities/CollaboratorStatus.java) — `CollaboratorStatus`
+- [RepoCollaborator.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/entities/RepoCollaborator.java) — `RepoCollaborator`
+- [CollaboratorMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/mappers/CollaboratorMapper.java) — `CollaboratorMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/package-info.java)
+- [CollaboratorRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/repositories/CollaboratorRepository.java) — `CollaboratorRepository`
+- [CollaboratorService.java](../gitnode-backend/src/main/java/dev/gitnode/os/collaborator/services/CollaboratorService.java) — `CollaboratorService`
+- [CommitController.java](../gitnode-backend/src/main/java/dev/gitnode/os/commit/controllers/CommitController.java) — `CommitController`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/commit/package-info.java)
+- [CommitNonTxService.java](../gitnode-backend/src/main/java/dev/gitnode/os/commit/services/CommitNonTxService.java) — `CommitNonTxService`
+- [IssueData.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/api/IssueData.java) — `IssueData`
+- [IssueQueryService.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/api/IssueQueryService.java) — `IssueQueryService`
+- [LinkedTaskData.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/api/LinkedTaskData.java) — `LinkedTaskData`
+- [TaskQueryPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/api/TaskQueryPort.java) — `TaskQueryPort`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/api/package-info.java)
+- [IssueController.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/controllers/IssueController.java) — `IssueController`
+- [IssueCommentForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueCommentForm.java) — `IssueCommentForm`
+- [IssueCommentInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueCommentInfo.java) — `IssueCommentInfo`
+- [IssueCommentUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueCommentUpdateForm.java) — `IssueCommentUpdateForm`
+- [IssueDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueDetail.java) — `IssueDetail`
+- [IssueForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueForm.java) — `IssueForm`
+- [IssueInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueInfo.java) — `IssueInfo`
+- [IssueLinkedTaskInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueLinkedTaskInfo.java) — `IssueLinkedTaskInfo`
+- [IssueUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/dtos/IssueUpdateForm.java) — `IssueUpdateForm`
+- [Issue.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/entities/Issue.java) — `Issue`
+- [IssueComment.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/entities/IssueComment.java) — `IssueComment`
+- [IssueStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/entities/IssueStatus.java) — `IssueStatus`
+- [IssueMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/mappers/IssueMapper.java) — `IssueMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/package-info.java)
+- [IssueCommentRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/repositories/IssueCommentRepository.java) — `IssueCommentRepository`
+- [IssueRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/repositories/IssueRepository.java) — `IssueRepository`
+- [IssueService.java](../gitnode-backend/src/main/java/dev/gitnode/os/issue/services/IssueService.java) — `IssueService`
+- [MigrationConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/configs/MigrationConfig.java) — `MigrationConfig`
+- [RepoMigrationController.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/controllers/RepoMigrationController.java) — `RepoMigrationController`
+- [MigrationForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/dtos/MigrationForm.java) — `MigrationForm`
+- [MigrationItem.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/dtos/MigrationItem.java) — `MigrationItem`
+- [MigrationJobResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/dtos/MigrationJobResponse.java) — `MigrationJobResponse`
+- [MigrationServiceProvider.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/dtos/MigrationServiceProvider.java) — `MigrationServiceProvider`
+- [MigrationStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/dtos/MigrationStatus.java) — `MigrationStatus`
+- [MigrationJob.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/entities/MigrationJob.java) — `MigrationJob`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/package-info.java)
+- [MigrationJobRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/repositories/MigrationJobRepository.java) — `MigrationJobRepository`
+- [CloudMigrationService.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/services/CloudMigrationService.java) — `CloudMigrationService`
+- [GitHubMigrationService.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/services/GitHubMigrationService.java) — `GitHubMigrationService`
+- [GitMigrationService.java](../gitnode-backend/src/main/java/dev/gitnode/os/migration/services/GitMigrationService.java) — `GitMigrationService`
+- [NotificationController.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/controllers/NotificationController.java) — `NotificationController`
+- [NotificationPreferenceController.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/controllers/NotificationPreferenceController.java) — `NotificationPreferenceController`
+- [NotificationInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/dtos/NotificationInfo.java) — `NotificationInfo`
+- [NotificationPreferenceInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/dtos/NotificationPreferenceInfo.java) — `NotificationPreferenceInfo`
+- [Notification.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/entities/Notification.java) — `Notification`
+- [NotificationPreference.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/entities/NotificationPreference.java) — `NotificationPreference`
+- [NotificationType.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/entities/NotificationType.java) — `NotificationType`
+- [NotificationEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/listeners/NotificationEventListener.java) — `NotificationEventListener`
+- [NotificationPreferenceRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/repositories/NotificationPreferenceRepository.java) — `NotificationPreferenceRepository`
+- [NotificationRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/repositories/NotificationRepository.java) — `NotificationRepository`
+- [NotificationPreferenceService.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/services/NotificationPreferenceService.java) — `NotificationPreferenceService`
+- [NotificationService.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/services/NotificationService.java) — `NotificationService`
+- [NotificationSseRegistry.java](../gitnode-backend/src/main/java/dev/gitnode/os/notification/services/NotificationSseRegistry.java) — `NotificationSseRegistry`
+- [PrQueryAdapter.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/adapters/PrQueryAdapter.java) — `PrQueryAdapter`
+- [PrData.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/api/PrData.java) — `PrData`
+- [PrQueryPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/api/PrQueryPort.java) — `PrQueryPort`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/api/package-info.java)
+- [PullRequestCommitController.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/controllers/PullRequestCommitController.java) — `PullRequestCommitController`
+- [PullRequestController.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/controllers/PullRequestController.java) — `PullRequestController`
+- [MergeStrategy.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/MergeStrategy.java) — `MergeStrategy`
+- [PrCommentForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrCommentForm.java) — `PrCommentForm`
+- [PrCommentInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrCommentInfo.java) — `PrCommentInfo`
+- [PrCommentUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrCommentUpdateForm.java) — `PrCommentUpdateForm`
+- [PrDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrDetail.java) — `PrDetail`
+- [PrForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrForm.java) — `PrForm`
+- [PrInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrInfo.java) — `PrInfo`
+- [PrMergeForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrMergeForm.java) — `PrMergeForm`
+- [PrUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/dtos/PrUpdateForm.java) — `PrUpdateForm`
+- [PrStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/entities/PrStatus.java) — `PrStatus`
+- [PullRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/entities/PullRequest.java) — `PullRequest`
+- [PullRequestComment.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/entities/PullRequestComment.java) — `PullRequestComment`
+- [PrHeadBranchCleanupListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/listeners/PrHeadBranchCleanupListener.java) — `PrHeadBranchCleanupListener`
+- [PullRequestMigrationListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/listeners/PullRequestMigrationListener.java) — `PullRequestMigrationListener`
+- [PrMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/mappers/PrMapper.java) — `PrMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/package-info.java)
+- [PrCommentRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/repositories/PrCommentRepository.java) — `PrCommentRepository`
+- [PrRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/repositories/PrRepository.java) — `PrRepository`
+- [PrFinder.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/services/PrFinder.java) — `PrFinder`
+- [PullRequestCommentService.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/services/PullRequestCommentService.java) — `PullRequestCommentService`
+- [PullRequestService.java](../gitnode-backend/src/main/java/dev/gitnode/os/pr/services/PullRequestService.java) — `PullRequestService`
+- [ProfileController.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/controllers/ProfileController.java) — `ProfileController`
+- [ChangePasswordForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/ChangePasswordForm.java) — `ChangePasswordForm`
+- [ContributionBreakdown.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/ContributionBreakdown.java) — `ContributionBreakdown`
+- [ContributionDay.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/ContributionDay.java) — `ContributionDay`
+- [TenantPublicProfileDto.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/TenantPublicProfileDto.java) — `TenantPublicProfileDto`
+- [TenantSearchResult.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/TenantSearchResult.java) — `TenantSearchResult`
+- [UpdateDisplayNameForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/UpdateDisplayNameForm.java) — `UpdateDisplayNameForm`
+- [UpdateProfileForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/UpdateProfileForm.java) — `UpdateProfileForm`
+- [UpdateUsernameForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/UpdateUsernameForm.java) — `UpdateUsernameForm`
+- [UserContributionsResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/dtos/UserContributionsResponse.java) — `UserContributionsResponse`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/package-info.java)
+- [UserContributionRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/repositories/UserContributionRepository.java) — `UserContributionRepository`, `ContributionAggregateRow`
+- [ProfileService.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/services/ProfileService.java) — `ProfileService`
+- [TenantSearchService.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/services/TenantSearchService.java) — `TenantSearchService`
+- [UserContributionService.java](../gitnode-backend/src/main/java/dev/gitnode/os/profile/services/UserContributionService.java) — `UserContributionService`, `MutableBreakdown`
+- [RepoController.java](../gitnode-backend/src/main/java/dev/gitnode/os/repo/controllers/RepoController.java) — `RepoController`
+- [RepoCreatedEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/repo/listeners/RepoCreatedEventListener.java) — `RepoCreatedEventListener`
+- [RepoProfileEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/repo/listeners/RepoProfileEventListener.java) — `RepoProfileEventListener`
+- [RepoRenamedEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/repo/listeners/RepoRenamedEventListener.java) — `RepoRenamedEventListener`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/repo/package-info.java)
+- [Audited.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/audit/annotations/Audited.java) — `Audited`
+- [AuditAspect.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/audit/aspects/AuditAspect.java) — `AuditAspect`
+- [AuditLog.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/audit/entities/AuditLog.java) — `AuditLog`
+- [AuditLogRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/audit/repositories/AuditLogRepository.java) — `AuditLogRepository`
+- [AuditLogService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/audit/services/AuditLogService.java) — `AuditLogService`
+- [AuditLogSpecifications.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/audit/specifications/AuditLogSpecifications.java) — `AuditLogSpecifications`
+- [LoginInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/auth/dtos/LoginInfo.java) — `LoginInfo`
+- [JwtUtils.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/auth/services/JwtUtils.java) — `JwtUtils`
+- [TenantAuthGuard.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/auth/services/TenantAuthGuard.java) — `TenantAuthGuard`
+- [BearerTokenUtils.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/auth/utils/BearerTokenUtils.java) — `BearerTokenUtils`
+- [BranchForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/branch/dtos/BranchForm.java) — `BranchForm`
+- [BranchInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/branch/dtos/BranchInfo.java) — `BranchInfo`
+- [BranchProtocolService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/branch/services/BranchProtocolService.java) — `BranchProtocolService`
+- [BranchService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/branch/services/BranchService.java) — `BranchService`
+- [CacheInvalidationListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/cache/CacheInvalidationListener.java) — `CacheInvalidationListener`
+- [CacheNames.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/cache/CacheNames.java) — `CacheNames`
+- [CachePatternEvictor.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/cache/CachePatternEvictor.java) — `CachePatternEvictor`
+- [RepoCacheInvalidator.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/cache/RepoCacheInvalidator.java) — `RepoCacheInvalidator`
+- [SnippetCacheInvalidator.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/cache/SnippetCacheInvalidator.java) — `SnippetCacheInvalidator`
+- [DistributedCircuitBreakerGuard.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/circuitbreaker/DistributedCircuitBreakerGuard.java) — `DistributedCircuitBreakerGuard`
+- [CollaboratorPermission.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/collaborator/dtos/CollaboratorPermission.java) — `CollaboratorPermission`
+- [CollaboratorAccessPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/collaborator/services/CollaboratorAccessPort.java) — `CollaboratorAccessPort`
+- [AuthorInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/AuthorInfo.java) — `AuthorInfo`
+- [CommitDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/CommitDetail.java) — `CommitDetail`
+- [CommitInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/CommitInfo.java) — `CommitInfo`
+- [CommitStats.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/CommitStats.java) — `CommitStats`
+- [DiffHunk.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/DiffHunk.java) — `DiffHunk`
+- [DiffLine.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/DiffLine.java) — `DiffLine`
+- [FileDiff.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/FileDiff.java) — `FileDiff`
+- [HunkResult.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/HunkResult.java) — `HunkResult`
+- [LineType.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/LineType.java) — `LineType`
+- [PagedResult.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/commit/dtos/PagedResult.java) — `PagedResult`
+- [CacheConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/configs/CacheConfig.java) — `CacheConfig`
+- [RepoAccessInterceptor.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/configs/RepoAccessInterceptor.java) — `RepoAccessInterceptor`
+- [RepoAccessWebMvcConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/configs/RepoAccessWebMvcConfig.java) — `RepoAccessWebMvcConfig`
+- [SpaWebMvcConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/configs/os/SpaWebMvcConfig.java) — `SpaWebMvcConfig`
+- [ErrorHandler.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/ErrorHandler.java) — `ErrorHandler`
+- [AccessNotAllowedException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/AccessNotAllowedException.java) — `AccessNotAllowedException`
+- [BadRequestException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/BadRequestException.java) — `BadRequestException`
+- [ErrorOccurredException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/ErrorOccurredException.java) — `ErrorOccurredException`
+- [ItemAlreadyExistsException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/ItemAlreadyExistsException.java) — `ItemAlreadyExistsException`
+- [ItemNotFoundException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/ItemNotFoundException.java) — `ItemNotFoundException`
+- [TokenExpiredException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/TokenExpiredException.java) — `TokenExpiredException`
+- [TooManyRequestsException.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/errorhandling/exceptions/TooManyRequestsException.java) — `TooManyRequestsException`
+- [GitPushEventPublisher.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/git/GitPushEventPublisher.java) — `GitPushEventPublisher`
+- [AuthenticatedRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/git/http/AuthenticatedRequest.java) — `AuthenticatedRequest`
+- [HttpGitAuthenticationFilter.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/git/http/HttpGitAuthenticationFilter.java) — `HttpGitAuthenticationFilter`
+- [HttpGitConfiguration.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/git/http/HttpGitConfiguration.java) — `HttpGitConfiguration`
+- [RunnerTokenPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/git/http/RunnerTokenPort.java) — `RunnerTokenPort`
+- [GitProvider.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/git/provider/GitProvider.java) — `GitProvider`
+- [DistributedLockService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/lock/DistributedLockService.java) — `DistributedLockService`
+- [SlackAppender.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/log/SlackAppender.java) — `SlackAppender`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/package-info.java)
+- [ProjectSummary.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/project/dtos/ProjectSummary.java) — `ProjectSummary`
+- [ProjectAccessService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/project/services/ProjectAccessService.java) — `ProjectAccessService`
+- [RateLimit.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/ratelimit/RateLimit.java) — `RateLimit`
+- [RateLimitAspect.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/ratelimit/RateLimitAspect.java) — `RateLimitAspect`
+- [RateLimitService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/ratelimit/RateLimitService.java) — `RateLimitService`
+- [PageResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/dtos/PageResponse.java) — `PageResponse`
+- [RepoForkedFromInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/dtos/RepoForkedFromInfo.java) — `RepoForkedFromInfo`
+- [RepoForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/dtos/RepoForm.java) — `RepoForm`
+- [RepoInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/dtos/RepoInfo.java) — `RepoInfo`
+- [TenantRepoInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/dtos/TenantRepoInfo.java) — `TenantRepoInfo`
+- [Repo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/entities/Repo.java) — `Repo`
+- [RepoMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/mappers/RepoMapper.java) — `RepoMapper`
+- [RepoRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/repositories/RepoRepository.java) — `RepoRepository`
+- [RepoStatRow.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/repositories/RepoStatRow.java) — `RepoStatRow`
+- [RepoInfoCache.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/services/RepoInfoCache.java) — `RepoInfoCache`
+- [RepoMigrationService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/services/RepoMigrationService.java) — `RepoMigrationService`
+- [RepoService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/services/RepoService.java) — `RepoService`
+- [RepoStorageService.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/repo/services/RepoStorageService.java) — `RepoStorageService`
+- [TenantInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/tenant/dtos/TenantInfo.java) — `TenantInfo`
+- [Tenant.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/tenant/entities/Tenant.java) — `Tenant`
+- [TenantMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/tenant/mappers/TenantMapper.java) — `TenantMapper`
+- [TenantRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/tenant/repositories/TenantRepository.java) — `TenantRepository`
+- [FileDiffParser.java](../gitnode-backend/src/main/java/dev/gitnode/os/shared/util/FileDiffParser.java) — `FileDiffParser`
+- [SnippetCommentController.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/controllers/SnippetCommentController.java) — `SnippetCommentController`
+- [SnippetController.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/controllers/SnippetController.java) — `SnippetController`
+- [SnippetCommentForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetCommentForm.java) — `SnippetCommentForm`
+- [SnippetCommentInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetCommentInfo.java) — `SnippetCommentInfo`
+- [SnippetDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetDetail.java) — `SnippetDetail`
+- [SnippetFileForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetFileForm.java) — `SnippetFileForm`
+- [SnippetFileInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetFileInfo.java) — `SnippetFileInfo`
+- [SnippetForkedFromInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetForkedFromInfo.java) — `SnippetForkedFromInfo`
+- [SnippetForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetForm.java) — `SnippetForm`
+- [SnippetInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetInfo.java) — `SnippetInfo`
+- [SnippetLinkedRepoInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetLinkedRepoInfo.java) — `SnippetLinkedRepoInfo`
+- [SnippetOwnerInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetOwnerInfo.java) — `SnippetOwnerInfo`
+- [SnippetRevisionDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetRevisionDetail.java) — `SnippetRevisionDetail`
+- [SnippetRevisionInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetRevisionInfo.java) — `SnippetRevisionInfo`
+- [SnippetUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/dtos/SnippetUpdateForm.java) — `SnippetUpdateForm`
+- [Snippet.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/entities/Snippet.java) — `Snippet`
+- [SnippetComment.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/entities/SnippetComment.java) — `SnippetComment`
+- [SnippetFile.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/entities/SnippetFile.java) — `SnippetFile`
+- [SnippetRevision.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/entities/SnippetRevision.java) — `SnippetRevision`
+- [SnippetRevisionFile.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/entities/SnippetRevisionFile.java) — `SnippetRevisionFile`
+- [Visibility.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/entities/Visibility.java) — `Visibility`
+- [SnippetMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/mappers/SnippetMapper.java) — `SnippetMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/package-info.java)
+- [SnippetCommentRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/repositories/SnippetCommentRepository.java) — `SnippetCommentRepository`
+- [SnippetRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/repositories/SnippetRepository.java) — `SnippetRepository`
+- [SnippetRevisionRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/repositories/SnippetRevisionRepository.java) — `SnippetRevisionRepository`
+- [SnippetCommentService.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/services/SnippetCommentService.java) — `SnippetCommentService`
+- [SnippetFileStorageService.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/services/SnippetFileStorageService.java) — `SnippetFileStorageService`
+- [SnippetService.java](../gitnode-backend/src/main/java/dev/gitnode/os/snippet/services/SnippetService.java) — `SnippetService`
+- [SshKeyController.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/controllers/SshKeyController.java) — `SshKeyController`
+- [AddSshKeyForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/dtos/AddSshKeyForm.java) — `AddSshKeyForm`
+- [SshKeyInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/dtos/SshKeyInfo.java) — `SshKeyInfo`
+- [SshKey.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/entities/SshKey.java) — `SshKey`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/package-info.java)
+- [SshKeyRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/repositories/SshKeyRepository.java) — `SshKeyRepository`
+- [GitNodeSshServer.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/services/GitNodeSshServer.java) — `GitNodeSshServer`
+- [SshKeyService.java](../gitnode-backend/src/main/java/dev/gitnode/os/ssh/services/SshKeyService.java) — `SshKeyService`
+- [ReleaseController.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/controllers/ReleaseController.java) — `ReleaseController`
+- [TagController.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/controllers/TagController.java) — `TagController`
+- [CreateReleaseForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/dtos/CreateReleaseForm.java) — `CreateReleaseForm`
+- [CreateTagForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/dtos/CreateTagForm.java) — `CreateTagForm`
+- [ReleaseInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/dtos/ReleaseInfo.java) — `ReleaseInfo`
+- [TagInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/dtos/TagInfo.java) — `TagInfo`
+- [TenantReleaseInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/dtos/TenantReleaseInfo.java) — `TenantReleaseInfo`
+- [UpdateReleaseForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/dtos/UpdateReleaseForm.java) — `UpdateReleaseForm`
+- [Release.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/entities/Release.java) — `Release`
+- [TagReleaseMigrationListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/listeners/TagReleaseMigrationListener.java) — `TagReleaseMigrationListener`
+- [ReleaseMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/mappers/ReleaseMapper.java) — `ReleaseMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/package-info.java)
+- [ReleaseRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/repositories/ReleaseRepository.java) — `ReleaseRepository`
+- [ReleaseTxService.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/services/ReleaseTxService.java) — `ReleaseTxService`
+- [TagNonTxService.java](../gitnode-backend/src/main/java/dev/gitnode/os/tag/services/TagNonTxService.java) — `TagNonTxService`
+- [TaskQueryAdapter.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/adapters/TaskQueryAdapter.java) — `TaskQueryAdapter`
+- [BoardController.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/controllers/BoardController.java) — `BoardController`
+- [ProjectController.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/controllers/ProjectController.java) — `ProjectController`
+- [TaskController.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/controllers/TaskController.java) — `TaskController`
+- [BoardColumnForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/BoardColumnForm.java) — `BoardColumnForm`
+- [BoardColumnInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/BoardColumnInfo.java) — `BoardColumnInfo`
+- [BoardColumnUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/BoardColumnUpdateForm.java) — `BoardColumnUpdateForm`
+- [BoardForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/BoardForm.java) — `BoardForm`
+- [BoardInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/BoardInfo.java) — `BoardInfo`
+- [BoardUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/BoardUpdateForm.java) — `BoardUpdateForm`
+- [CreateBranchFromTaskForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/CreateBranchFromTaskForm.java) — `CreateBranchFromTaskForm`
+- [LinkedIssueInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/LinkedIssueInfo.java) — `LinkedIssueInfo`
+- [LinkedPrInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/LinkedPrInfo.java) — `LinkedPrInfo`
+- [OpenPrInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/OpenPrInfo.java) — `OpenPrInfo`
+- [ProjectForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/ProjectForm.java) — `ProjectForm`
+- [ProjectInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/ProjectInfo.java) — `ProjectInfo`
+- [ProjectRepoInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/ProjectRepoInfo.java) — `ProjectRepoInfo`
+- [ProjectUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/ProjectUpdateForm.java) — `ProjectUpdateForm`
+- [SubtaskForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/SubtaskForm.java) — `SubtaskForm`
+- [SubtaskInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/SubtaskInfo.java) — `SubtaskInfo`
+- [SubtaskUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/SubtaskUpdateForm.java) — `SubtaskUpdateForm`
+- [TaskDetail.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/TaskDetail.java) — `TaskDetail`
+- [TaskForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/TaskForm.java) — `TaskForm`
+- [TaskInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/TaskInfo.java) — `TaskInfo`
+- [TaskUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/dtos/TaskUpdateForm.java) — `TaskUpdateForm`
+- [Board.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/Board.java) — `Board`
+- [BoardColumn.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/BoardColumn.java) — `BoardColumn`
+- [Project.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/Project.java) — `Project`
+- [Subtask.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/Subtask.java) — `Subtask`
+- [Task.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/Task.java) — `Task`
+- [TaskStatus.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/TaskStatus.java) — `TaskStatus`
+- [TaskType.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/entities/TaskType.java) — `TaskType`
+- [IssueDeletedEventListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/listeners/IssueDeletedEventListener.java) — `IssueDeletedEventListener`
+- [PrStatusTaskListener.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/listeners/PrStatusTaskListener.java) — `PrStatusTaskListener`
+- [ProjectMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/mappers/ProjectMapper.java) — `ProjectMapper`
+- [TaskMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/mappers/TaskMapper.java) — `TaskMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/package-info.java)
+- [BoardColumnRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/repositories/BoardColumnRepository.java) — `BoardColumnRepository`
+- [BoardRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/repositories/BoardRepository.java) — `BoardRepository`
+- [ProjectRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/repositories/ProjectRepository.java) — `ProjectRepository`
+- [SubtaskRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/repositories/SubtaskRepository.java) — `SubtaskRepository`
+- [TaskRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/repositories/TaskRepository.java) — `TaskRepository`
+- [BoardService.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/services/BoardService.java) — `BoardService`
+- [ProjectAccessServiceImpl.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/services/ProjectAccessServiceImpl.java) — `ProjectAccessServiceImpl`
+- [ProjectService.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/services/ProjectService.java) — `ProjectService`
+- [TaskService.java](../gitnode-backend/src/main/java/dev/gitnode/os/task/services/TaskService.java) — `TaskService`
+- [JGitArchiveConfiguration.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/configs/JGitArchiveConfiguration.java) — `JGitArchiveConfiguration`
+- [TreeController.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/controllers/TreeController.java) — `TreeController`
+- [BlobResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/dtos/BlobResponse.java) — `BlobResponse`
+- [EntryType.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/dtos/EntryType.java) — `EntryType`
+- [LanguageStats.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/dtos/LanguageStats.java) — `LanguageStats`
+- [TreeEntry.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/dtos/TreeEntry.java) — `TreeEntry`
+- [TreeResponse.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/dtos/TreeResponse.java) — `TreeResponse`
+- [UpdateFileRequest.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/dtos/UpdateFileRequest.java) — `UpdateFileRequest`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/package-info.java)
+- [LanguageService.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/services/LanguageService.java) — `LanguageService`
+- [TreeNonTxService.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/services/TreeNonTxService.java) — `TreeNonTxService`, `RawEntry`
+- [ArchivePathSupport.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/utils/ArchivePathSupport.java) — `ArchivePathSupport`
+- [LanguageExtensionUtils.java](../gitnode-backend/src/main/java/dev/gitnode/os/tree/utils/LanguageExtensionUtils.java) — `LanguageExtensionUtils`
+- [WebhookDlqAdminPort.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/api/WebhookDlqAdminPort.java) — `WebhookDlqAdminPort`
+- [WebhookDlqEntry.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/api/WebhookDlqEntry.java) — `WebhookDlqEntry`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/api/package-info.java)
+- [WebhookRestClientConfig.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/configs/WebhookRestClientConfig.java) — `WebhookRestClientConfig`
+- [ProjectWebhookController.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/controllers/ProjectWebhookController.java) — `ProjectWebhookController`
+- [UserWebhookController.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/controllers/UserWebhookController.java) — `UserWebhookController`
+- [WebhookController.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/controllers/WebhookController.java) — `WebhookController`
+- [WebhookForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/dtos/WebhookForm.java) — `WebhookForm`
+- [WebhookInfo.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/dtos/WebhookInfo.java) — `WebhookInfo`
+- [WebhookUpdateForm.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/dtos/WebhookUpdateForm.java) — `WebhookUpdateForm`
+- [ProjectWebhook.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/entities/ProjectWebhook.java) — `ProjectWebhook`
+- [UserWebhook.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/entities/UserWebhook.java) — `UserWebhook`
+- [Webhook.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/entities/Webhook.java) — `Webhook`
+- [WebhookDeadLetter.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/entities/WebhookDeadLetter.java) — `WebhookDeadLetter`
+- [WebhookEventType.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/entities/WebhookEventType.java) — `WebhookEventType`
+- [WebhookMapper.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/mappers/WebhookMapper.java) — `WebhookMapper`
+- [package-info.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/package-info.java)
+- [ProjectWebhookRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/repositories/ProjectWebhookRepository.java) — `ProjectWebhookRepository`
+- [UserWebhookRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/repositories/UserWebhookRepository.java) — `UserWebhookRepository`
+- [WebhookDeadLetterRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/repositories/WebhookDeadLetterRepository.java) — `WebhookDeadLetterRepository`
+- [WebhookRepository.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/repositories/WebhookRepository.java) — `WebhookRepository`
+- [ProjectWebhookService.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/ProjectWebhookService.java) — `ProjectWebhookService`
+- [UserWebhookService.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/UserWebhookService.java) — `UserWebhookService`
+- [WebhookDeliveryService.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/WebhookDeliveryService.java) — `WebhookDeliveryService`
+- [WebhookDispatcher.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/WebhookDispatcher.java) — `WebhookDispatcher`
+- [WebhookDlqAdminService.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/WebhookDlqAdminService.java) — `WebhookDlqAdminService`
+- [WebhookDlqRetryScheduler.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/WebhookDlqRetryScheduler.java) — `WebhookDlqRetryScheduler`
+- [WebhookService.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/services/WebhookService.java) — `WebhookService`
+- [WebhookValidator.java](../gitnode-backend/src/main/java/dev/gitnode/os/webhook/utils/WebhookValidator.java) — `WebhookValidator`
+
+### `gitnode-events/src/main/java/dev`
+
+- [WorkflowJobCompletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/actions/WorkflowJobCompletedEvent.java) — `WorkflowJobCompletedEvent`
+- [WorkflowJobQueuedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/actions/WorkflowJobQueuedEvent.java) — `WorkflowJobQueuedEvent`
+- [WorkflowJobStartedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/actions/WorkflowJobStartedEvent.java) — `WorkflowJobStartedEvent`
+- [WorkflowRunCompletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/actions/WorkflowRunCompletedEvent.java) — `WorkflowRunCompletedEvent`
+- [WorkflowRunQueuedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/actions/WorkflowRunQueuedEvent.java) — `WorkflowRunQueuedEvent`
+- [AiCodeReviewCompletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/ai/AiCodeReviewCompletedEvent.java) — `AiCodeReviewCompletedEvent`
+- [AiCodebaseAnalysisCompletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/ai/AiCodebaseAnalysisCompletedEvent.java) — `AiCodebaseAnalysisCompletedEvent`
+- [BranchCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/branch/BranchCreatedEvent.java) — `BranchCreatedEvent`
+- [BranchDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/branch/BranchDeletedEvent.java) — `BranchDeletedEvent`
+- [CollaboratorInvitedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/collaborator/CollaboratorInvitedEvent.java) — `CollaboratorInvitedEvent`
+- [CollaboratorRemovedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/collaborator/CollaboratorRemovedEvent.java) — `CollaboratorRemovedEvent`
+- [IssueCommentedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/issue/IssueCommentedEvent.java) — `IssueCommentedEvent`
+- [IssueCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/issue/IssueCreatedEvent.java) — `IssueCreatedEvent`
+- [IssueDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/issue/IssueDeletedEvent.java) — `IssueDeletedEvent`
+- [IssueStatusChangedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/issue/IssueStatusChangedEvent.java) — `IssueStatusChangedEvent`
+- [IssueUpdatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/issue/IssueUpdatedEvent.java) — `IssueUpdatedEvent`
+- [package-info.java](../gitnode-events/src/main/java/dev/gitnode/os/events/package-info.java)
+- [GithubPullRequestMigrationRequestedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/pr/GithubPullRequestMigrationRequestedEvent.java) — `GithubPullRequestMigrationRequestedEvent`
+- [PullRequestCommentedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/pr/PullRequestCommentedEvent.java) — `PullRequestCommentedEvent`
+- [PullRequestCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/pr/PullRequestCreatedEvent.java) — `PullRequestCreatedEvent`
+- [PullRequestMigrationRequestedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/pr/PullRequestMigrationRequestedEvent.java) — `PullRequestMigrationRequestedEvent`
+- [PullRequestStatusChangedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/pr/PullRequestStatusChangedEvent.java) — `PullRequestStatusChangedEvent`
+- [TenantDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/profile/TenantDeletedEvent.java) — `TenantDeletedEvent`
+- [UsernameChangedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/profile/UsernameChangedEvent.java) — `UsernameChangedEvent`
+- [ProjectCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/project/ProjectCreatedEvent.java) — `ProjectCreatedEvent`
+- [ProjectDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/project/ProjectDeletedEvent.java) — `ProjectDeletedEvent`
+- [ProjectUpdatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/project/ProjectUpdatedEvent.java) — `ProjectUpdatedEvent`
+- [RepoCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/repo/RepoCreatedEvent.java) — `RepoCreatedEvent`
+- [RepoDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/repo/RepoDeletedEvent.java) — `RepoDeletedEvent`
+- [RepoInitRollbackRequestedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/repo/RepoInitRollbackRequestedEvent.java) — `RepoInitRollbackRequestedEvent`
+- [RepoPushedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/repo/RepoPushedEvent.java) — `RepoPushedEvent`
+- [RepoRenameRollbackRequstedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/repo/RepoRenameRollbackRequstedEvent.java) — `RepoRenameRollbackRequstedEvent`
+- [RepoRenamedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/repo/RepoRenamedEvent.java) — `RepoRenamedEvent`
+- [SnippetCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/snippet/SnippetCreatedEvent.java) — `SnippetCreatedEvent`
+- [SnippetDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/snippet/SnippetDeletedEvent.java) — `SnippetDeletedEvent`
+- [SnippetUpdatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/snippet/SnippetUpdatedEvent.java) — `SnippetUpdatedEvent`
+- [GithubTagReleaseMigrationRequestedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/tag/GithubTagReleaseMigrationRequestedEvent.java) — `GithubTagReleaseMigrationRequestedEvent`
+- [TagReleaseMigrationRequestedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/tag/TagReleaseMigrationRequestedEvent.java) — `TagReleaseMigrationRequestedEvent`
+- [TaskCreatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/task/TaskCreatedEvent.java) — `TaskCreatedEvent`
+- [TaskDeletedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/task/TaskDeletedEvent.java) — `TaskDeletedEvent`
+- [TaskUpdatedEvent.java](../gitnode-events/src/main/java/dev/gitnode/os/events/task/TaskUpdatedEvent.java) — `TaskUpdatedEvent`
+
+### `gitnode-frontend/src/app`
+
+- [app.config.ts](../gitnode-frontend/src/app/app.config.ts)
+- [app.routes.ts](../gitnode-frontend/src/app/app.routes.ts)
+- [app.ts](../gitnode-frontend/src/app/app.ts) — `App`
+- [lucide-icons.ts](../gitnode-frontend/src/app/lucide-icons.ts)
+
+### `gitnode-frontend/src/app/core`
+
+- [log-stream.service.ts](../gitnode-frontend/src/app/core/actions/services/log-stream.service.ts) — `LogStreamService`
+- [run-event-stream.service.ts](../gitnode-frontend/src/app/core/actions/services/run-event-stream.service.ts) — `RunEventStreamService`
+- [runner.service.ts](../gitnode-frontend/src/app/core/actions/services/runner.service.ts) — `RunnerService`
+- [secret.service.ts](../gitnode-frontend/src/app/core/actions/services/secret.service.ts) — `SecretService`
+- [workflow-run.service.ts](../gitnode-frontend/src/app/core/actions/services/workflow-run.service.ts) — `WorkflowRunService`
+- [workflow.service.ts](../gitnode-frontend/src/app/core/actions/services/workflow.service.ts) — `WorkflowService`
+- [ai.service.ts](../gitnode-frontend/src/app/core/ai/services/ai.service.ts) — `AiService`
+- [auth.guard.ts](../gitnode-frontend/src/app/core/auth/guards/auth.guard.ts)
+- [guest.guard.ts](../gitnode-frontend/src/app/core/auth/guards/guest.guard.ts)
+- [redirect-if-auth.guard.ts](../gitnode-frontend/src/app/core/auth/guards/redirect-if-auth.guard.ts)
+- [auth.interceptor.ts](../gitnode-frontend/src/app/core/auth/interceptors/auth.interceptor.ts)
+- [refresh.interceptor.ts](../gitnode-frontend/src/app/core/auth/interceptors/refresh.interceptor.ts)
+- [auth.service.ts](../gitnode-frontend/src/app/core/auth/services/auth.service.ts) — `AuthService`
+- [token.service.ts](../gitnode-frontend/src/app/core/auth/services/token.service.ts) — `TokenService`
+- [branch.service.ts](../gitnode-frontend/src/app/core/branch/services/branch.service.ts) — `BranchService`
+- [collaborator.service.ts](../gitnode-frontend/src/app/core/collaborator/collaborator.service.ts) — `CollaboratorService`
+- [commit.service.ts](../gitnode-frontend/src/app/core/commit/services/commit.service.ts) — `CommitService`
+- [confirm-modal-host.component.ts](../gitnode-frontend/src/app/core/confirm-modal/confirm-modal-host.component.ts) — `ConfirmModalHostComponent`
+- [confirm-modal.service.ts](../gitnode-frontend/src/app/core/confirm-modal/confirm-modal.service.ts) — `ConfirmOptions`, `ConfirmModalService`
+- [gravatar.util.ts](../gitnode-frontend/src/app/core/gravatar/gravatar.util.ts)
+- [issue.service.ts](../gitnode-frontend/src/app/core/issue/services/issue.service.ts) — `IssueService`
+- [language.service.ts](../gitnode-frontend/src/app/core/language/services/language.service.ts) — `LanguageService`
+- [migration.service.ts](../gitnode-frontend/src/app/core/migration/migration.service.ts) — `MigrationService`
+- [notification.service.ts](../gitnode-frontend/src/app/core/notification/notification.service.ts) — `NotificationService`
+- [board.service.ts](../gitnode-frontend/src/app/core/project/services/board.service.ts) — `BoardService`
+- [project.service.ts](../gitnode-frontend/src/app/core/project/services/project.service.ts) — `ProjectService`
+- [task.service.ts](../gitnode-frontend/src/app/core/project/services/task.service.ts) — `TaskService`
+- [pull-request.service.ts](../gitnode-frontend/src/app/core/pull-request/services/pull-request.service.ts) — `PullRequestService`
+- [release.service.ts](../gitnode-frontend/src/app/core/release/services/release.service.ts) — `ReleaseService`
+- [repo-owner.guard.ts](../gitnode-frontend/src/app/core/repo/guards/repo-owner.guard.ts)
+- [repo-settings.guard.ts](../gitnode-frontend/src/app/core/repo/guards/repo-settings.guard.ts)
+- [repo-context.service.ts](../gitnode-frontend/src/app/core/repo/services/repo-context.service.ts) — `RepoContextService`
+- [repo.service.ts](../gitnode-frontend/src/app/core/repo/services/repo.service.ts) — `RepoService`
+- [route-param-signals.ts](../gitnode-frontend/src/app/core/repo/utils/route-param-signals.ts)
+- [snippet.service.ts](../gitnode-frontend/src/app/core/snippet/services/snippet.service.ts) — `SnippetService`
+- [ssh-key.service.ts](../gitnode-frontend/src/app/core/ssh/services/ssh-key.service.ts) — `SshKeyService`
+- [tag.service.ts](../gitnode-frontend/src/app/core/tag/services/tag.service.ts) — `TagService`
+- [theme.service.ts](../gitnode-frontend/src/app/core/theme/theme.service.ts) — `GitNodeTheme`, `ThemeService`
+- [toast-host.component.ts](../gitnode-frontend/src/app/core/toast/toast-host.component.ts) — `ToastHostComponent`
+- [toast.service.ts](../gitnode-frontend/src/app/core/toast/toast.service.ts) — `ToastType`, `Toast`, `ToastService`
+- [user.service.ts](../gitnode-frontend/src/app/core/user/services/user.service.ts) — `UserService`, `UserPublicProfile`, `UpdateProfileForm`
+- [project-webhook.service.ts](../gitnode-frontend/src/app/core/webhook/project-webhook.service.ts) — `ProjectWebhookService`
+- [user-webhook.service.ts](../gitnode-frontend/src/app/core/webhook/user-webhook.service.ts) — `UserWebhookService`
+- [webhook.service.ts](../gitnode-frontend/src/app/core/webhook/webhook.service.ts) — `WebhookService`
+
+### `gitnode-frontend/src/app/domain`
+
+- [runner.model.ts](../gitnode-frontend/src/app/domain/actions/models/runner.model.ts) — `RunnerInfo`, `RegistrationToken`
+- [secret.model.ts](../gitnode-frontend/src/app/domain/actions/models/secret.model.ts) — `SecretInfo`
+- [workflow-detail.model.ts](../gitnode-frontend/src/app/domain/actions/models/workflow-detail.model.ts) — `DispatchInput`, `WorkflowDetail`
+- [workflow-job.model.ts](../gitnode-frontend/src/app/domain/actions/models/workflow-job.model.ts) — `WorkflowJob`
+- [workflow-run.model.ts](../gitnode-frontend/src/app/domain/actions/models/workflow-run.model.ts) — `WorkflowRun`, `WorkflowRunPage`
+- [workflow-step.model.ts](../gitnode-frontend/src/app/domain/actions/models/workflow-step.model.ts) — `WorkflowStep`, `WorkflowLogLine`
+- [workflow-summary.model.ts](../gitnode-frontend/src/app/domain/actions/models/workflow-summary.model.ts) — `WorkflowSummary`
+- [ai-settings.model.ts](../gitnode-frontend/src/app/domain/ai/ai-settings.model.ts) — `AiProvider`, `UserAiSettings`, `UpdateAiSettingsRequest`, `TestAiConnectionRequest`, `TestAiConnectionResponse`, `CommitSuggestionResponse`, `PrDescriptionResponse`, `ReviewStatus`, `ReviewCategory`, `ReviewSeverity`, `AiCodeReviewComment`, `AiCodeReview`, `CodebaseAnalysisDimension`, `CodebaseAnalysis`, `PageResponse`
+- [ldap-login-form.model.ts](../gitnode-frontend/src/app/domain/auth/models/ldap-login-form.model.ts) — `LdapLoginForm`, `LdapDiscoverResponse`
+- [login-form.model.ts](../gitnode-frontend/src/app/domain/auth/models/login-form.model.ts) — `LoginForm`
+- [register-form.model.ts](../gitnode-frontend/src/app/domain/auth/models/register-form.model.ts) — `RegisterForm`
+- [saml-discover.model.ts](../gitnode-frontend/src/app/domain/auth/models/saml-discover.model.ts) — `SamlDiscoverResponse`
+- [user.model.ts](../gitnode-frontend/src/app/domain/auth/models/user.model.ts) — `User`
+- [auth.port.ts](../gitnode-frontend/src/app/domain/auth/ports/auth.port.ts) — `TokenResponse`
+- [collaborator.model.ts](../gitnode-frontend/src/app/domain/collaborator/collaborator.model.ts) — `CollaboratorPermission`, `CollaboratorStatus`, `CollaboratorInfo`, `CollaboratorPage`, `InviteCollaboratorForm`, `UpdateCollaboratorPermissionsForm`, `InviteLinkResponse`, `InvitationTokenInfo`, `CollaboratorPermissionGroup`
+- [author-info.model.ts](../gitnode-frontend/src/app/domain/commit/models/author-info.model.ts) — `AuthorInfo`
+- [commit-detail.model.ts](../gitnode-frontend/src/app/domain/commit/models/commit-detail.model.ts) — `CommitDetail`
+- [commit-info.model.ts](../gitnode-frontend/src/app/domain/commit/models/commit-info.model.ts) — `CommitInfo`
+- [commit-stats.model.ts](../gitnode-frontend/src/app/domain/commit/models/commit-stats.model.ts) — `CommitStats`
+- [diff-hunk.model.ts](../gitnode-frontend/src/app/domain/commit/models/diff-hunk.model.ts) — `DiffHunk`
+- [diff-line.model.ts](../gitnode-frontend/src/app/domain/commit/models/diff-line.model.ts) — `LineType`, `DiffLine`
+- [file-diff.model.ts](../gitnode-frontend/src/app/domain/commit/models/file-diff.model.ts) — `ChangeType`, `FileDiff`
+- [paged-result.model.ts](../gitnode-frontend/src/app/domain/commit/models/paged-result.model.ts) — `PagedResult`
+- [language-stats.model.ts](../gitnode-frontend/src/app/domain/language/models/language-stats.model.ts) — `LanguageStats`
+- [migration.models.ts](../gitnode-frontend/src/app/domain/migration/models/migration.models.ts) — `MigrationServiceKind`, `MigrationItemKind`, `MigrationJobStatus`, `MigrationCreatePayload`, `MigrationJobResponse`, `MigrationJob`
+- [notification.model.ts](../gitnode-frontend/src/app/domain/notification/notification.model.ts) — `NotificationType`, `NotificationDto`, `NotificationPage`, `NotificationPreference`
+- [contribution.model.ts](../gitnode-frontend/src/app/domain/profile/models/contribution.model.ts) — `ContributionBreakdown`, `ContributionDay`, `UserContributionsResponse`
+- [board-info.model.ts](../gitnode-frontend/src/app/domain/project/models/board-info.model.ts) — `BoardColumnInfo`, `BoardInfo`, `BoardForm`, `BoardColumnForm`
+- [project-info.model.ts](../gitnode-frontend/src/app/domain/project/models/project-info.model.ts) — `ProjectInfo`, `ProjectForm`, `ProjectUpdateForm`, `ProjectPage`
+- [project-repo-info.model.ts](../gitnode-frontend/src/app/domain/project/models/project-repo-info.model.ts) — `OpenPrInfo`, `ProjectRepoInfo`
+- [task.model.ts](../gitnode-frontend/src/app/domain/project/models/task.model.ts) — `TaskStatus`, `TaskType`, `TaskAssignee`, `LinkedIssueInfo`, `LinkedPrInfo`, `SubtaskInfo`, `TaskInfo`, `TaskDetail`, `TaskForm`, `TaskUpdateForm`, `SubtaskForm`, `SubtaskUpdateForm`, `CreateBranchFromTaskForm`, `TaskPage`
+- [pr-comment-info.model.ts](../gitnode-frontend/src/app/domain/pull-request/models/pr-comment-info.model.ts) — `PrCommentInfo`, `PrCommentPage`
+- [pull-request-detail.model.ts](../gitnode-frontend/src/app/domain/pull-request/models/pull-request-detail.model.ts) — `PullRequestDetail`
+- [pull-request-info.model.ts](../gitnode-frontend/src/app/domain/pull-request/models/pull-request-info.model.ts) — `PullRequestInfo`, `PrPage`
+- [create-release-form.model.ts](../gitnode-frontend/src/app/domain/release/models/create-release-form.model.ts) — `CreateReleaseForm`
+- [release-info.model.ts](../gitnode-frontend/src/app/domain/release/models/release-info.model.ts) — `ReleaseAuthor`, `ReleaseInfo`
+- [update-release-form.model.ts](../gitnode-frontend/src/app/domain/release/models/update-release-form.model.ts) — `UpdateReleaseForm`
+- [blob-response.model.ts](../gitnode-frontend/src/app/domain/repository/models/blob-response.model.ts) — `BlobResponse`
+- [branch-info.model.ts](../gitnode-frontend/src/app/domain/repository/models/branch-info.model.ts) — `BranchInfo`
+- [create-branch-form.model.ts](../gitnode-frontend/src/app/domain/repository/models/create-branch-form.model.ts) — `CreateBranchForm`
+- [issue.model.ts](../gitnode-frontend/src/app/domain/repository/models/issue.model.ts) — `IssueStatus`, `IssueAuthor`, `IssueCommentInfo`, `IssueInfo`, `IssueDetail`, `IssuePage`, `IssueCommentPage`, `IssueForm`, `IssueUpdateForm`, `IssueCommentForm`, `IssueCommentUpdateForm`, `IssueLinkedTaskInfo`
+- [repo-form.model.ts](../gitnode-frontend/src/app/domain/repository/models/repo-form.model.ts) — `RepoForm`
+- [repo-info.model.ts](../gitnode-frontend/src/app/domain/repository/models/repo-info.model.ts) — `RepoInfoOwner`, `RepoForkedFromInfo`, `RepoInfo`
+- [repo-page.model.ts](../gitnode-frontend/src/app/domain/repository/models/repo-page.model.ts) — `RepoPage`
+- [set-default-branch-form.model.ts](../gitnode-frontend/src/app/domain/repository/models/set-default-branch-form.model.ts) — `SetDefaultBranchForm`
+- [tag-info.model.ts](../gitnode-frontend/src/app/domain/repository/models/tag-info.model.ts) — `TagInfo`
+- [tree-response.model.ts](../gitnode-frontend/src/app/domain/repository/models/tree-response.model.ts) — `TreeResponse`, `is`, `TreeResponseEntry`
+- [snippet.model.ts](../gitnode-frontend/src/app/domain/snippet/models/snippet.model.ts) — `SnippetVisibility`, `SnippetOwnerInfo`, `SnippetFileInfo`, `SnippetFileForm`, `SnippetForkedFromInfo`, `SnippetLinkedRepoInfo`, `SnippetInfo`, `SnippetDetail`, `SnippetForm`, `SnippetUpdateForm`, `SnippetCommentInfo`, `SnippetRevisionInfo`, `SnippetRevisionDetail`, `SnippetPage`, `SnippetCommentPage`, `SnippetRevisionPage`
+- [add-ssh-key-form.model.ts](../gitnode-frontend/src/app/domain/ssh/models/add-ssh-key-form.model.ts) — `AddSshKeyForm`
+- [ssh-key-info.model.ts](../gitnode-frontend/src/app/domain/ssh/models/ssh-key-info.model.ts) — `SshKeyInfo`
+- [webhook.model.ts](../gitnode-frontend/src/app/domain/webhook/webhook.model.ts) — `WebhookInfo`, `WebhookForm`, `WebhookUpdateForm`, `WebhookEventGroup`
+
+### `gitnode-frontend/src/app/features`
+
+- [login.page.ts](../gitnode-frontend/src/app/features/auth/login/login.page.ts) — `LoginMode`, `LoginPage`
+- [register.page.ts](../gitnode-frontend/src/app/features/auth/register/register.page.ts) — `RegisterPage`
+- [accept-invite.page.ts](../gitnode-frontend/src/app/features/collaborator/accept-invite.page.ts) — `AcceptInvitePage`
+- [dashboard.page.ts](../gitnode-frontend/src/app/features/dashboard/dashboard.page.ts) — `RepoListSort`, `DashboardRepo`, `DashboardPage`
+- [docs.page.ts](../gitnode-frontend/src/app/features/docs/docs.page.ts) — `DocsTab`, `DocsPage`
+- [landing.page.ts](../gitnode-frontend/src/app/features/landing/landing.page.ts) — `LandingPage`
+- [migrate-github.page.ts](../gitnode-frontend/src/app/features/migration/migrate-github.page.ts) — `ParsedGithubRepo`, `MigrateGithubPage`
+- [notifications.page.ts](../gitnode-frontend/src/app/features/notifications/notifications.page.ts) — `NotificationsPage`
+- [board.page.ts](../gitnode-frontend/src/app/features/project/board/board.page.ts) — `ColumnColor`, `BoardPage`
+- [project-settings.page.ts](../gitnode-frontend/src/app/features/project/project-settings/project-settings.page.ts) — `ProjectSettingsTab`, `ProjectSettingsPage`
+- [projects.page.ts](../gitnode-frontend/src/app/features/project/projects/projects.page.ts) — `ProjectsPage`
+- [task-detail.page.ts](../gitnode-frontend/src/app/features/project/task-detail/task-detail.page.ts) — `BranchModalRepo`, `TaskDetailPage`
+- [actions.page.ts](../gitnode-frontend/src/app/features/repo/actions/actions.page.ts) — `DispatchConfirmedEvent`, `ActionsTab`, `ActionsPage`
+- [job-graph.component.ts](../gitnode-frontend/src/app/features/repo/actions/components/job-graph/job-graph.component.ts) — `JobLayer`, `JobGraphComponent`
+- [job-panel.component.ts](../gitnode-frontend/src/app/features/repo/actions/components/job-panel/job-panel.component.ts) — `JobPanelComponent`
+- [log-viewer.component.ts](../gitnode-frontend/src/app/features/repo/actions/components/log-viewer/log-viewer.component.ts) — `LogViewerComponent`
+- [workflow-dispatch-modal.component.ts](../gitnode-frontend/src/app/features/repo/actions/components/workflow-dispatch-modal/workflow-dispatch-modal.component.ts) — `DispatchConfirmedEvent`, `WorkflowDispatchModalComponent`
+- [run-detail.page.ts](../gitnode-frontend/src/app/features/repo/actions/run-detail.page.ts) — `RunDetailPage`
+- [workflow-detail.page.ts](../gitnode-frontend/src/app/features/repo/actions/workflow-detail.page.ts) — `DispatchConfirmedEvent`, `WorkflowDetailPage`
+- [blob.page.ts](../gitnode-frontend/src/app/features/repo/blob/blob.page.ts) — `BlobPage`
+- [branches.page.ts](../gitnode-frontend/src/app/features/repo/branches/branches.page.ts) — `BranchesPage`
+- [commit-detail.page.ts](../gitnode-frontend/src/app/features/repo/commits/commit-detail.page.ts) — `CommitDetailPage`
+- [commits.page.ts](../gitnode-frontend/src/app/features/repo/commits/commits.page.ts) — `CommitsPage`
+- [create-repo.page.ts](../gitnode-frontend/src/app/features/repo/create/create-repo.page.ts) — `CreateRepoPage`
+- [repo-home.page.ts](../gitnode-frontend/src/app/features/repo/home/repo-home.page.ts) — `RepoHomePage`
+- [issue-detail.page.ts](../gitnode-frontend/src/app/features/repo/issues/issue-detail.page.ts) — `IssueDetailPage`
+- [issues.page.ts](../gitnode-frontend/src/app/features/repo/issues/issues.page.ts) — `IssueTab`, `IssuesPage`
+- [new-issue.page.ts](../gitnode-frontend/src/app/features/repo/issues/new-issue.page.ts) — `NewIssuePage`
+- [repo-layout.component.ts](../gitnode-frontend/src/app/features/repo/layout/repo-layout.component.ts) — `RepoLayoutComponent`
+- [repo-my-permissions.page.ts](../gitnode-frontend/src/app/features/repo/my-permissions/repo-my-permissions.page.ts) — `CollaboratorInfo`, `CollaboratorPermission`, `RepoMyPermissionsPage`
+- [repo-projects.page.ts](../gitnode-frontend/src/app/features/repo/projects/repo-projects.page.ts) — `RepoProjectsPage`
+- [new-pull-request.page.ts](../gitnode-frontend/src/app/features/repo/pull-requests/new-pull-request.page.ts) — `NewPullRequestPage`
+- [pr-detail.page.ts](../gitnode-frontend/src/app/features/repo/pull-requests/pr-detail.page.ts) — `PrDetailTab`, `PrDetailPage`
+- [pull-requests.page.ts](../gitnode-frontend/src/app/features/repo/pull-requests/pull-requests.page.ts) — `PrListTab`, `PullRequestsPage`
+- [create-release.page.ts](../gitnode-frontend/src/app/features/repo/releases/create-release.page.ts) — `CreateReleasePage`
+- [edit-release.page.ts](../gitnode-frontend/src/app/features/repo/releases/edit-release.page.ts) — `EditReleasePage`
+- [release-detail.page.ts](../gitnode-frontend/src/app/features/repo/releases/release-detail.page.ts) — `ReleaseDetailPage`
+- [releases.page.ts](../gitnode-frontend/src/app/features/repo/releases/releases.page.ts) — `ReleasesPage`
+- [actions-settings.component.ts](../gitnode-frontend/src/app/features/repo/settings/actions-settings/actions-settings.component.ts) — `ActionsSettingsComponent`
+- [repo-settings.page.ts](../gitnode-frontend/src/app/features/repo/settings/repo-settings.page.ts) — `RepoSettingsTab`, `RepoSettingsPage`
+- [readme-markdown.utils.ts](../gitnode-frontend/src/app/features/repo/shared/readme-markdown.utils.ts) — `ReadmePostProcessOptions`
+- [repo-breadcrumb.component.ts](../gitnode-frontend/src/app/features/repo/shared/repo-breadcrumb.component.ts) — `BreadcrumbItem`, `RepoBreadcrumbComponent`
+- [encoding.ts](../gitnode-frontend/src/app/features/repo/shared/utils/encoding.ts)
+- [repo-snippets.page.ts](../gitnode-frontend/src/app/features/repo/snippets/repo-snippets.page.ts) — `RepoSnippetsPage`
+- [tree.page.ts](../gitnode-frontend/src/app/features/repo/tree/tree.page.ts) — `TreePage`
+- [language-detect.util.ts](../gitnode-frontend/src/app/features/snippets/shared/language-detect.util.ts)
+- [snippet-detail.page.ts](../gitnode-frontend/src/app/features/snippets/snippet-detail/snippet-detail.page.ts) — `HighlightedFile`, `SnippetDetailPage`
+- [snippet-edit.page.ts](../gitnode-frontend/src/app/features/snippets/snippet-edit/snippet-edit.page.ts) — `FileRow`, `SnippetEditPage`
+- [snippet-revision.page.ts](../gitnode-frontend/src/app/features/snippets/snippet-revision/snippet-revision.page.ts) — `HighlightedFile`, `SnippetRevisionPage`
+- [snippets.page.ts](../gitnode-frontend/src/app/features/snippets/snippets/snippets.page.ts) — `SnippetTab`, `SnippetsPage`
+- [user-profile.page.ts](../gitnode-frontend/src/app/features/user-profile/user-profile.page.ts) — `RepoListSort`, `ProfileTab`, `UserProfilePage`
+- [user-settings.page.ts](../gitnode-frontend/src/app/features/user-settings/user-settings.page.ts) — `UserSettingsTab`, `UserSettingsPage`
+
+### `gitnode-frontend/src/app/layout`
+
+- [footer.component.ts](../gitnode-frontend/src/app/layout/footer/footer.component.ts) — `FooterComponent`
+- [navbar.component.ts](../gitnode-frontend/src/app/layout/navbar/navbar.component.ts) — `NavbarComponent`
+
+### `gitnode-frontend/src/app/shared`
+
+- [avatar.component.ts](../gitnode-frontend/src/app/shared/components/avatar/avatar.component.ts) — `AvatarSize`, `AvatarComponent`
+- [confirm-modal.component.ts](../gitnode-frontend/src/app/shared/components/confirm-modal/confirm-modal.component.ts) — `ConfirmVariant`, `ConfirmModalComponent`
+- [contribution-graph.component.ts](../gitnode-frontend/src/app/shared/components/contribution-graph/contribution-graph.component.ts) — `GraphWeek`, `TooltipState`, `ContributionGraphComponent`
+- [language-bar.component.ts](../gitnode-frontend/src/app/shared/components/language-bar/language-bar.component.ts) — `LanguageBarComponent`
+- [notification-bell.component.ts](../gitnode-frontend/src/app/shared/components/notification-bell/notification-bell.component.ts) — `NotificationBellComponent`
+- [source-code-viewer.component.ts](../gitnode-frontend/src/app/shared/components/source-code-viewer/source-code-viewer.component.ts) — `SourceCodeViewerComponent`
+- [toast.component.ts](../gitnode-frontend/src/app/shared/components/toast/toast.component.ts) — `ToastComponent`
+- [file-size.pipe.ts](../gitnode-frontend/src/app/shared/pipes/file-size.pipe.ts) — `FileSizePipe`
+- [markdown.pipe.ts](../gitnode-frontend/src/app/shared/pipes/markdown.pipe.ts) — `SafeHtml`, `MarkdownPipe`
+- [relative-time.pipe.ts](../gitnode-frontend/src/app/shared/pipes/relative-time.pipe.ts) — `RelativeTimePipe`
+- [ansi.utils.ts](../gitnode-frontend/src/app/shared/utils/ansi.utils.ts)
+- [api-error.utils.ts](../gitnode-frontend/src/app/shared/utils/api-error.utils.ts) — `AuthErrorContext`
+- [clipboard.util.ts](../gitnode-frontend/src/app/shared/utils/clipboard.util.ts)
+- [relative-time.util.ts](../gitnode-frontend/src/app/shared/utils/relative-time.util.ts)
+- [repo-list.utils.ts](../gitnode-frontend/src/app/shared/utils/repo-list.utils.ts) — `RepoListSort`
+- [url-tab.utils.ts](../gitnode-frontend/src/app/shared/utils/url-tab.utils.ts)
+- [workflow-status.utils.ts](../gitnode-frontend/src/app/shared/utils/workflow-status.utils.ts) — `WorkflowStatusTone`
+
+### `gitnode-admin-panel/src/app`
+
+- [app.config.ts](../gitnode-admin-panel/src/app/app.config.ts)
+- [app.routes.ts](../gitnode-admin-panel/src/app/app.routes.ts)
+- [app.ts](../gitnode-admin-panel/src/app/app.ts) — `App`
+- [lucide-icons.ts](../gitnode-admin-panel/src/app/lucide-icons.ts)
+
+### `gitnode-admin-panel/src/app/core`
+
+- [admin-account.service.ts](../gitnode-admin-panel/src/app/core/account/admin-account.service.ts) — `AdminAccountService`
+- [admin-actions.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-actions.service.ts) — `AdminRunnerSummary`, `AdminActionsStats`, `AdminActionsService`
+- [admin-audit-log.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-audit-log.service.ts) — `PagedResponse`, `AdminAuditLogService`
+- [admin-error.interceptor.ts](../gitnode-admin-panel/src/app/core/admin/admin-error.interceptor.ts)
+- [admin-modulith-event.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-modulith-event.service.ts) — `AdminModulithEventService`
+- [admin-pgaudit-log.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-pgaudit-log.service.ts) — `AdminPgAuditLogService`
+- [admin-repo.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-repo.service.ts) — `PagedResponse`, `AdminRepoService`
+- [admin-settings.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-settings.service.ts) — `AdminSettingsService`
+- [admin-stats.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-stats.service.ts) — `AdminStatsService`
+- [admin-user.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-user.service.ts) — `PagedResponse`, `UserPageQuery`, `AdminUserService`
+- [admin-webhook-dlq.service.ts](../gitnode-admin-panel/src/app/core/admin/admin-webhook-dlq.service.ts) — `PagedResponse`, `AdminWebhookDlqService`
+- [admin.models.ts](../gitnode-admin-panel/src/app/core/admin/admin.models.ts) — `AdminLoginResponse`, `AdminUser`, `AdminUserDetail`, `AdminAccountProfile`, `SystemHealthComponent`, `SystemHealthResponse`, `SetUserEnabledRequest`, `StatsOverview`, `StatsOverviewResponse`, `AdminPlatformSettings`, `AdminFeatureTogglesRequest`, `PlatformAdminsResponse`, `AdminRepoSummary`, `WebhookDlqEntry`, `WebhookDlqSummary`, `ActuatorMetricResponse`, `ActuatorMetricsIndex`, `StatsPeriod`, `StatsContributor`, `StatsActivityPoint`, `StatsReposResponse`, `StatsUploadsResponse`, `AuditLogEntry`, `AuditLogFilters`, `AuditPeriodPreset`, `AuditLogQuery`, `PgAuditLogEntry`, `PgAuditLogStatus`, `PgAuditStatusReason`, `PgAuditLogSearchResponse`, `PgAuditCategory`, `PgAuditLogQuery`, `AuditLogTab`, `ModulithEventLifecycleFilter`, `ModulithEventSummary`, `ModulithEventDetail`, `ModulithEventFilters`, `ModulithEventSearchResponse`, `ModulithEventQuery`
+- [platform-admin.guard.ts](../gitnode-admin-panel/src/app/core/admin/platform-admin.guard.ts)
+- [platform-admin.service.ts](../gitnode-admin-panel/src/app/core/admin/platform-admin.service.ts) — `PlatformAdminService`
+- [auth.guard.ts](../gitnode-admin-panel/src/app/core/auth/guards/auth.guard.ts)
+- [auth.interceptor.ts](../gitnode-admin-panel/src/app/core/auth/interceptors/auth.interceptor.ts)
+- [refresh.interceptor.ts](../gitnode-admin-panel/src/app/core/auth/interceptors/refresh.interceptor.ts)
+- [auth.service.ts](../gitnode-admin-panel/src/app/core/auth/services/auth.service.ts) — `PlatformAdminRequiredError`, `AuthService`
+- [token.service.ts](../gitnode-admin-panel/src/app/core/auth/services/token.service.ts) — `TokenService`
+- [confirm-modal-host.component.ts](../gitnode-admin-panel/src/app/core/confirm-modal/confirm-modal-host.component.ts) — `ConfirmModalHostComponent`
+- [confirm-modal.service.ts](../gitnode-admin-panel/src/app/core/confirm-modal/confirm-modal.service.ts) — `ConfirmOptions`, `ConfirmModalService`
+- [organization.models.ts](../gitnode-admin-panel/src/app/core/organization/organization.models.ts) — `TokenResponse`, `LoginForm`, `OrganizationSummary`, `OrganizationDetail`, `CreateOrganizationRequest`, `UpdateOrganizationRequest`, `SsoConfigRequest`, `LdapConfigRequest`, `SsoEnabledRequest`, `SsoTestResult`, `LdapTestResult`, `PagedResponse`, `PageQuery`, `UserPageQuery`
+- [organization.service.ts](../gitnode-admin-panel/src/app/core/organization/organization.service.ts) — `CreateOrganizationRequest`, `LdapConfigRequest`, `LdapTestResult`, `OrganizationDetail`, `OrganizationSummary`, `PageQuery`, `PagedResponse`, `SsoConfigRequest`, `SsoEnabledRequest`, `SsoTestResult`, `UpdateOrganizationRequest`, `OrganizationService`
+- [admin-system.service.ts](../gitnode-admin-panel/src/app/core/system/admin-system.service.ts) — `AdminSystemService`
+- [theme.service.ts](../gitnode-admin-panel/src/app/core/theme/theme.service.ts) — `GitNodeTheme`, `ThemeService`
+- [toast-host.component.ts](../gitnode-admin-panel/src/app/core/toast/toast-host.component.ts) — `ToastHostComponent`
+- [toast.service.ts](../gitnode-admin-panel/src/app/core/toast/toast.service.ts) — `ToastType`, `Toast`, `ToastService`
+
+### `gitnode-admin-panel/src/app/features`
+
+- [account.page.ts](../gitnode-admin-panel/src/app/features/account/account.page.ts) — `AccountPage`
+- [actions.page.ts](../gitnode-admin-panel/src/app/features/actions/actions.page.ts) — `ActionsPage`
+- [audit-logs-list.page.ts](../gitnode-admin-panel/src/app/features/audit/list/audit-logs-list.page.ts) — `AuditLogsListPage`
+- [pgaudit-logs-panel.component.ts](../gitnode-admin-panel/src/app/features/audit/pgaudit/pgaudit-logs-panel.component.ts) — `PgauditLogsPanelComponent`
+- [dashboard.page.ts](../gitnode-admin-panel/src/app/features/dashboard/dashboard.page.ts) — `ChartSeries`, `DashboardPage`
+- [login.page.ts](../gitnode-admin-panel/src/app/features/login/login.page.ts) — `LoginPage`
+- [modulith-events.page.ts](../gitnode-admin-panel/src/app/features/modulith-events/modulith-events.page.ts) — `ModulithEventsPage`
+- [organization-detail.page.ts](../gitnode-admin-panel/src/app/features/organizations/detail/organization-detail.page.ts) — `OrganizationDetailPage`
+- [ldap-config.component.ts](../gitnode-admin-panel/src/app/features/organizations/ldap-config/ldap-config.component.ts) — `LdapConfigComponent`
+- [organizations-list.page.ts](../gitnode-admin-panel/src/app/features/organizations/list/organizations-list.page.ts) — `OrganizationsListPage`
+- [organization-new.page.ts](../gitnode-admin-panel/src/app/features/organizations/new/organization-new.page.ts) — `OrganizationNewPage`
+- [sso-config.component.ts](../gitnode-admin-panel/src/app/features/organizations/sso-config/sso-config.component.ts) — `SsoConfigComponent`
+- [pgaudit-logs.page.ts](../gitnode-admin-panel/src/app/features/pgaudit/pgaudit-logs.page.ts) — `PgauditLogsPage`
+- [repos-list.page.ts](../gitnode-admin-panel/src/app/features/repos/list/repos-list.page.ts) — `ReposListPage`
+- [settings.page.ts](../gitnode-admin-panel/src/app/features/settings/settings.page.ts) — `SettingsPage`
+- [system-health.page.ts](../gitnode-admin-panel/src/app/features/system/system-health.page.ts) — `SystemHealthPage`
+- [user-detail.page.ts](../gitnode-admin-panel/src/app/features/users/detail/user-detail.page.ts) — `UserDetailPage`
+- [users-list.page.ts](../gitnode-admin-panel/src/app/features/users/list/users-list.page.ts) — `UsersListPage`
+- [webhook-dlq.page.ts](../gitnode-admin-panel/src/app/features/webhooks/dlq/webhook-dlq.page.ts) — `WebhookDlqPage`
+
+### `gitnode-admin-panel/src/app/layout`
+
+- [admin-layout.component.ts](../gitnode-admin-panel/src/app/layout/admin-layout/admin-layout.component.ts) — `AdminLayoutComponent`
+
+### `gitnode-admin-panel/src/app/shared`
+
+- [activity-chart.component.ts](../gitnode-admin-panel/src/app/shared/components/activity-chart/activity-chart.component.ts) — `ChartSeries`, `ActivityChartComponent`
+- [confirm-modal.component.ts](../gitnode-admin-panel/src/app/shared/components/confirm-modal/confirm-modal.component.ts) — `ConfirmVariant`, `ConfirmModalComponent`
+- [pagination.component.ts](../gitnode-admin-panel/src/app/shared/components/pagination/pagination.component.ts) — `PaginationComponent`
+- [sso-switch.component.ts](../gitnode-admin-panel/src/app/shared/components/sso-switch/sso-switch.component.ts) — `SsoSwitchSize`, `SsoSwitchComponent`
+- [toast.component.ts](../gitnode-admin-panel/src/app/shared/components/toast/toast.component.ts) — `ToastComponent`
+- [api-error.ts](../gitnode-admin-panel/src/app/shared/utils/api-error.ts)
+- [cache-ttl.ts](../gitnode-admin-panel/src/app/shared/utils/cache-ttl.ts)
+- [clipboard.util.ts](../gitnode-admin-panel/src/app/shared/utils/clipboard.util.ts)
+- [format-bytes.ts](../gitnode-admin-panel/src/app/shared/utils/format-bytes.ts)
+
+### `gitnode-runner/cmd`
+
+- [main.go](../gitnode-runner/cmd/runner/main.go)
+
+### `gitnode-runner/internal`
+
+- [cache.go](../gitnode-runner/internal/actions/cache.go) — `CacheAction`
+- [checkout.go](../gitnode-runner/internal/actions/checkout.go) — `CheckoutAction`
+- [docker_build_push.go](../gitnode-runner/internal/actions/docker_build_push.go) — `DockerBuildPushAction`, `buildOpts`
+- [docker_login.go](../gitnode-runner/internal/actions/docker_login.go) — `DockerLoginAction`
+- [download_artifact.go](../gitnode-runner/internal/actions/download_artifact.go) — `DownloadArtifactAction`
+- [registry.go](../gitnode-runner/internal/actions/registry.go) — `ActionHandler`, `Registry`
+- [setup_buildx.go](../gitnode-runner/internal/actions/setup_buildx.go) — `SetupBuildxAction`
+- [setup_go.go](../gitnode-runner/internal/actions/setup_go.go) — `SetupGoAction`
+- [setup_java.go](../gitnode-runner/internal/actions/setup_java.go) — `SetupJavaAction`
+- [setup_node.go](../gitnode-runner/internal/actions/setup_node.go) — `SetupNodeAction`
+- [setup_pnpm.go](../gitnode-runner/internal/actions/setup_pnpm.go) — `SetupPnpmAction`
+- [setup_python.go](../gitnode-runner/internal/actions/setup_python.go) — `SetupPythonAction`
+- [upload_artifact.go](../gitnode-runner/internal/actions/upload_artifact.go) — `UploadArtifactAction`
+- [config.go](../gitnode-runner/internal/config/config.go) — `Config`
+- [ws_client.go](../gitnode-runner/internal/connection/ws_client.go) — `Handler`, `Client`
+- [expression.go](../gitnode-runner/internal/context/expression.go)
+- [job_context.go](../gitnode-runner/internal/context/job_context.go) — `JobContext`
+- [docker_executor.go](../gitnode-runner/internal/executor/docker_executor.go) — `DockerExecutor`
+- [job_executor.go](../gitnode-runner/internal/executor/job_executor.go) — `JobExecutor`
+- [shell_executor.go](../gitnode-runner/internal/executor/shell_executor.go) — `ShellExecutor`, `prefixWriter`
+- [streamer.go](../gitnode-runner/internal/log/streamer.go) — `Streamer`
+- [service.go](../gitnode-runner/internal/registration/service.go) — `regRequest`, `regResponse`
+- [run.go](../gitnode-runner/internal/shell/run.go)
+- [manager.go](../gitnode-runner/internal/workspace/manager.go) — `Manager`
+
+### `gitnode-runner/pkg`
+
+- [messages.go](../gitnode-runner/pkg/protocol/messages.go) — `MessageType`, `OutboundMessage`, `InboundMessage`, `RegisterPayload`, `JobClaimedPayload`, `StepStartedPayload`, `LogPayload`, `StepCompletedPayload`, `JobCompletedPayload`, `ArtifactUploadedPayload`, `JobAssignedPayload`, `JobCancelledPayload`, `JobPayload`, `StepPayload`, `ServicePayload`

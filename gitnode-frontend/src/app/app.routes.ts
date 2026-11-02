@@ -16,7 +16,7 @@
 
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/guards/auth.guard';
-import { repoOwnerGuard } from './core/repo/guards/repo-owner.guard';
+import { repoPermissionGuard } from './core/repo/guards/repo-permission.guard';
 import { repoSettingsGuard } from './core/repo/guards/repo-settings.guard';
 import { guestGuard } from './core/auth/guards/guest.guard';
 import { redirectIfAuthGuard } from './core/auth/guards/redirect-if-auth.guard';
@@ -163,6 +163,17 @@ export const routes: Routes = [
         ],
       },
       {
+        path: 'editor',
+        canActivate: [authGuard, repoPermissionGuard],
+        data: { permission: 'PUSH' },
+        children: [
+          {
+            path: '**',
+            loadComponent: () => import('./features/repo/editor/editor.page').then((m) => m.EditorPage),
+          },
+        ],
+      },
+      {
         path: 'issues',
         loadComponent: () => import('./features/repo/issues/issues.page').then((m) => m.IssuesPage),
       },
@@ -183,7 +194,8 @@ export const routes: Routes = [
         path: 'pulls/new',
         loadComponent: () =>
           import('./features/repo/pull-requests/new-pull-request.page').then((m) => m.NewPullRequestPage),
-        canActivate: [repoOwnerGuard],
+        canActivate: [repoPermissionGuard],
+        data: { permission: 'PULL_REQUEST_CREATE' },
       },
       {
         path: 'pulls/:number',
@@ -204,12 +216,14 @@ export const routes: Routes = [
       {
         path: 'releases/new',
         loadComponent: () => import('./features/repo/releases/create-release.page').then((m) => m.CreateReleasePage),
-        canActivate: [repoOwnerGuard],
+        canActivate: [repoPermissionGuard],
+        data: { permission: 'PUSH' },
       },
       {
         path: 'releases/:id/edit',
         loadComponent: () => import('./features/repo/releases/edit-release.page').then((m) => m.EditReleasePage),
-        canActivate: [repoOwnerGuard],
+        canActivate: [repoPermissionGuard],
+        data: { permission: 'PUSH' },
       },
       {
         path: 'releases/tag/:tagName',
@@ -238,5 +252,9 @@ export const routes: Routes = [
           import('./features/repo/my-permissions/repo-my-permissions.page').then((m) => m.RepoMyPermissionsPage),
       },
     ],
+  },
+  {
+    path: '**',
+    loadComponent: () => import('./features/not-found/not-found.page').then((m) => m.NotFoundPage),
   },
 ];

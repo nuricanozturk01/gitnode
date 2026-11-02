@@ -42,6 +42,8 @@ export class TreePage {
 
   readonly tree = signal<TreeResponseEntry[]>([]);
   readonly loading = signal(true);
+  readonly loadFailed = signal(false);
+  private loadVersion = 0;
   readonly branch = signal('');
   readonly path = signal('');
 
@@ -89,6 +91,7 @@ export class TreePage {
   }
 
   private async loadTree(): Promise<void> {
+    const version = ++this.loadVersion;
     const owner = this.owner();
     const repo = this.repoName();
     const branch = this.branch();
@@ -98,16 +101,24 @@ export class TreePage {
       return;
     }
     this.loading.set(true);
+    this.loadFailed.set(false);
     const pathSuffix = path ? `/${path}` : '';
     const url = `${environment.apiUrl}/api/repos/${owner}/${repo}/tree/${branch}${pathSuffix}`;
     try {
       const data = await firstValueFrom(this.http.get<TreeResponse>(url));
+      if (version !== this.loadVersion) return;
       this.tree.set(data.entries ?? []);
     } catch {
+      if (version !== this.loadVersion) return;
       this.tree.set([]);
+      this.loadFailed.set(true);
     } finally {
-      this.loading.set(false);
+      if (version === this.loadVersion) this.loading.set(false);
     }
+  }
+
+  retryLoad(): void {
+    void this.loadTree();
   }
 
   entryRoute(entry: TreeResponseEntry): string[] {

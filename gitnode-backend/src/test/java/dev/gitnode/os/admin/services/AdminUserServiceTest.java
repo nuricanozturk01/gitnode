@@ -45,6 +45,7 @@ class AdminUserServiceTest {
 
   @Mock private TenantRepository tenantRepository;
   @Mock private PlatformAdminService platformAdminService;
+  @Mock private org.springframework.context.ApplicationEventPublisher events;
 
   @InjectMocks private AdminUserService adminUserService;
 
@@ -62,6 +63,22 @@ class AdminUserServiceTest {
 
     assertThat(result.enabled()).isFalse();
     verify(tenantRepository).save(tenant);
+    verify(events)
+        .publishEvent(new dev.gitnode.os.events.profile.TenantDisabledEvent(tenant.getId()));
+  }
+
+  @Test
+  @DisplayName("setEnabled announces nothing when enabling")
+  void setEnabled_enablingPublishesNothing() {
+
+    final var tenant = tenant("alice", false);
+    when(tenantRepository.findById(tenant.getId())).thenReturn(Optional.of(tenant));
+    when(tenantRepository.save(any(Tenant.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    adminUserService.setEnabled(tenant.getId(), true);
+
+    org.mockito.Mockito.verifyNoInteractions(events);
   }
 
   @Test

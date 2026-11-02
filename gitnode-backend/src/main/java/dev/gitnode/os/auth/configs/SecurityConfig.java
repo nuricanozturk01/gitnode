@@ -108,6 +108,9 @@ public class SecurityConfig {
     auth.requestMatchers(
             "/api/auth/register",
             "/api/auth/refresh-token",
+            "/api/auth/logout",
+            "/api/auth/send-password-recovery-mail",
+            "/api/auth/recover-password",
             "/api/auth/login",
             "/api/auth/sso/**",
             "/login/oauth2/code/*",

@@ -24,7 +24,7 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
-import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
+import { PullRequestService, type PrReviewer, type PrReview } from '../../../core/pull-request/services/pull-request.service';
 import { TokenService } from '../../../core/auth/services/token.service';
 import { UserService } from '../../../core/user/services/user.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
@@ -54,11 +54,17 @@ const PR_DETAIL_TABS = ['conversation', 'commits', 'files', 'actions', 'ai-revie
 type PrDetailTab = (typeof PR_DETAIL_TABS)[number];
 const DEFAULT_PR_DETAIL_TAB: PrDetailTab = 'conversation';
 
+import { BranchService } from '../../../core/branch/services/branch.service';
+import { PrConflictsComponent } from './pr-conflicts.component';
+import { PrMergeRequirementsComponent } from './pr-merge-requirements.component';
+import { PrMetadataComponent } from './pr-metadata.component';
+import { PrTimelineComponent } from './pr-timeline.component';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pr-detail',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, FormsModule, RelativeTimePipe, AvatarComponent],
+  imports: [RouterLink, LucideAngularModule, FormsModule, RelativeTimePipe, AvatarComponent, PrConflictsComponent, PrMergeRequirementsComponent, PrMetadataComponent, PrTimelineComponent],
   templateUrl: './pr-detail.page.html',
   styleUrl: './pull-requests.page.css',
   host: { class: 'block' },
@@ -67,6 +73,7 @@ export class PrDetailPage {
   private readonly route = inject(ActivatedRoute);
   private readonly location = inject(Location);
   private readonly prService = inject(PullRequestService);
+  private readonly branchService = inject(BranchService);
   private readonly tokenService = inject(TokenService);
   private readonly userService = inject(UserService);
   private readonly confirmModal = inject(ConfirmModalService);
@@ -82,14 +89,37 @@ export class PrDetailPage {
   readonly commentsTotalPages = signal(1);
   readonly commentsPage = signal(0);
   readonly commentsLoadingMore = signal(false);
+  readonly commentsError = signal(false);
+  readonly reviewers = signal<PrReviewer[]>([]);
+  readonly reviewersError = signal(false);
+  readonly reviewersLoading = signal(false);
+  readonly reviewersSaving = signal(false);
+  readonly reviewerNames = signal('');
+  readonly reviews = signal<PrReview[]>([]);
+  readonly reviewHeadSha = signal('');
+  readonly reviewTargetSha = signal('');
+  readonly reviewsError = signal(false);
+  readonly reviewsLoading = signal(false);
+  readonly reviewSubmitting = signal(false);
+  readonly reviewBody = signal('');
+  readonly reviewState = signal<PrReview['state']>('COMMENTED');
+  readonly moreCommentsError = signal(false);
   readonly COMMENTS_PAGE_SIZE = 5;
   readonly files = signal<FileDiff[]>([]);
+  readonly fileQuery = signal('');
+  readonly visibleFiles = computed(() => {
+    const q = this.fileQuery().trim().toLowerCase();
+    return q ? this.files().filter((f) => (f.newPath || f.oldPath || '').toLowerCase().includes(q)) : this.files();
+  });
   readonly commits = signal<CommitInfo[]>([]);
   readonly loading = signal(true);
+  readonly loadError = signal(false);
   readonly filesLoading = signal(false);
   readonly commitsLoading = signal(false);
   readonly filesLoaded = signal(false);
   readonly commitsLoaded = signal(false);
+  readonly filesError = signal(false);
+  readonly commitsError = signal(false);
   readonly activeTab = signal<PrDetailTab>(DEFAULT_PR_DETAIL_TAB);
   readonly expandedFiles = signal<Set<string>>(new Set());
 
@@ -101,16 +131,19 @@ export class PrDetailPage {
   readonly runs = signal<WorkflowRun[]>([]);
   readonly runsLoading = signal(false);
   readonly runsLoaded = signal(false);
+  readonly runsError = signal(false);
 
   readonly aiReview = signal<AiCodeReview | null>(null);
   readonly aiReviewLoading = signal(false);
   readonly aiReviewLoaded = signal(false);
+  readonly aiReviewError = signal(false);
   readonly aiReviewPage = signal(0);
   readonly aiReviewRetrying = signal(false);
   readonly expandedAiComments = signal<Set<string>>(new Set());
   readonly aiSummaryExpanded = signal(true);
 
   private aiReviewPollTimer: ReturnType<typeof setInterval> | null = null;
+  private dataRequest = 0;
 
   runStatusBadgeClass = workflowStatusBadgeClass;
   runStatusLabel = workflowStatusLabel;
@@ -127,6 +160,16 @@ export class PrDetailPage {
   readonly editingCommentId = signal<string | null>(null);
   readonly editCommentBody = signal('');
 
+  readonly conflicted = signal(false);
+  readonly sourceBranchDeletable = signal(false);
+  readonly deletingBranch = signal(false);
+  readonly savingDraft = signal(false);
+  readonly requirementsBlocked = signal(false);
+  readonly requirementsRefresh = signal(0);
+  readonly conflictRefresh = signal(0);
+  readonly canResolveConflicts = computed(
+    () => this.isLoggedIn() && this.repoContext.hasPermission('PUSH'),
+  );
   readonly mergeStrategy = signal<'MERGE_COMMIT' | 'SQUASH' | 'REBASE'>('MERGE_COMMIT');
   readonly mergeCommitMessage = signal('');
   readonly merging = signal(false);
@@ -149,7 +192,8 @@ export class PrDetailPage {
     filePath: string;
     lineNumber: number;
     lineSide: string;
-    line: DiffLine;
+    line: DiffLine | null;
+    parentId?: string;
   } | null>(null);
   readonly lineCommentBody = signal('');
 
@@ -184,6 +228,8 @@ export class PrDetailPage {
   });
 
   readonly generalComments = computed(() => this.comments().filter((c) => !c.filePath && !c.lineNumber));
+  readonly hasMergeReviewer = computed(() => this.reviewers().some((reviewer) => reviewer.canMerge));
+  readonly isAssignedReviewer = computed(() => this.reviewers().some((reviewer) => reviewer.username === this.currentUsername()));
 
   private readonly lineCommentsByKey = computed(() => {
     const map = new Map<string, PrCommentInfo[]>();
@@ -193,6 +239,12 @@ export class PrDetailPage {
       const bucket = map.get(key);
       if (bucket) bucket.push(c);
       else map.set(key, [c]);
+    }
+    // Each top-level conversation is followed by its replies.
+    for (const [key, bucket] of map) {
+      const roots = bucket.filter((c) => !c.parentId);
+      const ordered = roots.flatMap((root) => [root, ...bucket.filter((c) => c.parentId === root.id)]);
+      map.set(key, ordered.length === bucket.length ? ordered : bucket);
     }
     return map;
   });
@@ -231,7 +283,7 @@ export class PrDetailPage {
       const owner = this.owner();
       const repo = this.repoName();
       const num = this.number();
-      if (!owner || !repo || !num) return;
+      if (!owner || !repo || !num || this.loading() || !this.pr()) return;
       if (tab === 'files' && !this.filesLoaded() && !this.filesLoading()) this.loadDiff();
       if (tab === 'commits' && !this.commitsLoaded() && !this.commitsLoading()) this.loadCommits();
       if (tab === 'actions' && !this.runsLoaded() && !this.runsLoading()) this.loadRuns();
@@ -240,7 +292,7 @@ export class PrDetailPage {
     this.destroyRef.onDestroy(() => this.clearAiReviewPoll());
   }
 
-  private async loadData(): Promise<void> {
+  async loadData(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     const num = this.number();
@@ -248,61 +300,211 @@ export class PrDetailPage {
       this.loading.set(false);
       return;
     }
+    const request = ++this.dataRequest;
     this.loading.set(true);
+    this.loadError.set(false);
+    this.pr.set(null);
+    this.reviewers.set([]);
+    this.reviews.set([]);
+    this.reviewHeadSha.set('');
+    this.reviewTargetSha.set('');
+    this.reviewBody.set('');
+    this.reviewsError.set(false);
+    this.reviewSubmitting.set(false);
+    this.reviewerNames.set('');
+    this.reviewersError.set(false);
+    this.reviewersSaving.set(false);
+    this.comments.set([]);
+    this.commentsError.set(false);
+    this.moreCommentsError.set(false);
+    this.commentsLoadingMore.set(false);
+    this.files.set([]);
+    this.commits.set([]);
+    this.runs.set([]);
+    this.filesLoaded.set(false);
+    this.commitsLoaded.set(false);
+    this.runsLoaded.set(false);
+    this.runsError.set(false);
+    this.filesLoading.set(false);
+    this.commitsLoading.set(false);
+    this.runsLoading.set(false);
+    this.aiReviewLoading.set(false);
+    this.aiReviewLoaded.set(false);
+    this.aiReviewError.set(false);
+    this.aiReview.set(null);
+    this.aiReviewPage.set(0);
+    this.clearAiReviewPoll();
     try {
-      const [prData, commentsData] = await Promise.all([
+      const [prResult, commentsResult] = await Promise.allSettled([
         this.prService.getPullRequest(owner, repo, num),
         this.prService.getComments(owner, repo, num, 0, this.COMMENTS_PAGE_SIZE),
       ]);
-      this.pr.set(prData);
-      this.comments.set(commentsData.content);
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
+      if (prResult.status === 'rejected') throw prResult.reason;
+      this.pr.set(prResult.value);
+      this.requirementsRefresh.update((n) => n + 1);
+      void this.loadSourceBranch(prResult.value.status, prResult.value.sourceBranch);
+      void this.loadReviewers();
+      void this.loadReviews();
       this.commentsPage.set(0);
-      this.commentsTotalPages.set(commentsData.totalPages);
-      this.filesLoaded.set(false);
-      this.commitsLoaded.set(false);
-      this.runsLoaded.set(false);
+      if (commentsResult.status === 'fulfilled') {
+        this.comments.set(commentsResult.value.content);
+        this.commentsTotalPages.set(commentsResult.value.totalPages);
+      } else {
+        this.commentsTotalPages.set(1);
+        this.commentsError.set(true);
+      }
       this.loading.set(false);
-    } catch {
+    } catch (error) {
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
       this.pr.set(null);
       this.comments.set([]);
       this.commentsTotalPages.set(1);
       this.commentsPage.set(0);
+      this.loadError.set(!(error instanceof HttpErrorResponse && error.status === 404));
       this.loading.set(false);
     }
   }
 
-  private async loadDiff(): Promise<void> {
+  async loadReviewers(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const number = this.number();
+    const request = this.dataRequest;
+    this.reviewersLoading.set(true);
+    this.reviewersError.set(false);
+    try {
+      const reviewers = await this.prService.getReviewers(owner, repo, number);
+      if (request !== this.dataRequest) return;
+      this.reviewers.set(reviewers);
+      this.reviewerNames.set(reviewers.map((reviewer) => reviewer.username).join(', '));
+    } catch {
+      if (request === this.dataRequest) this.reviewersError.set(true);
+    } finally {
+      if (request === this.dataRequest) this.reviewersLoading.set(false);
+    }
+  }
+
+  async loadReviews(): Promise<void> {
+    const request = this.dataRequest;
+    this.reviewsLoading.set(true);
+    this.reviewsError.set(false);
+    try {
+      const data = await this.prService.getReviews(this.owner(), this.repoName(), this.number());
+      if (request !== this.dataRequest) return;
+      this.reviews.set(data.reviews);
+      this.reviewHeadSha.set(data.headSha ?? '');
+      this.reviewTargetSha.set(data.targetSha ?? '');
+    } catch {
+      if (request === this.dataRequest) this.reviewsError.set(true);
+    } finally {
+      if (request === this.dataRequest) this.reviewsLoading.set(false);
+    }
+  }
+
+  async submitReview(): Promise<void> {
+    if (!this.reviewHeadSha() || !this.reviewTargetSha() || this.reviewSubmitting()) return;
+    const request = this.dataRequest;
+    this.reviewSubmitting.set(true);
+    try {
+      const review = await this.prService.submitReview(this.owner(), this.repoName(), this.number(), {
+        state: this.reviewState(), body: this.reviewBody().trim(), expectedSha: this.reviewHeadSha(),
+        expectedTargetSha: this.reviewTargetSha(),
+      });
+      if (request !== this.dataRequest) return;
+      this.reviews.update((reviews) => [...reviews, review]);
+      this.requirementsRefresh.update((n) => n + 1);
+      this.reviewBody.set('');
+      this.toast.success('Review submitted');
+    } catch (error) {
+      if (request === this.dataRequest) this.toast.error(apiErrorMessage(error, 'Failed to submit review'));
+    } finally {
+      if (request === this.dataRequest) this.reviewSubmitting.set(false);
+    }
+  }
+
+  async saveReviewers(): Promise<void> {
+    const names = [...new Set(this.reviewerNames().split(',').map((name) => name.trim()).filter(Boolean))];
+    if (!names.length || this.reviewersSaving()) return;
+    const request = this.dataRequest;
+    this.reviewersSaving.set(true);
+    try {
+      const reviewers = await this.prService.setReviewers(this.owner(), this.repoName(), this.number(), names);
+      if (request !== this.dataRequest) return;
+      this.reviewers.set(reviewers);
+      this.reviewerNames.set(reviewers.map((reviewer) => reviewer.username).join(', '));
+      this.reviewersError.set(false);
+      this.toast.success('Reviewers updated');
+    } catch (error) {
+      if (request === this.dataRequest) this.toast.error(apiErrorMessage(error, 'Failed to update reviewers'));
+    } finally {
+      if (request === this.dataRequest) this.reviewersSaving.set(false);
+    }
+  }
+
+  async retryComments(): Promise<void> {
+    const owner = this.owner();
+    const repo = this.repoName();
+    const num = this.number();
+    const request = this.dataRequest;
+    if (!owner || !repo || !num || this.commentsLoadingMore()) return;
+    this.commentsLoadingMore.set(true);
+    try {
+      const data = await this.prService.getComments(owner, repo, num, 0, this.COMMENTS_PAGE_SIZE);
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
+      this.comments.set(data.content);
+      this.commentsPage.set(0);
+      this.commentsTotalPages.set(data.totalPages);
+      this.commentsError.set(false);
+    } catch {
+      if (request === this.dataRequest) this.commentsError.set(true);
+    } finally {
+      if (request === this.dataRequest) this.commentsLoadingMore.set(false);
+    }
+  }
+
+  async loadDiff(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     const num = this.number();
     if (!owner || !repo || !num) return;
+    const request = this.dataRequest;
     this.filesLoading.set(true);
+    this.filesError.set(false);
     try {
       const diff = await this.prService.getPrDiff(owner, repo, num);
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
       this.files.set(diff);
       if (diff.length > 0) this.expandedFiles.set(new Set(diff.map((f) => f.newPath || f.oldPath)));
       this.filesLoading.set(false);
       this.filesLoaded.set(true);
     } catch {
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
       this.files.set([]);
+      this.filesError.set(true);
       this.filesLoading.set(false);
       this.filesLoaded.set(true);
     }
   }
 
-  private async loadCommits(): Promise<void> {
+  async loadCommits(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     const num = this.number();
     if (!owner || !repo || !num) return;
+    const request = this.dataRequest;
     this.commitsLoading.set(true);
+    this.commitsError.set(false);
     try {
       const commits = await this.prService.getPrCommits(owner, repo, num);
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
       this.commits.set(commits);
       this.commitsLoading.set(false);
       this.commitsLoaded.set(true);
     } catch {
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
       this.commits.set([]);
+      this.commitsError.set(true);
       this.commitsLoading.set(false);
       this.commitsLoaded.set(true);
     }
@@ -311,7 +513,7 @@ export class PrDetailPage {
   readonly canEditPr = computed(() => {
     const p = this.pr();
     if (!p) return false;
-    return this.repoContext.canEdit() || p.author.username === this.currentUsername();
+    return this.repoContext.hasPermission('PULL_REQUEST_MERGE') || p.author.username === this.currentUsername();
   });
 
   readonly hasMoreComments = computed(() => this.commentsPage() < this.commentsTotalPages() - 1);
@@ -322,17 +524,20 @@ export class PrDetailPage {
     const repo = this.repoName();
     const num = this.number();
     if (!owner || !repo || !num) return;
+    const request = this.dataRequest;
     this.commentsLoadingMore.set(true);
+    this.moreCommentsError.set(false);
     try {
       const nextPage = this.commentsPage() + 1;
       const data = await this.prService.getComments(owner, repo, num, nextPage, this.COMMENTS_PAGE_SIZE);
+      if (request !== this.dataRequest || this.routeKey() !== `${owner}/${repo}/${num}`) return;
       this.comments.update((c) => [...c, ...data.content]);
       this.commentsPage.set(nextPage);
       this.commentsTotalPages.set(data.totalPages);
     } catch {
-      // keep current
+      if (request === this.dataRequest) this.moreCommentsError.set(true);
     } finally {
-      this.commentsLoadingMore.set(false);
+      if (request === this.dataRequest) this.commentsLoadingMore.set(false);
     }
   }
 
@@ -369,22 +574,128 @@ export class PrDetailPage {
     }
   }
 
-  private async loadRuns(): Promise<void> {
+  private async loadSourceBranch(status: string, branch: string): Promise<void> {
+    this.sourceBranchDeletable.set(false);
+    if (status === 'OPEN' || !this.isLoggedIn() || !this.repoContext.hasPermission('PUSH')) return;
+    const request = this.dataRequest;
+    try {
+      const branches = await this.branchService.getAll(this.owner(), this.repoName());
+      if (request !== this.dataRequest) return;
+      this.sourceBranchDeletable.set(branches.some((b) => b.name === branch && !b.isDefault));
+    } catch {
+      if (request === this.dataRequest) this.sourceBranchDeletable.set(false);
+    }
+  }
+
+  async deleteSourceBranch(): Promise<void> {
+    const p = this.pr();
+    if (!p || this.deletingBranch()) return;
+    if (!(await this.confirmModal.confirm('Delete branch', `Delete the ${p.sourceBranch} branch?`, { confirmLabel: 'Delete branch', variant: 'danger' }))) return;
+    this.deletingBranch.set(true);
+    try {
+      await this.branchService.deleteBranch(this.owner(), this.repoName(), p.sourceBranch);
+      this.sourceBranchDeletable.set(false);
+      this.toast.success(`Deleted ${p.sourceBranch}`);
+    } catch (error) {
+      this.toast.error(apiErrorMessage(error, 'Could not delete branch'));
+    } finally {
+      this.deletingBranch.set(false);
+    }
+  }
+
+  async reopen(): Promise<void> {
+    if (this.savingDraft() || !this.canEditPr()) return;
+    this.savingDraft.set(true);
+    try {
+      this.pr.set(await this.prService.reopenPullRequest(this.owner(), this.repoName(), this.number()));
+      this.sourceBranchDeletable.set(false);
+      this.requirementsRefresh.update((n) => n + 1);
+      this.conflictRefreshBump();
+      this.toast.success('Pull request reopened');
+    } catch (error) {
+      this.toast.error(apiErrorMessage(error, 'Could not reopen pull request'));
+    } finally {
+      this.savingDraft.set(false);
+    }
+  }
+
+  private conflictRefreshBump(): void {
+    this.conflictRefresh.update((n) => n + 1);
+  }
+
+  readonly resolvingId = signal<string | null>(null);
+  private readonly openThreads = signal<ReadonlySet<string>>(new Set());
+
+  isThreadOpen(id: string): boolean {
+    return this.openThreads().has(id);
+  }
+
+  toggleThread(id: string): void {
+    const next = new Set(this.openThreads());
+    if (!next.delete(id)) next.add(id);
+    this.openThreads.set(next);
+  }
+
+  canResolveThread(comment: PrCommentInfo): boolean {
+    const p = this.pr();
+    const me = this.currentUsername();
+    return !!p && (this.canEditPr() || comment.author.username === me || p.author.username === me);
+  }
+
+  async toggleResolved(comment: PrCommentInfo): Promise<void> {
+    if (this.resolvingId()) return;
+    this.resolvingId.set(comment.id);
+    try {
+      const updated = await this.prService.setCommentResolved(this.owner(), this.repoName(), this.number(), comment.id, !comment.isResolved);
+      this.comments.update((list) => list.map((c) => (c.id === updated.id ? updated : c)));
+      if (updated.isResolved) {
+        const next = new Set(this.openThreads());
+        next.delete(updated.id);
+        this.openThreads.set(next);
+      }
+    } catch (error) {
+      this.toast.error(apiErrorMessage(error, 'Could not update the conversation'));
+    } finally {
+      this.resolvingId.set(null);
+    }
+  }
+
+  async setDraft(isDraft: boolean): Promise<void> {
+    if (this.savingDraft() || !this.canEditPr()) return;
+    this.savingDraft.set(true);
+    try {
+      const updated = await this.prService.updatePullRequest(this.owner(), this.repoName(), this.number(), { isDraft });
+      this.pr.set(updated);
+      this.requirementsRefresh.update((n) => n + 1);
+      this.toast.success(isDraft ? 'Converted to draft' : 'Marked as ready for review');
+    } catch (error) {
+      this.toast.error(apiErrorMessage(error, 'Could not update pull request'));
+    } finally {
+      this.savingDraft.set(false);
+    }
+  }
+
+  async loadRuns(): Promise<void> {
     const owner = this.owner();
     const repo = this.repoName();
     const pr = this.pr();
     if (!owner || !repo || !pr) return;
+    const request = this.dataRequest;
     this.runsLoading.set(true);
+    this.runsError.set(false);
     try {
       const triggerRef = `refs/heads/${pr.sourceBranch}`;
       const page = await this.runService.listRuns(owner, repo, 0, 30, 'pull_request', triggerRef);
+      if (request !== this.dataRequest) return;
       this.runs.set(page.content);
       this.runsLoaded.set(true);
     } catch {
+      if (request !== this.dataRequest) return;
       this.runs.set([]);
+      this.runsError.set(true);
       this.runsLoaded.set(true);
     } finally {
-      this.runsLoading.set(false);
+      if (request === this.dataRequest) this.runsLoading.set(false);
     }
   }
 
@@ -393,8 +704,21 @@ export class PrDetailPage {
     replaceUrlFragment(this.location, t === DEFAULT_PR_DETAIL_TAB ? null : t);
   }
 
+  onTabKeydown(event: KeyboardEvent): void {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const container = (event.currentTarget as HTMLElement).parentElement;
+    if (!container) return;
+    const tabs = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
+    if (current < 0 || tabs.length === 0) return;
+    event.preventDefault();
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
+      : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[next].focus();
+  }
+
   prTabButtonClass(tab: PrDetailTab): string {
-    const base = 'border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4';
+    const base = 'shrink-0 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4';
     return this.activeTab() === tab
       ? `${base} border-primary text-primary`
       : `${base} border-transparent text-base-content/55 hover:text-base-content`;
@@ -484,6 +808,18 @@ export class PrDetailPage {
     this.lineCommentBody.set('');
   }
 
+  startReplyToComment(root: PrCommentInfo): void {
+    if (!root.filePath || root.lineNumber == null) return;
+    this.replyingToLine.set({
+      filePath: root.filePath,
+      lineNumber: root.lineNumber,
+      lineSide: root.lineSide ?? '',
+      line: null,
+      parentId: root.id,
+    });
+    this.lineCommentBody.set('');
+  }
+
   cancelReplyToLine(): void {
     this.replyingToLine.set(null);
     this.lineCommentBody.set('');
@@ -527,6 +863,7 @@ export class PrDetailPage {
         commitSha: p.sourceSha,
         lineNumber,
         lineSide,
+        parentId: reply.parentId,
       });
       this.comments.update((c) => [...c, comment]);
       this.replyingToLine.set(null);
@@ -590,7 +927,13 @@ export class PrDetailPage {
     }
   }
 
+  async onConflictsResolved(): Promise<void> {
+    await this.loadData();
+    this.conflictRefresh.update((n) => n + 1);
+  }
+
   async merge(): Promise<void> {
+    if (this.conflicted() || this.requirementsBlocked()) return;
     const owner = this.owner();
     const repo = this.repoName();
     const num = this.number();
@@ -638,23 +981,30 @@ export class PrDetailPage {
     const repo = this.repoName();
     const num = this.number();
     if (!owner || !repo || !num) return;
+    const request = this.dataRequest;
+    const page = this.aiReviewPage();
     if (!silent) {
       this.aiReviewLoading.set(true);
+      this.aiReviewError.set(false);
     }
     try {
-      const review = await this.aiService.getCodeReview(owner, repo, num, this.aiReviewPage());
+      const review = await this.aiService.getCodeReview(owner, repo, num, page);
+      if (request !== this.dataRequest || page !== this.aiReviewPage()) return;
       this.aiReview.set(review);
+      this.aiReviewError.set(false);
       this.aiReviewLoaded.set(true);
       if (this.aiReviewPage() === 0) {
         this.initAiReviewExpanded(review);
       }
       this.scheduleAiReviewPoll(review);
-    } catch {
+    } catch (error) {
+      if (request !== this.dataRequest || page !== this.aiReviewPage()) return;
       this.aiReview.set(null);
+      this.aiReviewError.set(!(error instanceof HttpErrorResponse && error.status === 404));
       this.aiReviewLoaded.set(true);
       this.clearAiReviewPoll();
     } finally {
-      if (!silent) {
+      if (!silent && request === this.dataRequest && page === this.aiReviewPage()) {
         this.aiReviewLoading.set(false);
       }
     }

@@ -63,12 +63,15 @@ public class IssueController {
       @PathVariable final String repo,
       @RequestParam(defaultValue = "OPEN") final String status,
       @RequestParam(defaultValue = "0") final int page,
+      @RequestParam(required = false) final @Nullable UUID labelId,
+      @RequestParam(required = false) final @Nullable UUID milestoneId,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader) {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.issueService.getAll(owner, repo, status, page));
+    return ResponseEntity.ok(
+        this.issueService.getAll(owner, repo, status, page, labelId, milestoneId));
   }
 
   @GetMapping("/{number}")
@@ -120,7 +123,7 @@ public class IssueController {
 
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.issueService.getLinkedTasks(owner, repo, number));
+    return ResponseEntity.ok(this.issueService.getLinkedTasks(owner, repo, number, requesterId));
   }
 
   @GetMapping("/{number}/comments")

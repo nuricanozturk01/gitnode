@@ -37,7 +37,7 @@ public class UserContributionRepository {
       """
       SELECT activity_day, activity_type, COUNT(*) AS activity_count
       FROM (
-        SELECT (i.created_at AT TIME ZONE 'UTC')::date AS activity_day, 'issue' AS activity_type
+        SELECT ((i.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date AS activity_day, 'issue' AS activity_type
         FROM issues i
         JOIN repositories r ON r.id = i.repo_id
         WHERE i.author_id = :tenantId
@@ -47,7 +47,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (ic.created_at AT TIME ZONE 'UTC')::date, 'issue_comment'
+        SELECT ((ic.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'issue_comment'
         FROM issue_comments ic
         JOIN issues i ON i.id = ic.issue_id
         JOIN repositories r ON r.id = i.repo_id
@@ -58,7 +58,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (pr.created_at AT TIME ZONE 'UTC')::date, 'pull_request'
+        SELECT ((pr.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'pull_request'
         FROM pull_requests pr
         JOIN repositories r ON r.id = pr.repo_id
         WHERE pr.author_id = :tenantId
@@ -68,7 +68,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (prc.created_at AT TIME ZONE 'UTC')::date, 'pull_request_comment'
+        SELECT ((prc.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'pull_request_comment'
         FROM pull_request_comments prc
         JOIN pull_requests pr ON pr.id = prc.pr_id
         JOIN repositories r ON r.id = pr.repo_id
@@ -79,7 +79,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (pr.merged_at AT TIME ZONE 'UTC')::date, 'pull_request_merge'
+        SELECT ((pr.merged_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'pull_request_merge'
         FROM pull_requests pr
         JOIN repositories r ON r.id = pr.repo_id
         WHERE pr.merged_by_id = :tenantId
@@ -90,7 +90,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (COALESCE(rls.published_at, rls.created_at) AT TIME ZONE 'UTC')::date, 'release'
+        SELECT (COALESCE(rls.published_at, rls.created_at) AT TIME ZONE :zone)::date, 'release'
         FROM releases rls
         JOIN repositories r ON r.id = rls.repo_id
         WHERE rls.author_id = :tenantId
@@ -101,7 +101,39 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (s.created_at AT TIME ZONE 'UTC')::date, 'snippet'
+        SELECT (cc.committed_at AT TIME ZONE :zone)::date, 'commit'
+        FROM commit_contributions cc
+        JOIN repositories r ON r.id = cc.repo_id
+        WHERE cc.author_id = :tenantId
+          AND cc.committed_at >= :fromInstant
+          AND cc.committed_at < :toExclusive
+          AND (:includePrivate OR r.is_private = FALSE)
+
+        UNION ALL
+
+        SELECT (rv.created_at AT TIME ZONE :zone)::date, 'pull_request_review'
+        FROM pr_reviews rv
+        JOIN pull_requests pr ON pr.id = rv.pr_id
+        JOIN repositories r ON r.id = pr.repo_id
+        WHERE rv.author_id = :tenantId
+          AND rv.state <> 'COMMENTED'
+          AND rv.created_at >= :fromInstant
+          AND rv.created_at < :toExclusive
+          AND (:includePrivate OR r.is_private = FALSE)
+
+        UNION ALL
+
+        SELECT (fc.created_at AT TIME ZONE :zone)::date, 'file_comment'
+        FROM file_comments fc
+        JOIN repositories r ON r.id = fc.repo_id
+        WHERE fc.author_id = :tenantId
+          AND fc.created_at >= :fromInstant
+          AND fc.created_at < :toExclusive
+          AND (:includePrivate OR r.is_private = FALSE)
+
+        UNION ALL
+
+        SELECT ((s.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'snippet'
         FROM snippets s
         WHERE s.owner_id = :tenantId
           AND s.created_at >= :fromInstant
@@ -110,7 +142,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (sr.created_at AT TIME ZONE 'UTC')::date, 'snippet_revision'
+        SELECT ((sr.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'snippet_revision'
         FROM snippet_revisions sr
         JOIN snippets s ON s.id = sr.snippet_id
         WHERE sr.author_id = :tenantId
@@ -120,7 +152,7 @@ public class UserContributionRepository {
 
         UNION ALL
 
-        SELECT (sc.created_at AT TIME ZONE 'UTC')::date, 'snippet_comment'
+        SELECT ((sc.created_at AT TIME ZONE 'UTC') AT TIME ZONE :zone)::date, 'snippet_comment'
         FROM snippet_comments sc
         JOIN snippets s ON s.id = sc.snippet_id
         WHERE sc.author_id = :tenantId
@@ -138,14 +170,16 @@ public class UserContributionRepository {
       final UUID tenantId,
       final Instant fromInstant,
       final Instant toExclusive,
-      final boolean includePrivate) {
+      final boolean includePrivate,
+      final String zone) {
 
     final var params =
         new MapSqlParameterSource()
             .addValue("tenantId", tenantId)
             .addValue("fromInstant", Timestamp.from(fromInstant))
             .addValue("toExclusive", Timestamp.from(toExclusive))
-            .addValue("includePrivate", includePrivate);
+            .addValue("includePrivate", includePrivate)
+            .addValue("zone", zone);
 
     return this.jdbcTemplate.query(AGGREGATE_SQL, params, UserContributionRepository::mapRow);
   }

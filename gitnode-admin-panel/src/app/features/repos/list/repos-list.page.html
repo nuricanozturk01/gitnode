@@ -33,12 +33,33 @@
   <div class="flex justify-center py-16">
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
+  } @else if (loadFailed()) {
+  <div role="alert" class="repo-panel flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <p>Repositories could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
+  </div>
   } @else {
   <div class="repo-panel overflow-hidden">
     @if (repos().length === 0) {
     <div class="text-base-content/60 p-10 text-center text-sm">No repositories match your filters.</div>
     } @else {
-    <div class="overflow-x-auto">
+    <ul class="divide-base-300 divide-y sm:hidden">
+      @for (repo of repos(); track repo.id) {
+      <li class="space-y-2 p-4">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="min-w-0 break-all font-semibold">{{ repo.fullName }}</span>
+          @if (repo.isPrivate) { <span class="badge-pill">Private</span> }
+          @else { <span class="badge-pill badge-pill--success">Public</span> }
+          @if (repo.isArchived) { <span class="badge-pill badge-pill--neutral">Archived</span> }
+        </div>
+        @if (repo.description) { <p class="text-base-content/70 break-words text-sm">{{ repo.description }}</p> }
+        <p class="text-base-content/60 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+          <span>Default branch: {{ repo.defaultBranch }}</span><span>Created {{ formatDate(repo.createdAt) }}</span>
+        </p>
+      </li>
+      }
+    </ul>
+    <div class="hidden overflow-x-auto sm:block">
       <table class="table">
         <thead>
           <tr>

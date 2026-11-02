@@ -68,6 +68,16 @@ public class WorkflowTriggerService {
       final String branchName,
       final String pusherUsername,
       final @Nullable UUID actorId) {
+    this.triggerOnPush(repoId, branchName, pusherUsername, actorId, null);
+  }
+
+  @Transactional
+  public void triggerOnPush(
+      final UUID repoId,
+      final String branchName,
+      final String pusherUsername,
+      final @Nullable UUID actorId,
+      final @Nullable String commitSha) {
 
     final var repo =
         this.repoRepository
@@ -86,7 +96,9 @@ public class WorkflowTriggerService {
     final var repoName = repo.getName();
     final var branchRef = "refs/heads/" + branchName;
 
-    final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, branchRef);
+    final var workflows =
+        this.parserService.parseWorkflows(
+            ownerUsername, repoName, commitSha == null ? branchRef : commitSha);
 
     if (workflows.isEmpty()) {
       log.debug("No workflows found for {}/{} branch={}", ownerUsername, repoName, branchName);
@@ -98,13 +110,17 @@ public class WorkflowTriggerService {
         continue;
       }
 
-      this.createRun(repoId, parsed, branchRef, null, actorId, "push", null);
+      this.createRun(repoId, parsed, branchRef, commitSha, actorId, "push", null);
     }
   }
 
   @Transactional
   public void triggerOnPullRequest(
-      final UUID repoId, final String sourceBranch, final @Nullable UUID actorId) {
+      final UUID repoId,
+      final String sourceBranch,
+      final String targetBranch,
+      final String sourceSha,
+      final @Nullable UUID actorId) {
 
     final var repo =
         this.repoRepository
@@ -123,14 +139,14 @@ public class WorkflowTriggerService {
     final var repoName = repo.getName();
     final var branchRef = "refs/heads/" + sourceBranch;
 
-    final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, branchRef);
+    final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, sourceSha);
 
     for (final var parsed : workflows) {
-      if (!this.hasPullRequestTrigger(parsed.model(), sourceBranch)) {
+      if (!this.hasPullRequestTrigger(parsed.model(), targetBranch)) {
         continue;
       }
 
-      this.createRun(repoId, parsed, branchRef, null, actorId, "pull_request", null);
+      this.createRun(repoId, parsed, branchRef, sourceSha, actorId, "pull_request", null);
     }
   }
 

@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
@@ -47,10 +48,12 @@ public class GitPushEventPublisher implements PostReceiveHook {
   private String repoRoot;
 
   @Override
+  @Transactional
   public void onPostReceive(final ReceivePack rp, final Collection<ReceiveCommand> commands) {
     this.publish(rp.getRepository().getDirectory(), commands, null);
   }
 
+  @Transactional
   public void onPostReceive(
       final ReceivePack rp,
       final Collection<ReceiveCommand> commands,
@@ -83,16 +86,22 @@ public class GitPushEventPublisher implements PostReceiveHook {
 
               okCommands.stream()
                   .filter(cmd -> cmd.getRefName().startsWith(Constants.R_HEADS))
-                  .map(cmd -> cmd.getRefName().substring(Constants.R_HEADS.length()))
-                  .distinct()
                   .forEach(
-                      branch -> {
+                      command -> {
+                        final var branch =
+                            command.getRefName().substring(Constants.R_HEADS.length());
                         log.debug(
                             "Publishing push event: {}/{} branch={}", owner, repoName, branch);
                         this.cacheInvalidator.evictBranchScoped(owner, repoName, branch);
                         this.cacheInvalidator.evictBranches(owner, repoName);
                         this.eventPublisher.publishEvent(
-                            new RepoPushedEvent(repo.getId(), branch, pusherName));
+                            new RepoPushedEvent(
+                                repo.getId(),
+                                branch,
+                                pusherName,
+                                command.getNewId().equals(org.eclipse.jgit.lib.ObjectId.zeroId())
+                                    ? null
+                                    : command.getNewId().name()));
                       });
 
               final var hasTagPush =

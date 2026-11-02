@@ -143,6 +143,13 @@ export async function mergePullRequest(
   repo: string,
   prNumber: number,
 ): Promise<void> {
+  const reviewers = await request.put(`/api/repos/${owner}/${repo}/pulls/${prNumber}/reviewers`, {
+    headers: { Authorization: authorization },
+    data: { usernames: [owner] },
+  });
+  if (!reviewers.ok()) {
+    throw new Error(`assign reviewer failed (${reviewers.status()}): ${await reviewers.text()}`);
+  }
   const response = await request.post(`/api/repos/${owner}/${repo}/pulls/${prNumber}/merge`, {
     headers: { Authorization: authorization },
     data: { strategy: 'MERGE_COMMIT', commitMessage: `Merge PR #${prNumber}` },

@@ -68,6 +68,10 @@ public class PullRequestComment {
   @Column(name = "line_side", length = 5)
   private String lineSide;
 
+  /** Set on replies; the referenced comment is always a top-level line comment. */
+  @Column(name = "parent_id")
+  private UUID parentId;
+
   @Column(name = "is_resolved")
   private boolean isResolved;
 

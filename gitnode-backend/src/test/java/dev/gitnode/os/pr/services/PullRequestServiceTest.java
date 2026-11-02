@@ -34,12 +34,18 @@ import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.mappers.PrMapper;
 import dev.gitnode.os.pr.repositories.PrCommentRepository;
 import dev.gitnode.os.pr.repositories.PrRepository;
+import dev.gitnode.os.shared.branch.BranchProtectionService;
+import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
 import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
+import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.shared.repo.entities.Repo;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -63,6 +69,11 @@ class PullRequestServiceTest {
   @Mock private GitProvider gitProvider;
   @Mock private PrMapper prMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private CollaboratorAccessPort collaboratorAccessPort;
+  @Mock private PrReviewerService reviewerService;
+  @Mock private PrReviewService reviewService;
+  @Mock private BranchProtectionService branchProtection;
+  @Mock private dev.gitnode.os.shared.branch.RequiredChecksPort requiredChecks;
 
   @InjectMocks private PullRequestService pullRequestService;
 
@@ -103,7 +114,8 @@ class PullRequestServiceTest {
     when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
     PrUpdateForm form = new PrUpdateForm("New title", null, null);
 
-    assertThatThrownBy(() -> pullRequestService.update("alice", "demo", 1, form))
+    assertThatThrownBy(
+            () -> pullRequestService.update("alice", "demo", 1, form, pr.getAuthor().getId()))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("Cannot update a closed or merged");
 
@@ -124,7 +136,7 @@ class PullRequestServiceTest {
     when(prMapper.toDetail(eq(pr), eq(0), any(), eq(null))).thenReturn(detail);
     PrUpdateForm form = new PrUpdateForm("New title", null, null);
 
-    PrDetail result = pullRequestService.update("alice", "demo", 1, form);
+    PrDetail result = pullRequestService.update("alice", "demo", 1, form, pr.getAuthor().getId());
 
     assertThat(result.title()).isEqualTo("New title");
     assertThat(pr.getTitle()).isEqualTo("New title");
@@ -139,7 +151,7 @@ class PullRequestServiceTest {
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
     when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
 
-    assertThatThrownBy(() -> pullRequestService.close("alice", "demo", 1, UUID.randomUUID()))
+    assertThatThrownBy(() -> pullRequestService.close("alice", "demo", 1, pr.getAuthor().getId()))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("already closed or merged");
   }
@@ -149,7 +161,7 @@ class PullRequestServiceTest {
   void close_closesPr_whenOpen() {
     Repo repo = repo();
     PullRequest pr = openPr(repo);
-    UUID closedById = UUID.randomUUID();
+    UUID closedById = pr.getAuthor().getId();
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
     when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
     when(prRepository.save(pr)).thenReturn(pr);
@@ -176,13 +188,52 @@ class PullRequestServiceTest {
   }
 
   @Test
+  @DisplayName("update and close reject a user without management permission")
+  void modification_rejectsUnauthorizedUser() {
+    Repo repo = repo();
+    PullRequest pr = openPr(repo);
+    UUID outsiderId = UUID.randomUUID();
+    when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
+    when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
+    PrUpdateForm form = new PrUpdateForm("Changed", null, null);
+
+    assertThatThrownBy(() -> pullRequestService.update("alice", "demo", 1, form, outsiderId))
+        .isInstanceOf(AccessNotAllowedException.class);
+    assertThatThrownBy(() -> pullRequestService.close("alice", "demo", 1, outsiderId))
+        .isInstanceOf(AccessNotAllowedException.class);
+    assertThat(pr.getTitle()).isEqualTo("Fix bug");
+    assertThat(pr.getStatus()).isEqualTo(PrStatus.OPEN.name());
+    verify(prRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("collaborator with merge permission can close a pull request")
+  void close_allowsCollaboratorWithMergePermission() {
+    Repo repo = repo();
+    PullRequest pr = openPr(repo);
+    UUID collaboratorId = UUID.randomUUID();
+    when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
+    when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
+    when(collaboratorAccessPort.hasPermission(
+            repo.getId(), collaboratorId, CollaboratorPermission.PULL_REQUEST_MERGE))
+        .thenReturn(true);
+    when(prRepository.save(pr)).thenReturn(pr);
+    when(commentRepository.findDistinctCommenterIdsByPrId(pr.getId()))
+        .thenReturn(java.util.List.of());
+
+    pullRequestService.close("alice", "demo", 1, collaboratorId);
+
+    assertThat(pr.getStatus()).isEqualTo(PrStatus.CLOSED.name());
+  }
+
+  @Test
   @DisplayName("merge throws ErrorOccurredException when pull request is not open")
   void merge_throws_whenPrNotOpen() {
     Repo repo = repo();
     PullRequest pr = openPr(repo);
     pr.setStatus(PrStatus.CLOSED.name());
-    when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
-    when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
+    when(prFinder.findRepoForUpdate("alice", "demo")).thenReturn(repo);
+    when(prFinder.findPrForUpdate(repo.getId(), 1)).thenReturn(pr);
     when(prFinder.findTenant(any())).thenReturn(pr.getAuthor());
     PrMergeForm form = new PrMergeForm(MergeStrategy.MERGE_COMMIT, null);
 
@@ -190,6 +241,26 @@ class PullRequestServiceTest {
             () -> pullRequestService.merge("alice", "demo", 1, pr.getAuthor().getId(), form))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("Pull request is not open");
+  }
+
+  @Test
+  @DisplayName("merge rejects draft pull requests before touching Git")
+  void merge_throws_whenPrDraft() throws IOException {
+    Repo repo = repo();
+    PullRequest pr = openPr(repo);
+    pr.setDraft(true);
+    when(prFinder.findRepoForUpdate("alice", "demo")).thenReturn(repo);
+    when(prFinder.findPrForUpdate(repo.getId(), 1)).thenReturn(pr);
+    when(prFinder.findTenant(any())).thenReturn(pr.getAuthor());
+    PrMergeForm form = new PrMergeForm(MergeStrategy.MERGE_COMMIT, null);
+
+    assertThatThrownBy(
+            () -> pullRequestService.merge("alice", "demo", 1, pr.getAuthor().getId(), form))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("Draft pull request cannot be merged");
+
+    verify(gitProvider, never()).open(any(), any());
+    verify(prRepository, never()).save(any());
   }
 
   @Test
@@ -206,7 +277,7 @@ class PullRequestServiceTest {
     when(prMapper.toDetail(eq(pr), eq(0), any(), eq(null))).thenReturn(detail);
     PrUpdateForm form = new PrUpdateForm(null, "Updated body", true);
 
-    pullRequestService.update("alice", "demo", 1, form);
+    pullRequestService.update("alice", "demo", 1, form, pr.getAuthor().getId());
 
     assertThat(pr.getDescription()).isEqualTo("Updated body");
     assertThat(pr.isDraft()).isTrue();
@@ -219,15 +290,25 @@ class PullRequestServiceTest {
     PullRequest pr = openPr(repo);
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
     Page<PullRequest> page = new PageImpl<>(java.util.List.of(pr), PageRequest.of(0, 10), 1);
-    when(prRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(
-            eq(repo.getId()), eq(PrStatus.OPEN.name()), any()))
+    when(prRepository.search(
+            eq(repo.getId()),
+            eq(PrStatus.OPEN.name()),
+            eq(false),
+            any(),
+            eq(false),
+            any(),
+            eq(false),
+            eq(""),
+            any()))
         .thenReturn(page);
     when(commentRepository.countByPrId(pr.getId())).thenReturn(2L);
     when(prMapper.toAuthorInfo(pr.getAuthor())).thenReturn(authorInfo());
     PrInfo info = sampleInfo(pr.getId(), "Fix");
     when(prMapper.toInfo(eq(pr), eq(2), any(), eq(null))).thenReturn(info);
 
-    Page<PrInfo> result = pullRequestService.getAll("alice", "demo", PrStatus.OPEN.name(), 0, 10);
+    Page<PrInfo> result =
+        pullRequestService.getAll(
+            "alice", "demo", PrStatus.OPEN.name(), dev.gitnode.os.pr.dtos.PrFilter.none(), 0, 10);
 
     assertThat(result.getContent()).hasSize(1);
     assertThat(result.getContent().getFirst().title()).isEqualTo("Fix");
@@ -301,6 +382,9 @@ class PullRequestServiceTest {
         now,
         now,
         null,
+        null,
+        java.util.List.of(),
+        java.util.List.of(),
         null);
   }
 }

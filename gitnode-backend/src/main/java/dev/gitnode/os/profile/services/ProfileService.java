@@ -33,7 +33,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -49,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
 
   private final TenantRepository tenantRepository;
+  private final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher;
   private final TenantMapper tenantMapper;
   private final ApplicationEventPublisher eventPublisher;
   private static final String USER_NOT_FOUND = "userNotFound";
@@ -106,16 +106,15 @@ public class ProfileService {
             .findById(tenantId)
             .orElseThrow(() -> new ItemNotFoundException(USER_NOT_FOUND));
 
-    final var currentHash = DigestUtils.sha256Hex(form.getCurrentPassword() + tenant.getSalt());
-
-    if (tenant.getHash() != null && !currentHash.equals(tenant.getHash())) {
+    if (this.passwordHasher.hasPassword(tenant)
+        && !this.passwordHasher.matches(form.getCurrentPassword(), tenant)) {
       throw new BadRequestException("wrongPassword");
     }
 
-    final var salt = RandomStringUtils.secure().nextAlphanumeric(16);
-    tenant.setHash(DigestUtils.sha256Hex(form.getNewPassword() + salt));
-    tenant.setSalt(salt);
+    this.passwordHasher.setPassword(tenant, form.getNewPassword());
     this.tenantRepository.save(tenant);
+    this.eventPublisher.publishEvent(
+        new dev.gitnode.os.events.profile.TenantPasswordChangedEvent(tenantId));
   }
 
   @Transactional
@@ -158,10 +157,24 @@ public class ProfileService {
     tenant.setWebsite(trimOrNull(form.getWebsite()));
     tenant.setLocation(trimOrNull(form.getLocation()));
     tenant.setProfileReadme(blankOrNull(form.getProfileReadme()));
+    if (form.getTimezone() != null) {
+      tenant.setTimezone(validTimezone(form.getTimezone()));
+    }
 
     final var saved = this.tenantRepository.save(tenant);
 
     return this.tenantMapper.toTenantInfo(saved);
+  }
+
+  private static @Nullable String validTimezone(final @Nullable String value) {
+    final var zone = trimOrNull(value);
+    if (zone == null || "UTC".equalsIgnoreCase(zone)) {
+      return null;
+    }
+    if (!zone.contains("/") || !java.time.ZoneId.getAvailableZoneIds().contains(zone)) {
+      throw new BadRequestException("Unknown time zone");
+    }
+    return zone;
   }
 
   public TenantPublicProfileDto getPublicProfile(final String username) {

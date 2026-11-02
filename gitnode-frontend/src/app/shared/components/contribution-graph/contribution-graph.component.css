@@ -31,7 +31,7 @@
   max-width: 42rem;
   font-size: 0.8125rem;
   line-height: 1.45;
-  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__stats {
@@ -60,7 +60,7 @@
   margin-top: 0.15rem;
   font-size: 0.6875rem;
   line-height: 1.2;
-  color: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__scroll {
@@ -84,7 +84,7 @@
   padding-top: calc(var(--contrib-month-height) + 0.35rem);
   font-size: 0.6875rem;
   line-height: var(--contrib-cell-size);
-  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__weekdays span:nth-child(2),
@@ -110,7 +110,7 @@
   gap: var(--contrib-cell-gap);
   min-height: var(--contrib-month-height);
   font-size: 0.6875rem;
-  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__month {
@@ -196,18 +196,18 @@ button.contrib-graph__cell {
   max-width: 28rem;
   font-size: 0.75rem;
   line-height: 1.4;
-  color: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__empty-hint {
   margin: 0.5rem 0 0;
   font-size: 0.8125rem;
-  color: color-mix(in oklch, var(--color-base-content) 50%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__learn-more {
   font-size: 0.75rem;
-  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
   text-decoration: none;
 }
 
@@ -221,7 +221,7 @@ button.contrib-graph__cell {
   align-items: center;
   gap: 0.25rem;
   font-size: 0.6875rem;
-  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__legend-cell {
@@ -252,7 +252,7 @@ button.contrib-graph__cell {
   display: block;
   margin-top: 0.125rem;
   font-size: 0.75rem;
-  color: color-mix(in oklch, var(--color-base-content) 62%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 .contrib-graph__tooltip-list {
@@ -282,7 +282,7 @@ button.contrib-graph__cell {
 .contrib-graph__empty-text {
   margin: 0;
   font-size: 0.875rem;
-  color: color-mix(in oklch, var(--color-base-content) 58%, transparent);
+  color: color-mix(in oklch, var(--color-base-content) 72%, transparent);
 }
 
 :host {

@@ -64,7 +64,7 @@ interface HighlightedFile {
   encapsulation: ViewEncapsulation.None,
   imports: [RouterLink, LucideAngularModule, AvatarComponent, RelativeTimePipe],
   templateUrl: './snippet-detail.page.html',
-  styleUrl: './snippet-detail.page.css',
+  styleUrls: ['./snippet-detail.base.css', './snippet-detail.rest.css'],
 })
 export class SnippetDetailPage implements OnInit {
   private readonly route = inject(ActivatedRoute);

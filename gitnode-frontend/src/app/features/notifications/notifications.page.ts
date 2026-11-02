@@ -240,8 +240,13 @@ export class NotificationsPage implements OnInit {
   notificationIcon(type: NotificationDto['type']): string {
     switch (type) {
       case 'ISSUE_COMMENT':
+      case 'FILE_COMMENT':
         return 'message-circle';
       case 'PR_COMMENT':
+      case 'PR_REVIEW_REQUESTED':
+      case 'PR_REVIEW_SUBMITTED':
+      case 'PR_ASSIGNED':
+      case 'PR_METADATA_CHANGED':
         return 'git-pull-request';
       case 'PR_MERGED':
         return 'git-merge';

@@ -74,6 +74,11 @@ public class Release {
   @Column(name = "is_prerelease", nullable = false)
   private boolean isPrerelease;
 
+  /** Pinned by a maintainer as the latest release; only honoured while published and stable. */
+  @ColumnDefault("false")
+  @Column(name = "is_latest", nullable = false)
+  private boolean pinnedLatest;
+
   @Column(name = "published_at")
   private Instant publishedAt;
 

@@ -38,6 +38,11 @@ public class PullRequestEventListener {
 
     log.debug("Handling PR created for repoId={} branch={}", event.repoId(), event.sourceBranch());
 
-    this.workflowTriggerService.triggerOnPullRequest(event.repoId(), event.sourceBranch(), null);
+    this.workflowTriggerService.triggerOnPullRequest(
+        event.repoId(),
+        event.sourceBranch(),
+        event.targetBranch(),
+        event.sourceSha(),
+        event.authorId());
   }
 }

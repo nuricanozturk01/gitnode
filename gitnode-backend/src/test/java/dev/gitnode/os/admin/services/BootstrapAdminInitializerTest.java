@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 import dev.gitnode.os.shared.lock.DistributedLockService;
 import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,7 +64,13 @@ class BootstrapAdminInitializerTest {
   private BootstrapAdminInitializer initializer(
       final boolean enabled, final String username, final String password) {
     return new BootstrapAdminInitializer(
-        tenantRepository, lockService, transactionTemplate, enabled, username, password);
+        tenantRepository,
+        new dev.gitnode.os.shared.auth.services.PasswordHasher(),
+        lockService,
+        transactionTemplate,
+        enabled,
+        username,
+        password);
   }
 
   @Test
@@ -85,8 +90,9 @@ class BootstrapAdminInitializerTest {
     assertThat(saved.getUsername()).isEqualTo("admin");
     assertThat(saved.getEmail()).isEqualTo("admin@gitnode.local");
     assertThat(saved.isEnabled()).isTrue();
-    assertThat(saved.getSalt()).hasSize(16);
-    assertThat(saved.getHash()).isEqualTo(DigestUtils.sha256Hex(PASSWORD + saved.getSalt()));
+    assertThat(saved.getSalt()).isNull();
+    assertThat(new dev.gitnode.os.shared.auth.services.PasswordHasher().matches(PASSWORD, saved))
+        .isTrue();
   }
 
   @Test

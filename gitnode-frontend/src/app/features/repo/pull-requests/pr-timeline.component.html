@@ -1,0 +1,24 @@
+@if (!failed()) {
+<section class="repo-panel pt" aria-labelledby="pt-heading">
+  <h2 id="pt-heading" class="pt-head text-sm font-semibold">Activity</h2>
+  <ol class="pt-list">
+    @for (event of visible(); track event.key) {
+    <li class="pt-item">
+      <span class="pt-icon" [attr.data-tone]="event.tone" aria-hidden="true"><lucide-icon [name]="event.icon" class="size-3.5"></lucide-icon></span>
+      <div class="min-w-0">
+        <p class="pt-text">
+          @if (event.link) { <a [routerLink]="event.link">{{ event.text }}</a> } @else { {{ event.text }} }
+          <time class="pt-time">{{ event.at | relativeTime }}</time>
+        </p>
+        @if (event.detail) { <p class="pt-detail">{{ event.detail }}</p> }
+      </div>
+    </li>
+    }
+  </ol>
+  @if (hiddenCount() > 0) {
+  <button type="button" class="btn btn-ghost btn-xs m-2" (click)="expanded.set(true)">Show {{ hiddenCount() }} more events</button>
+  } @else if (expanded()) {
+  <button type="button" class="btn btn-ghost btn-xs m-2" (click)="expanded.set(false)">Show fewer events</button>
+  }
+</section>
+}

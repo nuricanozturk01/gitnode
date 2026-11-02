@@ -4,7 +4,7 @@
     <div class="auth-page__brand-accent" aria-hidden="true"></div>
     <div class="auth-page__brand-inner">
       <a routerLink="/" class="auth-page__brand-logo no-underline" aria-label="GitNode home">
-        <img src="/icon.png" alt="" width="40" height="40" class="size-10 object-contain" decoding="async" />
+        <img src="/gitnode-mark.svg" alt="" width="40" height="40" class="size-10 object-contain" decoding="async" />
         <span class="gitnode-mark text-2xl">
           <span class="gitnode-mark__origin">Git</span><span class="gitnode-mark__hub">Node</span>
         </span>
@@ -29,8 +29,8 @@
     <div class="auth-page__main-inner">
       <div class="auth-card">
         <div class="auth-card__body">
-          <a routerLink="/" class="auth-card__mobile-brand no-underline lg:hidden" aria-label="GitNode home">
-            <img src="/icon.png" alt="" width="36" height="36" class="size-9 object-contain" decoding="async" />
+          <a routerLink="/" class="auth-card__mobile-brand no-underline" aria-label="GitNode home">
+            <img src="/gitnode-mark.svg" alt="" width="36" height="36" class="size-9 object-contain" decoding="async" />
             <span class="gitnode-mark text-xl">
               <span class="gitnode-mark__origin">Git</span><span class="gitnode-mark__hub">Node</span>
             </span>
@@ -72,10 +72,12 @@
                 placeholder="username or email"
                 class="input input-bordered w-full"
                 autocomplete="username"
+                [attr.aria-invalid]="form.get('usernameOrEmail')?.invalid && form.get('usernameOrEmail')?.touched ? 'true' : null"
+                [attr.aria-describedby]="form.get('usernameOrEmail')?.invalid && form.get('usernameOrEmail')?.touched ? 'login-username-error' : null"
               />
               @if (form.get('usernameOrEmail')?.invalid && form.get('usernameOrEmail')?.touched) {
               <span class="label">
-                <span class="label-text-alt text-error">Required</span>
+                <span id="login-username-error" class="label-text-alt text-error">Required</span>
               </span>
               }
             </div>
@@ -91,10 +93,12 @@
                 placeholder="••••••••"
                 class="input input-bordered w-full"
                 autocomplete="current-password"
+                [attr.aria-invalid]="form.get('password')?.invalid && form.get('password')?.touched ? 'true' : null"
+                [attr.aria-describedby]="form.get('password')?.invalid && form.get('password')?.touched ? 'login-password-error' : null"
               />
               @if (form.get('password')?.invalid && form.get('password')?.touched) {
               <span class="label">
-                <span class="label-text-alt text-error">Min 6 characters</span>
+                <span id="login-password-error" class="label-text-alt text-error">Min 6 characters</span>
               </span>
               }
             </div>

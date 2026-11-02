@@ -14,10 +14,10 @@
 /// limitations under the License.
 ///
 
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
@@ -31,7 +31,7 @@ import type { BranchInfo } from '../../../domain/repository/models/branch-info.m
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-branches',
   standalone: true,
-  imports: [ReactiveFormsModule, RouterLink, LucideAngularModule, RelativeTimePipe],
+  imports: [FormsModule, ReactiveFormsModule, RouterLink, LucideAngularModule, RelativeTimePipe],
   templateUrl: './branches.page.html',
   styleUrl: './branches.page.css',
 })
@@ -44,12 +44,21 @@ export class BranchesPage {
   private readonly toast = inject(ToastService);
 
   readonly branches = signal<BranchInfo[]>([]);
+  readonly query = signal('');
+  readonly visible = computed(() => {
+    const q = this.query().trim().toLowerCase();
+    return q ? this.branches().filter((b) => b.name.toLowerCase().includes(q)) : this.branches();
+  });
+  readonly isLoggedIn = this.repoContext.isLoggedIn;
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+  readonly loadFailed = signal(false);
   readonly createModalOpen = signal(false);
   readonly setDefaultModalOpen = signal(false);
   readonly branchToSetDefault = signal<BranchInfo | null>(null);
   readonly actionLoading = signal(false);
+  readonly maxDivergence = 500;
+  private dialogTrigger: HTMLElement | null = null;
 
   private readonly repoRouteParams = parentParamMapSignal(this.route);
   readonly owner = computed(() => this.repoRouteParams().get('owner') ?? '');
@@ -75,25 +84,30 @@ export class BranchesPage {
     }
     this.loading.set(true);
     this.error.set(null);
+    this.loadFailed.set(false);
     try {
       const data = await this.branchService.getAll(owner, repo);
       this.branches.set(data);
     } catch {
       this.error.set('Failed to load branches');
+      this.loadFailed.set(true);
       this.branches.set([]);
     } finally {
       this.loading.set(false);
     }
   }
 
-  openCreateModal(): void {
+  openCreateModal(event: MouseEvent): void {
+    this.dialogTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     this.createForm.patchValue({ sourceBranch: this.defaultBranch() });
     this.createModalOpen.set(true);
+    setTimeout(() => document.querySelector<HTMLElement>('#branch-name')?.focus());
   }
 
   closeCreateModal(): void {
     this.createModalOpen.set(false);
     this.createForm.reset({ name: '', sourceBranch: this.defaultBranch() });
+    this.restoreFocus();
   }
 
   async onCreateSubmit(): Promise<void> {
@@ -117,14 +131,45 @@ export class BranchesPage {
     }
   }
 
-  openSetDefaultModal(branch: BranchInfo): void {
+  openSetDefaultModal(branch: BranchInfo, event: MouseEvent): void {
+    this.dialogTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
     this.branchToSetDefault.set(branch);
     this.setDefaultModalOpen.set(true);
+    setTimeout(() => document.querySelector<HTMLElement>('#default-branch-dialog button')?.focus());
   }
 
   closeSetDefaultModal(): void {
     this.setDefaultModalOpen.set(false);
     this.branchToSetDefault.set(null);
+    this.restoreFocus();
+  }
+
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event): void {
+    if (this.createModalOpen()) this.closeCreateModal();
+    else if (this.setDefaultModalOpen()) this.closeSetDefaultModal();
+    else return;
+    event.preventDefault();
+  }
+
+  onDialogKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget as HTMLElement;
+    const controls = dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])');
+    const first = controls.item(0);
+    const last = controls.item(controls.length - 1);
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last?.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first?.focus();
+    }
+  }
+
+  private restoreFocus(): void {
+    this.dialogTrigger?.focus();
+    this.dialogTrigger = null;
   }
 
   async onSetDefaultConfirm(): Promise<void> {

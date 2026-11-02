@@ -51,6 +51,34 @@
       </a>
       }
     </div>
+    <div class="flex flex-wrap items-center gap-2 px-3 pb-3 sm:px-4">
+      <label class="sr-only" for="pr-filter-label">Filter by label</label>
+      <select id="pr-filter-label" class="select select-bordered select-sm" [value]="labelFilter()" (change)="setFilter('label', $any($event.target).value)">
+        <option value="">All labels</option>
+        @for (label of allLabels(); track label.id) {
+        <option [value]="label.id" [selected]="label.id === labelFilter()">{{ label.name }}</option>
+        }
+      </select>
+      <label class="sr-only" for="pr-filter-milestone">Filter by milestone</label>
+      <select id="pr-filter-milestone" class="select select-bordered select-sm" [value]="milestoneFilter()" (change)="setFilter('milestone', $any($event.target).value)">
+        <option value="">All milestones</option>
+        @for (m of allMilestones(); track m.id) {
+        <option [value]="m.id" [selected]="m.id === milestoneFilter()">{{ m.title }}</option>
+        }
+      </select>
+      <label class="sr-only" for="pr-filter-assignee">Filter by assignee username</label>
+      <input
+        id="pr-filter-assignee"
+        type="search"
+        class="input input-bordered input-sm w-40"
+        placeholder="Assignee"
+        [value]="assigneeFilter()"
+        (change)="setFilter('assignee', $any($event.target).value)"
+      />
+      @if (hasFilter()) {
+      <button type="button" class="btn btn-ghost btn-sm" (click)="clearFilters()">Clear filters</button>
+      }
+    </div>
     @if (totalElements() > 0) {
     <span class="text-base-content/50 px-3 pb-2 text-sm sm:px-4">{{ totalElements() }} {{ tab() }} pull requests</span>
     }
@@ -67,6 +95,11 @@
       </div>
     </div>
     }
+  </div>
+  } @else if (loadFailed()) {
+  <div role="alert" class="flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <p class="text-base-content font-medium">Pull requests could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
   </div>
   } @else if (pulls().length === 0) {
   <div class="text-base-content/60 flex flex-col items-center justify-center gap-2 px-4 py-16 sm:py-20">
@@ -91,26 +124,26 @@
     @for (pr of pulls(); track pr.id) {
     <a
       [routerLink]="['/', owner(), repoName(), 'pulls', pr.number]"
-      class="hover:bg-base-200/45 group flex gap-3 px-3 py-4 transition-colors sm:gap-4 sm:px-4 sm:py-5"
+      class="hover:bg-base-200/45 focus-visible:outline-primary group flex gap-3 px-3 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] sm:gap-3 sm:px-4"
     >
       <div class="mt-0.5 shrink-0">
         @if (pr.status === 'OPEN') {
         <div
-          class="bg-success/12 text-success ring-success/20 flex size-10 items-center justify-center rounded-xl ring-1 sm:size-11"
+          class="text-success flex size-6 items-center justify-center"
         >
-          <lucide-icon name="git-pull-request" class="size-5 sm:size-[1.35rem]"></lucide-icon>
+          <lucide-icon name="git-pull-request" class="size-4"></lucide-icon>
         </div>
         } @else if (pr.status === 'MERGED') {
         <div
-          class="bg-primary/12 text-primary ring-primary/20 flex size-10 items-center justify-center rounded-xl ring-1 sm:size-11"
+          class="text-primary flex size-6 items-center justify-center"
         >
-          <lucide-icon name="gitMerge" class="size-5 sm:size-[1.35rem]"></lucide-icon>
+          <lucide-icon name="gitMerge" class="size-4"></lucide-icon>
         </div>
         } @else {
         <div
-          class="bg-base-300/80 text-base-content/55 ring-base-300 flex size-10 items-center justify-center rounded-xl ring-1 sm:size-11"
+          class="text-base-content/55 flex size-6 items-center justify-center"
         >
-          <lucide-icon name="git-pull-request-closed" class="size-5 sm:size-[1.35rem]"></lucide-icon>
+          <lucide-icon name="git-pull-request-closed" class="size-4"></lucide-icon>
         </div>
         }
       </div>
@@ -129,6 +162,15 @@
               <span class="badge-pill badge-pill--draft">Draft</span>
               }
               <span [class]="'badge-pill ' + statusBadgeClass(pr.status)">{{ statusLabel(pr.status) }}</span>
+              @for (label of pr.labels; track label.id) {
+              <span class="rounded-full px-2 py-0.5 text-xs font-semibold" [style.background]="'#' + label.color" [style.color]="labelTextColor(label.color)">{{ label.name }}</span>
+              }
+              @if (pr.milestone) {
+              <span class="text-base-content/60 inline-flex items-center gap-1 text-xs"><lucide-icon name="tag" class="size-3"></lucide-icon>{{ pr.milestone.title }}</span>
+              }
+              @for (a of pr.assignees; track a.username) {
+              <span class="text-base-content/60 text-xs" title="Assignee">&#64;{{ a.username }}</span>
+              }
             </div>
           </div>
           @if (pr.commentCount > 0) {

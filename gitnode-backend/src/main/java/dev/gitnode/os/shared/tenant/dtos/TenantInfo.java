@@ -32,6 +32,7 @@ public class TenantInfo implements Serializable {
   private final String bio;
   private final String website;
   private final String location;
+  private final String timezone;
   private final String profileReadme;
   private final Instant createdAt;
   private final Instant updatedAt;

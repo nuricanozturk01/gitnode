@@ -64,14 +64,15 @@ public class UserContributionService {
 
     final boolean includePrivate = viewerTenantId != null && viewerTenantId.equals(tenant.getId());
 
-    final LocalDate rangeEnd = LocalDate.now(ZoneOffset.UTC);
+    final var zone = zoneOf(tenant.getTimezone());
+    final LocalDate rangeEnd = LocalDate.now(zone);
     final LocalDate rangeStart = rangeEnd.minusDays(ROLLING_DAYS - 1L);
-    final Instant fromInstant = rangeStart.atStartOfDay(ZoneOffset.UTC).toInstant();
-    final Instant toExclusive = rangeEnd.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+    final Instant fromInstant = rangeStart.atStartOfDay(zone).toInstant();
+    final Instant toExclusive = rangeEnd.plusDays(1).atStartOfDay(zone).toInstant();
 
     final List<ContributionAggregateRow> aggregates =
         this.userContributionRepository.findDailyAggregates(
-            tenant.getId(), fromInstant, toExclusive, includePrivate);
+            tenant.getId(), fromInstant, toExclusive, includePrivate, zone.getId());
 
     final Map<LocalDate, MutableBreakdown> breakdownByDay = new HashMap<>();
 
@@ -107,6 +108,17 @@ public class UserContributionService {
         currentStreak,
         includePrivate,
         List.copyOf(days));
+  }
+
+  private static java.time.ZoneId zoneOf(final @Nullable String timezone) {
+    if (timezone == null) {
+      return ZoneOffset.UTC;
+    }
+    try {
+      return java.time.ZoneId.of(timezone);
+    } catch (final java.time.DateTimeException e) {
+      return ZoneOffset.UTC;
+    }
   }
 
   static void applyLevels(final List<ContributionDay> days, final int maxDailyCount) {
@@ -176,11 +188,14 @@ public class UserContributionService {
 
     private static final MutableBreakdown EMPTY = new MutableBreakdown();
 
+    private int commits;
     private int issues;
     private int issueComments;
     private int pullRequests;
     private int pullRequestComments;
     private int pullRequestMerges;
+    private int pullRequestReviews;
+    private int fileComments;
     private int releases;
     private int snippets;
     private int snippetRevisions;
@@ -188,11 +203,14 @@ public class UserContributionService {
 
     private final Map<String, Consumer<Integer>> adders =
         Map.ofEntries(
+            Map.entry("commit", c -> this.commits += c),
             Map.entry("issue", c -> this.issues += c),
             Map.entry("issue_comment", c -> this.issueComments += c),
             Map.entry("pull_request", c -> this.pullRequests += c),
             Map.entry("pull_request_comment", c -> this.pullRequestComments += c),
             Map.entry("pull_request_merge", c -> this.pullRequestMerges += c),
+            Map.entry("pull_request_review", c -> this.pullRequestReviews += c),
+            Map.entry("file_comment", c -> this.fileComments += c),
             Map.entry("release", c -> this.releases += c),
             Map.entry("snippet", c -> this.snippets += c),
             Map.entry("snippet_revision", c -> this.snippetRevisions += c),
@@ -208,11 +226,14 @@ public class UserContributionService {
 
     int total() {
 
-      return this.issues
+      return this.commits
+          + this.issues
           + this.issueComments
           + this.pullRequests
           + this.pullRequestComments
           + this.pullRequestMerges
+          + this.pullRequestReviews
+          + this.fileComments
           + this.releases
           + this.snippets
           + this.snippetRevisions
@@ -222,11 +243,14 @@ public class UserContributionService {
     ContributionBreakdown toDto() {
 
       return new ContributionBreakdown(
+          this.commits,
           this.issues,
           this.issueComments,
           this.pullRequests,
           this.pullRequestComments,
           this.pullRequestMerges,
+          this.pullRequestReviews,
+          this.fileComments,
           this.releases,
           this.snippets,
           this.snippetRevisions,

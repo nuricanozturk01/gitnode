@@ -1,0 +1,47 @@
+@if (data(); as d) { @if (d.protectedBranch) {
+<section class="repo-panel mreq" aria-labelledby="mreq-heading">
+  <div class="mreq-head">
+    <lucide-icon
+      [name]="d.satisfied ? 'checkCircle' : 'alertTriangle'"
+      class="size-5 shrink-0"
+      [class.text-success]="d.satisfied"
+      [class.mreq-warn]="!d.satisfied"
+      aria-hidden="true"
+    ></lucide-icon>
+    <div class="min-w-0">
+      <h3 id="mreq-heading" class="text-sm font-semibold">
+        {{ d.satisfied ? 'All requirements for ' + targetBranch() + ' are met' : 'Merging into ' + targetBranch() + ' is blocked' }}
+      </h3>
+      <p class="mreq-sub">Branch protection rules apply to this pull request.</p>
+    </div>
+  </div>
+  <ul class="mreq-list">
+    @if (d.requiredApprovals > 0) {
+    <li class="mreq-row">
+      <lucide-icon [name]="approvalsMet() ? 'checkCircle' : 'alertTriangle'" class="size-4 shrink-0" [class.text-success]="approvalsMet()" [class.mreq-warn]="!approvalsMet()" aria-hidden="true"></lucide-icon>
+      <span>Approvals: {{ d.currentApprovals }} of {{ d.requiredApprovals }} required</span>
+    </li>
+    } @for (name of d.changesRequestedBy; track name) {
+    <li class="mreq-row">
+      <lucide-icon name="alertTriangle" class="mreq-warn size-4 shrink-0" aria-hidden="true"></lucide-icon>
+      <span>Changes requested by {{ name }}</span>
+    </li>
+    } @if (d.requireConversationResolution) {
+    <li class="mreq-row">
+      <lucide-icon [name]="d.unresolvedConversations === 0 ? 'checkCircle' : 'alertTriangle'" class="size-4 shrink-0" [class.text-success]="d.unresolvedConversations === 0" [class.mreq-warn]="d.unresolvedConversations > 0" aria-hidden="true"></lucide-icon>
+      <span>{{ d.unresolvedConversations === 0 ? 'All conversations are resolved' : d.unresolvedConversations + ' unresolved conversation(s) must be resolved' }}</span>
+    </li>
+    } @for (check of d.checks; track check.name) {
+    <li class="mreq-row">
+      <lucide-icon [name]="check.state === 'SUCCESS' ? 'checkCircle' : 'alertTriangle'" class="size-4 shrink-0" [class.text-success]="check.state === 'SUCCESS'" [class.mreq-warn]="check.state !== 'SUCCESS'" aria-hidden="true"></lucide-icon>
+      <span>Required workflow <code>{{ check.name }}</code>: {{ label(check.state) }}</span>
+    </li>
+    }
+  </ul>
+</section>
+} } @else if (failed()) {
+<p class="mreq-sub" role="status">
+  Could not load merge requirements.
+  <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Check again</button>
+</p>
+}

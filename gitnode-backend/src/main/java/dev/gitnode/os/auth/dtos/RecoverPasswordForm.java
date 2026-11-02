@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class RecoverPasswordForm {
   @NotNull
-  @Size(min = 6, max = 50)
+  @Size(min = 8, max = 128)
   @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).+$")
   private String password;
 

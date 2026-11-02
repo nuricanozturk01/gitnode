@@ -22,6 +22,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -56,6 +58,8 @@ class ReleaseTxServiceTest {
   @Mock private TenantRepository tenantRepository;
   @Mock private ReleaseMapper releaseMapper;
   @Mock private RepoCacheInvalidator cacheInvalidator;
+  @Mock private CollaboratorAccessPort collaboratorAccess;
+  @Mock private dev.gitnode.os.tag.services.ReleaseAssetService assetService;
 
   @InjectMocks private ReleaseTxService releaseTxService;
 
@@ -131,10 +135,13 @@ class ReleaseTxServiceTest {
     final var form = new UpdateReleaseForm();
     form.setName("Updated");
 
-    when(releaseRepository.findById(releaseId)).thenReturn(Optional.of(release));
-    when(tenantRepository.findByUsername("repoOwner")).thenReturn(Optional.empty());
+    when(repoRepository.findByOwnerUsernameAndName("repoOwner", "repo"))
+        .thenReturn(Optional.of(repo));
+    when(releaseRepository.findByIdAndRepoId(releaseId, repo.getId()))
+        .thenReturn(Optional.of(release));
 
-    assertThatThrownBy(() -> releaseTxService.update(releaseId, requesterId, "repoOwner", form))
+    assertThatThrownBy(
+            () -> releaseTxService.update(releaseId, requesterId, "repoOwner", "repo", form))
         .isInstanceOf(AccessNotAllowedException.class);
   }
 
@@ -145,13 +152,26 @@ class ReleaseTxServiceTest {
     final var authorId = UUID.randomUUID();
     final var author = createTenant(authorId, "owner");
     final var repo = createRepo(UUID.randomUUID(), "owner", "repo");
+    repo.getOwner().setId(authorId);
     final var release = createRelease(releaseId, repo, author, "v2.0.0");
 
-    when(releaseRepository.findById(releaseId)).thenReturn(Optional.of(release));
+    when(repoRepository.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
+    when(releaseRepository.findByIdAndRepoId(releaseId, repo.getId()))
+        .thenReturn(Optional.of(release));
 
-    releaseTxService.delete(releaseId, authorId, "owner");
+    releaseTxService.delete(releaseId, authorId, "owner", "repo");
 
     verify(releaseRepository).delete(release);
+  }
+
+  @Test
+  void manage_allowsCollaboratorWithPushPermission() {
+    final var repo = createRepo(UUID.randomUUID(), "owner", "repo");
+    final var requesterId = UUID.randomUUID();
+    when(repoRepository.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
+    when(collaboratorAccess.hasPermission(repo.getId(), requesterId, CollaboratorPermission.PUSH))
+        .thenReturn(true);
+    releaseTxService.assertCanManage("owner", "repo", requesterId);
   }
 
   @Test

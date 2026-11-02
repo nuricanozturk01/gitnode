@@ -36,6 +36,9 @@ public class AiAsyncConfig implements AsyncConfigurer {
   private static final int AI_EXECUTOR_MAX_POOL_SIZE = 3;
   private static final int AI_EXECUTOR_QUEUE_CAPACITY = 16;
   private static final int AI_EXECUTOR_AWAIT_TERMINATION_SECONDS = 30;
+  private static final int APP_EXECUTOR_CORE_POOL_SIZE = 4;
+  private static final int APP_EXECUTOR_MAX_POOL_SIZE = 16;
+  private static final int APP_EXECUTOR_QUEUE_CAPACITY = 1000;
 
   @Bean(name = "aiReviewExecutor")
   Executor aiReviewExecutor() {
@@ -49,16 +52,37 @@ public class AiAsyncConfig implements AsyncConfigurer {
         "gitnode-ai-analysis-", 2, AI_EXECUTOR_MAX_POOL_SIZE, AI_EXECUTOR_QUEUE_CAPACITY);
   }
 
+  /**
+   * Default executor for every {@code @Async} without a qualifier (audit log, cache invalidation,
+   * webhooks, repo listeners). It must not share the small AI pools: long AI jobs would starve it
+   * and a full queue used to reject and silently drop those tasks. When saturated, work runs on the
+   * calling thread instead of being lost.
+   */
+  @Bean(name = "applicationAsyncExecutor")
+  Executor applicationAsyncExecutor() {
+    final var executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(APP_EXECUTOR_CORE_POOL_SIZE);
+    executor.setMaxPoolSize(APP_EXECUTOR_MAX_POOL_SIZE);
+    executor.setQueueCapacity(APP_EXECUTOR_QUEUE_CAPACITY);
+    executor.setThreadNamePrefix("gitnode-async-");
+    executor.setRejectedExecutionHandler(
+        new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+    executor.setWaitForTasksToCompleteOnShutdown(true);
+    executor.setAwaitTerminationSeconds(AI_EXECUTOR_AWAIT_TERMINATION_SECONDS);
+    executor.initialize();
+    return executor;
+  }
+
   @Override
   public Executor getAsyncExecutor() {
-    return this.aiReviewExecutor();
+    return this.applicationAsyncExecutor();
   }
 
   @Override
   public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
     return (throwable, method, params) ->
         log.error(
-            "Uncaught async AI failure in {}: {}",
+            "Uncaught async failure in {}: {}",
             method.toGenericString(),
             throwable.getMessage(),
             throwable);

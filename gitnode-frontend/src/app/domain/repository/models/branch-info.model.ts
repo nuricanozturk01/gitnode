@@ -23,4 +23,8 @@ export interface BranchInfo {
   lastCommitDate: string;
   isDefault: boolean;
   isProtected: boolean;
+  /** Commits this branch has that the default branch lacks (capped at 500). */
+  ahead?: number;
+  /** Commits the default branch has that this branch lacks (capped at 500). */
+  behind?: number;
 }

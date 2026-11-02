@@ -37,4 +37,10 @@ public class UpdateProfileForm {
   private String location;
 
   private String profileReadme;
+
+  /**
+   * IANA zone id such as {@code Europe/Istanbul}; blank resets to UTC, absent leaves it unchanged.
+   */
+  @Size(max = 64)
+  private String timezone;
 }

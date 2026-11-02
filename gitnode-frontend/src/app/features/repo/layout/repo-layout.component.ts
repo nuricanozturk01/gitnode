@@ -14,7 +14,7 @@
 /// limitations under the License.
 ///
 
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, HostListener, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, RouterLinkActive, RouterOutlet, ActivatedRoute, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -30,6 +30,28 @@ import { TokenService } from '../../../core/auth/services/token.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { CollaboratorService } from '../../../core/collaborator/collaborator.service';
 import type { CollaboratorInfo } from '../../../domain/collaborator/collaborator.model';
+
+/** Keys typed into these elements must never trigger the editor shortcut. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) ||
+    !!target.closest('[role="dialog"], [contenteditable="true"]')
+  );
+}
+
+/** Editor URL for the page being viewed: the same branch (and file, on a blob page) or the default branch. */
+export function editorUrlFor(url: string, owner: string, repo: string, defaultBranch: string): string[] | null {
+  const path = url.split(/[?#]/)[0];
+  if (/\/editor(\/|$)/.test(path)) return null;
+  const match = path.match(/\/(?:blob|tree)\/(.+)$/);
+  const segments = (match?.[1] ?? '').split('/').filter(Boolean).map(decodeURIComponent);
+  const isBlob = /\/blob\//.test(path);
+  const branch = segments[0] ?? defaultBranch;
+  const rest = isBlob ? segments.slice(1) : [];
+  return ['/', owner, repo, 'editor', branch, ...rest];
+}
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -71,6 +93,19 @@ export class RepoLayoutComponent {
   );
   readonly pendingInvitation = signal<CollaboratorInfo | null>(null);
   readonly respondingToInvitation = signal(false);
+
+  @HostListener('document:keydown', ['$event'])
+  onShortcut(event: KeyboardEvent): void {
+    if (event.key !== '.' || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.isComposing) return;
+    if (event.defaultPrevented || isTypingTarget(event.target)) return;
+    if (!this.isLoggedIn() || !this.repoContext.hasPermission('PUSH')) return;
+    const repo = this.repo();
+    if (!repo) return;
+    const target = editorUrlFor(this.router.url, repo.owner.username, repo.name, repo.defaultBranch);
+    if (!target) return;
+    event.preventDefault();
+    void this.router.navigate(target);
+  }
 
   constructor() {
     this.route.paramMap

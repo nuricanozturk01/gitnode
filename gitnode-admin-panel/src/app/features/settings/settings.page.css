@@ -97,5 +97,5 @@
 .diagnostic-footnote {
   font-size: 0.75rem;
   line-height: 1.45;
-  color: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+  color: color-mix(in oklab, var(--color-base-content) 72%, transparent);
 }

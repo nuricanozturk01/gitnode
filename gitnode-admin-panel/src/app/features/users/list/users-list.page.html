@@ -33,6 +33,11 @@
   <div class="flex justify-center py-16">
     <span class="loading loading-spinner loading-lg text-primary"></span>
   </div>
+  } @else if (loadFailed()) {
+  <div role="alert" class="repo-panel flex flex-col items-center gap-3 px-4 py-12 text-center">
+    <p>Users could not be loaded.</p>
+    <button type="button" class="btn btn-outline btn-sm" (click)="retryLoad()">Try again</button>
+  </div>
   } @else {
   <div class="repo-panel overflow-hidden">
     @if (users().length === 0) {
@@ -40,7 +45,29 @@
       @if (search()) { No users match "{{ search() }}". } @else { No users found. }
     </div>
     } @else {
-    <div class="overflow-x-auto">
+    <ul class="divide-base-300 divide-y sm:hidden">
+      @for (user of users(); track user.id) {
+      <li class="space-y-3 p-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <a [routerLink]="['/users', user.id]" class="text-primary break-all font-semibold hover:underline">{{ user.username }}</a>
+            <p class="text-base-content/70 mt-1 break-all text-sm">{{ user.email }}</p>
+          </div>
+          @if (user.enabled) { <span class="badge-pill badge-pill--success shrink-0">Enabled</span> }
+          @else { <span class="badge-pill badge-pill--error shrink-0">Disabled</span> }
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="text-base-content/60 text-xs">Created {{ formatDate(user.createdAt) }}</span>
+          <button type="button" class="btn btn-outline btn-sm" [disabled]="togglingId() === user.id"
+            [attr.aria-label]="(user.enabled ? 'Disable ' : 'Enable ') + user.username" (click)="toggleEnabled(user)">
+            @if (togglingId() === user.id) { <span class="loading loading-spinner loading-xs"></span> }
+            @else { {{ user.enabled ? 'Disable' : 'Enable' }} }
+          </button>
+        </div>
+      </li>
+      }
+    </ul>
+    <div class="hidden overflow-x-auto sm:block">
       <table class="table">
         <thead>
           <tr>
@@ -75,6 +102,7 @@
                   [class.user-action-btn--disable]="user.enabled"
                   [class.user-action-btn--enable]="!user.enabled"
                   [disabled]="togglingId() === user.id"
+                  [attr.aria-label]="(user.enabled ? 'Disable ' : 'Enable ') + user.username"
                   (click)="toggleEnabled(user)"
                 >
                   @if (togglingId() === user.id) {

@@ -24,7 +24,13 @@ interface TwoFactorSetup {
   styles: [':host { display: block; }'],
   imports: [FormsModule, LucideAngularModule],
   template: `
-    <section class="repo-panel settings-section p-5 sm:p-6" aria-labelledby="two-factor-heading">
+    <section
+      class="repo-panel settings-section relative overflow-hidden p-5 sm:p-6"
+      aria-labelledby="two-factor-heading"
+    >
+      <div
+        class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+      ></div>
       <h2 id="two-factor-heading" class="text-base-content flex items-center gap-2 text-lg font-semibold">
         <lucide-icon name="shield" class="text-primary size-5 shrink-0"></lucide-icon>
         Two-factor authentication

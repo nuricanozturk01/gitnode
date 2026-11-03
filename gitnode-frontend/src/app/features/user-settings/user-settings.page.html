@@ -174,7 +174,10 @@
         </div>
       </section>
 
-      <section class="repo-panel settings-section p-5 sm:p-6">
+      <section class="repo-panel settings-section relative overflow-hidden p-5 sm:p-6">
+        <div
+          class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+        ></div>
         <h2 class="text-base-content flex items-center gap-2 text-lg font-semibold">
           <lucide-icon name="fileText" class="text-primary size-5 shrink-0"></lucide-icon>
           Bio &amp; links
@@ -444,7 +447,10 @@
     </div>
     } @if (activeTab() === 'ssh') {
     <div id="settings-panel-ssh" role="tabpanel" aria-labelledby="settings-tab-ssh" class="settings-panels">
-      <section class="repo-panel settings-section overflow-hidden">
+      <section class="repo-panel settings-section relative overflow-hidden">
+        <div
+          class="from-primary/40 via-primary to-primary/40 pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r"
+        ></div>
         <div
           class="border-base-300 flex flex-col gap-4 border-b p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6"
         >

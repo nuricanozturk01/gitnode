@@ -1,0 +1,77 @@
+<div class="mx-auto max-w-4xl">
+  <a
+    [routerLink]="['/', owner(), repoName(), 'wiki']"
+    [queryParams]="{}"
+    class="text-base-content/60 hover:text-base-content mb-4 inline-block text-sm"
+  >
+    ← Back to the wiki
+  </a>
+  <div class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-4">
+      <h2 class="text-lg font-semibold">{{ isNew() ? 'New page' : 'Edit ' + slug() }}</h2>
+    </div>
+    @if (loading()) {
+    <div class="flex justify-center p-8"><span class="loading loading-spinner loading-md"></span></div>
+    } @else {
+    <form class="flex flex-col gap-4 p-4 sm:p-6" (ngSubmit)="save()">
+      @if (isNew()) {
+      <label class="flex flex-col gap-1.5 text-sm font-medium">
+        Page name
+        <input
+          class="input input-bordered w-full"
+          name="slug"
+          maxlength="100"
+          placeholder="Getting-Started"
+          [ngModel]="slugInput()"
+          (ngModelChange)="slugInput.set($event)"
+        />
+        @if (slugInput() && !slugValid()) {
+        <span class="text-error text-xs font-normal">
+          Use letters, digits, dots, dashes and underscores; start with a letter or digit.
+        </span>
+        }
+      </label>
+      }
+      <div class="flex gap-2 text-sm">
+        <button type="button" class="btn btn-xs" [class.btn-primary]="!preview()" (click)="preview.set(false)">
+          Write
+        </button>
+        <button type="button" class="btn btn-xs" [class.btn-primary]="preview()" (click)="preview.set(true)">
+          Preview
+        </button>
+      </div>
+      @if (preview()) {
+      <div
+        class="readme-markdown-body readme-content border-base-300 min-h-48 rounded border p-4"
+        [innerHTML]="html()"
+      ></div>
+      } @else {
+      <textarea
+        class="textarea textarea-bordered min-h-72 w-full font-mono text-sm"
+        name="content"
+        aria-label="Page content"
+        [ngModel]="content()"
+        (ngModelChange)="content.set($event)"
+      ></textarea>
+      }
+      <label class="flex flex-col gap-1.5 text-sm font-medium">
+        Commit message <span class="text-base-content/45 font-normal">(optional)</span>
+        <input
+          class="input input-bordered w-full"
+          name="message"
+          maxlength="500"
+          [ngModel]="message()"
+          (ngModelChange)="message.set($event)"
+        />
+      </label>
+      @if (error()) {
+      <div class="alert alert-error py-2 text-sm" role="alert">{{ error() }}</div>
+      }
+      <div class="flex justify-end gap-3">
+        <a [routerLink]="['/', owner(), repoName(), 'wiki']" class="btn btn-ghost btn-sm">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="!canSave()">Save page</button>
+      </div>
+    </form>
+    }
+  </div>
+</div>

@@ -31,6 +31,7 @@ public class BranchProtectionService implements BranchProtectionPort {
                 new BranchProtectionInfo(
                     rule.getRequiredApprovals(),
                     rule.isRequireConversationResolution(),
+                    rule.isRequireCodeOwnerReview(),
                     rule.requiredCheckNames()));
   }
 
@@ -60,7 +61,8 @@ public class BranchProtectionService implements BranchProtectionPort {
       final String branch,
       final int approvals,
       final List<String> checks,
-      final boolean requireConversationResolution) {
+      final boolean requireConversationResolution,
+      final boolean requireCodeOwnerReview) {
     if (!this.repoCommands.lockForUpdate(repoId)) {
       throw new ItemNotFoundException("Repository not found");
     }
@@ -70,6 +72,7 @@ public class BranchProtectionService implements BranchProtectionPort {
     rule.setBranchName(branch);
     rule.setRequiredApprovals(approvals);
     rule.setRequireConversationResolution(requireConversationResolution);
+    rule.setRequireCodeOwnerReview(requireCodeOwnerReview);
     rule.setRequiredChecks(String.join(",", checks));
     return this.rules.save(rule);
   }

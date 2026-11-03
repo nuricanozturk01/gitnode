@@ -134,6 +134,24 @@
               }
             </a>
             <a
+              [routerLink]="['/', owner(), repoName(), 'discussions']"
+              routerLinkActive="tab-active"
+              ariaCurrentWhenActive="page"
+              class="tab gap-1.5 rounded-md"
+            >
+              <lucide-icon name="messageSquare" class="size-3.5 shrink-0"></lucide-icon>
+              Discussions
+            </a>
+            <a
+              [routerLink]="['/', owner(), repoName(), 'wiki']"
+              routerLinkActive="tab-active"
+              ariaCurrentWhenActive="page"
+              class="tab gap-1.5 rounded-md"
+            >
+              <lucide-icon name="bookOpen" class="size-3.5 shrink-0"></lucide-icon>
+              Wiki
+            </a>
+            <a
               [routerLink]="['/', owner(), repoName(), 'pulls']"
               routerLinkActive="tab-active"
               ariaCurrentWhenActive="page"

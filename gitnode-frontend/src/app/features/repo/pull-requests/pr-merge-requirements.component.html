@@ -63,6 +63,31 @@
             }}</span>
           </li>
         }
+        @if (d.requireCodeOwnerReview) {
+          <li class="mreq-row">
+            <lucide-icon
+              [name]="d.missingCodeOwners.length === 0 ? 'checkCircle' : 'alertTriangle'"
+              class="size-4 shrink-0"
+              [class.text-success]="d.missingCodeOwners.length === 0"
+              [class.mreq-warn]="d.missingCodeOwners.length > 0"
+              aria-hidden="true"
+            ></lucide-icon>
+            <span>{{
+              d.missingCodeOwners.length === 0 ? 'Code owners have approved' : 'Waiting for code owner review'
+            }}</span>
+          </li>
+          @for (missing of d.missingCodeOwners; track missing.pattern) {
+            <li class="mreq-row mreq-nested">
+              <span
+                ><code>{{ missing.pattern }}</code> needs one of:
+                @for (name of missing.owners; track name; let last = $last) {
+                  <strong>&#64;{{ name }}</strong
+                  >{{ last ? '' : ', ' }}
+                }
+              </span>
+            </li>
+          }
+        }
         @for (check of d.checks; track check.name) {
           <li class="mreq-row">
             <lucide-icon
@@ -79,6 +104,40 @@
           </li>
         }
       </ul>
+      @if (d.autoMergeStrategy) {
+        <div class="mreq-auto">
+          <lucide-icon name="gitMerge" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
+          <span class="min-w-0 flex-1"
+            >Auto-merge is on ({{ d.autoMergeStrategy }}
+            @if (d.autoMergeBy) {
+              , by &#64;{{ d.autoMergeBy }}
+            }
+            ). It merges as soon as every requirement above is met.</span
+          >
+          @if (canMerge()) {
+            <button type="button" class="btn btn-ghost btn-xs" [disabled]="autoMergeBusy()" (click)="toggleAutoMerge()">
+              Disable auto-merge
+            </button>
+          }
+        </div>
+      } @else if (canMerge() && !d.satisfied) {
+        <div class="mreq-auto">
+          <select
+            class="select select-bordered select-xs"
+            aria-label="Auto-merge strategy"
+            [value]="autoMergeStrategy()"
+            (change)="autoMergeStrategy.set($any($event.target).value)"
+          >
+            @for (s of strategies; track s.value) {
+              <option [value]="s.value">{{ s.label }}</option>
+            }
+          </select>
+          <button type="button" class="btn btn-outline btn-xs" [disabled]="autoMergeBusy()" (click)="toggleAutoMerge()">
+            Enable auto-merge
+          </button>
+          <span class="mreq-sub min-w-0 flex-1">Merge automatically once all requirements are met.</span>
+        </div>
+      }
     </section>
   }
 } @else if (failed()) {

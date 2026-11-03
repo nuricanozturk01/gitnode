@@ -122,6 +122,7 @@ public class PullRequestService {
   private final BranchProtectionPort branchProtection;
   private final RequiredChecksPort requiredChecks;
   private final RepoMetadataQueryPort repoMetadata;
+  private final CodeOwnersService codeOwners;
 
   @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
@@ -151,6 +152,7 @@ public class PullRequestService {
       final var pr = this.prMapper.buildPr(form, repo, author, sourceSha, nextNumber);
 
       final var saved = this.prRepository.save(pr);
+      this.requestCodeOwners(owner, repoName, repo, saved);
       this.eventPublisher.publishEvent(
           new PullRequestCreatedEvent(
               saved.getId(),
@@ -216,6 +218,7 @@ public class PullRequestService {
 
     pr.setStatus(PrStatus.CLOSED.name());
     pr.setClosedAt(Instant.now());
+    pr.clearAutoMerge();
 
     this.prRepository.save(pr);
 
@@ -290,7 +293,8 @@ public class PullRequestService {
     final var pr = this.prFinder.findPr(repo.id(), number);
     final var rule = this.branchProtection.findProtection(repo.id(), pr.getTargetBranch());
     if (rule.isEmpty()) {
-      return new PrMergeRequirements(false, 0, 0, List.of(), List.of(), false, 0, true, false);
+      return new PrMergeRequirements(
+          false, 0, 0, List.of(), List.of(), false, 0, true, false, false, List.of(), null, null);
     }
     final var heads = this.reviewService.branchHeads(owner, repoName, pr);
     final var summary = this.reviewService.summarize(repo, pr, heads);
@@ -304,10 +308,12 @@ public class PullRequestService {
     final var conversations = rule.get().requireConversationResolution();
     final var unresolved =
         conversations ? (int) this.commentRepository.countUnresolvedConversations(pr.getId()) : 0;
+    final var missingOwners = this.missingCodeOwners(owner, repoName, repo, pr, heads, rule.get());
     final var satisfied =
         approvalsSatisfied(required, summary)
             && checks.stream().allMatch(check -> "SUCCESS".equals(check.state()))
-            && unresolved == 0;
+            && unresolved == 0
+            && missingOwners.isEmpty();
     return new PrMergeRequirements(
         true,
         required,
@@ -317,7 +323,74 @@ public class PullRequestService {
         conversations,
         unresolved,
         satisfied,
-        repo.ownerId().equals(requesterId));
+        repo.ownerId().equals(requesterId),
+        rule.get().requireCodeOwnerReview(),
+        missingOwners,
+        pr.getAutoMergeStrategy(),
+        this.autoMergeUsername(pr));
+  }
+
+  private void assertOpenAndReady(final PullRequest pr) {
+    if (!pr.getStatus().equals(PrStatus.OPEN.name())) {
+      throw new ErrorOccurredException("Pull request is not open");
+    }
+    if (pr.isDraft()) {
+      throw new BadRequestException("Draft pull request cannot be merged");
+    }
+  }
+
+  private List<PrMergeRequirements.CodeOwner> missingCodeOwners(
+      final String owner,
+      final String repoName,
+      final RepoRef repo,
+      final PullRequest pr,
+      final PrReviewService.BranchHeads heads,
+      final BranchProtectionPort.BranchProtectionInfo rule)
+      throws IOException {
+    if (!rule.requireCodeOwnerReview()) {
+      return List.of();
+    }
+    return this.codeOwners.unmet(owner, repoName, repo, pr, heads).stream()
+        .map(req -> new PrMergeRequirements.CodeOwner(req.pattern(), req.owners()))
+        .toList();
+  }
+
+  private @Nullable String autoMergeUsername(final PullRequest pr) {
+    final var enabledBy = pr.getAutoMergeById();
+    if (enabledBy == null) {
+      return null;
+    }
+    return this.prFinder.findTenants(Set.of(enabledBy)).values().stream()
+        .findFirst()
+        .map(TenantRef::username)
+        .orElse(null);
+  }
+
+  /** Asks the code owners of the changed files to review; never fails the pull request itself. */
+  private void requestCodeOwners(
+      final String owner, final String repoName, final RepoRef repo, final PullRequest pr) {
+    try {
+      final var owners = new HashSet<>(this.codeOwners.ownersToRequest(owner, repoName, repo, pr));
+      owners.removeAll(pr.getReviewerIds());
+      if (owners.isEmpty()) {
+        return;
+      }
+      pr.getReviewerIds().addAll(owners);
+      this.prRepository.save(pr);
+      this.eventPublisher.publishEvent(
+          new dev.gitnode.os.events.pr.PullRequestReviewEvent(
+              pr.getId(),
+              pr.getNumber(),
+              repo.id(),
+              pr.getAuthorId(),
+              owner,
+              repoName,
+              "REVIEW_REQUESTED",
+              Set.copyOf(owners)));
+    } catch (final IOException | RuntimeException ex) {
+      log.warn(
+          "Could not request code owner reviews for {}/{}: {}", owner, repoName, ex.getMessage());
+    }
   }
 
   private static boolean approvalsSatisfied(
@@ -349,6 +422,16 @@ public class PullRequestService {
             "All review conversations must be resolved before merging (" + unresolved + " open)");
       }
     }
+    if (rule.requireCodeOwnerReview()) {
+      final var missing = this.codeOwners.unmet(owner, repoName, repo, pr, heads);
+      if (!missing.isEmpty()) {
+        throw new BadRequestException(
+            "Code owner review required: "
+                + missing.stream()
+                    .map(req -> req.pattern() + " (" + String.join(", ", req.owners()) + ")")
+                    .collect(Collectors.joining("; ")));
+      }
+    }
     return heads;
   }
 
@@ -364,25 +447,21 @@ public class PullRequestService {
       final String repoName,
       final int number,
       final UUID mergedById,
-      final PrMergeForm form)
+      final PrMergeForm form,
+      final boolean allowOwnerBypass)
       throws IOException {
 
     final var repo = this.prFinder.findRepoForUpdate(owner, repoName);
     final var pr = this.prFinder.findPrForUpdate(repo.id(), number);
     final var mergedBy = this.findTenant(mergedById);
 
-    if (!pr.getStatus().equals(PrStatus.OPEN.name())) {
-      throw new ErrorOccurredException("Pull request is not open");
-    }
-    if (pr.isDraft()) {
-      throw new BadRequestException("Draft pull request cannot be merged");
-    }
-
+    this.assertOpenAndReady(pr);
     this.reviewerService.assertEligibleReviewer(repo, pr);
 
-    // Repository owner may bypass branch protection, like an admin bypass on GitHub.
-    final var checkedHeads =
-        mergedById.equals(repo.ownerId()) ? null : this.checkProtection(owner, repoName, repo, pr);
+    // Repository owner may bypass branch protection, like an admin bypass on GitHub. Auto-merge
+    // never bypasses: it only merges once the rules pass.
+    final var bypass = allowOwnerBypass && mergedById.equals(repo.ownerId());
+    final var checkedHeads = bypass ? null : this.checkProtection(owner, repoName, repo, pr);
 
     final var mergeSha =
         switch (form.getStrategy()) {
@@ -395,6 +474,7 @@ public class PullRequestService {
     pr.setMergedById(mergedBy.id());
     pr.setMergeSha(mergeSha);
     pr.setMergedAt(Instant.now());
+    pr.clearAutoMerge();
 
     final var saved = this.prRepository.save(pr);
 

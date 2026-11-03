@@ -325,11 +325,12 @@
         <li class="flex flex-wrap items-center gap-2 text-sm">
           <strong>{{ rule.branchName }}</strong><span>{{ rule.requiredApprovals }} required approvals</span> @if
           (rule.requireConversationResolution) { <span>Conversations must be resolved</span> } @if
-          (rule.requiredChecks.length) { <span>Required checks: {{ rule.requiredChecks.join(', ') }}</span> }
+          (rule.requireCodeOwnerReview) { <span>Code owner review required</span> } @if (rule.requiredChecks.length) {
+          <span>Required checks: {{ rule.requiredChecks.join(', ') }}</span> }
           <button
             type="button"
             class="btn btn-ghost btn-xs"
-            (click)="protectionBranch.set(rule.branchName); protectionApprovals.set(rule.requiredApprovals); protectionChecks.set(rule.requiredChecks.join(', ')); protectionConversations.set(rule.requireConversationResolution)"
+            (click)="protectionBranch.set(rule.branchName); protectionApprovals.set(rule.requiredApprovals); protectionChecks.set(rule.requiredChecks.join(', ')); protectionConversations.set(rule.requireConversationResolution); protectionCodeOwners.set(rule.requireCodeOwnerReview)"
           >
             Edit {{ rule.branchName }}
           </button>
@@ -388,6 +389,16 @@
             (ngModelChange)="protectionConversations.set($event)"
           />
           Require conversation resolution</label
+        >
+        <label class="flex items-center gap-2 text-sm"
+          ><input
+            type="checkbox"
+            name="requireCodeOwnerReview"
+            class="checkbox checkbox-sm"
+            [ngModel]="protectionCodeOwners()"
+            (ngModelChange)="protectionCodeOwners.set($event)"
+          />
+          Require code owner review</label
         >
         <button
           type="submit"

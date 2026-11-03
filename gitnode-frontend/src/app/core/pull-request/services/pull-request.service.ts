@@ -22,6 +22,7 @@ import type { CommitInfo } from '../../../domain/commit/models/commit-info.model
 import type { FileDiff } from '../../../domain/commit/models/file-diff.model';
 import type {
   PrConflictInfo,
+  MergeStrategy,
   PrConflictResolveForm,
   PrMergeRequirements,
   PrMetadata,
@@ -161,6 +162,16 @@ export class PullRequestService {
     return firstValueFrom(
       this.http.post<{ commitSha: string }>(`${this.base(owner, repo)}/${number}/conflicts/resolve`, form),
     );
+  }
+
+  enableAutoMerge(owner: string, repo: string, number: number, strategy: MergeStrategy): Promise<PrMergeRequirements> {
+    return firstValueFrom(
+      this.http.put<PrMergeRequirements>(`${this.base(owner, repo)}/${number}/auto-merge`, { strategy }),
+    );
+  }
+
+  disableAutoMerge(owner: string, repo: string, number: number): Promise<PrMergeRequirements> {
+    return firstValueFrom(this.http.delete<PrMergeRequirements>(`${this.base(owner, repo)}/${number}/auto-merge`));
   }
 
   mergePullRequest(

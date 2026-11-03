@@ -1,0 +1,79 @@
+<div class="grid gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+  <aside class="repo-panel h-fit overflow-hidden" aria-label="Wiki pages">
+    <div class="repo-toolbar flex items-center justify-between px-3 py-3">
+      <h2 class="text-sm font-semibold">Pages</h2>
+      @if (canWrite()) {
+      <a [routerLink]="['/', owner(), repoName(), 'wiki', '_new']" class="btn btn-primary btn-xs gap-1">
+        <lucide-icon name="plus" class="size-3" [size]="12"></lucide-icon>
+        New
+      </a>
+      }
+    </div>
+    <ul class="max-h-[60vh] overflow-y-auto py-1">
+      @for (p of pages(); track p.slug) {
+      <li>
+        <a
+          [routerLink]="['/', owner(), repoName(), 'wiki', p.slug]"
+          class="hover:bg-base-200/60 block truncate px-3 py-1.5 text-sm"
+          [class.font-semibold]="p.slug === slug()"
+          [class.text-primary]="p.slug === slug()"
+        >
+          {{ p.title }}
+        </a>
+      </li>
+      } @empty { @if (!pagesLoading()) {
+      <li class="text-base-content/55 px-3 py-2 text-sm">No pages yet.</li>
+      } }
+    </ul>
+    @if (pagesLoading()) {
+    <div class="flex justify-center p-2"><span class="loading loading-spinner loading-xs"></span></div>
+    } @else if (hasMorePages()) {
+    <button type="button" class="btn btn-ghost btn-xs w-full" (click)="loadPages(pagesPage() + 1)">
+      Load more pages
+    </button>
+    }
+  </aside>
+
+  <section class="repo-panel min-w-0 overflow-hidden">
+    @if (loading()) {
+    <div class="flex justify-center p-8"><span class="loading loading-spinner loading-md"></span></div>
+    } @else if (failed()) {
+    <div class="p-6 text-center text-sm" role="alert">Could not load this page.</div>
+    } @else if (missing() || !page()) {
+    <div class="p-8 text-center">
+      <h2 class="text-lg font-semibold">{{ slug() === 'Home' ? 'This wiki is empty' : 'Page not found' }}</h2>
+      <p class="text-base-content/60 mt-1 text-sm">Documentation that lives next to the code.</p>
+      @if (canWrite()) {
+      <a
+        [routerLink]="['/', owner(), repoName(), 'wiki', '_new']"
+        [queryParams]="{ slug: slug() }"
+        class="btn btn-primary btn-sm mt-4"
+      >
+        Create the page “{{ slug() }}”
+      </a>
+      }
+    </div>
+    } @else { @let p = page()!;
+    <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+      <div class="min-w-0">
+        <h2 class="truncate text-lg font-semibold">{{ p.title }}</h2>
+        <p class="text-base-content/55 text-xs">{{ p.lastEditor }} edited {{ p.updatedAt | relativeTime }}</p>
+      </div>
+      <div class="flex gap-2">
+        <a [routerLink]="['/', owner(), repoName(), 'wiki', p.slug, 'history']" class="btn btn-ghost btn-xs">History</a>
+        @if (canWrite() && !rev()) {
+        <a [routerLink]="['/', owner(), repoName(), 'wiki', p.slug, 'edit']" class="btn btn-outline btn-xs">Edit</a>
+        <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deletePage()">Delete</button>
+        }
+      </div>
+    </div>
+    @if (rev()) {
+    <div class="alert alert-warning m-4 py-2 text-sm" role="status">
+      You are viewing an older revision.
+      <a [routerLink]="['/', owner(), repoName(), 'wiki', p.slug]" class="link">Back to the latest version</a>
+    </div>
+    }
+    <div class="readme-markdown-body readme-content px-6 py-5 sm:px-8" [innerHTML]="html()"></div>
+    }
+  </section>
+</div>

@@ -104,6 +104,16 @@ public class PullRequest {
   @Column(name = "is_draft")
   private boolean isDraft;
 
+  /** Merge strategy to apply once the target branch rules pass; null when auto-merge is off. */
+  @Column(name = "auto_merge_strategy", length = 20)
+  private String autoMergeStrategy;
+
+  /**
+   * The account auto-merge acts as; the database sets this to NULL when that account is deleted.
+   */
+  @Column(name = "auto_merge_by_id")
+  private UUID autoMergeById;
+
   @CreationTimestamp
   @Column(name = "created_at")
   private Instant createdAt;
@@ -117,4 +127,9 @@ public class PullRequest {
 
   @Column(name = "closed_at")
   private Instant closedAt;
+
+  public void clearAutoMerge() {
+    this.autoMergeStrategy = null;
+    this.autoMergeById = null;
+  }
 }

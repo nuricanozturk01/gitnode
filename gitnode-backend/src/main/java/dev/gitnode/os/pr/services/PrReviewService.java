@@ -172,6 +172,20 @@ public class PrReviewService {
     return new ApprovalSummary((int) count, blockers);
   }
 
+  /** Ids of the reviewers whose latest non-comment review approves the current heads. */
+  public java.util.Set<UUID> currentApproverIds(
+      final RepoRef repo, final PullRequest pr, final BranchHeads heads) {
+    final var latest = new HashMap<UUID, PrReview>();
+    for (final var review : this.reviews.findAllByPrId(pr.getId())) {
+      if (!"COMMENTED".equals(review.getState())) latest.put(review.getAuthorId(), review);
+    }
+    final var accounts = this.accounts(latest.values());
+    return latest.values().stream()
+        .filter(review -> this.isCurrentApproval(repo, pr, heads, review, accounts))
+        .map(PrReview::getAuthorId)
+        .collect(java.util.stream.Collectors.toSet());
+  }
+
   public void assertApprovals(
       final RepoRef repo,
       final PullRequest pr,

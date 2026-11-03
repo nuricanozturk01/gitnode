@@ -15,9 +15,11 @@
 ///
 
 import { ChangeDetectionStrategy, Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
-import type { PrMergeRequirements } from '../../../domain/pull-request/models/pr-conflict.model';
+import { ToastService } from '../../../core/toast/toast.service';
+import type { MergeStrategy, PrMergeRequirements } from '../../../domain/pull-request/models/pr-conflict.model';
 
 const CHECK_LABELS: Record<string, string> = {
   SUCCESS: 'Passed',
@@ -45,11 +47,21 @@ export class PrMergeRequirementsComponent {
   readonly number = input.required<number>();
   readonly targetBranch = input.required<string>();
   readonly refreshKey = input<string>('');
+  /** Whether the viewer may merge, which is also what allows switching auto-merge on or off. */
+  readonly canMerge = input<boolean>(false);
 
   /** True while the rule has unmet requirements, so the parent can disable merging. */
   readonly blocked = output<boolean>();
 
   private readonly prService = inject(PullRequestService);
+  private readonly toast = inject(ToastService);
+  readonly autoMergeStrategy = signal<MergeStrategy>('MERGE_COMMIT');
+  readonly autoMergeBusy = signal(false);
+  readonly strategies: { value: MergeStrategy; label: string }[] = [
+    { value: 'MERGE_COMMIT', label: 'Merge commit' },
+    { value: 'SQUASH', label: 'Squash' },
+    { value: 'REBASE', label: 'Rebase' },
+  ];
   readonly data = signal<PrMergeRequirements | null>(null);
   readonly failed = signal(false);
   private requestId = 0;
@@ -65,6 +77,25 @@ export class PrMergeRequirementsComponent {
       this.refreshKey();
       if (this.owner() && this.repoName() && this.number()) void this.load();
     });
+  }
+
+  async toggleAutoMerge(): Promise<void> {
+    const current = this.data();
+    if (!current || this.autoMergeBusy()) return;
+    this.autoMergeBusy.set(true);
+    try {
+      const updated = current.autoMergeStrategy
+        ? await this.prService.disableAutoMerge(this.owner(), this.repoName(), this.number())
+        : await this.prService.enableAutoMerge(this.owner(), this.repoName(), this.number(), this.autoMergeStrategy());
+      this.data.set(updated);
+      this.blocked.emit(!updated.satisfied && !updated.canBypass);
+      this.toast.success(updated.autoMergeStrategy ? 'Auto-merge enabled' : 'Auto-merge disabled');
+    } catch (err) {
+      const message = err instanceof HttpErrorResponse && typeof err.error === 'string' ? err.error : null;
+      this.toast.error(message ?? 'Could not change auto-merge');
+    } finally {
+      this.autoMergeBusy.set(false);
+    }
   }
 
   label(state: string): string {

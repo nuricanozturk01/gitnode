@@ -50,6 +50,8 @@ public class CacheConfig implements CachingConfigurer {
   private static final Duration BLOB_TTL = Duration.ofMinutes(10);
   private static final Duration LANGUAGE_TTL = Duration.ofMinutes(10);
   private static final Duration COMMIT_TTL = Duration.ofMinutes(10);
+  private static final Duration WIKI_TTL = Duration.ofMinutes(5);
+  private static final Duration DISCUSSION_TTL = Duration.ofMinutes(1);
   private static final Duration SNIPPET_DETAIL_TTL = Duration.ofMinutes(10);
   private static final Duration SNIPPET_LIST_PUBLIC_TTL = Duration.ofMinutes(2);
   private static final Duration ADMIN_STATS_TTL = Duration.ofSeconds(300);
@@ -89,6 +91,10 @@ public class CacheConfig implements CachingConfigurer {
             Map.entry(CacheNames.TAGS, defaultConfig.entryTtl(TAG_TTL)),
             Map.entry(CacheNames.TREE, defaultConfig.entryTtl(TREE_TTL)),
             Map.entry(CacheNames.BLOB, defaultConfig.entryTtl(BLOB_TTL)),
+            Map.entry(CacheNames.WIKI_PAGES, defaultConfig.entryTtl(WIKI_TTL)),
+            Map.entry(CacheNames.WIKI_PAGE, defaultConfig.entryTtl(WIKI_TTL)),
+            Map.entry(CacheNames.DISCUSSION_LIST, defaultConfig.entryTtl(DISCUSSION_TTL)),
+            Map.entry(CacheNames.DISCUSSION_COMMENTS, defaultConfig.entryTtl(DISCUSSION_TTL)),
             Map.entry(CacheNames.SNIPPET_DETAIL, defaultConfig.entryTtl(SNIPPET_DETAIL_TTL)),
             Map.entry(
                 CacheNames.SNIPPET_LIST_PUBLIC, defaultConfig.entryTtl(SNIPPET_LIST_PUBLIC_TTL)),

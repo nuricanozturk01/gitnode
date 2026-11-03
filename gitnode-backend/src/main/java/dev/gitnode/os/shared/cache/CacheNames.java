@@ -28,6 +28,11 @@ public final class CacheNames {
   public static final String REPO_PR_OPEN_COUNT = "repo:pr:open-count";
   public static final String REPO_ISSUE_OPEN_COUNT = "repo:issue:open-count";
 
+  public static final String WIKI_PAGES = "wiki:pages";
+  public static final String WIKI_PAGE = "wiki:page";
+  public static final String DISCUSSION_LIST = "discussion:list";
+  public static final String DISCUSSION_COMMENTS = "discussion:comments";
+
   public static final String SNIPPET_DETAIL = "snippet:detail";
   public static final String SNIPPET_LIST_PUBLIC = "snippet:list:public";
 

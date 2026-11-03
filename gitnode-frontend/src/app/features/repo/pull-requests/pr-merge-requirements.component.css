@@ -26,6 +26,18 @@
   border-bottom: 1px solid var(--color-base-300);
   overflow-wrap: anywhere;
 }
+.mreq-nested {
+  padding-left: 2.6rem;
+}
+.mreq-auto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 1rem;
+  font-size: 0.8125rem;
+  border-top: 1px solid var(--color-base-300);
+}
 .mreq-row:last-child {
   border-bottom: 0;
 }

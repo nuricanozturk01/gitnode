@@ -1,0 +1,44 @@
+<div class="mx-auto max-w-3xl">
+  <a
+    [routerLink]="['/', owner(), repoName(), 'wiki', slug()]"
+    class="text-base-content/60 hover:text-base-content mb-4 inline-block text-sm"
+  >
+    ← Back to the page
+  </a>
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-4"><h2 class="text-lg font-semibold">History of {{ slug() }}</h2></div>
+    @if (loading()) {
+    <div class="flex justify-center p-8"><span class="loading loading-spinner loading-md"></span></div>
+    } @else if (failed()) {
+    <div class="p-6 text-center text-sm" role="alert">Could not load the history.</div>
+    } @else {
+    <ul class="divide-base-300 divide-y">
+      @for (r of revisions(); track r.sha) {
+      <li class="flex items-center justify-between gap-3 px-4 py-3">
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium">{{ r.message }}</p>
+          <p class="text-base-content/55 text-xs">{{ r.author }} · {{ r.date | relativeTime }}</p>
+        </div>
+        <a
+          [routerLink]="['/', owner(), repoName(), 'wiki', slug()]"
+          [queryParams]="{ rev: r.sha }"
+          class="btn btn-ghost btn-xs shrink-0 font-mono"
+        >
+          {{ r.sha.slice(0, 7) }}
+        </a>
+      </li>
+      }
+    </ul>
+    @if (totalPages() > 1) {
+    <div class="border-base-300 flex items-center justify-between border-t px-4 py-3">
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="!hasPrev()" (click)="load(page() - 1)">
+        Newer
+      </button>
+      <span class="text-base-content/55 text-sm">Page {{ page() + 1 }}</span>
+      <button type="button" class="btn btn-ghost btn-sm" [disabled]="!hasNext()" (click)="load(page() + 1)">
+        Older
+      </button>
+    </div>
+    } }
+  </section>
+</div>

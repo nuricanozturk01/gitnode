@@ -260,6 +260,7 @@
         [number]="number()"
         [targetBranch]="pm.targetBranch"
         [refreshKey]="'' + requirementsRefresh()"
+        [canMerge]="canMerge()"
         (blocked)="requirementsBlocked.set($event)"
       />
       } }

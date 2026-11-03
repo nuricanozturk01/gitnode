@@ -1,0 +1,52 @@
+<div class="mx-auto max-w-3xl">
+  <a
+    [routerLink]="['/', owner(), repoName(), 'discussions']"
+    class="text-base-content/60 hover:text-base-content mb-4 inline-block text-sm"
+  >
+    ← Back to discussions
+  </a>
+  <div class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-4"><h2 class="text-lg font-semibold">New discussion</h2></div>
+    <form class="flex flex-col gap-4 p-4 sm:p-6" (ngSubmit)="submit()">
+      <label class="flex flex-col gap-1.5 text-sm font-medium">
+        Category
+        <select
+          class="select select-bordered"
+          name="category"
+          [ngModel]="category()"
+          (ngModelChange)="category.set($event)"
+        >
+          @for (c of categories(); track c.value) {
+          <option [value]="c.value">{{ c.label }} — {{ c.hint }}</option>
+          }
+        </select>
+      </label>
+      <label class="flex flex-col gap-1.5 text-sm font-medium">
+        Title
+        <input
+          class="input input-bordered w-full"
+          name="title"
+          maxlength="255"
+          required
+          [ngModel]="title()"
+          (ngModelChange)="title.set($event)"
+        />
+      </label>
+      <label class="flex flex-col gap-1.5 text-sm font-medium">
+        Details <span class="text-base-content/45 font-normal">(optional)</span>
+        <textarea
+          class="textarea textarea-bordered w-full"
+          name="body"
+          rows="8"
+          maxlength="20000"
+          [ngModel]="body()"
+          (ngModelChange)="body.set($event)"
+        ></textarea>
+      </label>
+      <div class="flex justify-end gap-3">
+        <a [routerLink]="['/', owner(), repoName(), 'discussions']" class="btn btn-ghost btn-sm">Cancel</a>
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="!canSubmit()">Start discussion</button>
+      </div>
+    </form>
+  </div>
+</div>

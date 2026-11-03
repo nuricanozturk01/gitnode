@@ -24,6 +24,8 @@ env:
   CI: "true"
   GITNODE_API_BASE_URL: https://api.gitnode.dev
   GITNODE_FRONTEND_BASE_URL: https://gitnode.dev
+  # The deployed API exposes no SSH endpoint to the runner; SSH-only scenario steps are skipped.
+  GITNODE_E2E_SSH: "false"
 
 jobs:
   e2e-api:

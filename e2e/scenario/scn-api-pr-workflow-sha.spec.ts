@@ -15,6 +15,7 @@ import {
   writeFileAndPush,
 } from './helpers/git';
 import { createPullRequest, prepareFeatureBranch, putBlob } from './helpers/scenario-api';
+import { SSH_ENABLED, SSH_HOST, SSH_PORT } from './helpers/ssh';
 
 test('pull request workflow is tied to the commit that triggered it', async ({
   bareApi,
@@ -115,6 +116,9 @@ test('pull request workflow is tied to the commit that triggered it', async ({
       { timeout: 15000 },
     )
     .toBeGreaterThanOrEqual(3);
+  if (!SSH_ENABLED) {
+    return;
+  }
   const sshDir = mkdtempSync(join(tmpdir(), 'gitnode-ci-ssh-'));
   try {
     const key = join(sshDir, 'id_ed25519');
@@ -126,12 +130,16 @@ test('pull request workflow is tied to the commit that triggered it', async ({
     expect(added.status()).toBe(201);
     const env = {
       ...process.env,
-      GIT_SSH_COMMAND: `ssh -i ${key} -p 12222 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`,
+      GIT_SSH_COMMAND: `ssh -i ${key} -p ${SSH_PORT} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`,
     };
     const checkout = join(sshDir, 'checkout');
     execFileSync(
       'git',
-      ['clone', `ssh://git@127.0.0.1:12222/${owner.username}/${publicRepo.name}.git`, checkout],
+      [
+        'clone',
+        `ssh://git@${SSH_HOST}:${SSH_PORT}/${owner.username}/${publicRepo.name}.git`,
+        checkout,
+      ],
       { env, stdio: 'pipe' },
     );
     execFileSync('git', ['-C', checkout, 'checkout', 'ci-feature'], { env, stdio: 'pipe' });

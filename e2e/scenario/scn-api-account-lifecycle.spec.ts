@@ -12,6 +12,7 @@ import {
   prepareFeatureBranch,
   putBlob,
 } from './helpers/scenario-api';
+import { SSH_ENABLED, SSH_HOST, SSH_PORT } from './helpers/ssh';
 import {
   bootstrapScenarioProject,
   createBranchFromTask,
@@ -62,13 +63,14 @@ test('account lifecycle across file comments, ssh keys, releases, snippets and i
     return {
       key,
       env: {
-        GIT_SSH_COMMAND: `ssh -i ${key} -p 12222 -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`,
+        GIT_SSH_COMMAND: `ssh -i ${key} -p ${SSH_PORT} -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null`,
       },
     };
   };
   const git = (env: Record<string, string>, ...args: string[]) =>
     execFileSync('git', args, { env: { ...process.env, ...env }, stdio: 'pipe' });
-  const remote = (repo: string) => `ssh://git@127.0.0.1:12222/${owner.username}/${repo}.git`;
+  const remote = (repo: string) =>
+    `ssh://git@${SSH_HOST}:${SSH_PORT}/${owner.username}/${repo}.git`;
   const fails = (fn: () => unknown) => {
     try {
       fn();
@@ -130,6 +132,9 @@ test('account lifecycle across file comments, ssh keys, releases, snippets and i
     });
 
     await test.step('ssh: owner reads/writes private, guest is denied', async () => {
+      if (!SSH_ENABLED) {
+        return;
+      }
       const ownerKey = sshEnv('owner');
       const guestKey = sshEnv('guest');
       for (const [user, k, title] of [
@@ -482,7 +487,7 @@ test('account lifecycle across file comments, ssh keys, releases, snippets and i
       expect(detail.branchRepoId).toBe(pub.id);
       expect(subtask).toBeTruthy();
       const linked = await getProjectLinkedRepos(ctx, owner, projectCode);
-      expect(linked.map((r) => r.id ?? r.repoId)).toContain(pub.id);
+      expect(linked.map((r) => r.id)).toContain(pub.id);
       const assignedDetail = await (
         await ctx.get(`${tasks}/${assignedBody.code}`, { headers: o })
       ).json();
@@ -638,16 +643,18 @@ test('account lifecycle across file comments, ssh keys, releases, snippets and i
       expect(fc.comments.map((c: { body: string }) => c.body)).toEqual(['owner thread']);
 
       // ssh: the guest's key is gone
-      expect(
-        fails(() =>
-          git(
-            (globalThis as { __guestEnv?: Record<string, string> }).__guestEnv ?? {},
-            'clone',
-            remote(pub.name),
-            join(dir, 'guest-after'),
+      if (SSH_ENABLED) {
+        expect(
+          fails(() =>
+            git(
+              (globalThis as { __guestEnv?: Record<string, string> }).__guestEnv ?? {},
+              'clone',
+              remote(pub.name),
+              join(dir, 'guest-after'),
+            ),
           ),
-        ),
-      ).toMatch(/Permission denied|denied|authentication|Could not read/i);
+        ).toMatch(/Permission denied|denied|authentication|Could not read/i);
+      }
 
       // releases: the guest's release disappeared with it
       const releases = await ctx.get(`${base}/releases`, { headers: o });

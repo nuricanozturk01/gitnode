@@ -26,9 +26,9 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.auth.entities.RefreshToken;
 import dev.gitnode.os.auth.repositories.RefreshTokenRepository;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;

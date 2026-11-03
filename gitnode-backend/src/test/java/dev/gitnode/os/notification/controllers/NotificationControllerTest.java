@@ -21,12 +21,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.notification.services.NotificationService;
 import dev.gitnode.os.notification.services.NotificationSseRegistry;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -41,14 +41,13 @@ class NotificationControllerTest {
   @Mock private NotificationService notificationService;
   @Mock private NotificationSseRegistry sseRegistry;
   @Mock private JwtUtils jwtUtils;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @InjectMocks private NotificationController controller;
 
   @Test
   void streamRejectsDisabledAccountUsingQueryToken() {
     UUID id = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setEnabled(false);
+    TenantRef tenant = new TenantRef(id, "u", "u@example.org", null, null, false);
     when(jwtUtils.extractUserId("token")).thenReturn(id);
     when(tenantRepository.findById(id)).thenReturn(Optional.of(tenant));
 
@@ -60,7 +59,7 @@ class NotificationControllerTest {
   @Test
   void streamAcceptsEnabledAccount() {
     UUID id = UUID.randomUUID();
-    Tenant tenant = new Tenant();
+    TenantRef tenant = new TenantRef(id, "u", "u@example.org", null, null, true);
     SseEmitter emitter = new SseEmitter();
     when(jwtUtils.extractUserId("token")).thenReturn(id);
     when(tenantRepository.findById(id)).thenReturn(Optional.of(tenant));

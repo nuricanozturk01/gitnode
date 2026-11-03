@@ -36,13 +36,11 @@ public interface PrRepository extends JpaRepository<PullRequest, UUID> {
       value =
           """
     SELECT pr FROM PullRequest pr
-    JOIN FETCH pr.author
-    LEFT JOIN FETCH pr.mergedBy
-    WHERE pr.repo.id = :repoId AND pr.status = :status
+    WHERE pr.repoId = :repoId AND pr.status = :status
     ORDER BY pr.createdAt DESC
     """,
       countQuery =
-          "SELECT count(pr) FROM PullRequest pr WHERE pr.repo.id = :repoId AND pr.status = :status")
+          "SELECT count(pr) FROM PullRequest pr WHERE pr.repoId = :repoId AND pr.status = :status")
   Page<PullRequest> findAllByRepoIdAndStatusOrderByCreatedAtDesc(
       UUID repoId, String status, Pageable pageable);
 
@@ -50,23 +48,19 @@ public interface PrRepository extends JpaRepository<PullRequest, UUID> {
       value =
           """
     SELECT pr FROM PullRequest pr
-    JOIN FETCH pr.author
-    LEFT JOIN FETCH pr.mergedBy
-    WHERE pr.repo.id = :repoId AND pr.status = :status
+    WHERE pr.repoId = :repoId AND pr.status = :status
       AND (:hasLabel = false OR :labelId MEMBER OF pr.labelIds)
       AND (:hasMilestone = false OR pr.milestoneId = :milestoneId)
-      AND (:hasAssignee = false OR EXISTS (
-        SELECT 1 FROM pr.assignees a WHERE lower(a.username) = :assignee))
+      AND (:hasAssignee = false OR :assigneeId MEMBER OF pr.assigneeIds)
     ORDER BY pr.createdAt DESC
     """,
       countQuery =
           """
     SELECT count(pr) FROM PullRequest pr
-    WHERE pr.repo.id = :repoId AND pr.status = :status
+    WHERE pr.repoId = :repoId AND pr.status = :status
       AND (:hasLabel = false OR :labelId MEMBER OF pr.labelIds)
       AND (:hasMilestone = false OR pr.milestoneId = :milestoneId)
-      AND (:hasAssignee = false OR EXISTS (
-        SELECT 1 FROM pr.assignees a WHERE lower(a.username) = :assignee))
+      AND (:hasAssignee = false OR :assigneeId MEMBER OF pr.assigneeIds)
     """)
   Page<PullRequest> search(
       UUID repoId,
@@ -76,31 +70,29 @@ public interface PrRepository extends JpaRepository<PullRequest, UUID> {
       boolean hasMilestone,
       UUID milestoneId,
       boolean hasAssignee,
-      String assignee,
+      UUID assigneeId,
       Pageable pageable);
 
   @Query(
       """
     SELECT pr FROM PullRequest pr
-    JOIN FETCH pr.author
-    LEFT JOIN FETCH pr.mergedBy
-    WHERE pr.repo.id = :repoId AND pr.number = :number
+    WHERE pr.repoId = :repoId AND pr.number = :number
     """)
   Optional<PullRequest> findByRepoIdAndNumber(UUID repoId, int number);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
-  @Query("SELECT pr FROM PullRequest pr WHERE pr.repo.id = :repoId AND pr.number = :number")
+  @Query("SELECT pr FROM PullRequest pr WHERE pr.repoId = :repoId AND pr.number = :number")
   Optional<PullRequest> findByRepoIdAndNumberForUpdate(UUID repoId, int number);
 
   @Query(
-      "SELECT DISTINCT pr.targetBranch FROM PullRequest pr WHERE pr.repo.id = :repoId "
+      "SELECT DISTINCT pr.targetBranch FROM PullRequest pr WHERE pr.repoId = :repoId "
           + "AND pr.sourceBranch = :sourceBranch AND pr.status = 'OPEN'")
   List<String> findOpenTargetBranches(UUID repoId, String sourceBranch);
 
   boolean existsByRepoIdAndSourceBranchAndTargetBranchAndStatus(
       UUID repoId, String sourceBranch, String targetBranch, String status);
 
-  @Query("SELECT COALESCE(MAX(p.number), 0) FROM PullRequest p WHERE p.repo.id = :repoId")
+  @Query("SELECT COALESCE(MAX(p.number), 0) FROM PullRequest p WHERE p.repoId = :repoId")
   int findMaxNumberByRepoId(UUID repoId);
 
   long countByRepoIdAndStatus(UUID repoId, String status);

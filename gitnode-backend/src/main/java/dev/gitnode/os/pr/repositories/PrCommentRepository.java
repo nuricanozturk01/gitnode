@@ -33,7 +33,7 @@ public interface PrCommentRepository extends JpaRepository<PullRequestComment, U
   @Query(
       value =
           """
-          select prc from PullRequestComment prc join fetch prc.author
+          select prc from PullRequestComment prc
             where prc.pr.id = :prId order by prc.createdAt asc
         """,
       countQuery = "select count(prc) from PullRequestComment prc where prc.pr.id = :prId")
@@ -46,9 +46,8 @@ public interface PrCommentRepository extends JpaRepository<PullRequestComment, U
           + " AND c.parentId IS NULL AND c.lineNumber IS NOT NULL AND c.isResolved = false")
   long countUnresolvedConversations(UUID prId);
 
-  Optional<PullRequestComment> findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-      UUID id, String owner, String repoName, int number);
+  Optional<PullRequestComment> findByIdAndPrId(UUID id, UUID prId);
 
-  @Query("SELECT DISTINCT c.author.id FROM PullRequestComment c WHERE c.pr.id = :prId")
+  @Query("SELECT DISTINCT c.authorId FROM PullRequestComment c WHERE c.pr.id = :prId")
   List<UUID> findDistinctCommenterIdsByPrId(UUID prId);
 }

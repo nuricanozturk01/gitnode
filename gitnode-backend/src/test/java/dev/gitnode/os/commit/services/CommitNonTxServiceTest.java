@@ -20,13 +20,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Optional;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
@@ -47,7 +46,7 @@ class CommitNonTxServiceTest {
   @TempDir Path workDir;
 
   @Mock private GitProvider gitProvider;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
 
   @InjectMocks private CommitNonTxService commitNonTxService;
 
@@ -91,7 +90,7 @@ class CommitNonTxServiceTest {
         .setAuthor("Author", "author@test.com")
         .setCommitter("Author", "author@test.com")
         .call();
-    when(tenantRepository.findAllByEmailIn(any())).thenReturn(List.of());
+    when(tenantRepository.findAllByEmails(any())).thenReturn(java.util.Map.of());
 
     var result = commitNonTxService.getCommits("owner", "repo", branch, 0, 10);
 
@@ -139,11 +138,16 @@ class CommitNonTxServiceTest {
         .setAuthor("Author", "alice@example.com")
         .setCommitter("Author", "alice@example.com")
         .call();
-    Tenant tenant = new Tenant();
-    tenant.setUsername("alice");
-    tenant.setEmail("alice@example.com");
-    tenant.setAvatarUrl("https://avatar");
-    when(tenantRepository.findAllByEmailIn(any())).thenReturn(List.of(tenant));
+    TenantRef tenant =
+        new TenantRef(
+            java.util.UUID.randomUUID(),
+            "alice",
+            "alice@example.com",
+            null,
+            "https://avatar",
+            true);
+    when(tenantRepository.findAllByEmails(any()))
+        .thenReturn(java.util.Map.of("alice@example.com", tenant));
 
     var result = commitNonTxService.getCommits("owner", "repo", branch, 0, 10);
 

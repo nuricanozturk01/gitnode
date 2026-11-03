@@ -16,7 +16,7 @@
 
 package dev.gitnode.os.filecomment.dtos;
 
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
+import dev.gitnode.os.commit.api.AuthorInfo;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

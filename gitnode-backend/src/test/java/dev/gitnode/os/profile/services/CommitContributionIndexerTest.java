@@ -22,10 +22,10 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;

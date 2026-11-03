@@ -20,9 +20,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.TenantSearchResult;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

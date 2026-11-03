@@ -25,6 +25,10 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
+import dev.gitnode.os.identity.dtos.TenantInfo;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.mappers.TenantMapper;
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.UpdateDisplayNameForm;
@@ -33,10 +37,6 @@ import dev.gitnode.os.profile.dtos.UpdateUsernameForm;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.mappers.TenantMapper;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,8 +59,8 @@ class ProfileServiceTest {
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @org.mockito.Spy
-  private dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher =
-      new dev.gitnode.os.shared.auth.services.PasswordHasher();
+  private dev.gitnode.os.identity.services.PasswordHasher passwordHasher =
+      new dev.gitnode.os.identity.services.PasswordHasher();
 
   @InjectMocks private ProfileService profileService;
 

@@ -20,11 +20,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.branch.api.BranchProtectionPort;
+import dev.gitnode.os.repo.cache.RepoCacheInvalidator;
+import dev.gitnode.os.repo.events.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.git.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.tree.dtos.BlobResponse;
 import java.nio.charset.StandardCharsets;
@@ -60,7 +60,7 @@ class TreeNonTxServiceTest {
   @Mock private GitProvider gitProvider;
 
   @Mock private RepoCacheInvalidator cacheInvalidator;
-  @Mock private BranchProtectionService branchProtection;
+  @Mock private BranchProtectionPort branchProtection;
   @Mock private TreeCommitEventPublisher treeCommitEvents;
 
   @InjectMocks private TreeNonTxService service;

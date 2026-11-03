@@ -16,7 +16,7 @@
 
 package dev.gitnode.os.auth.services;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.entities.Tenant;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 

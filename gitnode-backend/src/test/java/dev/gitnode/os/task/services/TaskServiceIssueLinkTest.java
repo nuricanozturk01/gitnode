@@ -7,13 +7,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.branch.api.BranchProtocolService;
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.issue.api.IssueData;
 import dev.gitnode.os.issue.api.IssueQueryService;
 import dev.gitnode.os.pr.repositories.PrRepository;
-import dev.gitnode.os.shared.branch.services.BranchProtocolService;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.task.dtos.LinkedIssueInfo;
 import dev.gitnode.os.task.dtos.TaskDetail;
 import dev.gitnode.os.task.dtos.TaskForm;
@@ -47,8 +47,8 @@ class TaskServiceIssueLinkTest {
   @Mock private SubtaskRepository subtaskRepository;
   @Mock private BoardColumnRepository boardColumnRepository;
   @Mock private ProjectRepository projectRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private PrRepository prRepository;
   @Mock private IssueQueryService issueQueryService;
   @Mock private ProjectService projectService;
@@ -141,7 +141,8 @@ class TaskServiceIssueLinkTest {
             .status("OPEN")
             .build();
     when(issueQueryService.findById(issueId)).thenReturn(Optional.of(iss));
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(saved, linkedInfo));
+    when(taskMapper.toDetail(any(), any(), any(), any(), any()))
+        .thenReturn(stubDetail(saved, linkedInfo));
 
     TaskForm form = new TaskForm();
     form.setTitle("Task");
@@ -173,7 +174,8 @@ class TaskServiceIssueLinkTest {
     when(projectRepository.findById(proj.getId())).thenReturn(Optional.of(proj));
     when(taskRepository.save(any(Task.class))).thenReturn(saved);
     when(subtaskRepository.findAllByTaskIdOrderByPositionAsc(saved.getId())).thenReturn(List.of());
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(saved, null));
+    when(taskMapper.toDetail(any(), any(), any(), any(), any()))
+        .thenReturn(stubDetail(saved, null));
 
     TaskForm form = new TaskForm();
     form.setTitle("Task");
@@ -255,7 +257,8 @@ class TaskServiceIssueLinkTest {
             .title("Sample issue")
             .status("OPEN")
             .build();
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(task, linkedInfo));
+    when(taskMapper.toDetail(any(), any(), any(), any(), any()))
+        .thenReturn(stubDetail(task, linkedInfo));
 
     TaskUpdateForm form = new TaskUpdateForm();
     form.setLinkedIssueId(issueId);
@@ -279,7 +282,7 @@ class TaskServiceIssueLinkTest {
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
     when(taskRepository.save(task)).thenReturn(task);
     when(subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId())).thenReturn(List.of());
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(task, null));
+    when(taskMapper.toDetail(any(), any(), any(), any(), any())).thenReturn(stubDetail(task, null));
 
     TaskUpdateForm form = new TaskUpdateForm();
     form.setUnlinkIssue(true);
@@ -303,7 +306,7 @@ class TaskServiceIssueLinkTest {
     when(taskRepository.findByProjectIdAndCode(proj.getId(), "OH-1")).thenReturn(Optional.of(task));
     when(taskRepository.save(task)).thenReturn(task);
     when(subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId())).thenReturn(List.of());
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(task, null));
+    when(taskMapper.toDetail(any(), any(), any(), any(), any())).thenReturn(stubDetail(task, null));
 
     TaskUpdateForm form = new TaskUpdateForm();
     form.setUnlinkIssue(true);
@@ -358,7 +361,8 @@ class TaskServiceIssueLinkTest {
             .build();
     when(issueQueryService.findById(existingIssueId))
         .thenReturn(Optional.of(new IssueData(existingIssueId, 1, "Sample issue", "OPEN")));
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(stubDetail(task, linkedInfo));
+    when(taskMapper.toDetail(any(), any(), any(), any(), any()))
+        .thenReturn(stubDetail(task, linkedInfo));
 
     TaskUpdateForm form = new TaskUpdateForm();
     form.setTitle("Updated title");

@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.task.services;
 
+import dev.gitnode.os.identity.api.AuthenticatedUser;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.task.dtos.BoardColumnForm;
 import dev.gitnode.os.task.dtos.BoardColumnInfo;
 import dev.gitnode.os.task.dtos.BoardColumnUpdateForm;
@@ -63,7 +63,9 @@ public class BoardService {
   }
 
   public List<BoardInfo> getAllBoards(
-      final String ownerUsername, final String projectCode, final @Nullable Tenant viewer) {
+      final String ownerUsername,
+      final String projectCode,
+      final @Nullable AuthenticatedUser viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.boardRepository.findAllByProjectIdOrderByPositionAsc(project.getId()).stream()
@@ -75,7 +77,7 @@ public class BoardService {
       final String ownerUsername,
       final String projectCode,
       final UUID boardId,
-      final @Nullable Tenant viewer) {
+      final @Nullable AuthenticatedUser viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     final var board = this.findBoard(boardId, project.getId());

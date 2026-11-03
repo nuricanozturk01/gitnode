@@ -1,10 +1,10 @@
 package dev.gitnode.os.pr.listeners;
 
+import dev.gitnode.os.branch.api.BranchForm;
+import dev.gitnode.os.branch.api.BranchProtocolService;
 import dev.gitnode.os.events.pr.PullRequestMigrationRequestedEvent;
 import dev.gitnode.os.pr.dtos.PrForm;
 import dev.gitnode.os.pr.services.PullRequestService;
-import dev.gitnode.os.shared.branch.dtos.BranchForm;
-import dev.gitnode.os.shared.branch.services.BranchProtocolService;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.util.List;

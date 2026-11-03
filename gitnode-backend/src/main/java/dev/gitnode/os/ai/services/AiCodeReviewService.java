@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.ai.services;
 
-import static dev.gitnode.os.shared.util.FileDiffParser.prepareTreeParser;
+import static dev.gitnode.os.commit.api.FileDiffParser.prepareTreeParser;
 
 import dev.gitnode.os.ai.dtos.AiCodeReviewCommentDto;
 import dev.gitnode.os.ai.dtos.AiCodeReviewDto;
@@ -28,11 +28,11 @@ import dev.gitnode.os.ai.repositories.AiCodeReviewCommentRepository;
 import dev.gitnode.os.ai.repositories.AiCodeReviewRepository;
 import dev.gitnode.os.events.ai.AiCodeReviewCompletedEvent;
 import dev.gitnode.os.pr.api.PrQueryPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
@@ -73,7 +73,7 @@ public class AiCodeReviewService {
   private final GitProvider gitProvider;
   private final ApplicationEventPublisher eventPublisher;
   private final PrQueryPort prQueryPort;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final AiCodeReviewRunner reviewRunner;
   private final AiCodeReviewService self;
 
@@ -84,7 +84,7 @@ public class AiCodeReviewService {
       final GitProvider gitProvider,
       final ApplicationEventPublisher eventPublisher,
       final PrQueryPort prQueryPort,
-      final RepoRepository repoRepository,
+      final RepoLookupPort repoLookup,
       @Lazy final AiCodeReviewRunner reviewRunner,
       @Lazy final AiCodeReviewService self) {
     this.reviewRepository = reviewRepository;
@@ -93,7 +93,7 @@ public class AiCodeReviewService {
     this.gitProvider = gitProvider;
     this.eventPublisher = eventPublisher;
     this.prQueryPort = prQueryPort;
-    this.repoRepository = repoRepository;
+    this.repoLookup = repoLookup;
     this.reviewRunner = reviewRunner;
     this.self = self;
   }
@@ -310,15 +310,15 @@ public class AiCodeReviewService {
             .findByRepoIdAndNumber(review.getRepoId(), review.getPrNumber())
             .map(dev.gitnode.os.pr.api.PrData::authorId)
             .orElse(null);
-    final var repo = this.repoRepository.findById(review.getRepoId()).orElse(null);
+    final var repo = this.repoLookup.findById(review.getRepoId()).orElse(null);
     this.eventPublisher.publishEvent(
         new AiCodeReviewCompletedEvent(
             review.getId(),
             review.getRepoId(),
             review.getPrNumber(),
             prAuthorId,
-            repo != null ? repo.getOwner().getUsername() : "",
-            repo != null ? repo.getName() : ""));
+            repo != null ? repo.ownerUsername() : "",
+            repo != null ? repo.name() : ""));
   }
 
   @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -358,7 +358,7 @@ public class AiCodeReviewService {
   }
 
   private @Nullable UUID resolveRepoOwnerId(final UUID repoId) {
-    return this.repoRepository.findById(repoId).map(repo -> repo.getOwner().getId()).orElse(null);
+    return this.repoLookup.findById(repoId).map(RepoLookupPort.RepoRef::ownerId).orElse(null);
   }
 
   private String truncateStatusMessage(final @Nullable String message) {

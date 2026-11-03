@@ -1,10 +1,10 @@
 package dev.gitnode.os.issue.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.issue.dtos.IssueLabelForm;
 import dev.gitnode.os.issue.dtos.IssueLabelInfo;
 import dev.gitnode.os.issue.services.IssueLabelService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.repo.services.RepoService;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class IssueLabelController {
   private final IssueLabelService labels;
   private final JwtUtils jwt;
-  private final RepoService repos;
+  private final RepoAccessPort repos;
 
   @GetMapping
   public List<IssueLabelInfo> list(

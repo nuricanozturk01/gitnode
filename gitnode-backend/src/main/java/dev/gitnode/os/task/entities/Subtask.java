@@ -15,7 +15,6 @@
  */
 package dev.gitnode.os.task.entities;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -68,10 +67,9 @@ public class Subtask {
   @Column(name = "position", nullable = false)
   private int position;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @OnDelete(action = OnDeleteAction.SET_NULL)
-  @JoinColumn(name = "branch_repo_id")
-  private Repo branchRepo;
+  /** The database sets this to NULL when the repository is deleted. */
+  @Column(name = "branch_repo_id")
+  private UUID branchRepoId;
 
   @Column(name = "branch_name", length = 255)
   private String branchName;

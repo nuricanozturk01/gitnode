@@ -36,8 +36,6 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
           """
       SELECT t FROM Task t
       JOIN FETCH t.boardColumn
-      LEFT JOIN FETCH t.assignee
-      LEFT JOIN FETCH t.branchRepo
       WHERE t.project.id = :projectId
       ORDER BY t.position ASC
       """,
@@ -48,8 +46,6 @@ public interface TaskRepository extends JpaRepository<Task, UUID> {
 """
       SELECT t FROM Task t
       JOIN FETCH t.boardColumn
-      LEFT JOIN FETCH t.assignee
-      LEFT JOIN FETCH t.branchRepo
       WHERE t.project.id = :projectId AND t.code = :code
 """)
   Optional<Task> findByProjectIdAndCode(UUID projectId, String code);

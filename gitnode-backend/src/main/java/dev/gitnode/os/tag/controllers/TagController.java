@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.tag.controllers;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
 import dev.gitnode.os.tag.dtos.TagInfo;
 import dev.gitnode.os.tag.services.ReleaseTxService;
@@ -48,7 +48,7 @@ public class TagController {
 
   private final TagNonTxService tagNonTxService;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
   private final ReleaseTxService releaseTxService;
 
   @GetMapping

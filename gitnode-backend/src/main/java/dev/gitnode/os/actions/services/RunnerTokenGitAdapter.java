@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.actions.services;
 
-import dev.gitnode.os.shared.git.http.RunnerTokenPort;
+import dev.gitnode.os.githttp.api.RunnerTokenPort;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Component;

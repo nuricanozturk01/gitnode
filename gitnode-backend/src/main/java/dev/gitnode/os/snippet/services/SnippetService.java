@@ -18,13 +18,14 @@ package dev.gitnode.os.snippet.services;
 import dev.gitnode.os.events.snippet.SnippetCreatedEvent;
 import dev.gitnode.os.events.snippet.SnippetDeletedEvent;
 import dev.gitnode.os.events.snippet.SnippetUpdatedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.cache.CacheNames;
-import dev.gitnode.os.shared.cache.SnippetCacheInvalidator;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import dev.gitnode.os.snippet.cache.SnippetCacheInvalidator;
 import dev.gitnode.os.snippet.dtos.SnippetDetail;
 import dev.gitnode.os.snippet.dtos.SnippetForm;
 import dev.gitnode.os.snippet.dtos.SnippetInfo;
@@ -64,8 +65,8 @@ public class SnippetService {
 
   private final SnippetRepository snippetRepository;
   private final SnippetRevisionRepository revisionRepository;
-  private final TenantRepository tenantRepository;
-  private final RepoRepository repoRepository;
+  private final TenantQueryPort tenants;
+  private final RepoLookupPort repoLookup;
   private final SnippetMapper snippetMapper;
   private final SnippetFileStorageService fileStorage;
   private final ApplicationEventPublisher eventPublisher;
@@ -75,12 +76,12 @@ public class SnippetService {
   public SnippetDetail create(final UUID tenantId, final SnippetForm form) {
 
     final var owner =
-        this.tenantRepository
+        this.tenants
             .findById(tenantId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
 
     final var snippet = new Snippet();
-    snippet.setOwner(owner);
+    snippet.setOwnerId(owner.id());
     snippet.setTitle(form.getTitle());
     snippet.setDescription(form.getDescription());
     snippet.setVisibility(form.getVisibility());
@@ -103,7 +104,7 @@ public class SnippetService {
     }
     for (final var file : saved.getFiles()) {
       this.fileStorage.writeFile(
-          owner.getUsername(),
+          owner.username(),
           saved.getId(),
           file.getId(),
           contentByFilename.getOrDefault(file.getFilename(), ""));
@@ -112,10 +113,10 @@ public class SnippetService {
     this.snapshotRevision(saved, tenantId, null, contentByFilename);
 
     this.eventPublisher.publishEvent(
-        new SnippetCreatedEvent(saved.getId(), owner.getUsername(), saved.getTitle(), null));
+        new SnippetCreatedEvent(saved.getId(), owner.username(), saved.getTitle(), null));
 
     this.snippetCacheInvalidator.evictPublicList();
-    return this.buildDetail(saved, owner.getUsername());
+    return this.buildDetail(saved, owner.username());
   }
 
   @CacheEvict(cacheNames = CacheNames.SNIPPET_DETAIL, key = "#snippetId")
@@ -125,7 +126,7 @@ public class SnippetService {
 
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
-    final var username = snippet.getOwner().getUsername();
+    final var username = this.ownerUsername(snippet);
 
     this.applyFieldUpdates(snippet, form);
     final var contentByFilename = this.applyFileUpdates(snippet, form, username);
@@ -209,7 +210,7 @@ public class SnippetService {
   public void delete(final UUID tenantId, final UUID snippetId) {
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
-    final var username = snippet.getOwner().getUsername();
+    final var username = this.ownerUsername(snippet);
     final var title = snippet.getTitle();
     final var forkedFrom = snippet.getForkedFrom();
     this.snippetRepository.delete(snippet);
@@ -231,15 +232,14 @@ public class SnippetService {
 
     final var snippet = this.loadSnippet(snippetId);
     this.checkVisibility(snippet, callerId);
-    return this.buildDetail(snippet, snippet.getOwner().getUsername());
+    return this.buildDetail(snippet, this.ownerUsername(snippet));
   }
 
   public PageResponse<SnippetInfo> listMine(final UUID tenantId, final int page, final int size) {
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
     return PageResponse.from(
-        this.snippetRepository
-            .findAllByOwnerIdOrderByCreatedAtDesc(tenantId, pageable)
-            .map(this.snippetMapper::toInfo));
+        this.snippetMapper.toInfoPage(
+            this.snippetRepository.findAllByOwnerIdOrderByCreatedAtDesc(tenantId, pageable)));
   }
 
   @Cacheable(
@@ -250,12 +250,11 @@ public class SnippetService {
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
     if (q != null && !q.isBlank()) {
-      return this.snippetRepository.searchPublic(q, pageable).map(this.snippetMapper::toInfo);
+      return this.snippetMapper.toInfoPage(this.snippetRepository.searchPublic(q, pageable));
     }
 
-    return this.snippetRepository
-        .findAllByVisibility(Visibility.PUBLIC, pageable)
-        .map(this.snippetMapper::toInfo);
+    return this.snippetMapper.toInfoPage(
+        this.snippetRepository.findAllByVisibility(Visibility.PUBLIC, pageable));
   }
 
   public Page<SnippetInfo> listByOwner(
@@ -264,19 +263,21 @@ public class SnippetService {
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
     final var owner =
-        this.tenantRepository
+        this.tenants
             .findByUsernameOrEmail(ownerUsername)
             .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
 
-    if (callerId != null && callerId.equals(owner.getId())) {
-      return this.snippetRepository
-          .findAllByOwnerIdOrderByCreatedAtDesc(owner.getId(), pageable)
-          .map(this.snippetMapper::toInfo);
+    if (callerId != null && callerId.equals(owner.id())) {
+      return this.snippetMapper.toInfoPage(
+          this.snippetRepository.findAllByOwnerIdOrderByCreatedAtDesc(owner.id(), pageable));
     }
 
-    return this.snippetRepository
-        .findPublicByOwnerUsername(ownerUsername, pageable)
-        .map(this.snippetMapper::toInfo);
+    // Public listing matched the owner's user name exactly (an e-mail lookup finds nothing).
+    if (!owner.username().equals(ownerUsername)) {
+      return Page.empty(pageable);
+    }
+    return this.snippetMapper.toInfoPage(
+        this.snippetRepository.findPublicByOwnerId(owner.id(), pageable));
   }
 
   @Transactional
@@ -284,15 +285,15 @@ public class SnippetService {
 
     final var original = this.loadSnippet(snippetId);
     this.checkVisibility(original, tenantId);
-    final var originalUsername = original.getOwner().getUsername();
+    final var originalUsername = this.ownerUsername(original);
 
     final var forker =
-        this.tenantRepository
+        this.tenants
             .findById(tenantId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
 
     final var fork = new Snippet();
-    fork.setOwner(forker);
+    fork.setOwnerId(forker.id());
     fork.setTitle(original.getTitle());
     fork.setDescription(original.getDescription());
     fork.setVisibility(Visibility.PUBLIC);
@@ -318,7 +319,7 @@ public class SnippetService {
     }
     for (final var file : saved.getFiles()) {
       this.fileStorage.writeFile(
-          forker.getUsername(),
+          forker.username(),
           saved.getId(),
           file.getId(),
           contentByFilename.getOrDefault(file.getFilename(), ""));
@@ -331,7 +332,7 @@ public class SnippetService {
     this.snippetCacheInvalidator.evictPublicList();
     this.snippetCacheInvalidator.evictDetail(original.getId());
 
-    return this.buildDetail(saved, forker.getUsername());
+    return this.buildDetail(saved, forker.username());
   }
 
   public PageResponse<SnippetRevisionInfo> listRevisions(
@@ -342,9 +343,8 @@ public class SnippetService {
 
     final var pageable = PageRequest.of(page, size);
     return PageResponse.from(
-        this.revisionRepository
-            .findAllBySnippetIdOrderByCreatedAtDesc(snippetId, pageable)
-            .map(this.snippetMapper::toRevisionInfo));
+        this.snippetMapper.toRevisionInfoPage(
+            this.revisionRepository.findAllBySnippetIdOrderByCreatedAtDesc(snippetId, pageable)));
   }
 
   public SnippetRevisionDetail getRevision(
@@ -352,11 +352,11 @@ public class SnippetService {
 
     final var snippet = this.loadSnippet(snippetId);
     this.checkVisibility(snippet, callerId);
-    final var username = snippet.getOwner().getUsername();
+    final var username = this.ownerUsername(snippet);
 
     final var revision =
         this.revisionRepository
-            .findByIdWithAuthor(revisionId)
+            .findById(revisionId)
             .orElseThrow(() -> new ItemNotFoundException("revisionNotFound"));
 
     final Map<UUID, String> contentByFileId = new HashMap<>();
@@ -376,12 +376,12 @@ public class SnippetService {
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
     final var repo =
-        this.repoRepository
+        this.repoLookup
             .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
-    snippet.getRepos().add(repo);
+    snippet.getRepoIds().add(repo.id());
     final var saved = this.snippetRepository.save(snippet);
-    return this.buildDetail(saved, saved.getOwner().getUsername());
+    return this.buildDetail(saved, this.ownerUsername(saved));
   }
 
   @CacheEvict(cacheNames = CacheNames.SNIPPET_DETAIL, key = "#snippetId")
@@ -390,9 +390,9 @@ public class SnippetService {
 
     final var snippet = this.loadSnippet(snippetId);
     this.requireOwner(snippet, tenantId);
-    snippet.getRepos().removeIf(r -> r.getId().equals(repoId));
+    snippet.getRepoIds().remove(repoId);
     final var saved = this.snippetRepository.save(snippet);
-    return this.buildDetail(saved, saved.getOwner().getUsername());
+    return this.buildDetail(saved, this.ownerUsername(saved));
   }
 
   public PageResponse<SnippetInfo> listByRepo(
@@ -403,11 +403,11 @@ public class SnippetService {
       final int size) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    final boolean isOwner = callerId != null && callerId.equals(repo.getOwner().getId());
+    final boolean isOwner = callerId != null && callerId.equals(repo.ownerId());
 
     if (repo.isPrivate() && !isOwner) {
       throw new AccessNotAllowedException("repoAccessDenied");
@@ -417,15 +417,13 @@ public class SnippetService {
 
     if (isOwner) {
       return PageResponse.from(
-          this.snippetRepository
-              .findAllByRepoId(repo.getId(), pageable)
-              .map(this.snippetMapper::toInfo));
+          this.snippetMapper.toInfoPage(
+              this.snippetRepository.findAllByRepoId(repo.id(), pageable)));
     }
 
     return PageResponse.from(
-        this.snippetRepository
-            .findPublicByRepoId(repo.getId(), pageable)
-            .map(this.snippetMapper::toInfo));
+        this.snippetMapper.toInfoPage(
+            this.snippetRepository.findPublicByRepoId(repo.id(), pageable)));
   }
 
   SnippetDetail buildDetail(final Snippet snippet, final String username) {
@@ -444,14 +442,14 @@ public class SnippetService {
       final Map<String, String> contentByFilename) {
 
     final var author =
-        this.tenantRepository
+        this.tenants
             .findById(authorId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_USER_NOT_FOUND));
-    final var username = snippet.getOwner().getUsername();
+    final var username = this.ownerUsername(snippet);
 
     final var revision = new SnippetRevision();
     revision.setSnippet(snippet);
-    revision.setAuthor(author);
+    revision.setAuthorId(author.id());
     revision.setTitle(snippet.getTitle());
     revision.setDescription(snippet.getDescription());
     revision.setSummary(summary);
@@ -473,21 +471,31 @@ public class SnippetService {
     }
   }
 
+  /**
+   * The owner account; a snippet cannot outlive its owner (database cascade), so a miss is a race.
+   */
+  private String ownerUsername(final Snippet snippet) {
+    return this.tenants
+        .findById(snippet.getOwnerId())
+        .map(TenantRef::username)
+        .orElseThrow(() -> new ItemNotFoundException("snippetNotFound"));
+  }
+
   Snippet loadSnippet(final UUID id) {
     return this.snippetRepository
-        .findByIdWithOwner(id)
+        .findById(id)
         .orElseThrow(() -> new ItemNotFoundException("snippetNotFound"));
   }
 
   private void checkVisibility(final Snippet snippet, final @Nullable UUID callerId) {
     if (snippet.getVisibility() == Visibility.PRIVATE
-        && (callerId == null || !callerId.equals(snippet.getOwner().getId()))) {
+        && (callerId == null || !callerId.equals(snippet.getOwnerId()))) {
       throw new ItemNotFoundException("snippetNotFound");
     }
   }
 
   private void requireOwner(final Snippet snippet, final UUID callerId) {
-    if (!callerId.equals(snippet.getOwner().getId())) {
+    if (!callerId.equals(snippet.getOwnerId())) {
       throw new AccessNotAllowedException("notSnippetOwner");
     }
   }

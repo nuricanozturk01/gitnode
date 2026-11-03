@@ -5,6 +5,7 @@ import dev.gitnode.os.events.issue.IssueCreatedEvent;
 import dev.gitnode.os.events.issue.IssueDeletedEvent;
 import dev.gitnode.os.events.issue.IssueStatusChangedEvent;
 import dev.gitnode.os.events.issue.IssueUpdatedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.issue.api.IssueData;
 import dev.gitnode.os.issue.api.IssueQueryService;
 import dev.gitnode.os.issue.api.TaskQueryPort;
@@ -23,18 +24,18 @@ import dev.gitnode.os.issue.mappers.IssueMapper;
 import dev.gitnode.os.issue.repositories.IssueCommentRepository;
 import dev.gitnode.os.issue.repositories.IssueLabelRepository;
 import dev.gitnode.os.issue.repositories.IssueRepository;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.cache.CacheNames;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -65,8 +66,9 @@ public class IssueService implements IssueQueryService {
 
   private final IssueRepository issueRepository;
   private final IssueCommentRepository commentRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
+  private final RepoLookupPort repoLookup;
+  private final RepoCommandPort repoCommands;
+  private final TenantQueryPort tenants;
   private final IssueMapper issueMapper;
   private final TaskQueryPort taskQueryPort;
   private final ApplicationEventPublisher eventPublisher;
@@ -77,10 +79,10 @@ public class IssueService implements IssueQueryService {
   @Cacheable(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
   public int countOpenIssues(final String owner, final String repoName) {
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
-    return this.issueRepository.countByRepoIdAndStatus(repo.getId(), IssueStatus.OPEN.name());
+    return this.issueRepository.countByRepoIdAndStatus(repo.id(), IssueStatus.OPEN.name());
   }
 
   @CacheEvict(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
@@ -94,41 +96,40 @@ public class IssueService implements IssueQueryService {
       final String owner, final String repoName, final UUID authorId, final IssueForm form) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var author =
-        this.tenantRepository
+        this.tenants
             .findById(authorId)
             .orElseThrow(() -> new ItemNotFoundException("Author not found"));
 
-    final var lockedRepo =
-        this.repoRepository
-            .findByIdForUpdate(repo.getId())
-            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
-    final var nextNumber = this.issueRepository.findMaxNumberByRepoId(lockedRepo.getId()) + 1;
+    if (!this.repoCommands.lockForUpdate(repo.id())) {
+      throw new ItemNotFoundException(ERR_REPO_NOT_FOUND);
+    }
+    final var nextNumber = this.issueRepository.findMaxNumberByRepoId(repo.id()) + 1;
 
     final var issue = new Issue();
-    issue.setRepo(lockedRepo);
+    issue.setRepoId(repo.id());
     issue.setNumber(nextNumber);
     issue.setTitle(form.getTitle());
     issue.setDescription(form.getDescription());
     issue.setStatus(IssueStatus.OPEN.name());
-    issue.setAuthor(author);
+    issue.setAuthorId(author.id());
 
     if (form.getAssigneeId() != null) {
       final var assignee =
-          this.tenantRepository
+          this.tenants
               .findById(form.getAssigneeId())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
-      issue.setAssignee(assignee);
-      issue.getAssignees().add(assignee);
+      issue.setAssigneeId(assignee.id());
+      issue.getAssigneeIds().add(assignee.id());
     }
 
     final var saved = this.issueRepository.save(issue);
     this.eventPublisher.publishEvent(
-        new IssueCreatedEvent(saved.getId(), repo.getId(), saved.getNumber(), saved.getTitle()));
+        new IssueCreatedEvent(saved.getId(), repo.id(), saved.getNumber(), saved.getTitle()));
     return this.issueMapper.toDetail(saved, 0);
   }
 
@@ -157,8 +158,8 @@ public class IssueService implements IssueQueryService {
       final @Nullable UUID milestoneId) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var validStatus = this.validateStatus(status);
@@ -167,30 +168,27 @@ public class IssueService implements IssueQueryService {
     final var issuePage =
         milestoneId != null
             ? this.issueRepository.findAllByMilestone(
-                repo.getId(), validStatus, milestoneId, labelId, pageable)
+                repo.id(), validStatus, milestoneId, labelId, pageable)
             : labelId == null
                 ? this.issueRepository.findAllByRepoIdAndStatusOrderByCreatedAtDesc(
-                    repo.getId(), validStatus, pageable)
-                : this.issueRepository.findAllByLabel(repo.getId(), validStatus, labelId, pageable);
+                    repo.id(), validStatus, pageable)
+                : this.issueRepository.findAllByLabel(repo.id(), validStatus, labelId, pageable);
 
     return PageResponse.from(
-        issuePage.map(
-            issue -> {
-              final int commentCount = this.commentRepository.countByIssueId(issue.getId());
-              return this.issueMapper.toInfo(issue, commentCount);
-            }));
+        this.issueMapper.toInfoPage(
+            issuePage, issue -> this.commentRepository.countByIssueId(issue.getId())));
   }
 
   public IssueDetail get(final String owner, final String repoName, final int number) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
+            .findByRepoIdAndNumber(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
     final int commentCount = this.commentRepository.countByIssueId(issue.getId());
@@ -201,20 +199,19 @@ public class IssueService implements IssueQueryService {
       final String owner, final String repoName, final int number, final int page) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
+            .findByRepoIdAndNumber(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
     final var pageable = PageRequest.of(page, DEFAULT_PAGE_SIZE, Sort.by("createdAt").ascending());
     return PageResponse.from(
-        this.commentRepository
-            .findAllByIssueIdOrderByCreatedAtAsc(issue.getId(), pageable)
-            .map(this.issueMapper::toCommentInfo));
+        this.issueMapper.toCommentInfoPage(
+            this.commentRepository.findAllByIssueIdOrderByCreatedAtAsc(issue.getId(), pageable)));
   }
 
   @CacheEvict(
@@ -230,24 +227,24 @@ public class IssueService implements IssueQueryService {
       final UUID requesterId) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumberForUpdate(repo.getId(), number)
+            .findByRepoIdAndNumberForUpdate(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
-    this.assertCanModify(requesterId, issue.getAuthor(), owner, repo.getId());
-    this.applyLabelChange(form, issue, repo.getId());
+    this.assertCanModify(requesterId, issue.getAuthorId(), repo);
+    this.applyLabelChange(form, issue, repo.id());
     if (form.getMilestoneId() != null && form.isClearMilestone()) {
       throw new BadRequestException("Cannot set and clear a milestone in the same operation");
     }
     if (form.getMilestoneId() != null) {
       issue.setMilestone(
           this.milestoneRepository
-              .findByIdAndRepoId(form.getMilestoneId(), repo.getId())
+              .findByIdAndRepoId(form.getMilestoneId(), repo.id())
               .orElseThrow(() -> new ItemNotFoundException("Milestone not found")));
     } else if (form.isClearMilestone()) {
       issue.setMilestone(null);
@@ -261,10 +258,10 @@ public class IssueService implements IssueQueryService {
     if (form.getStatus() != null) {
       this.eventPublisher.publishEvent(
           new IssueStatusChangedEvent(
-              saved.getId(), repo.getId(), saved.getNumber(), saved.getStatus()));
+              saved.getId(), repo.id(), saved.getNumber(), saved.getStatus()));
     } else {
       this.eventPublisher.publishEvent(
-          new IssueUpdatedEvent(saved.getId(), repo.getId(), saved.getNumber()));
+          new IssueUpdatedEvent(saved.getId(), repo.id(), saved.getNumber()));
     }
     return this.issueMapper.toDetail(saved, commentCount);
   }
@@ -312,24 +309,24 @@ public class IssueService implements IssueQueryService {
 
   private void applyAssigneeChange(final IssueUpdateForm form, final Issue issue) {
     if (form.isClearAssignee()) {
-      issue.setAssignee(null);
-      issue.getAssignees().clear();
+      issue.setAssigneeId(null);
+      issue.getAssigneeIds().clear();
     } else if (form.getAssigneeId() != null) {
       final var assignee =
-          this.tenantRepository
+          this.tenants
               .findById(form.getAssigneeId())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
-      issue.setAssignee(assignee);
-      issue.getAssignees().clear();
-      issue.getAssignees().add(assignee);
+      issue.setAssigneeId(assignee.id());
+      issue.getAssigneeIds().clear();
+      issue.getAssigneeIds().add(assignee.id());
     } else if (form.getAssigneeUsername() != null) {
       final var assignee =
-          this.tenantRepository
+          this.tenants
               .findByUsername(form.getAssigneeUsername().trim())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
-      issue.setAssignee(assignee);
-      issue.getAssignees().clear();
-      issue.getAssignees().add(assignee);
+      issue.setAssigneeId(assignee.id());
+      issue.getAssigneeIds().clear();
+      issue.getAssigneeIds().add(assignee.id());
     } else if (form.getAddAssigneeUsername() != null) {
       this.addAssignee(issue, form.getAddAssigneeUsername());
     } else if (form.getRemoveAssigneeUsername() != null) {
@@ -339,22 +336,35 @@ public class IssueService implements IssueQueryService {
 
   private void addAssignee(final Issue issue, final String username) {
     final var assignee =
-        this.tenantRepository
+        this.tenants
             .findByUsername(username.trim())
             .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
-    if (issue.getAssignees().stream().noneMatch(t -> t.getId().equals(assignee.getId()))) {
-      issue.getAssignees().add(assignee);
-    }
-    if (issue.getAssignee() == null) issue.setAssignee(assignee);
+    issue.getAssigneeIds().add(assignee.id());
+    if (issue.getAssigneeId() == null) issue.setAssigneeId(assignee.id());
   }
 
   private void removeAssignee(final Issue issue, final String rawUsername) {
     final var username = rawUsername.trim();
-    issue.getAssignees().removeIf(t -> t.getUsername().equals(username));
-    if (issue.getAssignee() != null && issue.getAssignee().getUsername().equals(username)) {
-      issue.setAssignee(
-          issue.getAssignees().stream()
-              .min(java.util.Comparator.comparing(Tenant::getUsername))
+    final var known = new java.util.HashSet<>(issue.getAssigneeIds());
+    if (issue.getAssigneeId() != null) {
+      known.add(issue.getAssigneeId());
+    }
+    final var accounts = this.tenants.findAllByIds(known);
+    issue
+        .getAssigneeIds()
+        .removeIf(
+            id -> {
+              final var account = accounts.get(id);
+              return account != null && account.username().equals(username);
+            });
+    final var primary = issue.getAssigneeId() == null ? null : accounts.get(issue.getAssigneeId());
+    if (primary != null && primary.username().equals(username)) {
+      issue.setAssigneeId(
+          issue.getAssigneeIds().stream()
+              .map(accounts::get)
+              .filter(java.util.Objects::nonNull)
+              .min(java.util.Comparator.comparing(TenantQueryPort.TenantRef::username))
+              .map(TenantQueryPort.TenantRef::id)
               .orElse(null));
     }
   }
@@ -390,16 +400,16 @@ public class IssueService implements IssueQueryService {
       final String owner, final String repoName, final int number, final UUID requesterId) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
+            .findByRepoIdAndNumber(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
-    this.assertCanModify(requesterId, issue.getAuthor(), owner, repo.getId());
+    this.assertCanModify(requesterId, issue.getAuthorId(), repo);
     final var issueId = issue.getId();
     this.issueRepository.delete(issue);
     this.eventPublisher.publishEvent(new IssueDeletedEvent(issueId));
@@ -414,41 +424,41 @@ public class IssueService implements IssueQueryService {
       final IssueCommentForm form) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
+            .findByRepoIdAndNumber(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
 
     final var author =
-        this.tenantRepository
+        this.tenants
             .findById(authorId)
             .orElseThrow(() -> new ItemNotFoundException("Author not found"));
 
     final var comment = new IssueComment();
     comment.setIssue(issue);
-    comment.setAuthor(author);
+    comment.setAuthorId(author.id());
     comment.setBody(form.getBody());
 
     final var saved = this.commentRepository.save(comment);
 
     final Set<UUID> participants =
         new HashSet<>(this.commentRepository.findDistinctCommenterIdsByIssueId(issue.getId()));
-    participants.add(issue.getAuthor().getId());
+    participants.add(issue.getAuthorId());
     participants.remove(authorId);
 
     this.eventPublisher.publishEvent(
         new IssueCommentedEvent(
             saved.getId(),
             issue.getId(),
-            repo.getId(),
+            repo.id(),
             issue.getNumber(),
             saved.getBody(),
             authorId,
-            issue.getAuthor().getId(),
+            issue.getAuthorId(),
             owner,
             repoName,
             Set.copyOf(participants)));
@@ -464,11 +474,11 @@ public class IssueService implements IssueQueryService {
       final IssueCommentUpdateForm form,
       final UUID requesterId) {
     final var commentRepo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
     final var comment = this.findCommentOrThrow(owner, repoName, number, commentId);
-    this.assertCanModify(requesterId, comment.getAuthor(), owner, commentRepo.getId());
+    this.assertCanModify(requesterId, comment.getAuthorId(), commentRepo);
     comment.setBody(form.getBody());
     return this.issueMapper.toCommentInfo(this.commentRepository.save(comment));
   }
@@ -481,23 +491,23 @@ public class IssueService implements IssueQueryService {
       final UUID commentId,
       final UUID requesterId) {
     final var deleteRepo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
     final var comment = this.findCommentOrThrow(owner, repoName, number, commentId);
-    this.assertCanModify(requesterId, comment.getAuthor(), owner, deleteRepo.getId());
+    this.assertCanModify(requesterId, comment.getAuthorId(), deleteRepo);
     this.commentRepository.delete(comment);
   }
 
   private IssueComment findCommentOrThrow(
       final String owner, final String repoName, final int number, final UUID commentId) {
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
+            .findByRepoIdAndNumber(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException(ERR_ISSUE_NOT_FOUND.formatted(number)));
     return this.commentRepository
         .findByIdAndIssueId(commentId, issue.getId())
@@ -508,13 +518,13 @@ public class IssueService implements IssueQueryService {
       final String owner, final String repoName, final int number, final @Nullable UUID viewerId) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(owner, repoName)
+        this.repoLookup
+            .find(owner, repoName)
             .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
 
     final var issue =
         this.issueRepository
-            .findByRepoIdAndNumber(repo.getId(), number)
+            .findByRepoIdAndNumber(repo.id(), number)
             .orElseThrow(() -> new ItemNotFoundException("Issue #" + number + " not found"));
 
     return this.taskQueryPort.findByLinkedIssueId(issue.getId(), viewerId).stream()
@@ -538,26 +548,14 @@ public class IssueService implements IssueQueryService {
         .map(i -> new IssueData(i.getId(), i.getNumber(), i.getTitle(), i.getStatus()));
   }
 
-  private void assertCanModify(
-      final UUID requesterId,
-      final Tenant author,
-      final String repoOwnerUsername,
-      final UUID repoId) {
+  private void assertCanModify(final UUID requesterId, final UUID authorId, final RepoRef repo) {
 
-    if (requesterId.equals(author.getId())) {
-      return;
-    }
-
-    final var repoOwner = this.tenantRepository.findByUsername(repoOwnerUsername);
-    final boolean isRepoOwner =
-        repoOwner.isPresent() && requesterId.equals(repoOwner.get().getId());
-
-    if (isRepoOwner) {
+    if (requesterId.equals(authorId) || requesterId.equals(repo.ownerId())) {
       return;
     }
 
     if (this.collaboratorAccessPort.hasPermission(
-        repoId, requesterId, CollaboratorPermission.ISSUE_MANAGE)) {
+        repo.id(), requesterId, CollaboratorPermission.ISSUE_MANAGE)) {
       return;
     }
 

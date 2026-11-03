@@ -13,7 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "branch :: api",
+      "events :: actions",
+      "events :: pr",
+      "events :: repo",
+      "githttp :: api",
+      "identity :: security",
+      "repo :: api",
+      "shared :: *"
+    })
 @NullMarked
 package dev.gitnode.os.actions;
 

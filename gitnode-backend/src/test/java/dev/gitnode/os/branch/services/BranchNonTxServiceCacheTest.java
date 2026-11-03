@@ -24,12 +24,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.branch.dtos.BranchForm;
+import dev.gitnode.os.branch.api.BranchForm;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -86,7 +84,7 @@ class BranchNonTxServiceCacheTest {
   @Autowired CacheManager cacheManager;
 
   private Git git;
-  private Repo repo;
+  private RepoRef repo;
   private String defaultBranch;
 
   @BeforeEach
@@ -101,13 +99,7 @@ class BranchNonTxServiceCacheTest {
     git.add().addFilepattern(".").call();
     git.commit().setMessage("init").call();
 
-    Tenant owner = new Tenant();
-    owner.setUsername("alice");
-    repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setName("repo");
-    repo.setOwner(owner);
-    repo.setDefaultBranch(defaultBranch);
+    repo = new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "alice", "repo", false, defaultBranch);
 
     when(branchTxService.findRepoByOwnerAndRepoName(any(), any())).thenReturn(repo);
     when(gitProvider.open(any(), any()))
@@ -137,13 +129,8 @@ class BranchNonTxServiceCacheTest {
   @Test
   @DisplayName("getAll uses separate cache entries for different repos")
   void getAll_separateCacheEntry_perRepo() throws Exception {
-    Tenant owner = new Tenant();
-    owner.setUsername("alice");
-    Repo other = new Repo();
-    other.setId(UUID.randomUUID());
-    other.setName("other");
-    other.setOwner(owner);
-    other.setDefaultBranch(defaultBranch);
+    RepoRef other =
+        new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "alice", "other", false, defaultBranch);
     when(branchTxService.findRepoByOwnerAndRepoName("alice", "other")).thenReturn(other);
 
     service.getAll("alice", "repo");

@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.ssh.services;
 
-import dev.gitnode.os.shared.branch.ProtectedBranchReceiveHook;
-import dev.gitnode.os.shared.git.GitPushEventPublisher;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.branch.api.ProtectedBranchReceiveHook;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.events.GitPushEventPublisher;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
@@ -54,11 +54,11 @@ public class GitNodeSshServer {
   private static final int EC_FIELD_SIZE_NIST_P256 = 256;
   private static final int EC_FIELD_SIZE_NIST_P384 = 384;
   private static final int EC_FIELD_SIZE_NIST_P521 = 521;
-  private static final AttributeRepository.AttributeKey<Tenant> TENANT_KEY =
+  private static final AttributeRepository.AttributeKey<TenantRef> TENANT_KEY =
       new AttributeRepository.AttributeKey<>();
 
   private final SshKeyService sshKeyService;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final GitPushEventPublisher pushEventPublisher;
   private final ProtectedBranchReceiveHook protectionHook;
 
@@ -78,11 +78,11 @@ public class GitNodeSshServer {
 
   public GitNodeSshServer(
       final SshKeyService sshKeyService,
-      final RepoRepository repoRepository,
+      final RepoLookupPort repoLookup,
       final GitPushEventPublisher pushEventPublisher,
       final ProtectedBranchReceiveHook protectionHook) {
     this.sshKeyService = sshKeyService;
-    this.repoRepository = repoRepository;
+    this.repoLookup = repoLookup;
     this.pushEventPublisher = pushEventPublisher;
     this.protectionHook = protectionHook;
   }
@@ -121,7 +121,7 @@ public class GitNodeSshServer {
 
         session.setAttribute(TENANT_KEY, tenant);
 
-        log.debug("SSH auth success: username={}, tenant={}", username, tenant.getUsername());
+        log.debug("SSH auth success: username={}, tenant={}", username, tenant.username());
         return true;
       } catch (final Exception ex) {
         log.debug("SSH auth failed: username={}, reason={}", username, ex.getMessage());
@@ -213,7 +213,7 @@ public class GitNodeSshServer {
           final var owner = repoArg[0];
           final var repoName = repoArg[1];
 
-          final var repoOpt = this.repoRepository.findByOwnerUsernameAndName(owner, repoName);
+          final var repoOpt = this.repoLookup.find(owner, repoName);
 
           if (repoOpt.isEmpty()) {
             log.debug("SSH git access denied: repository not found {}/{}", owner, repoName);
@@ -231,7 +231,7 @@ public class GitNodeSshServer {
           @Override
           public void configureReceivePack(final ServerSession session, final ReceivePack pack) {
             final var tenant = session.getAttribute(TENANT_KEY);
-            final var pusher = tenant.getUsername();
+            final var pusher = tenant.username();
 
             pack.setPreReceiveHook(GitNodeSshServer.this.protectionHook);
 
@@ -245,7 +245,7 @@ public class GitNodeSshServer {
   }
 
   @SuppressWarnings("all")
-  private Tenant resolveTenant(final ServerSession session) throws IOException {
+  private TenantRef resolveTenant(final ServerSession session) throws IOException {
 
     final var tenant = session.getAttribute(TENANT_KEY);
 
@@ -282,33 +282,33 @@ public class GitNodeSshServer {
   }
 
   private void assertAccess(
-      final Tenant tenant, final String owner, final String repoName, final boolean isWrite)
+      final TenantRef tenant, final String owner, final String repoName, final boolean isWrite)
       throws IOException {
 
     log.debug(
         "Access check: tenant={}, repo={}/{}, write={}",
-        tenant.getUsername(),
+        tenant.username(),
         owner,
         repoName,
         isWrite);
 
-    final var isOwner = tenant.getUsername().equalsIgnoreCase(owner);
+    final var isOwner = tenant.username().equalsIgnoreCase(owner);
 
     if (isWrite && !isOwner) {
       log.debug(
           "SSH git access denied: write not allowed for tenant={} on {}/{}",
-          tenant.getUsername(),
+          tenant.username(),
           owner,
           repoName);
       throw new IOException(
           "Write access denied: only the repository owner can push to " + owner + "/" + repoName);
     }
 
-    final var repoOpt = this.repoRepository.findByOwnerUsernameAndName(owner, repoName);
+    final var repoOpt = this.repoLookup.find(owner, repoName);
     if (repoOpt.isPresent() && repoOpt.get().isPrivate() && !isOwner) {
       log.debug(
           "SSH git access denied: private repo read for tenant={} on {}/{}",
-          tenant.getUsername(),
+          tenant.username(),
           owner,
           repoName);
       throw new IOException(

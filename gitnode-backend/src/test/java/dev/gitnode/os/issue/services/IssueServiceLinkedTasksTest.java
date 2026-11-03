@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.issue.api.LinkedTaskData;
 import dev.gitnode.os.issue.api.TaskQueryPort;
 import dev.gitnode.os.issue.dtos.IssueLinkedTaskInfo;
@@ -11,10 +12,10 @@ import dev.gitnode.os.issue.entities.Issue;
 import dev.gitnode.os.issue.mappers.IssueMapper;
 import dev.gitnode.os.issue.repositories.IssueCommentRepository;
 import dev.gitnode.os.issue.repositories.IssueRepository;
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -32,8 +33,9 @@ class IssueServiceLinkedTasksTest {
 
   @Mock private IssueRepository issueRepository;
   @Mock private IssueCommentRepository commentRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoCommandPort repoCommands;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private IssueMapper issueMapper;
   @Mock private TaskQueryPort taskQueryPort;
   @Mock private ApplicationEventPublisher eventPublisher;
@@ -44,17 +46,14 @@ class IssueServiceLinkedTasksTest {
   // helpers
   // -----------------------------------------------------------------------
 
-  private static Repo repo(UUID id, String owner, String name) {
-    Repo r = new Repo();
-    r.setId(id);
-    r.setName(name);
-    return r;
+  private static RepoRef repo(UUID id, String owner, String name) {
+    return new RepoRef(id, UUID.randomUUID(), owner, name, false);
   }
 
-  private static Issue issue(UUID id, Repo repo, int number) {
+  private static Issue issue(UUID id, RepoRef repo, int number) {
     Issue i = new Issue();
     i.setId(id);
-    i.setRepo(repo);
+    i.setRepoId(repo.id());
     i.setNumber(number);
     i.setTitle("Issue #" + number);
     i.setStatus("OPEN");
@@ -75,12 +74,12 @@ class IssueServiceLinkedTasksTest {
   void getLinkedTasks_returnsMappedList_whenTasksExist() {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
-    Repo r = repo(repoId, "alice", "myrepo");
+    RepoRef r = repo(repoId, "alice", "myrepo");
     Issue iss = issue(issueId, r, 1);
     LinkedTaskData t1 = taskData("OH-1", "Fix login bug", "IN_PROGRESS", "OH", "GitNode");
     LinkedTaskData t2 = taskData("OH-3", "Add dark mode", "NOT_STARTED", "OH", "GitNode");
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of(t1, t2));
 
@@ -106,10 +105,10 @@ class IssueServiceLinkedTasksTest {
   void getLinkedTasks_returnsEmptyList_whenNoTasksLinked() {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
-    Repo r = repo(repoId, "bob", "repo");
+    RepoRef r = repo(repoId, "bob", "repo");
     Issue iss = issue(issueId, r, 5);
 
-    when(repoRepository.findByOwnerUsernameAndName("bob", "repo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("bob", "repo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 5)).thenReturn(Optional.of(iss));
     when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of());
 
@@ -123,12 +122,12 @@ class IssueServiceLinkedTasksTest {
   void getLinkedTasks_supportsTasksFromDifferentProjects() {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
-    Repo r = repo(repoId, "alice", "myrepo");
+    RepoRef r = repo(repoId, "alice", "myrepo");
     Issue iss = issue(issueId, r, 2);
     LinkedTaskData tA = taskData("AAA-1", "Alpha task", "COMPLETED", "AAA", "Project Alpha");
     LinkedTaskData tB = taskData("BB-7", "Beta task", "IN_PROGRESS", "BB", "Project Beta");
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 2)).thenReturn(Optional.of(iss));
     when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of(tA, tB));
 
@@ -144,8 +143,7 @@ class IssueServiceLinkedTasksTest {
   @Test
   @DisplayName("throws ItemNotFoundException when repository not found")
   void getLinkedTasks_throws_whenRepoNotFound() {
-    when(repoRepository.findByOwnerUsernameAndName("nobody", "missing"))
-        .thenReturn(Optional.empty());
+    when(repoRepository.find("nobody", "missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> issueService.getLinkedTasks("nobody", "missing", 1, null))
         .isInstanceOf(ItemNotFoundException.class);
@@ -155,9 +153,9 @@ class IssueServiceLinkedTasksTest {
   @DisplayName("throws ItemNotFoundException when issue number not found in repo")
   void getLinkedTasks_throws_whenIssueNotFound() {
     UUID repoId = UUID.randomUUID();
-    Repo r = repo(repoId, "alice", "myrepo");
+    RepoRef r = repo(repoId, "alice", "myrepo");
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 999)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> issueService.getLinkedTasks("alice", "myrepo", 999, null))
@@ -169,11 +167,11 @@ class IssueServiceLinkedTasksTest {
   void getLinkedTasks_preservesClosedStatus() {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
-    Repo r = repo(repoId, "alice", "myrepo");
+    RepoRef r = repo(repoId, "alice", "myrepo");
     Issue iss = issue(issueId, r, 3);
     LinkedTaskData t = taskData("ZZ-99", "Old task", "COMPLETED", "ZZ", "Done Project");
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 3)).thenReturn(Optional.of(iss));
     when(taskQueryPort.findByLinkedIssueId(issueId, null)).thenReturn(List.of(t));
 

@@ -15,28 +15,33 @@
  */
 package dev.gitnode.os.tag.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
+import dev.gitnode.os.repo.cache.RepoCacheInvalidator;
 import dev.gitnode.os.shared.audit.annotations.Audited;
-import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.tag.dtos.CreateReleaseForm;
 import dev.gitnode.os.tag.dtos.ReleaseInfo;
+import dev.gitnode.os.tag.dtos.TenantReleaseInfo;
 import dev.gitnode.os.tag.dtos.UpdateReleaseForm;
 import dev.gitnode.os.tag.entities.Release;
 import dev.gitnode.os.tag.mappers.ReleaseMapper;
 import dev.gitnode.os.tag.repositories.ReleaseRepository;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -53,8 +58,8 @@ public class ReleaseTxService {
   private static final String ERR_RELEASE_NOT_FOUND = "Release not found.";
 
   private final ReleaseRepository releaseRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
+  private final RepoLookupPort repos;
+  private final TenantQueryPort tenants;
   private final ReleaseMapper releaseMapper;
   private final RepoCacheInvalidator cacheInvalidator;
   private final CollaboratorAccessPort collaboratorAccess;
@@ -74,16 +79,18 @@ public class ReleaseTxService {
 
     final var repo = this.findRepo(owner, repoName);
     final var author =
-        this.tenantRepository
+        this.tenants
             .findById(authorId)
             .orElseThrow(() -> new ItemNotFoundException("Author not found"));
 
-    if (this.releaseRepository.existsByRepoIdAndTagName(repo.getId(), form.getTagName())) {
+    if (this.releaseRepository.existsByRepoIdAndTagName(repo.id(), form.getTagName())) {
       throw new ItemAlreadyExistsException("releaseAlreadyExists: " + form.getTagName());
     }
 
     final var release = this.buildRelease(repo, author, form);
-    final var saved = this.releaseMapper.toInfo(this.releaseRepository.save(release));
+    final var saved =
+        this.releaseMapper.toInfo(
+            this.releaseRepository.save(release), this.releaseMapper.toTenantInfo(author));
     this.cacheInvalidator.evictTags(owner, repoName);
     return saved;
   }
@@ -91,17 +98,17 @@ public class ReleaseTxService {
   public List<ReleaseInfo> getAll(final String owner, final String repoName) {
 
     final var repo = this.findRepo(owner, repoName);
-    final var latestId = this.effectiveLatestId(repo.getId());
-    return this.releaseRepository.findAllByRepoIdOrderByCreatedAtDesc(repo.getId()).stream()
-        .map(release -> this.toInfo(release, latestId))
-        .toList();
+    final var latestId = this.effectiveLatestId(repo.id());
+    final var releases = this.releaseRepository.findAllByRepoIdOrderByCreatedAtDesc(repo.id());
+    final var authors = this.authors(releases);
+    return releases.stream().map(release -> this.toInfo(release, latestId, authors)).toList();
   }
 
   public ReleaseInfo getById(final String owner, final String repoName, final UUID id) {
     final var repo = this.findRepo(owner, repoName);
-    final var latestId = this.effectiveLatestId(repo.getId());
+    final var latestId = this.effectiveLatestId(repo.id());
     return this.releaseRepository
-        .findByIdAndRepoId(id, repo.getId())
+        .findByIdAndRepoId(id, repo.id())
         .map(release -> this.toInfo(release, latestId))
         .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
   }
@@ -110,16 +117,16 @@ public class ReleaseTxService {
       final String owner, final String repoName, final String tagName) {
 
     final var repo = this.findRepo(owner, repoName);
-    final var latestId = this.effectiveLatestId(repo.getId());
+    final var latestId = this.effectiveLatestId(repo.id());
     return this.releaseRepository
-        .findByRepoIdAndTagName(repo.getId(), tagName)
+        .findByRepoIdAndTagName(repo.id(), tagName)
         .map(release -> this.toInfo(release, latestId));
   }
 
   public Optional<ReleaseInfo> findLatest(final String owner, final String repoName) {
 
     final var repo = this.findRepo(owner, repoName);
-    return this.effectiveLatest(repo.getId()).map(release -> this.toInfo(release, release.getId()));
+    return this.effectiveLatest(repo.id()).map(release -> this.toInfo(release, release.getId()));
   }
 
   /** The pinned release when it is still published and stable, else the newest such release. */
@@ -138,9 +145,23 @@ public class ReleaseTxService {
   }
 
   private ReleaseInfo toInfo(final Release release, final @Nullable UUID latestId) {
-    return this.releaseMapper.toInfo(release).toBuilder()
+    return this.toInfo(release, latestId, this.authors(List.of(release)));
+  }
+
+  private ReleaseInfo toInfo(
+      final Release release,
+      final @Nullable UUID latestId,
+      final Map<UUID, TenantReleaseInfo> authors) {
+    final var author = this.releaseMapper.toTenantInfoOrGhost(release.getAuthorId(), authors);
+    return this.releaseMapper.toInfo(release, author).toBuilder()
         .isLatest(release.getId().equals(latestId))
         .build();
+  }
+
+  private Map<UUID, TenantReleaseInfo> authors(final Collection<Release> releases) {
+    final var ids = releases.stream().map(Release::getAuthorId).collect(Collectors.toSet());
+    return this.tenants.findAllByIds(new HashSet<>(ids)).values().stream()
+        .collect(Collectors.toMap(TenantRef::id, this.releaseMapper::toTenantInfo));
   }
 
   /** Pins a published, stable release as the repository's latest. */
@@ -151,12 +172,12 @@ public class ReleaseTxService {
     this.assertCanManage(repo, requesterId);
     final var release =
         this.releaseRepository
-            .findByIdAndRepoId(id, repo.getId())
+            .findByIdAndRepoId(id, repo.id())
             .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
     if (release.isDraft() || release.isPrerelease()) {
       throw new BadRequestException("Only a published, non-prerelease release can be the latest");
     }
-    this.releaseRepository.clearPinnedLatest(repo.getId());
+    this.releaseRepository.clearPinnedLatest(repo.id());
     release.setPinnedLatest(true);
     this.releaseRepository.save(release);
     this.cacheInvalidator.evictTags(owner, repoName);
@@ -174,13 +195,13 @@ public class ReleaseTxService {
     final var repo = this.findRepo(repoOwnerUsername, repoName);
     final var release =
         this.releaseRepository
-            .findByIdAndRepoId(id, repo.getId())
+            .findByIdAndRepoId(id, repo.id())
             .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
 
     this.assertCanManage(repo, requesterId);
     this.applyUpdates(form, release);
-    final var updated = this.releaseMapper.toInfo(this.releaseRepository.save(release));
-    this.cacheInvalidator.evictTags(repoOwnerUsername, release.getRepo().getName());
+    final var updated = this.toInfo(this.releaseRepository.save(release), null);
+    this.cacheInvalidator.evictTags(repoOwnerUsername, repo.name());
     return updated;
   }
 
@@ -199,7 +220,7 @@ public class ReleaseTxService {
     final var repo = this.findRepo(repoOwnerUsername, repoName);
     final var release =
         this.releaseRepository
-            .findByIdAndRepoId(id, repo.getId())
+            .findByIdAndRepoId(id, repo.id())
             .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
 
     this.assertCanManage(repo, requesterId);
@@ -213,9 +234,9 @@ public class ReleaseTxService {
 
     final var repo = this.findRepo(owner, repoName);
     this.releaseRepository
-        .findByRepoIdAndTagName(repo.getId(), tagName)
+        .findByRepoIdAndTagName(repo.id(), tagName)
         .ifPresent(release -> this.assetService.purgeFiles(release.getId()));
-    this.releaseRepository.deleteByRepoIdAndTagName(repo.getId(), tagName);
+    this.releaseRepository.deleteByRepoIdAndTagName(repo.id(), tagName);
     this.cacheInvalidator.evictTags(owner, repoName);
   }
 
@@ -223,20 +244,21 @@ public class ReleaseTxService {
 
     return this.releaseRepository
         .findByRepoIdAndTagName(repoId, tagName)
-        .map(this.releaseMapper::toInfo);
+        .map(release -> this.toInfo(release, null));
   }
 
-  public Repo findRepo(final String owner, final String repoName) {
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
+  public RepoRef findRepo(final String owner, final String repoName) {
+    return this.repos
+        .find(owner, repoName)
         .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
   }
 
-  private Release buildRelease(final Repo repo, final Tenant author, final CreateReleaseForm form) {
+  private Release buildRelease(
+      final RepoRef repo, final TenantRef author, final CreateReleaseForm form) {
 
     final var release = new Release();
-    release.setRepo(repo);
-    release.setAuthor(author);
+    release.setRepoId(repo.id());
+    release.setAuthorId(author.id());
     release.setTagName(form.getTagName());
     release.setName(form.getName());
     release.setBody(form.getBody());
@@ -276,15 +298,15 @@ public class ReleaseTxService {
       final String owner, final String repoName, final @Nullable UUID requesterId) {
     if (requesterId == null) return false;
     final var repo = this.findRepo(owner, repoName);
-    return requesterId.equals(repo.getOwner().getId())
+    return requesterId.equals(repo.ownerId())
         || this.collaboratorAccess.hasPermission(
-            repo.getId(), requesterId, CollaboratorPermission.PUSH);
+            repo.id(), requesterId, CollaboratorPermission.PUSH);
   }
 
-  private void assertCanManage(final Repo repo, final UUID requesterId) {
-    if (!requesterId.equals(repo.getOwner().getId())
+  private void assertCanManage(final RepoRef repo, final UUID requesterId) {
+    if (!requesterId.equals(repo.ownerId())
         && !this.collaboratorAccess.hasPermission(
-            repo.getId(), requesterId, CollaboratorPermission.PUSH)) {
+            repo.id(), requesterId, CollaboratorPermission.PUSH)) {
       throw new AccessNotAllowedException("notAuthorized");
     }
   }

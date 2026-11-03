@@ -20,9 +20,9 @@ import dev.gitnode.os.filecomment.dtos.FileCommentForm;
 import dev.gitnode.os.filecomment.dtos.FileCommentInfo;
 import dev.gitnode.os.filecomment.dtos.FileCommentUpdateForm;
 import dev.gitnode.os.filecomment.services.FileCommentService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.UUID;
@@ -51,7 +51,7 @@ public class FileCommentController {
 
   private final FileCommentService service;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @GetMapping
   public ResponseEntity<FileCommentInfo.Page> list(

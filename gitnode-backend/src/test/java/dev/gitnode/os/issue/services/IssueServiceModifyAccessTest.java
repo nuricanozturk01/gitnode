@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.issue.IssueDeletedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.issue.api.TaskQueryPort;
 import dev.gitnode.os.issue.dtos.IssueCommentUpdateForm;
 import dev.gitnode.os.issue.dtos.IssueUpdateForm;
@@ -20,14 +22,13 @@ import dev.gitnode.os.issue.repositories.IssueCommentRepository;
 import dev.gitnode.os.issue.repositories.IssueLabelRepository;
 import dev.gitnode.os.issue.repositories.IssueMilestoneRepository;
 import dev.gitnode.os.issue.repositories.IssueRepository;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -47,8 +48,9 @@ class IssueServiceModifyAccessTest {
   @Mock private IssueCommentRepository commentRepository;
   @Mock private IssueLabelRepository labelRepository;
   @Mock private IssueMilestoneRepository milestoneRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoCommandPort repoCommands;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private IssueMapper issueMapper;
   @Mock private TaskQueryPort taskQueryPort;
   @Mock private ApplicationEventPublisher eventPublisher;
@@ -61,13 +63,13 @@ class IssueServiceModifyAccessTest {
     var authorId = UUID.randomUUID();
     var repoId = UUID.randomUUID();
     var author = tenant(authorId, "alice");
-    var issue = issue(UUID.randomUUID(), author, repo(repoId));
+    var repo = repo(repoId);
+    var issue = issue(UUID.randomUUID(), author, repo);
     var milestone = new IssueMilestone();
     milestone.setId(UUID.randomUUID());
     var form = new IssueUpdateForm();
     form.setMilestoneId(milestone.getId());
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo"))
-        .thenReturn(Optional.of(issue.getRepo()));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(repo));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(issue));
     when(milestoneRepository.findByIdAndRepoId(milestone.getId(), repoId))
         .thenReturn(Optional.of(milestone));
@@ -80,11 +82,11 @@ class IssueServiceModifyAccessTest {
   void updateRejectsMilestoneFromAnotherRepository() {
     var authorId = UUID.randomUUID();
     var repoId = UUID.randomUUID();
-    var issue = issue(UUID.randomUUID(), tenant(authorId, "alice"), repo(repoId));
+    var repo = repo(repoId);
+    var issue = issue(UUID.randomUUID(), tenant(authorId, "alice"), repo);
     var form = new IssueUpdateForm();
     form.setMilestoneId(UUID.randomUUID());
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo"))
-        .thenReturn(Optional.of(issue.getRepo()));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(repo));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(issue));
     assertThatThrownBy(() -> issueService.update("alice", "myrepo", 1, form, authorId))
         .isInstanceOf(ItemNotFoundException.class);
@@ -94,35 +96,33 @@ class IssueServiceModifyAccessTest {
   // helpers
   // -----------------------------------------------------------------------
 
-  private static Tenant tenant(UUID id, String username) {
-    Tenant t = new Tenant();
-    t.setId(id);
-    t.setUsername(username);
-    return t;
+  private static TenantRef tenant(UUID id, String username) {
+    return new TenantRef(id, username, username + "@example.org", null, null, true);
   }
 
-  private static Repo repo(UUID id) {
-    Repo r = new Repo();
-    r.setId(id);
-    r.setName("myrepo");
-    return r;
+  private static RepoRef repo(UUID id) {
+    return repo(id, UUID.randomUUID());
   }
 
-  private static Issue issue(UUID id, Tenant author, Repo repo) {
+  private static RepoRef repo(UUID id, UUID ownerId) {
+    return new RepoRef(id, ownerId, "owner", "myrepo", false);
+  }
+
+  private static Issue issue(UUID id, TenantRef author, RepoRef repo) {
     Issue i = new Issue();
     i.setId(id);
     i.setNumber(1);
     i.setTitle("Issue title");
     i.setStatus("OPEN");
-    i.setAuthor(author);
-    i.setRepo(repo);
+    i.setAuthorId(author.id());
+    i.setRepoId(repo.id());
     return i;
   }
 
-  private static IssueComment comment(UUID id, Tenant author, Issue issue) {
+  private static IssueComment comment(UUID id, TenantRef author, Issue issue) {
     IssueComment c = new IssueComment();
     c.setId(id);
-    c.setAuthor(author);
+    c.setAuthorId(author.id());
     c.setIssue(issue);
     c.setBody("original body");
     return c;
@@ -137,11 +137,11 @@ class IssueServiceModifyAccessTest {
   void update_allowed_whenRequesterIsAuthor() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(issueRepository.save(iss)).thenReturn(iss);
     when(commentRepository.countByIssueId(iss.getId())).thenReturn(0);
@@ -159,14 +159,13 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID repoOwnerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Tenant repoOwner = tenant(repoOwnerId, "owner");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    TenantRef repoOwner = tenant(repoOwnerId, "owner");
+    RepoRef r = repo(repoId, repoOwnerId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
-    when(repoRepository.findByOwnerUsernameAndName("owner", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("owner", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(repoOwner));
     when(issueRepository.save(iss)).thenReturn(iss);
     when(commentRepository.countByIssueId(iss.getId())).thenReturn(0);
     when(issueMapper.toDetail(any(), anyInt())).thenReturn(null);
@@ -183,13 +182,12 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID strangerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
 
     IssueUpdateForm form = new IssueUpdateForm();
     form.setTitle("Hack");
@@ -202,40 +200,40 @@ class IssueServiceModifyAccessTest {
   void update_canAssignAndClearWithoutChangingAssignmentOnUnrelatedUpdates() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Tenant assignee = tenant(UUID.randomUUID(), "bob");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    TenantRef assignee = tenant(UUID.randomUUID(), "bob");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(issueRepository.save(iss)).thenReturn(iss);
-    when(tenantRepository.findById(assignee.getId())).thenReturn(Optional.of(assignee));
+    when(tenantRepository.findById(assignee.id())).thenReturn(Optional.of(assignee));
 
     IssueUpdateForm assign = new IssueUpdateForm();
-    assign.setAssigneeId(assignee.getId());
+    assign.setAssigneeId(assignee.id());
     issueService.update("alice", "myrepo", 1, assign, authorId);
-    assertThat(iss.getAssignee()).isSameAs(assignee);
+    assertThat(iss.getAssigneeId()).isEqualTo(assignee.id());
 
     IssueUpdateForm title = new IssueUpdateForm();
     title.setTitle("Updated");
     issueService.update("alice", "myrepo", 1, title, authorId);
-    assertThat(iss.getAssignee()).isSameAs(assignee);
+    assertThat(iss.getAssigneeId()).isEqualTo(assignee.id());
 
     IssueUpdateForm clear = new IssueUpdateForm();
     clear.setClearAssignee(true);
     issueService.update("alice", "myrepo", 1, clear, authorId);
-    assertThat(iss.getAssignee()).isNull();
-    assertThat(iss.getAssignees()).isEmpty();
+    assertThat(iss.getAssigneeId()).isNull();
+    assertThat(iss.getAssigneeIds()).isEmpty();
   }
 
   @Test
   void update_rejectsConflictingAssignmentOperations() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     IssueUpdateForm form = new IssueUpdateForm();
     form.setAssigneeId(UUID.randomUUID());
@@ -250,11 +248,11 @@ class IssueServiceModifyAccessTest {
   void update_assignsAnotherUserByUsername() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Tenant assignee = tenant(UUID.randomUUID(), "bob");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    TenantRef assignee = tenant(UUID.randomUUID(), "bob");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("bob")).thenReturn(Optional.of(assignee));
     when(issueRepository.save(iss)).thenReturn(iss);
@@ -262,17 +260,17 @@ class IssueServiceModifyAccessTest {
     IssueUpdateForm form = new IssueUpdateForm();
     form.setAssigneeUsername(" bob ");
     issueService.update("alice", "myrepo", 1, form, authorId);
-    assertThat(iss.getAssignee()).isSameAs(assignee);
+    assertThat(iss.getAssigneeId()).isEqualTo(assignee.id());
   }
 
   @Test
   void update_rejectsUsernameTogetherWithOtherAssignmentOperations() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     IssueUpdateForm form = new IssueUpdateForm();
     form.setAssigneeUsername("bob");
@@ -287,10 +285,10 @@ class IssueServiceModifyAccessTest {
   void update_rejectsUnknownAssigneeUsername() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("missing")).thenReturn(Optional.empty());
     IssueUpdateForm form = new IssueUpdateForm();
@@ -305,12 +303,12 @@ class IssueServiceModifyAccessTest {
   void update_addsMultipleAssigneesAndRemovesOnlySelectedUser() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Tenant bob = tenant(UUID.randomUUID(), "bob");
-    Tenant carol = tenant(UUID.randomUUID(), "carol");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    TenantRef bob = tenant(UUID.randomUUID(), "bob");
+    TenantRef carol = tenant(UUID.randomUUID(), "carol");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(tenantRepository.findByUsername("bob")).thenReturn(Optional.of(bob));
     when(tenantRepository.findByUsername("carol")).thenReturn(Optional.of(carol));
@@ -323,14 +321,16 @@ class IssueServiceModifyAccessTest {
     IssueUpdateForm addCarol = new IssueUpdateForm();
     addCarol.setAddAssigneeUsername("carol");
     issueService.update("alice", "myrepo", 1, addCarol, authorId);
-    assertThat(iss.getAssignees()).containsExactlyInAnyOrder(bob, carol);
-    assertThat(iss.getAssignee()).isSameAs(bob);
+    assertThat(iss.getAssigneeIds()).containsExactlyInAnyOrder(bob.id(), carol.id());
+    assertThat(iss.getAssigneeId()).isEqualTo(bob.id());
 
+    when(tenantRepository.findAllByIds(any()))
+        .thenReturn(java.util.Map.of(bob.id(), bob, carol.id(), carol));
     IssueUpdateForm removeBob = new IssueUpdateForm();
     removeBob.setRemoveAssigneeUsername("bob");
     issueService.update("alice", "myrepo", 1, removeBob, authorId);
-    assertThat(iss.getAssignees()).containsExactly(carol);
-    assertThat(iss.getAssignee()).isSameAs(carol);
+    assertThat(iss.getAssigneeIds()).containsExactly(carol.id());
+    assertThat(iss.getAssigneeId()).isEqualTo(carol.id());
   }
 
   @Test
@@ -338,12 +338,11 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID strangerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
     IssueUpdateForm form = new IssueUpdateForm();
     form.setAddAssigneeUsername("bob");
 
@@ -357,12 +356,12 @@ class IssueServiceModifyAccessTest {
   void updateAddsAndRemovesRepositoryLabel() {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
     IssueLabel label = new IssueLabel();
     label.setId(UUID.randomUUID());
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(labelRepository.findByIdAndRepoId(label.getId(), repoId)).thenReturn(Optional.of(label));
     when(issueRepository.save(iss)).thenReturn(iss);
@@ -381,10 +380,10 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
     UUID labelId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumberForUpdate(repoId, 1)).thenReturn(Optional.of(iss));
     when(labelRepository.findByIdAndRepoId(labelId, repoId)).thenReturn(Optional.empty());
     IssueUpdateForm form = new IssueUpdateForm();
@@ -404,11 +403,11 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(issueId, author, r);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
 
     issueService.delete("alice", "myrepo", 1, authorId);
@@ -425,13 +424,12 @@ class IssueServiceModifyAccessTest {
     UUID authorId = UUID.randomUUID();
     UUID strangerId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
-    Tenant author = tenant(authorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef author = tenant(authorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(UUID.randomUUID(), author, r);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(author));
 
     assertThatThrownBy(() -> issueService.delete("alice", "myrepo", 1, strangerId))
         .isInstanceOf(AccessNotAllowedException.class);
@@ -448,12 +446,12 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef commentAuthor = tenant(commentAuthorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(commentRepository.findByIdAndIssueId(commentId, issueId)).thenReturn(Optional.of(c));
     when(commentRepository.save(c)).thenReturn(c);
@@ -472,15 +470,14 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef commentAuthor = tenant(commentAuthorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(commentRepository.findByIdAndIssueId(commentId, issueId)).thenReturn(Optional.of(c));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(commentAuthor));
 
     assertThatThrownBy(
             () ->
@@ -505,12 +502,12 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef commentAuthor = tenant(commentAuthorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(commentRepository.findByIdAndIssueId(commentId, issueId)).thenReturn(Optional.of(c));
 
@@ -527,15 +524,14 @@ class IssueServiceModifyAccessTest {
     UUID repoId = UUID.randomUUID();
     UUID issueId = UUID.randomUUID();
     UUID commentId = UUID.randomUUID();
-    Tenant commentAuthor = tenant(commentAuthorId, "alice");
-    Repo r = repo(repoId);
+    TenantRef commentAuthor = tenant(commentAuthorId, "alice");
+    RepoRef r = repo(repoId);
     Issue iss = issue(issueId, commentAuthor, r);
     IssueComment c = comment(commentId, commentAuthor, iss);
 
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
     when(issueRepository.findByRepoIdAndNumber(repoId, 1)).thenReturn(Optional.of(iss));
     when(commentRepository.findByIdAndIssueId(commentId, issueId)).thenReturn(Optional.of(c));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(commentAuthor));
 
     assertThatThrownBy(
             () -> issueService.deleteComment("alice", "myrepo", 1, commentId, strangerId))

@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.notification.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.notification.dtos.NotificationPreferenceInfo;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.services.NotificationPreferenceService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;

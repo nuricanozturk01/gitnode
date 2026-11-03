@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.snippet.entities;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -27,8 +27,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
@@ -43,8 +41,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
@@ -58,10 +54,8 @@ public class Snippet {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "owner_id", nullable = false)
-  private Tenant owner;
+  @Column(name = "owner_id", nullable = false)
+  private UUID ownerId;
 
   @Column(name = "title", nullable = false, length = 200)
   private String title;
@@ -78,12 +72,10 @@ public class Snippet {
   @JoinColumn(name = "forked_from_id")
   private Snippet forkedFrom;
 
-  @ManyToMany(fetch = FetchType.LAZY)
-  @JoinTable(
-      name = "snippet_repos",
-      joinColumns = @JoinColumn(name = "snippet_id"),
-      inverseJoinColumns = @JoinColumn(name = "repo_id"))
-  private Set<Repo> repos = new LinkedHashSet<>();
+  @ElementCollection(fetch = FetchType.LAZY)
+  @CollectionTable(name = "snippet_repos", joinColumns = @JoinColumn(name = "snippet_id"))
+  @Column(name = "repo_id", nullable = false)
+  private Set<UUID> repoIds = new LinkedHashSet<>();
 
   @ColumnDefault("0")
   @Column(name = "file_count", nullable = false)

@@ -16,15 +16,15 @@
 
 package dev.gitnode.os.pr.services;
 
+import dev.gitnode.os.branch.api.BranchProtectionPort;
 import dev.gitnode.os.pr.dtos.PrConflictInfo;
 import dev.gitnode.os.pr.dtos.PrConflictInfo.ConflictFile;
 import dev.gitnode.os.pr.dtos.PrConflictResolveForm;
 import dev.gitnode.os.pr.dtos.PrConflictResolveForm.Resolution;
 import dev.gitnode.os.pr.entities.PullRequest;
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.repo.cache.RepoCacheInvalidator;
+import dev.gitnode.os.repo.events.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
-import dev.gitnode.os.shared.git.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -74,7 +74,7 @@ public class PrConflictService {
 
   private final PrFinder prFinder;
   private final GitProvider gitProvider;
-  private final BranchProtectionService branchProtection;
+  private final BranchProtectionPort branchProtection;
   private final TreeCommitEventPublisher commitEvents;
   private final RepoCacheInvalidator cacheInvalidator;
 
@@ -92,7 +92,7 @@ public class PrConflictService {
   public PrConflictInfo inspect(final String owner, final String repoName, final int number)
       throws IOException {
     final var repo = this.prFinder.findRepo(owner, repoName);
-    final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var pr = this.prFinder.findPr(repo.id(), number);
     if (!"OPEN".equals(pr.getStatus())) {
       throw new BadRequestException("Pull request is not open");
     }
@@ -117,7 +117,7 @@ public class PrConflictService {
       final PrConflictResolveForm form)
       throws IOException {
     final var repo = this.prFinder.findRepoForUpdate(owner, repoName);
-    final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var pr = this.prFinder.findPr(repo.id(), number);
     if (!"OPEN".equals(pr.getStatus())) {
       throw new BadRequestException("Pull request is not open");
     }
@@ -136,8 +136,8 @@ public class PrConflictService {
         final var treeId = index.writeTree(inserter);
         final var ident =
             new PersonIdent(
-                actor.getDisplayName() != null ? actor.getDisplayName() : actor.getUsername(),
-                actor.getEmail(),
+                actor.displayName() != null ? actor.displayName() : actor.username(),
+                actor.email(),
                 Instant.now(),
                 ZoneOffset.UTC);
         final var commit = new CommitBuilder();
@@ -159,7 +159,7 @@ public class PrConflictService {
         }
         this.cacheInvalidator.evictBranchScoped(owner, repoName, pr.getSourceBranch());
         this.commitEvents.publish(
-            owner, repoName, pr.getSourceBranch(), actor.getUsername(), commitId.name());
+            owner, repoName, pr.getSourceBranch(), actor.username(), commitId.name());
         return commitId.name();
       }
     }

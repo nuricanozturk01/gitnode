@@ -16,7 +16,6 @@
 package dev.gitnode.os.snippet.repositories;
 
 import dev.gitnode.os.snippet.entities.SnippetRevision;
-import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
@@ -33,13 +32,10 @@ public interface SnippetRevisionRepository extends JpaRepository<SnippetRevision
   @Query(
       value =
           """
-            SELECT r FROM SnippetRevision r JOIN FETCH r.author
+            SELECT r FROM SnippetRevision r
               WHERE r.snippet.id = :snippetId ORDER BY r.createdAt DESC
         """,
       countQuery = "SELECT COUNT(r) FROM SnippetRevision r WHERE r.snippet.id = :snippetId")
   Page<SnippetRevision> findAllBySnippetIdOrderByCreatedAtDesc(
       @Param("snippetId") UUID snippetId, Pageable pageable);
-
-  @Query("SELECT r FROM SnippetRevision r JOIN FETCH r.author WHERE r.id = :id")
-  Optional<SnippetRevision> findByIdWithAuthor(@Param("id") UUID id);
 }

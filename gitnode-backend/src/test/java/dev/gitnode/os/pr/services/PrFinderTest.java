@@ -19,13 +19,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.repositories.PrRepository;
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -39,17 +40,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("PrFinder unit tests")
 class PrFinderTest {
 
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoCommandPort repoCommands;
   @Mock private PrRepository prRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
 
   @InjectMocks private PrFinder prFinder;
 
   @Test
   @DisplayName("findRepo throws ItemNotFoundException when repository missing")
   void findRepo_throws_whenMissing() {
-    when(repoRepository.findByOwnerUsernameAndName("alice", "missing"))
-        .thenReturn(Optional.empty());
+    when(repoRepository.find("alice", "missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> prFinder.findRepo("alice", "missing"))
         .isInstanceOf(ItemNotFoundException.class)
@@ -59,9 +60,8 @@ class PrFinderTest {
   @Test
   @DisplayName("findRepo returns repository when present")
   void findRepo_returnsRepo_whenPresent() {
-    Repo repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
+    RepoRef repo = new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "alice", "demo", false);
+    when(repoRepository.find("alice", "demo")).thenReturn(Optional.of(repo));
 
     assertThat(prFinder.findRepo("alice", "demo")).isSameAs(repo);
   }
@@ -103,8 +103,7 @@ class PrFinderTest {
   @DisplayName("findTenant returns tenant when present")
   void findTenant_returnsTenant_whenPresent() {
     UUID userId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(userId);
+    TenantRef tenant = new TenantRef(userId, "u", "u@example.org", null, null, true);
     when(tenantRepository.findById(userId)).thenReturn(Optional.of(tenant));
 
     assertThat(prFinder.findTenant(userId)).isSameAs(tenant);

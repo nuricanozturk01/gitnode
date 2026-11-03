@@ -3,12 +3,12 @@ package dev.gitnode.os.pr.services;
 import dev.gitnode.os.pr.entities.PrReview;
 import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.repositories.PrReviewRepository;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashMap;
@@ -45,17 +45,19 @@ public class PrReviewService {
   public ReviewsInfo list(final String owner, final String repoName, final int number)
       throws IOException {
     final var repo = this.finder.findRepo(owner, repoName);
-    final var pr = this.finder.findPr(repo.getId(), number);
+    final var pr = this.finder.findPr(repo.id(), number);
     BranchHeads heads;
     try {
       heads = this.branchHeads(owner, repoName, pr);
     } catch (BadRequestException missingBranch) {
       heads = new BranchHeads(null, null);
     }
+    final var found = this.reviews.findAllByPrId(pr.getId());
+    final var accounts = this.accounts(found);
     return new ReviewsInfo(
         heads.source(),
         heads.target(),
-        this.reviews.findAllByPrId(pr.getId()).stream().map(this::toInfo).toList());
+        found.stream().map(review -> this.toInfo(review, accounts)).toList());
   }
 
   @Transactional
@@ -69,8 +71,8 @@ public class PrReviewService {
       final String expectedSha,
       final String expectedTargetSha)
       throws IOException {
-    final Repo repo = this.finder.findRepo(owner, repoName);
-    final PullRequest pr = this.finder.findPrForUpdate(repo.getId(), number);
+    final RepoRef repo = this.finder.findRepo(owner, repoName);
+    final PullRequest pr = this.finder.findPrForUpdate(repo.id(), number);
     final var author = this.finder.findTenant(requester);
     this.assertCanReview(repo, pr, author);
     this.validateReview(pr, requester, state, body);
@@ -80,38 +82,38 @@ public class PrReviewService {
           "Pull request branches changed; reload before submitting a review");
     final var review = new PrReview();
     review.setPullRequest(pr);
-    review.setAuthor(author);
+    review.setAuthorId(author.id());
     review.setState(state);
     review.setBody(body == null || body.isBlank() ? null : body.trim());
     review.setCommitSha(heads.source());
     review.setTargetSha(heads.target());
     final var saved = this.reviews.save(review);
-    if (!pr.getAuthor().getId().equals(requester)) {
+    if (!pr.getAuthorId().equals(requester)) {
       this.events.publishEvent(
           new dev.gitnode.os.events.pr.PullRequestReviewEvent(
               pr.getId(),
               pr.getNumber(),
-              repo.getId(),
+              repo.id(),
               requester,
               owner,
               repoName,
               state,
-              java.util.Set.of(pr.getAuthor().getId())));
+              java.util.Set.of(pr.getAuthorId())));
     }
-    return this.toInfo(saved);
+    return this.toInfo(saved, java.util.Map.of(author.id(), author));
   }
 
   private void assertCanReview(
-      final Repo repo,
+      final RepoRef repo,
       final PullRequest pr,
-      final dev.gitnode.os.shared.tenant.entities.Tenant author) {
-    final var requester = author.getId();
-    if (!author.isEnabled()
-        || (!repo.getOwner().getId().equals(requester)
+      final dev.gitnode.os.identity.api.TenantQueryPort.TenantRef author) {
+    final var requester = author.id();
+    if (!author.enabled()
+        || (!repo.ownerId().equals(requester)
             && !this.access.hasPermission(
-                repo.getId(), requester, CollaboratorPermission.PULL_REQUEST_REVIEW)
+                repo.id(), requester, CollaboratorPermission.PULL_REQUEST_REVIEW)
             && !this.access.hasPermission(
-                repo.getId(), requester, CollaboratorPermission.PULL_REQUEST_MERGE))) {
+                repo.id(), requester, CollaboratorPermission.PULL_REQUEST_MERGE))) {
       throw new AccessNotAllowedException("notAuthorized");
     }
   }
@@ -119,7 +121,7 @@ public class PrReviewService {
   private void validateReview(
       final PullRequest pr, final UUID requester, final String state, final String body) {
     if (!"OPEN".equals(pr.getStatus())) throw new BadRequestException("Pull request is not open");
-    if ("APPROVED".equals(state) && pr.getAuthor().getId().equals(requester)) {
+    if ("APPROVED".equals(state) && pr.getAuthorId().equals(requester)) {
       throw new BadRequestException("Pull request author cannot approve their own pull request");
     }
     if (!"APPROVED".equals(state) && (body == null || body.isBlank())) {
@@ -146,28 +148,35 @@ public class PrReviewService {
   /**
    * Counts approvals of the current heads and lists reviewers whose change request still stands.
    */
-  public ApprovalSummary summarize(final Repo repo, final PullRequest pr, final BranchHeads heads) {
+  public ApprovalSummary summarize(
+      final RepoRef repo, final PullRequest pr, final BranchHeads heads) {
     final var latest = new HashMap<UUID, PrReview>();
-    for (final var review : this.reviews.findAllByPrId(pr.getId())) {
-      if (!"COMMENTED".equals(review.getState())) latest.put(review.getAuthor().getId(), review);
+    final var found = this.reviews.findAllByPrId(pr.getId());
+    for (final var review : found) {
+      if (!"COMMENTED".equals(review.getState())) latest.put(review.getAuthorId(), review);
     }
+    final var accounts = this.accounts(latest.values());
     final var blockers =
         latest.values().stream()
             .filter(review -> "CHANGES_REQUESTED".equals(review.getState()))
-            .filter(review -> review.getAuthor().isEnabled())
-            .filter(review -> this.canApprove(repo, review.getAuthor().getId()))
-            .map(review -> review.getAuthor().getUsername())
+            .filter(review -> accounts.containsKey(review.getAuthorId()))
+            .filter(review -> accounts.get(review.getAuthorId()).enabled())
+            .filter(review -> this.canApprove(repo, review.getAuthorId()))
+            .map(review -> accounts.get(review.getAuthorId()).username())
             .sorted()
             .toList();
     final var count =
         latest.values().stream()
-            .filter(review -> this.isCurrentApproval(repo, pr, heads, review))
+            .filter(review -> this.isCurrentApproval(repo, pr, heads, review, accounts))
             .count();
     return new ApprovalSummary((int) count, blockers);
   }
 
   public void assertApprovals(
-      final Repo repo, final PullRequest pr, final BranchHeads heads, final int requiredApprovals) {
+      final RepoRef repo,
+      final PullRequest pr,
+      final BranchHeads heads,
+      final int requiredApprovals) {
     if (requiredApprovals == 0) return;
     final var summary = this.summarize(repo, pr, heads);
     if (!summary.changesRequestedBy().isEmpty()) {
@@ -179,28 +188,40 @@ public class PrReviewService {
   }
 
   private boolean isCurrentApproval(
-      final Repo repo, final PullRequest pr, final BranchHeads heads, final PrReview review) {
-    final var author = review.getAuthor();
+      final RepoRef repo,
+      final PullRequest pr,
+      final BranchHeads heads,
+      final PrReview review,
+      final java.util.Map<UUID, dev.gitnode.os.identity.api.TenantQueryPort.TenantRef> accounts) {
+    final var author = accounts.get(review.getAuthorId());
     return "APPROVED".equals(review.getState())
         && heads.source().equals(review.getCommitSha())
         && heads.target().equals(review.getTargetSha())
-        && !author.getId().equals(pr.getAuthor().getId())
-        && author.isEnabled()
-        && this.canApprove(repo, author.getId());
+        && !review.getAuthorId().equals(pr.getAuthorId())
+        && author != null
+        && author.enabled()
+        && this.canApprove(repo, review.getAuthorId());
   }
 
-  private boolean canApprove(final Repo repo, final UUID userId) {
-    return repo.getOwner().getId().equals(userId)
-        || this.access.hasPermission(
-            repo.getId(), userId, CollaboratorPermission.PULL_REQUEST_REVIEW)
-        || this.access.hasPermission(
-            repo.getId(), userId, CollaboratorPermission.PULL_REQUEST_MERGE);
+  private boolean canApprove(final RepoRef repo, final UUID userId) {
+    return repo.ownerId().equals(userId)
+        || this.access.hasPermission(repo.id(), userId, CollaboratorPermission.PULL_REQUEST_REVIEW)
+        || this.access.hasPermission(repo.id(), userId, CollaboratorPermission.PULL_REQUEST_MERGE);
   }
 
-  private ReviewInfo toInfo(final PrReview review) {
+  private java.util.Map<UUID, dev.gitnode.os.identity.api.TenantQueryPort.TenantRef> accounts(
+      final java.util.Collection<PrReview> found) {
+    return this.finder.findTenants(
+        found.stream().map(PrReview::getAuthorId).collect(java.util.stream.Collectors.toSet()));
+  }
+
+  private ReviewInfo toInfo(
+      final PrReview review,
+      final java.util.Map<UUID, dev.gitnode.os.identity.api.TenantQueryPort.TenantRef> accounts) {
+    final var author = accounts.get(review.getAuthorId());
     return new ReviewInfo(
         review.getId(),
-        review.getAuthor().getUsername(),
+        author == null ? "ghost" : author.username(),
         review.getState(),
         review.getBody(),
         review.getCommitSha(),

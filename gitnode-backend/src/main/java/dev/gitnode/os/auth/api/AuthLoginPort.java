@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.auth.api;
 
-import dev.gitnode.os.shared.auth.dtos.LoginInfo;
+import dev.gitnode.os.identity.dtos.LoginInfo;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked

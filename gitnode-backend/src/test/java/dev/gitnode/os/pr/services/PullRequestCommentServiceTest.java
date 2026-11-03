@@ -22,6 +22,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.commit.api.AuthorInfo;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.dtos.PrCommentForm;
 import dev.gitnode.os.pr.dtos.PrCommentInfo;
 import dev.gitnode.os.pr.dtos.PrCommentUpdateForm;
@@ -29,11 +31,9 @@ import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.entities.PullRequestComment;
 import dev.gitnode.os.pr.mappers.PrMapper;
 import dev.gitnode.os.pr.repositories.PrCommentRepository;
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -52,45 +52,39 @@ class PullRequestCommentServiceTest {
 
   @Mock private PrMapper prMapper;
   @Mock private PrFinder prFinder;
-  @Mock private dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort access;
+  @Mock private dev.gitnode.os.repo.api.CollaboratorAccessPort access;
   @Mock private PrCommentRepository commentRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private PullRequestCommentService commentService;
 
   @Test
-  @DisplayName("comment repository paths resolve through pull request and repository")
+  @DisplayName("comment repository paths resolve through the pull request id")
   void commentRepositoryPaths_resolve() {
-    assertThat(PropertyPath.from("prRepoOwnerUsername", PullRequestComment.class).toDotPath())
-        .isEqualTo("pr.repo.owner.username");
-    assertThat(PropertyPath.from("prRepoName", PullRequestComment.class).toDotPath())
-        .isEqualTo("pr.repo.name");
-    assertThat(PropertyPath.from("prNumber", PullRequestComment.class).toDotPath())
-        .isEqualTo("pr.number");
+    assertThat(PropertyPath.from("prId", PullRequestComment.class).toDotPath()).isEqualTo("pr.id");
+    assertThat(PropertyPath.from("authorId", PullRequestComment.class).toDotPath())
+        .isEqualTo("authorId");
   }
 
   @Test
   @DisplayName("addComment saves comment for valid PR")
   void addComment_savesComment_whenValid() {
     UUID authorId = UUID.randomUUID();
-    Repo repo = new Repo();
-    repo.setId(UUID.randomUUID());
+    RepoRef repo = new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "alice", "demo", false);
     PullRequest pr = new PullRequest();
     pr.setId(UUID.randomUUID());
-    Tenant prAuthor = new Tenant();
-    prAuthor.setId(UUID.randomUUID());
-    pr.setAuthor(prAuthor);
-    Tenant author = new Tenant();
-    author.setId(authorId);
+    pr.setAuthorId(UUID.randomUUID());
+    TenantRef author = new TenantRef(authorId, "alice", "a@test.com", null, null, true);
     when(prFinder.findRepo("alice", "demo")).thenReturn(repo);
-    when(prFinder.findPr(repo.getId(), 1)).thenReturn(pr);
+    when(prFinder.findPr(repo.id(), 1)).thenReturn(pr);
     when(prFinder.findTenant(authorId)).thenReturn(author);
+    when(prFinder.findTenants(any())).thenReturn(java.util.Map.of(authorId, author));
     when(commentRepository.findDistinctCommenterIdsByPrId(pr.getId()))
         .thenReturn(java.util.List.of());
     PullRequestComment saved = new PullRequestComment();
     saved.setId(UUID.randomUUID());
     saved.setBody("Looks good");
-    saved.setAuthor(author);
+    saved.setAuthorId(author.id());
     when(commentRepository.save(any(PullRequestComment.class))).thenReturn(saved);
     AuthorInfo authorInfo = new AuthorInfo("Alice", "a@test.com", "alice", null);
     when(prMapper.toAuthorInfo(author)).thenReturn(authorInfo);
@@ -107,9 +101,6 @@ class PullRequestCommentServiceTest {
   @DisplayName("updateComment throws ItemNotFoundException when comment missing")
   void updateComment_throws_whenCommentMissing() {
     UUID commentId = UUID.randomUUID();
-    when(commentRepository.findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-            commentId, "alice", "demo", 1))
-        .thenReturn(Optional.empty());
     PrCommentUpdateForm form = new PrCommentUpdateForm("edited");
 
     assertThatThrownBy(
@@ -127,12 +118,8 @@ class PullRequestCommentServiceTest {
     UUID authorId = UUID.randomUUID();
     UUID otherId = UUID.randomUUID();
     PullRequestComment comment = new PullRequestComment();
-    Tenant author = new Tenant();
-    author.setId(authorId);
-    comment.setAuthor(author);
-    when(commentRepository.findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-            commentId, "alice", "demo", 1))
-        .thenReturn(Optional.of(comment));
+    comment.setAuthorId(authorId);
+    stubComment(comment);
     PrCommentUpdateForm form = new PrCommentUpdateForm("edited");
 
     assertThatThrownBy(
@@ -149,12 +136,8 @@ class PullRequestCommentServiceTest {
     UUID commentId = UUID.randomUUID();
     UUID authorId = UUID.randomUUID();
     PullRequestComment comment = new PullRequestComment();
-    Tenant author = new Tenant();
-    author.setId(authorId);
-    comment.setAuthor(author);
-    when(commentRepository.findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-            commentId, "alice", "demo", 1))
-        .thenReturn(Optional.of(comment));
+    comment.setAuthorId(authorId);
+    stubComment(comment);
 
     commentService.deleteComment("alice", "demo", 1, commentId, authorId);
 
@@ -166,12 +149,8 @@ class PullRequestCommentServiceTest {
   void deleteComment_throws_whenNotAuthor() {
     UUID commentId = UUID.randomUUID();
     PullRequestComment comment = new PullRequestComment();
-    Tenant author = new Tenant();
-    author.setId(UUID.randomUUID());
-    comment.setAuthor(author);
-    when(commentRepository.findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-            commentId, "alice", "demo", 1))
-        .thenReturn(Optional.of(comment));
+    comment.setAuthorId(UUID.randomUUID());
+    stubComment(comment);
 
     assertThatThrownBy(
             () -> commentService.deleteComment("alice", "demo", 1, commentId, UUID.randomUUID()))
@@ -184,40 +163,61 @@ class PullRequestCommentServiceTest {
     return new PrCommentInfo(id, author, body, null, null, null, null, null, false, now, now);
   }
 
-  private dev.gitnode.os.pr.entities.PullRequestComment lineComment(
-      final dev.gitnode.os.shared.tenant.entities.Tenant author,
-      final dev.gitnode.os.shared.tenant.entities.Tenant prAuthor,
-      final dev.gitnode.os.shared.tenant.entities.Tenant repoOwner,
-      final String filePath) {
-    final var repo = new dev.gitnode.os.shared.repo.entities.Repo();
-    repo.setId(java.util.UUID.randomUUID());
-    repo.setOwner(repoOwner);
-    final var pr = new dev.gitnode.os.pr.entities.PullRequest();
-    pr.setRepo(repo);
-    pr.setAuthor(prAuthor);
-    final var comment = new dev.gitnode.os.pr.entities.PullRequestComment();
+  /** Wires repository, pull request and comment lookups for a comment of any PR. */
+  private PullRequest stubComment(final PullRequestComment comment) {
+    return this.stubComment(comment, UUID.randomUUID());
+  }
+
+  private PullRequest stubComment(final PullRequestComment comment, final UUID repoOwnerId) {
+    final var repo = new RepoRef(UUID.randomUUID(), repoOwnerId, "o", "r", false);
+    final var pr = comment.getPr() != null ? comment.getPr() : new PullRequest();
+    if (pr.getId() == null) {
+      pr.setId(UUID.randomUUID());
+    }
     comment.setPr(pr);
-    comment.setAuthor(author);
-    comment.setFilePath(filePath);
     org.mockito.Mockito.lenient()
         .when(
-            commentRepository.findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+            prFinder.findRepoOrNull(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(Optional.of(repo));
+    org.mockito.Mockito.lenient()
+        .when(
+            prFinder.findRepo(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(repo);
+    org.mockito.Mockito.lenient()
+        .when(
+            prFinder.findPrOrNull(
                 org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyInt()))
-        .thenReturn(java.util.Optional.of(comment));
+        .thenReturn(Optional.of(pr));
     org.mockito.Mockito.lenient()
         .when(
-            commentRepository.save(
-                org.mockito.ArgumentMatchers.any(
-                    dev.gitnode.os.pr.entities.PullRequestComment.class)))
+            commentRepository.findByIdAndPrId(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+        .thenReturn(Optional.of(comment));
+    org.mockito.Mockito.lenient()
+        .when(commentRepository.save(org.mockito.ArgumentMatchers.any(PullRequestComment.class)))
         .thenAnswer(i -> i.getArgument(0));
+    org.mockito.Mockito.lenient()
+        .when(prFinder.findTenants(org.mockito.ArgumentMatchers.any()))
+        .thenReturn(java.util.Map.of());
+    return pr;
+  }
+
+  private PullRequestComment lineComment(
+      final UUID author, final UUID prAuthor, final UUID repoOwner, final String filePath) {
+    final var pr = new PullRequest();
+    pr.setAuthorId(prAuthor);
+    final var comment = new PullRequestComment();
+    comment.setPr(pr);
+    comment.setAuthorId(author);
+    comment.setFilePath(filePath);
+    stubComment(comment, repoOwner);
     return comment;
   }
 
-  private dev.gitnode.os.shared.tenant.entities.Tenant person() {
-    final var tenant = new dev.gitnode.os.shared.tenant.entities.Tenant();
-    tenant.setId(java.util.UUID.randomUUID());
-    return tenant;
+  private UUID person() {
+    return UUID.randomUUID();
   }
 
   @Test
@@ -229,17 +229,17 @@ class PullRequestCommentServiceTest {
     final var stranger = person();
     final var comment = lineComment(commenter, prAuthor, owner, "a.txt");
 
-    commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), prAuthor.getId(), true);
+    commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), prAuthor, true);
     org.assertj.core.api.Assertions.assertThat(comment.isResolved()).isTrue();
-    commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), owner.getId(), false);
+    commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), owner, false);
     org.assertj.core.api.Assertions.assertThat(comment.isResolved()).isFalse();
-    commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), commenter.getId(), true);
+    commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), commenter, true);
     org.assertj.core.api.Assertions.assertThat(comment.isResolved()).isTrue();
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
             () ->
                 commentService.setResolved(
-                    "o", "r", 1, java.util.UUID.randomUUID(), stranger.getId(), false))
+                    "o", "r", 1, java.util.UUID.randomUUID(), stranger, false))
         .isInstanceOf(
             dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException.class);
   }
@@ -251,9 +251,7 @@ class PullRequestCommentServiceTest {
     lineComment(user, user, user, null);
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
-            () ->
-                commentService.setResolved(
-                    "o", "r", 1, java.util.UUID.randomUUID(), user.getId(), true))
+            () -> commentService.setResolved("o", "r", 1, java.util.UUID.randomUUID(), user, true))
         .isInstanceOf(dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException.class);
   }
 }

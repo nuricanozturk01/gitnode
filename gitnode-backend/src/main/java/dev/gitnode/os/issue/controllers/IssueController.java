@@ -1,5 +1,6 @@
 package dev.gitnode.os.issue.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.issue.dtos.IssueCommentForm;
 import dev.gitnode.os.issue.dtos.IssueCommentInfo;
 import dev.gitnode.os.issue.dtos.IssueCommentUpdateForm;
@@ -9,10 +10,9 @@ import dev.gitnode.os.issue.dtos.IssueInfo;
 import dev.gitnode.os.issue.dtos.IssueLinkedTaskInfo;
 import dev.gitnode.os.issue.dtos.IssueUpdateForm;
 import dev.gitnode.os.issue.services.IssueService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -41,7 +41,7 @@ public class IssueController {
 
   private final IssueService issueService;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @PostMapping
   @RateLimit(limit = 100, windowSeconds = 600, key = "issue.create")

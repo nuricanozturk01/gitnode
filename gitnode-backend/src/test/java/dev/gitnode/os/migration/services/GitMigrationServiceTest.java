@@ -23,6 +23,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.migration.dtos.MigrationForm;
 import dev.gitnode.os.migration.dtos.MigrationItem;
 import dev.gitnode.os.migration.dtos.MigrationServiceProvider;
@@ -30,8 +32,6 @@ import dev.gitnode.os.migration.dtos.MigrationStatus;
 import dev.gitnode.os.migration.entities.MigrationJob;
 import dev.gitnode.os.migration.repositories.MigrationJobRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -49,7 +49,7 @@ class GitMigrationServiceTest {
 
   @Mock private MigrationJobRepository jobRepository;
   @Mock private CloudMigrationService cloudMigrationService;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
 
   @InjectMocks private GitMigrationService gitMigrationService;
 
@@ -73,9 +73,7 @@ class GitMigrationServiceTest {
   void migrate_savesJobAndProcesses_whenTenantExists() {
     UUID tenantId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(tenantId);
-    tenant.setUsername("alice");
+    TenantRef tenant = new TenantRef(tenantId, "alice", "alice@example.org", null, null, true);
     MigrationForm form = migrationForm();
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
 
@@ -97,8 +95,7 @@ class GitMigrationServiceTest {
   void migrate_marksFailedAndRethrows_whenProcessingFails() {
     UUID tenantId = UUID.randomUUID();
     UUID jobId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(tenantId);
+    TenantRef tenant = new TenantRef(tenantId, "alice", "alice@example.org", null, null, true);
     MigrationForm form = migrationForm();
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     doThrow(new RuntimeException("clone failed"))

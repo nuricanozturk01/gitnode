@@ -17,7 +17,7 @@ package dev.gitnode.os.admin.controllers;
 
 import dev.gitnode.os.admin.dtos.AdminRepoSummary;
 import dev.gitnode.os.admin.services.AdminRepoService;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.PageRequest;

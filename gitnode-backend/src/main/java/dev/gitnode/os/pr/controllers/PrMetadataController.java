@@ -16,10 +16,10 @@
 
 package dev.gitnode.os.pr.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.pr.dtos.PrMetadata;
 import dev.gitnode.os.pr.services.PrMetadataService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.repo.services.RepoService;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -42,7 +42,7 @@ public class PrMetadataController {
 
   private final PrMetadataService service;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @GetMapping
   public ResponseEntity<PrMetadata> get(

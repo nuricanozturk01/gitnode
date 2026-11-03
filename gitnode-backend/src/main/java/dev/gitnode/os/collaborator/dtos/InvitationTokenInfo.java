@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.collaborator.dtos;
 
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
 import java.time.Instant;
 import java.util.Set;
 import org.jspecify.annotations.NullMarked;

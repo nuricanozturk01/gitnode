@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.snippet.controllers;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
 import dev.gitnode.os.snippet.dtos.SnippetDetail;
 import dev.gitnode.os.snippet.dtos.SnippetForm;
 import dev.gitnode.os.snippet.dtos.SnippetInfo;

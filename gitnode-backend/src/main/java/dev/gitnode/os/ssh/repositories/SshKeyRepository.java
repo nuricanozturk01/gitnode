@@ -21,7 +21,6 @@ import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -35,7 +34,4 @@ public interface SshKeyRepository extends JpaRepository<SshKey, UUID> {
   boolean existsByTenantIdAndTitle(UUID tenantId, String title);
 
   void deleteByIdAndTenantId(UUID id, UUID tenantId);
-
-  @Query("SELECT s FROM SshKey s JOIN FETCH s.tenant WHERE s.fingerprint = :fingerprint")
-  Optional<SshKey> findByFingerprintWithTenant(String fingerprint);
 }

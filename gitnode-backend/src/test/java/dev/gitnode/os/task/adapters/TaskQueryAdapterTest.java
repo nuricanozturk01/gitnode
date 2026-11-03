@@ -18,7 +18,7 @@ package dev.gitnode.os.task.adapters;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.task.entities.Project;
 import dev.gitnode.os.task.entities.Task;
 import dev.gitnode.os.task.repositories.TaskRepository;
@@ -33,17 +33,22 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class TaskQueryAdapterTest {
   @Mock private TaskRepository taskRepository;
+  @Mock private TenantQueryPort tenants;
   @InjectMocks private TaskQueryAdapter adapter;
 
   @Test
   void linkedTasksRespectProjectVisibility() {
     UUID issueId = UUID.randomUUID();
     UUID ownerId = UUID.randomUUID();
-    Tenant owner = new Tenant();
-    owner.setId(ownerId);
-    owner.setUsername("alice");
-    Project privateProject = project(owner, false);
-    Project publicProject = project(owner, true);
+    Project privateProject = project(ownerId, false);
+    Project publicProject = project(ownerId, true);
+    org.mockito.Mockito.lenient()
+        .when(tenants.findAllByIds(org.mockito.ArgumentMatchers.any()))
+        .thenReturn(
+            java.util.Map.of(
+                ownerId,
+                new TenantQueryPort.TenantRef(
+                    ownerId, "alice", "alice@example.org", null, null, true)));
     Task privateTask = task(privateProject, "PRIVATE-1");
     Task publicTask = task(publicProject, "PUBLIC-1");
     when(taskRepository.findByLinkedIssueId(issueId)).thenReturn(List.of(privateTask, publicTask));
@@ -61,9 +66,9 @@ class TaskQueryAdapterTest {
         .isEqualTo("alice");
   }
 
-  private static Project project(Tenant owner, boolean isPublic) {
+  private static Project project(UUID ownerId, boolean isPublic) {
     Project project = new Project();
-    project.setOwner(owner);
+    project.setOwnerId(ownerId);
     project.setPublic(isPublic);
     project.setCodePrefix("CODE");
     project.setName("Project");

@@ -21,10 +21,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -38,29 +38,28 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("BranchTxService unit tests")
 class BranchTxServiceTest {
 
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoCommandPort repoCommands;
 
   @InjectMocks private BranchTxService branchTxService;
 
   @Test
   @DisplayName("findRepoByOwnerAndRepoName returns repo when found")
   void findRepoByOwnerAndRepoName_returnsRepo_whenFound() {
-    Repo repo = createRepo(UUID.randomUUID(), "owner", "my-repo", "main");
-    when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-        .thenReturn(Optional.of(repo));
+    RepoRef repo = createRepo(UUID.randomUUID(), "owner", "my-repo", "main");
+    when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repo));
 
-    Repo result = branchTxService.findRepoByOwnerAndRepoName("owner", "my-repo");
+    RepoRef result = branchTxService.findRepoByOwnerAndRepoName("owner", "my-repo");
 
     assertThat(result).isSameAs(repo);
-    assertThat(result.getName()).isEqualTo("my-repo");
-    assertThat(result.getDefaultBranch()).isEqualTo("main");
+    assertThat(result.name()).isEqualTo("my-repo");
+    assertThat(result.defaultBranch()).isEqualTo("main");
   }
 
   @Test
   @DisplayName("findRepoByOwnerAndRepoName throws ItemNotFoundException when repo not found")
   void findRepoByOwnerAndRepoName_throws_whenNotFound() {
-    when(repoRepository.findByOwnerUsernameAndName("owner", "missing"))
-        .thenReturn(Optional.empty());
+    when(repoRepository.find("owner", "missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> branchTxService.findRepoByOwnerAndRepoName("owner", "missing"))
         .isInstanceOf(ItemNotFoundException.class)
@@ -74,18 +73,11 @@ class BranchTxServiceTest {
 
     branchTxService.updateDefaultBranch(repoId, "develop");
 
-    verify(repoRepository).updateDefaultBranch(eq(repoId), eq("develop"));
+    verify(repoCommands).updateDefaultBranch(eq(repoId), eq("develop"));
   }
 
-  private static Repo createRepo(UUID id, String ownerUsername, String name, String defaultBranch) {
-    Tenant owner = new Tenant();
-    owner.setId(UUID.randomUUID());
-    owner.setUsername(ownerUsername);
-    Repo repo = new Repo();
-    repo.setId(id);
-    repo.setOwner(owner);
-    repo.setName(name);
-    repo.setDefaultBranch(defaultBranch);
-    return repo;
+  private static RepoRef createRepo(
+      UUID id, String ownerUsername, String name, String defaultBranch) {
+    return new RepoRef(id, UUID.randomUUID(), ownerUsername, name, false, defaultBranch);
   }
 }

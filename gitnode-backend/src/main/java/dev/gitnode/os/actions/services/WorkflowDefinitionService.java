@@ -26,9 +26,9 @@ import dev.gitnode.os.actions.model.WorkflowModel;
 import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.services.WorkflowParserService.ParsedWorkflow;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,19 +50,19 @@ public class WorkflowDefinitionService {
   private final WorkflowParserService parserService;
   private final WorkflowDefinitionRepository definitionRepository;
   private final WorkflowRunRepository runRepository;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final JobDispatcher jobDispatcher;
 
   public List<WorkflowSummaryResponse> listForRepo(final UUID repoId) {
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(repoId)
+        this.repoLookup
+            .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("Repository not found: " + repoId));
 
-    final var ownerUsername = repo.getOwner().getUsername();
-    final var repoName = repo.getName();
-    final var branchRef = "refs/heads/" + repo.getDefaultBranch();
+    final var ownerUsername = repo.ownerUsername();
+    final var repoName = repo.name();
+    final var branchRef = "refs/heads/" + repo.defaultBranch();
 
     final var parsed = this.parserService.parseWorkflows(ownerUsername, repoName, branchRef);
     final Map<String, WorkflowDefinition> dbByPath =
@@ -116,13 +116,13 @@ public class WorkflowDefinitionService {
   public WorkflowDetailResponse getDetail(final UUID repoId, final String filePath) {
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(repoId)
+        this.repoLookup
+            .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("Repository not found: " + repoId));
 
-    final var ownerUsername = repo.getOwner().getUsername();
-    final var repoName = repo.getName();
-    final var branchRef = "refs/heads/" + repo.getDefaultBranch();
+    final var ownerUsername = repo.ownerUsername();
+    final var repoName = repo.name();
+    final var branchRef = "refs/heads/" + repo.defaultBranch();
 
     final var parsed =
         this.parserService.parseWorkflows(ownerUsername, repoName, branchRef).stream()
@@ -148,7 +148,7 @@ public class WorkflowDefinitionService {
         name,
         parsed.filePath(),
         parsed.rawContent(),
-        repo.getDefaultBranch(),
+        repo.defaultBranch(),
         enabled,
         dispatchable,
         lastRunStatus,
@@ -188,15 +188,13 @@ public class WorkflowDefinitionService {
   public void setEnabled(final UUID repoId, final String filePath, final boolean enabled) {
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(repoId)
+        this.repoLookup
+            .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("Repository not found: " + repoId));
 
-    final var branchRef = "refs/heads/" + repo.getDefaultBranch();
+    final var branchRef = "refs/heads/" + repo.defaultBranch();
     final var parsed =
-        this.parserService
-            .parseWorkflows(repo.getOwner().getUsername(), repo.getName(), branchRef)
-            .stream()
+        this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), branchRef).stream()
             .filter(p -> p.filePath().equals(filePath))
             .findFirst()
             .orElseThrow(

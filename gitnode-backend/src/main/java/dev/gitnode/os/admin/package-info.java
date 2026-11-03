@@ -15,7 +15,15 @@
  */
 @NullMarked
 @ApplicationModule(
-    allowedDependencies = {"shared", "events", "auth :: api", "webhook :: api", "actions :: api"})
+    allowedDependencies = {
+      "actions :: api",
+      "auth :: api",
+      "events :: profile",
+      "identity :: *",
+      "repo :: *",
+      "shared :: *",
+      "webhook :: api"
+    })
 package dev.gitnode.os.admin;
 
 import org.jspecify.annotations.NullMarked;

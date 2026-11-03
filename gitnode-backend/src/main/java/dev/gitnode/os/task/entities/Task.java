@@ -15,8 +15,6 @@
  */
 package dev.gitnode.os.task.entities;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -82,15 +80,13 @@ public class Task {
   @Column(name = "subtask_seq", nullable = false)
   private long subtaskSeq;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @OnDelete(action = OnDeleteAction.SET_NULL)
-  @JoinColumn(name = "assignee_id")
-  private Tenant assignee;
+  /** The database sets this to NULL when the assignee's account is deleted. */
+  @Column(name = "assignee_id")
+  private UUID assigneeId;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @OnDelete(action = OnDeleteAction.SET_NULL)
-  @JoinColumn(name = "branch_repo_id")
-  private Repo branchRepo;
+  /** The database sets this to NULL when the repository is deleted. */
+  @Column(name = "branch_repo_id")
+  private UUID branchRepoId;
 
   @Column(name = "branch_name", length = 255)
   private String branchName;

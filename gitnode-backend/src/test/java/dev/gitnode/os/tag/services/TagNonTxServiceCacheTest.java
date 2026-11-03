@@ -24,9 +24,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -79,7 +79,7 @@ class TagNonTxServiceCacheTest {
   @Autowired CacheManager cacheManager;
 
   private Git git;
-  private Repo repo;
+  private RepoRef repo;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -92,9 +92,14 @@ class TagNonTxServiceCacheTest {
     git.add().addFilepattern(".").call();
     git.commit().setMessage("init").call();
 
-    repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setDefaultBranch(git.getRepository().getBranch());
+    repo =
+        new RepoRef(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "owner",
+            "demo",
+            false,
+            git.getRepository().getBranch());
 
     when(releaseTxService.findRepo(any(), any())).thenReturn(repo);
     when(releaseTxService.findByRepoIdAndTagName(any(), any())).thenReturn(Optional.empty());

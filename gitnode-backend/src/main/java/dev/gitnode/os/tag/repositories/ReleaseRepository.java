@@ -32,9 +32,7 @@ public interface ReleaseRepository extends JpaRepository<Release, UUID> {
   @Query(
       """
       SELECT r FROM Release r
-      JOIN FETCH r.repo
-      JOIN FETCH r.author
-      WHERE r.repo.id = :repoId
+      WHERE r.repoId = :repoId
       ORDER BY r.createdAt DESC
       """)
   List<Release> findAllByRepoIdOrderByCreatedAtDesc(@Param("repoId") UUID repoId);
@@ -42,9 +40,7 @@ public interface ReleaseRepository extends JpaRepository<Release, UUID> {
   @Query(
       """
       SELECT r FROM Release r
-      JOIN FETCH r.repo
-      JOIN FETCH r.author
-      WHERE r.repo.id = :repoId AND r.tagName = :tagName
+      WHERE r.repoId = :repoId AND r.tagName = :tagName
       """)
   Optional<Release> findByRepoIdAndTagName(
       @Param("repoId") UUID repoId, @Param("tagName") String tagName);
@@ -59,7 +55,7 @@ public interface ReleaseRepository extends JpaRepository<Release, UUID> {
 
   @org.springframework.data.jpa.repository.Modifying
   @Query(
-      "UPDATE Release r SET r.pinnedLatest = FALSE WHERE r.repo.id = :repoId AND r.pinnedLatest = TRUE")
+      "UPDATE Release r SET r.pinnedLatest = FALSE WHERE r.repoId = :repoId AND r.pinnedLatest = TRUE")
   void clearPinnedLatest(@Param("repoId") UUID repoId);
 
   boolean existsByRepoIdAndTagName(UUID repoId, String tagName);

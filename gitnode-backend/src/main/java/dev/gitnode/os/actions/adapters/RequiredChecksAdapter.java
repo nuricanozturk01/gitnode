@@ -17,7 +17,7 @@
 package dev.gitnode.os.actions.adapters;
 
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
-import dev.gitnode.os.shared.branch.RequiredChecksPort;
+import dev.gitnode.os.branch.api.RequiredChecksPort;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;

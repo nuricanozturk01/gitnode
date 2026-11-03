@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.profile.services;
 
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;

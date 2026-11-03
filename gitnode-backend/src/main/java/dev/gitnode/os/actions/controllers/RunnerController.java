@@ -21,7 +21,7 @@ import dev.gitnode.os.actions.dtos.response.RegistrationTokenResponse;
 import dev.gitnode.os.actions.dtos.response.RunnerRegistrationResponse;
 import dev.gitnode.os.actions.dtos.response.RunnerResponse;
 import dev.gitnode.os.actions.services.RunnerRegistryService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import java.util.List;

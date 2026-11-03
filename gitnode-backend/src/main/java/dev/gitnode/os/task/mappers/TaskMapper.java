@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.task.mappers;
 
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.commit.api.AuthorInfo;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.task.dtos.LinkedIssueInfo;
 import dev.gitnode.os.task.dtos.LinkedPrInfo;
 import dev.gitnode.os.task.dtos.SubtaskInfo;
@@ -42,7 +42,9 @@ public interface TaskMapper {
   @Mapping(target = "hasLinkedIssue", expression = "java(task.getLinkedIssueId() != null)")
   @Mapping(target = "subtaskCount", source = "subtaskCount")
   @Mapping(target = "completedSubtaskCount", source = "completedSubtaskCount")
-  TaskInfo toInfo(Task task, int subtaskCount, int completedSubtaskCount);
+  @Mapping(target = "assignee", source = "assignee")
+  TaskInfo toInfo(
+      Task task, int subtaskCount, int completedSubtaskCount, @Nullable AuthorInfo assignee);
 
   @BeanMapping(builder = @Builder())
   @Mapping(target = "id", source = "task.id")
@@ -53,11 +55,9 @@ public interface TaskMapper {
   @Mapping(target = "type", source = "task.type")
   @Mapping(target = "position", source = "task.position")
   @Mapping(target = "boardColumnId", source = "task.boardColumn.id")
-  @Mapping(target = "assignee", source = "task.assignee")
+  @Mapping(target = "assignee", source = "assignee")
   @Mapping(target = "branchName", source = "task.branchName")
-  @Mapping(
-      target = "branchRepoId",
-      expression = "java(task.getBranchRepo() != null ? task.getBranchRepo().getId() : null)")
+  @Mapping(target = "branchRepoId", source = "task.branchRepoId")
   @Mapping(target = "linkedPr", source = "linkedPr")
   @Mapping(target = "linkedIssue", source = "linkedIssue")
   @Mapping(target = "subtasks", source = "subtasks")
@@ -67,8 +67,13 @@ public interface TaskMapper {
       Task task,
       @Nullable LinkedPrInfo linkedPr,
       @Nullable LinkedIssueInfo linkedIssue,
-      List<SubtaskInfo> subtasks);
+      List<SubtaskInfo> subtasks,
+      @Nullable AuthorInfo assignee);
 
-  @Mapping(target = "name", source = "displayName")
-  @Nullable AuthorInfo toAuthorInfo(@Nullable Tenant tenant);
+  default @Nullable AuthorInfo toAuthorInfo(final @Nullable TenantRef tenant) {
+    return tenant == null
+        ? null
+        : new AuthorInfo(
+            tenant.displayName(), tenant.email(), tenant.username(), tenant.avatarUrl());
+  }
 }

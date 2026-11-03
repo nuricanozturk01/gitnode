@@ -15,6 +15,9 @@
  */
 package dev.gitnode.os.pr.controllers;
 
+import dev.gitnode.os.commit.api.CommitInfo;
+import dev.gitnode.os.commit.api.FileDiff;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.pr.dtos.PrConflictInfo;
 import dev.gitnode.os.pr.dtos.PrConflictResolveForm;
 import dev.gitnode.os.pr.dtos.PrDetail;
@@ -26,13 +29,10 @@ import dev.gitnode.os.pr.dtos.PrMergeRequirements;
 import dev.gitnode.os.pr.dtos.PrUpdateForm;
 import dev.gitnode.os.pr.services.PrConflictService;
 import dev.gitnode.os.pr.services.PullRequestService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.commit.dtos.CommitInfo;
-import dev.gitnode.os.shared.commit.dtos.FileDiff;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
@@ -64,7 +64,7 @@ public class PullRequestController {
   private final PullRequestService prService;
   private final PrConflictService conflictService;
   private final JwtUtils tokenService;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @PostMapping
   @RateLimit(limit = 50, windowSeconds = 600, key = "pr.create")

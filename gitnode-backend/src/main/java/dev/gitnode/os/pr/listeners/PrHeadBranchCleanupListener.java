@@ -15,13 +15,12 @@
  */
 package dev.gitnode.os.pr.listeners;
 
+import dev.gitnode.os.branch.api.BranchProtocolService;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
 import dev.gitnode.os.pr.entities.PrStatus;
-import dev.gitnode.os.shared.branch.services.BranchProtocolService;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +35,7 @@ import org.springframework.stereotype.Service;
 @NullMarked
 public class PrHeadBranchCleanupListener {
 
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final BranchProtocolService branchProtocolService;
 
   @ApplicationModuleListener
@@ -50,11 +49,15 @@ public class PrHeadBranchCleanupListener {
     }
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(event.repoId())
+        this.repoLookup
+            .findById(event.repoId())
+            .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
+    final var policy =
+        this.repoLookup
+            .headBranchPolicy(event.repoId())
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    if (!this.shouldDeleteHeadBranch(isMerged, isClosed, repo)) {
+    if (!this.shouldDeleteHeadBranch(isMerged, isClosed, policy)) {
       return;
     }
 
@@ -67,8 +70,8 @@ public class PrHeadBranchCleanupListener {
       return;
     }
 
-    final var ownerUsername = repo.getOwner().getUsername();
-    final var repoName = repo.getName();
+    final var ownerUsername = repo.ownerUsername();
+    final var repoName = repo.name();
 
     this.delete(ownerUsername, repoName, source, event.prId(), status);
   }
@@ -99,9 +102,10 @@ public class PrHeadBranchCleanupListener {
   }
 
   private boolean shouldDeleteHeadBranch(
-      final boolean isMerged, final boolean isClosed, final Repo repo) {
+      final boolean isMerged,
+      final boolean isClosed,
+      final RepoLookupPort.HeadBranchPolicy policy) {
 
-    return isMerged && repo.isDeleteHeadBranchOnPrMerge()
-        || isClosed && repo.isDeleteHeadBranchOnPrClose();
+    return isMerged && policy.deleteOnMerge() || isClosed && policy.deleteOnClose();
   }
 }

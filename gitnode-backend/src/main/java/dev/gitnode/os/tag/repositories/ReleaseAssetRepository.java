@@ -40,8 +40,8 @@ public interface ReleaseAssetRepository extends JpaRepository<ReleaseAsset, UUID
   /** Bytes stored for all releases of the repository that owns {@code releaseId}. */
   @Query(
       "SELECT COALESCE(SUM(a.sizeBytes), 0) FROM ReleaseAsset a WHERE a.releaseId IN "
-          + "(SELECT r2.id FROM Release r2 WHERE r2.repo.id = "
-          + "(SELECT r.repo.id FROM Release r WHERE r.id = :releaseId))")
+          + "(SELECT r2.id FROM Release r2 WHERE r2.repoId = "
+          + "(SELECT r.repoId FROM Release r WHERE r.id = :releaseId))")
   long sumSizeInRepositoryOf(@Param("releaseId") UUID releaseId);
 
   @Modifying

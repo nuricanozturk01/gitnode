@@ -15,6 +15,8 @@
  */
 package dev.gitnode.os.pr.mappers;
 
+import dev.gitnode.os.commit.api.AuthorInfo;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.dtos.PrCommentInfo;
 import dev.gitnode.os.pr.dtos.PrDetail;
 import dev.gitnode.os.pr.dtos.PrForm;
@@ -22,9 +24,7 @@ import dev.gitnode.os.pr.dtos.PrInfo;
 import dev.gitnode.os.pr.entities.PrStatus;
 import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.entities.PullRequestComment;
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import java.time.Instant;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -62,24 +62,26 @@ public interface PrMapper {
   @Mapping(target = "isResolved", source = "comment.resolved")
   PrCommentInfo toCommentInfo(PullRequestComment comment, AuthorInfo author);
 
-  @Mapping(target = "name", source = "displayName")
-  AuthorInfo toAuthorInfo(Tenant tenant);
+  default AuthorInfo toAuthorInfo(final TenantRef tenant) {
+    return new AuthorInfo(
+        tenant.displayName(), tenant.email(), tenant.username(), tenant.avatarUrl());
+  }
 
   default PullRequest buildPr(
       final PrForm form,
-      final Repo repo,
-      final Tenant author,
+      final RepoRef repo,
+      final TenantRef author,
       final String sourceSha,
       final int nextNumber) {
 
     final var pr = new PullRequest();
-    pr.setRepo(repo);
+    pr.setRepoId(repo.id());
     pr.setCreatedAt(Instant.now());
     pr.setNumber(nextNumber);
     pr.setTitle(form.getTitle());
     pr.setDescription(form.getDescription());
     pr.setStatus(PrStatus.OPEN.name());
-    pr.setAuthor(author);
+    pr.setAuthorId(author.id());
     pr.setSourceBranch(form.getSourceBranch());
     pr.setSourceSha(sourceSha);
     pr.setTargetBranch(form.getTargetBranch());

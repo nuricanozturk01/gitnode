@@ -1,8 +1,8 @@
 package dev.gitnode.os.issue.entities;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -36,10 +36,8 @@ public class Issue {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "repo_id", nullable = false)
-  private Repo repo;
+  @Column(name = "repo_id", nullable = false)
+  private UUID repoId;
 
   @Column(name = "number", nullable = false)
   private int number;
@@ -54,27 +52,22 @@ public class Issue {
   @Column(name = "status", nullable = false, length = 20)
   private String status;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "author_id", nullable = false)
-  private Tenant author;
+  @Column(name = "author_id", nullable = false)
+  private UUID authorId;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @OnDelete(action = OnDeleteAction.SET_NULL)
-  @JoinColumn(name = "assignee_id")
-  private Tenant assignee;
+  /** Primary assignee; the database sets it to NULL when the account is deleted. */
+  @Column(name = "assignee_id")
+  private UUID assigneeId;
 
   @ManyToOne(fetch = FetchType.LAZY)
   @OnDelete(action = OnDeleteAction.SET_NULL)
   @JoinColumn(name = "milestone_id")
   private IssueMilestone milestone;
 
-  @ManyToMany
-  @JoinTable(
-      name = "issue_assignees",
-      joinColumns = @JoinColumn(name = "issue_id"),
-      inverseJoinColumns = @JoinColumn(name = "tenant_id"))
-  private Set<Tenant> assignees = new HashSet<>();
+  @ElementCollection
+  @CollectionTable(name = "issue_assignees", joinColumns = @JoinColumn(name = "issue_id"))
+  @Column(name = "tenant_id", nullable = false)
+  private Set<UUID> assigneeIds = new HashSet<>();
 
   @ManyToMany
   @JoinTable(

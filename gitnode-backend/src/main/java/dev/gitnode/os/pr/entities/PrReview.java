@@ -28,9 +28,8 @@ public class PrReview {
   @JoinColumn(name = "pr_id")
   private PullRequest pullRequest;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "author_id")
-  private dev.gitnode.os.shared.tenant.entities.Tenant author;
+  @Column(name = "author_id", nullable = false)
+  private UUID authorId;
 
   @Column(nullable = false, length = 20)
   private String state;

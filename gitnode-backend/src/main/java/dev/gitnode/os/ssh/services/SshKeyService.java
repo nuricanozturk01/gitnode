@@ -15,11 +15,11 @@
  */
 package dev.gitnode.os.ssh.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.ssh.dtos.AddSshKeyForm;
 import dev.gitnode.os.ssh.dtos.SshKeyInfo;
 import dev.gitnode.os.ssh.entities.SshKey;
@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.hibernate.Hibernate;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,7 +44,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SshKeyService {
 
   private final SshKeyRepository sshKeyRepository;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenants;
 
   @Audited(
       action = "ADD_SSH_KEY",
@@ -55,10 +54,9 @@ public class SshKeyService {
   @Transactional
   public SshKeyInfo addKey(final UUID tenantId, final AddSshKeyForm form) {
 
-    final var tenant =
-        this.tenantRepository
-            .findById(tenantId)
-            .orElseThrow(() -> new ItemNotFoundException("User not found"));
+    if (this.tenants.findById(tenantId).isEmpty()) {
+      throw new ItemNotFoundException("User not found");
+    }
 
     if (this.sshKeyRepository.existsByTenantIdAndTitle(tenantId, form.getTitle())) {
       throw new ErrorOccurredException("sshKeyTitleAlreadyExists");
@@ -71,7 +69,7 @@ public class SshKeyService {
     }
 
     final var sshKey = new SshKey();
-    sshKey.setTenant(tenant);
+    sshKey.setTenantId(tenantId);
     sshKey.setTitle(form.getTitle());
     sshKey.setPublicKey(form.getPublicKey().trim());
     sshKey.setFingerprint(fingerprint);
@@ -99,18 +97,21 @@ public class SshKeyService {
   }
 
   @Transactional
-  public Tenant findTenantByFingerprint(final String fingerprint) {
+  public TenantRef findTenantByFingerprint(final String fingerprint) {
 
     final var sshKey =
         this.sshKeyRepository
-            .findByFingerprintWithTenant(fingerprint)
+            .findByFingerprint(fingerprint)
+            .orElseThrow(() -> new ItemNotFoundException("SSH key not found"));
+
+    final var tenant =
+        this.tenants
+            .findById(sshKey.getTenantId())
             .orElseThrow(() -> new ItemNotFoundException("SSH key not found"));
 
     sshKey.setLastUsedAt(Instant.now());
     this.sshKeyRepository.save(sshKey);
 
-    final var tenant = sshKey.getTenant();
-    Hibernate.initialize(tenant);
     return tenant;
   }
 

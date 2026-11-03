@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.ssh.controllers;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.ssh.dtos.AddSshKeyForm;
 import dev.gitnode.os.ssh.dtos.SshKeyInfo;

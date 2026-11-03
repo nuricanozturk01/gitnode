@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.ai.services;
 
-import static dev.gitnode.os.shared.util.FileDiffParser.parseFileDiff;
+import static dev.gitnode.os.commit.api.FileDiffParser.parseFileDiff;
 
-import dev.gitnode.os.shared.commit.dtos.DiffHunk;
-import dev.gitnode.os.shared.commit.dtos.FileDiff;
+import dev.gitnode.os.commit.api.DiffHunk;
+import dev.gitnode.os.commit.api.FileDiff;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;

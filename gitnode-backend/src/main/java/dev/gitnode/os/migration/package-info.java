@@ -14,7 +14,16 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "events :: pr",
+      "events :: tag",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
+    })
 package dev.gitnode.os.migration;
 
 import org.jspecify.annotations.NullMarked;

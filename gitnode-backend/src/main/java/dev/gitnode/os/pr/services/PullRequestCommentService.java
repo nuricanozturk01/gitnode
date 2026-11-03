@@ -15,7 +15,9 @@
  */
 package dev.gitnode.os.pr.services;
 
+import dev.gitnode.os.commit.api.AuthorInfo;
 import dev.gitnode.os.events.pr.PullRequestCommentedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.dtos.PrCommentForm;
 import dev.gitnode.os.pr.dtos.PrCommentInfo;
 import dev.gitnode.os.pr.dtos.PrCommentUpdateForm;
@@ -26,8 +28,10 @@ import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -45,7 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PullRequestCommentService {
 
   private final PrMapper prMapper;
-  private final dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort access;
+  private final dev.gitnode.os.repo.api.CollaboratorAccessPort access;
   private final PrFinder prFinder;
   private final PrCommentRepository commentRepository;
   private final ApplicationEventPublisher eventPublisher;
@@ -59,12 +63,12 @@ public class PullRequestCommentService {
       final PrCommentForm form) {
 
     final var repo = this.prFinder.findRepo(owner, repoName);
-    final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var pr = this.prFinder.findPr(repo.id(), number);
     final var author = this.prFinder.findTenant(authorId);
 
     final var comment = new PullRequestComment();
     comment.setPr(pr);
-    comment.setAuthor(author);
+    comment.setAuthorId(author.id());
     comment.setBody(form.getBody());
     if (form.getParentId() == null) {
       comment.setFilePath(form.getFilePath());
@@ -74,8 +78,7 @@ public class PullRequestCommentService {
     } else {
       final var parent =
           this.commentRepository
-              .findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-                  form.getParentId(), owner, repoName, number)
+              .findByIdAndPrId(form.getParentId(), pr.getId())
               .orElseThrow(() -> new BadRequestException("Comment to reply to not found"));
       if (parent.getParentId() != null || parent.getFilePath() == null) {
         throw new BadRequestException("Only line conversations can be replied to");
@@ -91,7 +94,7 @@ public class PullRequestCommentService {
 
     final Set<UUID> participants =
         new HashSet<>(this.commentRepository.findDistinctCommenterIdsByPrId(pr.getId()));
-    participants.add(pr.getAuthor().getId());
+    participants.add(pr.getAuthorId());
     participants.remove(authorId);
 
     this.eventPublisher.publishEvent(
@@ -99,9 +102,9 @@ public class PullRequestCommentService {
             saved.getId(),
             pr.getId(),
             pr.getNumber(),
-            repo.getId(),
+            repo.id(),
             authorId,
-            pr.getAuthor().getId(),
+            pr.getAuthorId(),
             owner,
             repoName,
             Set.copyOf(participants)));
@@ -116,13 +119,9 @@ public class PullRequestCommentService {
       final UUID commentId,
       final UUID requesterId,
       final PrCommentUpdateForm form) {
-    final var comment =
-        this.commentRepository
-            .findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-                commentId, owner, repoName, number)
-            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
+    final var comment = this.findComment(owner, repoName, number, commentId);
 
-    if (!comment.getAuthor().getId().equals(requesterId)) {
+    if (!comment.getAuthorId().equals(requesterId)) {
       throw new AccessNotAllowedException("notAuthorized");
     }
 
@@ -141,23 +140,19 @@ public class PullRequestCommentService {
       final UUID commentId,
       final UUID requesterId,
       final boolean resolved) {
-    final var comment =
-        this.commentRepository
-            .findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-                commentId, owner, repoName, number)
-            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
+    final var comment = this.findComment(owner, repoName, number, commentId);
     if (comment.getFilePath() == null || comment.getParentId() != null) {
       throw new BadRequestException("Only line comments can be resolved");
     }
-    final var repo = comment.getPr().getRepo();
+    final var repo = this.prFinder.findRepo(owner, repoName);
     final var allowed =
-        requesterId.equals(comment.getAuthor().getId())
-            || requesterId.equals(comment.getPr().getAuthor().getId())
-            || requesterId.equals(repo.getOwner().getId())
+        requesterId.equals(comment.getAuthorId())
+            || requesterId.equals(comment.getPr().getAuthorId())
+            || requesterId.equals(repo.ownerId())
             || this.access.hasPermission(
-                repo.getId(),
+                repo.id(),
                 requesterId,
-                dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission.PULL_REQUEST_MERGE);
+                dev.gitnode.os.repo.api.CollaboratorPermission.PULL_REQUEST_MERGE);
     if (!allowed) {
       throw new AccessNotAllowedException("notAuthorized");
     }
@@ -172,13 +167,9 @@ public class PullRequestCommentService {
       final int number,
       final UUID commentId,
       final UUID requesterId) {
-    final var comment =
-        this.commentRepository
-            .findByIdAndPrRepoOwnerUsernameAndPrRepoNameAndPrNumber(
-                commentId, owner, repoName, number)
-            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
+    final var comment = this.findComment(owner, repoName, number, commentId);
 
-    if (!comment.getAuthor().getId().equals(requesterId)) {
+    if (!comment.getAuthorId().equals(requesterId)) {
       throw new AccessNotAllowedException("notAuthorized");
     }
 
@@ -189,15 +180,44 @@ public class PullRequestCommentService {
       final String owner, final String repoName, final int number, final int page, final int size) {
 
     final var repo = this.prFinder.findRepo(owner, repoName);
-    final var pr = this.prFinder.findPr(repo.getId(), number);
+    final var pr = this.prFinder.findPr(repo.id(), number);
     final var pageable = PageRequest.of(page, size);
 
+    final var comments =
+        this.commentRepository.findAllByPrIdOrderByCreatedAtAsc(pr.getId(), pageable);
+    final var authors =
+        this.prFinder.findTenants(
+            comments.stream().map(PullRequestComment::getAuthorId).collect(Collectors.toSet()));
+    return comments.map(comment -> this.toCommentInfo(comment, authors));
+  }
+
+  /** A comment of the pull request #number of the repository; absent ones are "not found". */
+  private PullRequestComment findComment(
+      final String owner, final String repoName, final int number, final UUID commentId) {
+    final var repo =
+        this.prFinder
+            .findRepoOrNull(owner, repoName)
+            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
+    final var pr =
+        this.prFinder
+            .findPrOrNull(repo.id(), number)
+            .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
     return this.commentRepository
-        .findAllByPrIdOrderByCreatedAtAsc(pr.getId(), pageable)
-        .map(this::toCommentInfo);
+        .findByIdAndPrId(commentId, pr.getId())
+        .orElseThrow(() -> new ItemNotFoundException("Comment not found"));
   }
 
   private PrCommentInfo toCommentInfo(final PullRequestComment comment) {
-    return this.prMapper.toCommentInfo(comment, this.prMapper.toAuthorInfo(comment.getAuthor()));
+    return this.toCommentInfo(comment, this.prFinder.findTenants(Set.of(comment.getAuthorId())));
+  }
+
+  private PrCommentInfo toCommentInfo(
+      final PullRequestComment comment, final Map<UUID, TenantRef> authors) {
+    final var author = authors.get(comment.getAuthorId());
+    return this.prMapper.toCommentInfo(
+        comment,
+        author == null
+            ? new AuthorInfo("ghost", "", "ghost", "")
+            : this.prMapper.toAuthorInfo(author));
   }
 }

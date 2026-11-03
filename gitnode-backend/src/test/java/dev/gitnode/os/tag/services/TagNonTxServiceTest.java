@@ -22,11 +22,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -62,7 +62,7 @@ class TagNonTxServiceTest {
   private Git git;
   private Path gitDir;
   private String defaultBranch;
-  private Repo repo;
+  private RepoRef repo;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -78,7 +78,7 @@ class TagNonTxServiceTest {
                 new FileRepositoryBuilder().setGitDir(gitDir.toFile()).readEnvironment().build());
     repo = repo(UUID.randomUUID(), defaultBranch);
     when(releaseTxService.findRepo("owner", "demo")).thenReturn(repo);
-    when(releaseTxService.findByRepoIdAndTagName(eq(repo.getId()), any()))
+    when(releaseTxService.findByRepoIdAndTagName(eq(repo.id()), any()))
         .thenReturn(Optional.empty());
   }
 
@@ -181,7 +181,7 @@ class TagNonTxServiceTest {
     Git emptyGit = Git.init().setDirectory(emptyDir.toFile()).call();
     Path emptyGitDir = emptyDir.resolve(".git");
     String emptyBranch = emptyGit.getRepository().getBranch();
-    Repo emptyRepo = repo(UUID.randomUUID(), emptyBranch);
+    RepoRef emptyRepo = repo(UUID.randomUUID(), emptyBranch);
     when(releaseTxService.findRepo("owner", "empty")).thenReturn(emptyRepo);
     when(gitProvider.open("owner", "empty"))
         .thenAnswer(
@@ -201,10 +201,7 @@ class TagNonTxServiceTest {
     emptyGit.close();
   }
 
-  private static Repo repo(UUID id, String defaultBranch) {
-    Repo repo = new Repo();
-    repo.setId(id);
-    repo.setDefaultBranch(defaultBranch);
-    return repo;
+  private static RepoRef repo(UUID id, String defaultBranch) {
+    return new RepoRef(id, UUID.randomUUID(), "owner", "demo", false, defaultBranch);
   }
 }

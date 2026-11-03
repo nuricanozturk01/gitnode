@@ -21,6 +21,7 @@ interface TwoFactorSetup {
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-two-factor-settings',
   standalone: true,
+  styles: [':host { display: block; }'],
   imports: [FormsModule, LucideAngularModule],
   template: `
     <section class="repo-panel settings-section p-5 sm:p-6" aria-labelledby="two-factor-heading">

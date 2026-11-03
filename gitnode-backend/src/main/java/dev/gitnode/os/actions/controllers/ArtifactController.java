@@ -19,7 +19,7 @@ import dev.gitnode.os.actions.dtos.response.ArtifactResponse;
 import dev.gitnode.os.actions.entities.WorkflowArtifact;
 import dev.gitnode.os.actions.services.ArtifactStoreService;
 import dev.gitnode.os.actions.services.CacheStoreService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

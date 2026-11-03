@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.task.controllers;
 
+import dev.gitnode.os.identity.api.AuthenticatedUser;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.task.dtos.ProjectForm;
 import dev.gitnode.os.task.dtos.ProjectInfo;
 import dev.gitnode.os.task.dtos.ProjectRepoInfo;
@@ -54,7 +54,7 @@ public class ProjectController {
   @RateLimit(limit = 50, windowSeconds = 3600, key = "project.create")
   public ResponseEntity<ProjectInfo> create(
       @PathVariable final String owner,
-      @AuthenticationPrincipal final Tenant caller,
+      @AuthenticationPrincipal final AuthenticatedUser caller,
       @Valid @RequestBody final ProjectForm form) {
 
     return ResponseEntity.status(HttpStatus.CREATED)
@@ -64,7 +64,7 @@ public class ProjectController {
   @GetMapping
   public ResponseEntity<PageResponse<ProjectInfo>> getAll(
       @PathVariable final String owner,
-      @AuthenticationPrincipal final @Nullable Tenant viewer,
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "12") final int size) {
 
@@ -75,7 +75,7 @@ public class ProjectController {
   public ResponseEntity<ProjectInfo> get(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
-      @AuthenticationPrincipal final @Nullable Tenant viewer) {
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer) {
 
     return ResponseEntity.ok(this.projectService.get(owner, projectCode, viewer));
   }
@@ -84,7 +84,7 @@ public class ProjectController {
   public ResponseEntity<ProjectInfo> update(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
-      @AuthenticationPrincipal final Tenant caller,
+      @AuthenticationPrincipal final AuthenticatedUser caller,
       @Valid @RequestBody final ProjectUpdateForm form) {
 
     return ResponseEntity.ok(this.projectService.update(owner, projectCode, caller, form));
@@ -94,7 +94,7 @@ public class ProjectController {
   public ResponseEntity<Void> delete(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
-      @AuthenticationPrincipal final Tenant caller) {
+      @AuthenticationPrincipal final AuthenticatedUser caller) {
 
     this.projectService.delete(owner, projectCode, caller);
     return ResponseEntity.noContent().build();
@@ -105,7 +105,7 @@ public class ProjectController {
       @PathVariable final String owner,
       @PathVariable final String projectCode,
       @PathVariable final UUID repoId,
-      @AuthenticationPrincipal final Tenant caller) {
+      @AuthenticationPrincipal final AuthenticatedUser caller) {
 
     this.projectService.linkRepo(owner, projectCode, repoId, caller);
     return ResponseEntity.noContent().build();
@@ -116,7 +116,7 @@ public class ProjectController {
       @PathVariable final String owner,
       @PathVariable final String projectCode,
       @PathVariable final UUID repoId,
-      @AuthenticationPrincipal final Tenant caller) {
+      @AuthenticationPrincipal final AuthenticatedUser caller) {
 
     this.projectService.unlinkRepo(owner, projectCode, repoId, caller);
     return ResponseEntity.noContent().build();
@@ -126,7 +126,7 @@ public class ProjectController {
   public ResponseEntity<List<ProjectRepoInfo>> getLinkedRepos(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
-      @AuthenticationPrincipal final @Nullable Tenant viewer) {
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer) {
 
     return ResponseEntity.ok(this.projectService.getLinkedRepos(owner, projectCode, viewer));
   }
@@ -136,7 +136,7 @@ public class ProjectController {
   public ResponseEntity<PageResponse<ProjectInfo>> getByRepo(
       @PathVariable final String owner,
       @PathVariable final UUID repoId,
-      @AuthenticationPrincipal final @Nullable Tenant viewer,
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "12") final int size) {
 

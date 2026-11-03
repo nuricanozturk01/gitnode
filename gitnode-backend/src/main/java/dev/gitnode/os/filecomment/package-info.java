@@ -15,7 +15,15 @@
  */
 
 @NullMarked
-@ApplicationModule(allowedDependencies = {"shared", "events"})
+@ApplicationModule(
+    allowedDependencies = {
+      "commit :: api",
+      "events :: filecomment",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "shared :: *"
+    })
 package dev.gitnode.os.filecomment;
 
 import org.jspecify.annotations.NullMarked;

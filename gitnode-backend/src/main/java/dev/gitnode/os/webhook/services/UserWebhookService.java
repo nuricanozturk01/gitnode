@@ -15,12 +15,12 @@
  */
 package dev.gitnode.os.webhook.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.webhook.dtos.WebhookForm;
 import dev.gitnode.os.webhook.dtos.WebhookInfo;
 import dev.gitnode.os.webhook.dtos.WebhookUpdateForm;
@@ -59,7 +59,7 @@ public class UserWebhookService {
           .collect(Collectors.toUnmodifiableSet());
 
   private final UserWebhookRepository userWebhookRepository;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenants;
   private final WebhookMapper webhookMapper;
 
   public List<WebhookInfo> list(final String username) {
@@ -140,9 +140,9 @@ public class UserWebhookService {
   }
 
   private UUID resolveUserId(final String username) {
-    return this.tenantRepository
+    return this.tenants
         .findByUsername(username)
-        .map(Tenant::getId)
+        .map(TenantRef::id)
         .orElseThrow(() -> new ItemNotFoundException("User not found"));
   }
 

@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.task.controllers;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.api.AuthenticatedUser;
 import dev.gitnode.os.task.dtos.BoardColumnForm;
 import dev.gitnode.os.task.dtos.BoardColumnInfo;
 import dev.gitnode.os.task.dtos.BoardColumnUpdateForm;
@@ -63,7 +63,7 @@ public class BoardController {
   public ResponseEntity<List<BoardInfo>> getAllBoards(
       @PathVariable final String owner,
       @PathVariable final String projectCode,
-      @AuthenticationPrincipal final @Nullable Tenant viewer) {
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer) {
 
     return ResponseEntity.ok(this.boardService.getAllBoards(owner, projectCode, viewer));
   }
@@ -73,7 +73,7 @@ public class BoardController {
       @PathVariable final String owner,
       @PathVariable final String projectCode,
       @PathVariable final UUID boardId,
-      @AuthenticationPrincipal final @Nullable Tenant viewer) {
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer) {
 
     return ResponseEntity.ok(this.boardService.getBoard(owner, projectCode, boardId, viewer));
   }

@@ -23,10 +23,10 @@ import dev.gitnode.os.ai.entities.AiCodebaseAnalysis;
 import dev.gitnode.os.ai.entities.ReviewStatus;
 import dev.gitnode.os.ai.repositories.AiCodebaseAnalysisRepository;
 import dev.gitnode.os.events.ai.AiCodebaseAnalysisCompletedEvent;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -81,7 +81,7 @@ public class CodebaseAnalysisService {
   private final UserAiSettingsService settingsService;
   private final GitProvider gitProvider;
   private final CodebaseAnalysisRunner analysisRunner;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final ApplicationEventPublisher eventPublisher;
 
   CodebaseAnalysisService(
@@ -89,12 +89,12 @@ public class CodebaseAnalysisService {
       final UserAiSettingsService settingsService,
       final GitProvider gitProvider,
       @Lazy final CodebaseAnalysisRunner analysisRunner,
-      final RepoRepository repoRepository,
+      final RepoLookupPort repoLookup,
       final ApplicationEventPublisher eventPublisher) {
     this.analysisRepository = analysisRepository;
     this.settingsService = settingsService;
     this.gitProvider = gitProvider;
-    this.repoRepository = repoRepository;
+    this.repoLookup = repoLookup;
     this.eventPublisher = eventPublisher;
     this.analysisRunner = analysisRunner;
   }

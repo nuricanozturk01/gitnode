@@ -22,7 +22,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.task.dtos.BoardColumnForm;
 import dev.gitnode.os.task.dtos.BoardColumnInfo;
 import dev.gitnode.os.task.dtos.BoardForm;
@@ -151,9 +150,7 @@ class BoardServiceTest {
   private static Project project() {
     Project p = new Project();
     p.setId(UUID.randomUUID());
-    Tenant owner = new Tenant();
-    owner.setUsername("alice");
-    p.setOwner(owner);
+    p.setOwnerId(UUID.randomUUID());
     p.setCodePrefix("APP");
     p.setPublic(true);
     return p;

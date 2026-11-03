@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "branch :: api",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "repo :: events",
+      "shared :: *"
+    })
 package dev.gitnode.os.ssh;
 
 import org.jspecify.annotations.NullMarked;

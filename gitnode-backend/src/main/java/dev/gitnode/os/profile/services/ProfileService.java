@@ -17,6 +17,9 @@ package dev.gitnode.os.profile.services;
 
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
+import dev.gitnode.os.identity.dtos.TenantInfo;
+import dev.gitnode.os.identity.mappers.TenantMapper;
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.UpdateDisplayNameForm;
@@ -25,9 +28,6 @@ import dev.gitnode.os.profile.dtos.UpdateUsernameForm;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
-import dev.gitnode.os.shared.tenant.mappers.TenantMapper;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
 
   private final TenantRepository tenantRepository;
-  private final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher;
+  private final dev.gitnode.os.identity.services.PasswordHasher passwordHasher;
   private final TenantMapper tenantMapper;
   private final ApplicationEventPublisher eventPublisher;
   private static final String USER_NOT_FOUND = "userNotFound";

@@ -15,19 +15,21 @@
  */
 package dev.gitnode.os.task.services;
 
+import dev.gitnode.os.branch.api.BranchForm;
+import dev.gitnode.os.branch.api.BranchInfo;
+import dev.gitnode.os.branch.api.BranchProtocolService;
+import dev.gitnode.os.commit.api.AuthorInfo;
 import dev.gitnode.os.events.task.TaskCreatedEvent;
 import dev.gitnode.os.events.task.TaskDeletedEvent;
 import dev.gitnode.os.events.task.TaskUpdatedEvent;
+import dev.gitnode.os.identity.api.AuthenticatedUser;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.issue.api.IssueQueryService;
 import dev.gitnode.os.pr.api.PrQueryPort;
-import dev.gitnode.os.shared.branch.dtos.BranchForm;
-import dev.gitnode.os.shared.branch.dtos.BranchInfo;
-import dev.gitnode.os.shared.branch.services.BranchProtocolService;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.task.dtos.CreateBranchFromTaskForm;
 import dev.gitnode.os.task.dtos.LinkedIssueInfo;
 import dev.gitnode.os.task.dtos.LinkedPrInfo;
@@ -69,8 +71,8 @@ public class TaskService {
   private final SubtaskRepository subtaskRepository;
   private final BoardColumnRepository boardColumnRepository;
   private final ProjectRepository projectRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
+  private final RepoLookupPort repoLookup;
+  private final TenantQueryPort tenants;
   private final PrQueryPort prQueryPort;
   private final IssueQueryService issueQueryService;
   private final ProjectService projectService;
@@ -110,10 +112,10 @@ public class TaskService {
 
     if (form.getAssigneeId() != null) {
       final var assignee =
-          this.tenantRepository
+          this.tenants
               .findById(form.getAssigneeId())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
-      task.setAssignee(assignee);
+      task.setAssigneeId(assignee.id());
     }
 
     if (form.getLinkedIssueId() != null) {
@@ -134,29 +136,35 @@ public class TaskService {
   public Page<TaskInfo> getAll(
       final String ownerUsername,
       final String projectCode,
-      final @Nullable Tenant viewer,
+      final @Nullable AuthenticatedUser viewer,
       final int page,
       final int size) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     final var pageable = PageRequest.of(page, size);
 
-    return this.taskRepository
-        .findAllByProjectIdOrderByPositionAsc(project.getId(), pageable)
-        .map(
-            task -> {
-              final int total = this.subtaskRepository.countByTaskId(task.getId());
-              final int completed =
-                  this.subtaskRepository.countByTaskIdAndStatus(task.getId(), "COMPLETED");
-              return this.taskMapper.toInfo(task, total, completed);
-            });
+    final var tasks =
+        this.taskRepository.findAllByProjectIdOrderByPositionAsc(project.getId(), pageable);
+    final var assignees =
+        this.tenants.findAllByIds(
+            tasks.stream()
+                .map(Task::getAssigneeId)
+                .filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet()));
+    return tasks.map(
+        task -> {
+          final int total = this.subtaskRepository.countByTaskId(task.getId());
+          final int completed =
+              this.subtaskRepository.countByTaskIdAndStatus(task.getId(), "COMPLETED");
+          return this.taskMapper.toInfo(task, total, completed, this.assigneeInfo(task, assignees));
+        });
   }
 
   public TaskDetail get(
       final String ownerUsername,
       final String projectCode,
       final String taskCode,
-      final @Nullable Tenant viewer) {
+      final @Nullable AuthenticatedUser viewer) {
 
     final var project = this.projectService.findProjectAsViewer(ownerUsername, projectCode, viewer);
     return this.toDetail(this.findTask(project.getId(), taskCode));
@@ -214,10 +222,10 @@ public class TaskService {
     }
     if (form.getAssigneeId() != null) {
       final var assignee =
-          this.tenantRepository
+          this.tenants
               .findById(form.getAssigneeId())
               .orElseThrow(() -> new ItemNotFoundException("Assignee not found"));
-      task.setAssignee(assignee);
+      task.setAssigneeId(assignee.id());
     }
     if (form.isUnlinkIssue()) {
       task.setLinkedIssueId(null);
@@ -257,8 +265,8 @@ public class TaskService {
     }
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(form.getRepoOwner(), form.getRepoName())
+        this.repoLookup
+            .find(form.getRepoOwner(), form.getRepoName())
             .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
 
     final var branchName =
@@ -268,7 +276,7 @@ public class TaskService {
 
     final var created = this.createBranch(branchName, form);
 
-    task.setBranchRepo(repo);
+    task.setBranchRepoId(repo.id());
     task.setBranchName(branchName);
     task.setStatus(TaskStatus.IN_PROGRESS.name());
     this.taskRepository.save(task);
@@ -353,8 +361,8 @@ public class TaskService {
     }
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(form.getRepoOwner(), form.getRepoName())
+        this.repoLookup
+            .find(form.getRepoOwner(), form.getRepoName())
             .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
 
     final var branchName =
@@ -364,7 +372,7 @@ public class TaskService {
 
     final var created = this.createBranch(branchName, form);
 
-    subtask.setBranchRepo(repo);
+    subtask.setBranchRepoId(repo.id());
     subtask.setBranchName(branchName);
     subtask.setStatus(TaskStatus.IN_PROGRESS.name());
     this.subtaskRepository.save(subtask);
@@ -449,11 +457,23 @@ public class TaskService {
         this.subtaskRepository.findAllByTaskIdOrderByPositionAsc(task.getId()).stream()
             .map(this::toSubtaskInfo)
             .toList();
+    final var assignees =
+        task.getAssigneeId() == null
+            ? java.util.Map.<UUID, TenantRef>of()
+            : this.tenants.findAllByIds(java.util.Set.of(task.getAssigneeId()));
     return this.taskMapper.toDetail(
         task,
         this.buildLinkedPrInfo(task.getLinkedPrId()),
         this.buildLinkedIssueInfo(task.getLinkedIssueId()),
-        subtasks);
+        subtasks,
+        this.assigneeInfo(task, assignees));
+  }
+
+  private @Nullable AuthorInfo assigneeInfo(
+      final Task task, final java.util.Map<UUID, TenantRef> accounts) {
+    return task.getAssigneeId() == null
+        ? null
+        : this.taskMapper.toAuthorInfo(accounts.get(task.getAssigneeId()));
   }
 
   private SubtaskInfo toSubtaskInfo(final Subtask subtask) {
@@ -465,7 +485,7 @@ public class TaskService {
         .status(subtask.getStatus())
         .position(subtask.getPosition())
         .branchName(subtask.getBranchName())
-        .branchRepoId(subtask.getBranchRepo() != null ? subtask.getBranchRepo().getId() : null)
+        .branchRepoId(subtask.getBranchRepoId())
         .linkedPr(this.buildLinkedPrInfo(subtask.getLinkedPrId()))
         .createdAt(subtask.getCreatedAt())
         .updatedAt(subtask.getUpdatedAt())

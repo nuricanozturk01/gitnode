@@ -14,7 +14,22 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "branch :: api",
+      "commit :: api",
+      "events :: issue",
+      "events :: pr",
+      "events :: project",
+      "events :: task",
+      "identity :: api",
+      "issue :: api",
+      "pr :: api",
+      "repo :: api",
+      "repo :: dtos",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
+    })
 package dev.gitnode.os.task;
 
 import org.jspecify.annotations.NullMarked;

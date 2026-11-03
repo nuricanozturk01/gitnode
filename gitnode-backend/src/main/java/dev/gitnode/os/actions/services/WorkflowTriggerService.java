@@ -30,9 +30,9 @@ import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.services.WorkflowParserService.ParsedWorkflow;
 import dev.gitnode.os.events.actions.WorkflowJobQueuedEvent;
 import dev.gitnode.os.events.actions.WorkflowRunQueuedEvent;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,7 +57,7 @@ public class WorkflowTriggerService {
   private final WorkflowDefinitionRepository definitionRepository;
   private final WorkflowRunRepository runRepository;
   private final WorkflowJobRepository jobRepository;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final ApplicationEventPublisher eventPublisher;
   private final MatrixExpander matrixExpander;
   private final ExpressionEvaluator expressionEvaluator;
@@ -80,8 +80,8 @@ public class WorkflowTriggerService {
       final @Nullable String commitSha) {
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(repoId)
+        this.repoLookup
+            .findById(repoId)
             .orElseGet(
                 () -> {
                   log.warn("Push event for unknown repo id={}", repoId);
@@ -92,8 +92,8 @@ public class WorkflowTriggerService {
       return;
     }
 
-    final var ownerUsername = repo.getOwner().getUsername();
-    final var repoName = repo.getName();
+    final var ownerUsername = repo.ownerUsername();
+    final var repoName = repo.name();
     final var branchRef = "refs/heads/" + branchName;
 
     final var workflows =
@@ -123,8 +123,8 @@ public class WorkflowTriggerService {
       final @Nullable UUID actorId) {
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(repoId)
+        this.repoLookup
+            .findById(repoId)
             .orElseGet(
                 () -> {
                   log.warn("PR event for unknown repo id={}", repoId);
@@ -135,8 +135,8 @@ public class WorkflowTriggerService {
       return;
     }
 
-    final var ownerUsername = repo.getOwner().getUsername();
-    final var repoName = repo.getName();
+    final var ownerUsername = repo.ownerUsername();
+    final var repoName = repo.name();
     final var branchRef = "refs/heads/" + sourceBranch;
 
     final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, sourceSha);
@@ -163,12 +163,12 @@ public class WorkflowTriggerService {
       final @Nullable UUID actorId) {
 
     final var repo =
-        this.repoRepository
-            .findByIdWithOwner(repoId)
+        this.repoLookup
+            .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("Repository not found: " + repoId));
 
-    final var ownerUsername = repo.getOwner().getUsername();
-    final var repoName = repo.getName();
+    final var ownerUsername = repo.ownerUsername();
+    final var repoName = repo.name();
 
     final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, ref);
 

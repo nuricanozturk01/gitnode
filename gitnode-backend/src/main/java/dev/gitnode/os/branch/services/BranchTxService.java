@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.branch.services;
 
-import dev.gitnode.os.shared.branch.services.BranchService;
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -31,13 +31,14 @@ import org.springframework.transaction.annotation.Transactional;
 @NullMarked
 class BranchTxService implements BranchService {
 
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
+  private final RepoCommandPort repoCommands;
 
   @Override
-  public Repo findRepoByOwnerAndRepoName(final String owner, final String repoName) {
+  public RepoRef findRepoByOwnerAndRepoName(final String owner, final String repoName) {
 
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
+    return this.repoLookup
+        .find(owner, repoName)
         .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
   }
 
@@ -45,6 +46,6 @@ class BranchTxService implements BranchService {
   @Override
   public void updateDefaultBranch(final UUID repoId, final String branchName) {
 
-    this.repoRepository.updateDefaultBranch(repoId, branchName);
+    this.repoCommands.updateDefaultBranch(repoId, branchName);
   }
 }

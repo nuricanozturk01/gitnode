@@ -15,21 +15,21 @@
  */
 package dev.gitnode.os.commit.services;
 
-import static dev.gitnode.os.shared.util.FileDiffParser.parseFileDiff;
-import static dev.gitnode.os.shared.util.FileDiffParser.prepareTreeParser;
+import static dev.gitnode.os.commit.api.FileDiffParser.parseFileDiff;
+import static dev.gitnode.os.commit.api.FileDiffParser.prepareTreeParser;
 
+import dev.gitnode.os.commit.api.AuthorInfo;
+import dev.gitnode.os.commit.api.CommitDetail;
+import dev.gitnode.os.commit.api.CommitInfo;
+import dev.gitnode.os.commit.api.CommitStats;
+import dev.gitnode.os.commit.api.FileDiff;
+import dev.gitnode.os.commit.api.PagedResult;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.shared.cache.CacheNames;
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
-import dev.gitnode.os.shared.commit.dtos.CommitDetail;
-import dev.gitnode.os.shared.commit.dtos.CommitInfo;
-import dev.gitnode.os.shared.commit.dtos.CommitStats;
-import dev.gitnode.os.shared.commit.dtos.FileDiff;
-import dev.gitnode.os.shared.commit.dtos.PagedResult;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,7 +66,7 @@ public class CommitNonTxService {
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
 
   private final GitProvider gitProvider;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenantRepository;
 
   @Cacheable(
       cacheNames = CacheNames.COMMITS,
@@ -152,9 +152,7 @@ public class CommitNonTxService {
           pageRevCommits.stream()
               .map(c -> c.getAuthorIdent().getEmailAddress())
               .collect(Collectors.toSet());
-      final var tenantsByEmail =
-          this.tenantRepository.findAllByEmailIn(emails).stream()
-              .collect(Collectors.toMap(Tenant::getEmail, t -> t));
+      final var tenantsByEmail = this.tenantRepository.findAllByEmails(emails);
 
       final var pageCommits = new ArrayList<CommitInfo>(pageRevCommits.size());
       for (final var rc : pageRevCommits) {
@@ -261,7 +259,9 @@ public class CommitNonTxService {
   }
 
   private CommitInfo toCommitInfo(
-      final Repository gitRepo, final RevCommit commit, final Map<String, Tenant> tenantsByEmail) {
+      final Repository gitRepo,
+      final RevCommit commit,
+      final Map<String, TenantRef> tenantsByEmail) {
 
     try {
       final var stats = this.computeCommitStatsLightweight(gitRepo, commit);
@@ -313,7 +313,7 @@ public class CommitNonTxService {
   }
 
   private AuthorInfo resolveAuthor(
-      final RevCommit commit, final Map<String, Tenant> tenantsByEmail) {
+      final RevCommit commit, final Map<String, TenantRef> tenantsByEmail) {
 
     final var ident = commit.getAuthorIdent();
     final var tenant = tenantsByEmail.get(ident.getEmailAddress());
@@ -325,10 +325,10 @@ public class CommitNonTxService {
     return new AuthorInfo(ident.getName(), ident.getEmailAddress(), null, null);
   }
 
-  private AuthorInfo toAuthorInfo(final Tenant tenant, final PersonIdent ident) {
+  private AuthorInfo toAuthorInfo(final TenantRef tenant, final PersonIdent ident) {
 
     return new AuthorInfo(
-        ident.getName(), ident.getEmailAddress(), tenant.getUsername(), tenant.getAvatarUrl());
+        ident.getName(), ident.getEmailAddress(), tenant.username(), tenant.avatarUrl());
   }
 
   private <T> PagedResult<T> getEmptyPage(final int page, final int size) {

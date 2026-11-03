@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.admin.services;
 
+import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;

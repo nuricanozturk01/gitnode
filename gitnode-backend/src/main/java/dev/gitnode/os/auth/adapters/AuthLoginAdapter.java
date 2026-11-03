@@ -18,7 +18,7 @@ package dev.gitnode.os.auth.adapters;
 import dev.gitnode.os.auth.api.AuthLoginPort;
 import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.services.AuthService;
-import dev.gitnode.os.shared.auth.dtos.LoginInfo;
+import dev.gitnode.os.identity.dtos.LoginInfo;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.stereotype.Service;

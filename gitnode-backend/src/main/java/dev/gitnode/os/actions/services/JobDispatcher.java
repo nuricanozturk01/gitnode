@@ -33,7 +33,7 @@ import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.websocket.RunnerSessionRegistry;
 import dev.gitnode.os.actions.websocket.ServerMessage;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -74,7 +74,7 @@ public class JobDispatcher {
   private final RunnerRepository runnerRepository;
   private final RunnerSessionRegistry sessionRegistry;
   private final WorkflowParserService parserService;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
   private final ExpressionEvaluator expressionEvaluator;
   private final SecretVaultService secretVaultService;
   private final StringRedisTemplate redisTemplate;
@@ -120,9 +120,7 @@ public class JobDispatcher {
             .collect(Collectors.toMap(WorkflowRun::getId, WorkflowRun::getRepoId));
 
     final var repoIds = new java.util.HashSet<>(repoIdByRunId.values());
-    final var tenantIdByRepoId =
-        this.repoRepository.findOwnerIdsByRepoIds(repoIds).stream()
-            .collect(Collectors.toMap(row -> (UUID) row[0], row -> (UUID) row[1]));
+    final var tenantIdByRepoId = this.repoLookup.findOwnerIds(repoIds);
 
     this.assignJobs(queuedJobs, onlineRunners, repoIdByRunId, tenantIdByRepoId);
   }
@@ -307,12 +305,12 @@ public class JobDispatcher {
   private java.util.LinkedHashMap<String, String> buildEnvMap(final WorkflowRun run) {
 
     final var env = new java.util.LinkedHashMap<String, String>();
-    this.repoRepository
-        .findByIdWithOwner(run.getRepoId())
+    this.repoLookup
+        .findById(run.getRepoId())
         .ifPresent(
             repo -> {
-              env.put("GITNODE_OWNER", repo.getOwner().getUsername());
-              env.put("GITNODE_REPO", repo.getName());
+              env.put("GITNODE_OWNER", repo.ownerUsername());
+              env.put("GITNODE_REPO", repo.name());
             });
     if (run.getTriggerSha() != null) {
       env.put("GITNODE_SHA", run.getTriggerSha());

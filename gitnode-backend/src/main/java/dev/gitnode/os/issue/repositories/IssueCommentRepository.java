@@ -18,7 +18,6 @@ public interface IssueCommentRepository extends JpaRepository<IssueComment, UUID
   @Query(
       """
       SELECT c FROM IssueComment c
-      JOIN FETCH c.author
       WHERE c.issue.id = :issueId
       ORDER BY c.createdAt ASC
       """)
@@ -28,6 +27,6 @@ public interface IssueCommentRepository extends JpaRepository<IssueComment, UUID
 
   int countByIssueId(UUID issueId);
 
-  @Query("SELECT DISTINCT c.author.id FROM IssueComment c WHERE c.issue.id = :issueId")
+  @Query("SELECT DISTINCT c.authorId FROM IssueComment c WHERE c.issue.id = :issueId")
   List<UUID> findDistinctCommenterIdsByIssueId(UUID issueId);
 }

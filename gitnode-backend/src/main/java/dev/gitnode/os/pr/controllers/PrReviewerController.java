@@ -1,9 +1,9 @@
 package dev.gitnode.os.pr.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.pr.services.PrReviewerService;
 import dev.gitnode.os.pr.services.PrReviewerService.Reviewer;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.repo.services.RepoService;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PrReviewerController {
   private final PrReviewerService reviewers;
   private final JwtUtils jwt;
-  private final RepoService repos;
+  private final RepoAccessPort repos;
 
   public record ReviewerForm(
       @NotNull @Size(min = 1, max = 50) List<@NotBlank @Size(max = 255) String> usernames) {}

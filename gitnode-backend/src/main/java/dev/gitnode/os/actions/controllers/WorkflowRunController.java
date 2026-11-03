@@ -30,12 +30,12 @@ import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
 import dev.gitnode.os.actions.services.WorkflowTriggerService;
 import dev.gitnode.os.actions.websocket.RunStatusSseRegistry;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -68,8 +68,8 @@ public class WorkflowRunController {
   private final WorkflowRunRepository runRepository;
   private final WorkflowJobRepository jobRepository;
   private final WorkflowStepRepository stepRepository;
-  private final RepoRepository repoRepository;
-  private final RepoService repoService;
+  private final RepoLookupPort repoLookup;
+  private final RepoAccessPort repoService;
   private final WorkflowTriggerService triggerService;
   private final WorkflowExecutionService executionService;
   private final RunStatusSseRegistry runStatusSseRegistry;
@@ -264,9 +264,9 @@ public class WorkflowRunController {
 
   private UUID requireRepoId(final String owner, final String repo) {
 
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repo)
-        .map(Repo::getId)
+    return this.repoLookup
+        .find(owner, repo)
+        .map(RepoRef::id)
         .orElseThrow(
             () -> new ItemNotFoundException("Repository not found: " + owner + "/" + repo));
   }

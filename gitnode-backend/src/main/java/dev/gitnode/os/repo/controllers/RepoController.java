@@ -16,12 +16,12 @@
 package dev.gitnode.os.repo.controllers;
 
 import dev.gitnode.os.events.repo.RepoRenamedEvent;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.dtos.PageResponse;
+import dev.gitnode.os.repo.dtos.RepoForm;
+import dev.gitnode.os.repo.dtos.RepoInfo;
+import dev.gitnode.os.repo.services.RepoService;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.dtos.RepoForm;
-import dev.gitnode.os.shared.repo.dtos.RepoInfo;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;

@@ -32,19 +32,18 @@ import org.springframework.stereotype.Repository;
 @NullMarked
 public interface ProjectRepository extends JpaRepository<Project, UUID> {
 
-  List<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(String ownerUsername);
+  List<Project> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId);
 
-  List<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(String ownerUsername);
+  List<Project> findAllByOwnerIdAndIsPublicTrueOrderByCreatedAtDesc(UUID ownerId);
 
-  Page<Project> findAllByOwnerUsernameOrderByCreatedAtDesc(String ownerUsername, Pageable pageable);
+  Page<Project> findAllByOwnerIdOrderByCreatedAtDesc(UUID ownerId, Pageable pageable);
 
-  Page<Project> findAllByOwnerUsernameAndIsPublicTrueOrderByCreatedAtDesc(
-      String ownerUsername, Pageable pageable);
+  Page<Project> findAllByOwnerIdAndIsPublicTrueOrderByCreatedAtDesc(
+      UUID ownerId, Pageable pageable);
 
-  Optional<Project> findByOwnerUsernameAndCodePrefix(String ownerUsername, String codePrefix);
+  Optional<Project> findByOwnerIdAndCodePrefix(UUID ownerId, String codePrefix);
 
-  Optional<Project> findByOwnerUsernameAndCodePrefixAndIsPublicTrue(
-      String ownerUsername, String codePrefix);
+  Optional<Project> findByOwnerIdAndCodePrefixAndIsPublicTrue(UUID ownerId, String codePrefix);
 
   boolean existsByOwnerIdAndName(UUID ownerId, String name);
 
@@ -55,36 +54,34 @@ public interface ProjectRepository extends JpaRepository<Project, UUID> {
   void incrementTaskSeq(UUID projectId);
 
   @Query(
-      "SELECT DISTINCT p FROM Project p JOIN p.repos r WHERE r.id = :repoId ORDER BY p.createdAt DESC")
+      "SELECT DISTINCT p FROM Project p JOIN p.repoIds r WHERE r = :repoId ORDER BY p.createdAt DESC")
   List<Project> findAllByRepoId(UUID repoId);
 
   @Query(
       value =
-          "SELECT DISTINCT p FROM Project p JOIN p.repos r WHERE r.id = :repoId ORDER BY p.createdAt DESC",
-      countQuery = "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repos r WHERE r.id = :repoId")
+          "SELECT DISTINCT p FROM Project p JOIN p.repoIds r WHERE r = :repoId ORDER BY p.createdAt DESC",
+      countQuery = "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repoIds r WHERE r = :repoId")
   Page<Project> findAllByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Query(
       value =
-          "SELECT DISTINCT p FROM Project p JOIN p.repos r "
-              + "WHERE r.id = :repoId AND p.isPublic = true ORDER BY p.createdAt DESC",
+          "SELECT DISTINCT p FROM Project p JOIN p.repoIds r "
+              + "WHERE r = :repoId AND p.isPublic = true ORDER BY p.createdAt DESC",
       countQuery =
-          "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repos r "
-              + "WHERE r.id = :repoId AND p.isPublic = true")
+          "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repoIds r "
+              + "WHERE r = :repoId AND p.isPublic = true")
   Page<Project> findPublicByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Query(
       value =
-          "SELECT DISTINCT p FROM Project p JOIN p.repos r "
-              + "WHERE r.id = :repoId "
-              + "AND (p.isPublic = true OR p.owner.username = :viewerUsername) "
+          "SELECT DISTINCT p FROM Project p JOIN p.repoIds r "
+              + "WHERE r = :repoId "
+              + "AND (p.isPublic = true OR p.ownerId = :viewerId) "
               + "ORDER BY p.createdAt DESC",
       countQuery =
-          "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repos r "
-              + "WHERE r.id = :repoId "
-              + "AND (p.isPublic = true OR p.owner.username = :viewerUsername)")
+          "SELECT COUNT(DISTINCT p) FROM Project p JOIN p.repoIds r "
+              + "WHERE r = :repoId "
+              + "AND (p.isPublic = true OR p.ownerId = :viewerId)")
   Page<Project> findVisibleByRepoId(
-      @Param("repoId") UUID repoId,
-      @Param("viewerUsername") String viewerUsername,
-      Pageable pageable);
+      @Param("repoId") UUID repoId, @Param("viewerId") UUID viewerId, Pageable pageable);
 }

@@ -64,6 +64,6 @@ public class PrQueryAdapter implements PrQueryPort {
         pr.getTargetBranch(),
         pr.getStatus(),
         pr.getSourceSha(),
-        pr.getAuthor().getId());
+        pr.getAuthorId());
   }
 }

@@ -18,7 +18,6 @@ package dev.gitnode.os.snippet.repositories;
 import dev.gitnode.os.snippet.entities.Snippet;
 import dev.gitnode.os.snippet.entities.Visibility;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
@@ -33,17 +32,14 @@ import org.springframework.stereotype.Repository;
 @NullMarked
 public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
 
-  @Query("SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.id = :id")
-  Optional<Snippet> findByIdWithOwner(@Param("id") UUID id);
-
   @Query(
-      value = "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.visibility = :visibility",
+      value = "SELECT s FROM Snippet s WHERE s.visibility = :visibility",
       countQuery = "SELECT COUNT(s) FROM Snippet s WHERE s.visibility = :visibility")
   Page<Snippet> findAllByVisibility(@Param("visibility") Visibility visibility, Pageable pageable);
 
   @Query(
       value =
-          "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.visibility = 'PUBLIC' AND ("
+          "SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND ("
               + "LOWER(s.title) LIKE LOWER(CONCAT('%', :q, '%')) OR "
               + "LOWER(s.description) LIKE LOWER(CONCAT('%', :q, '%')))",
       countQuery =
@@ -52,34 +48,31 @@ public interface SnippetRepository extends JpaRepository<Snippet, UUID> {
               + "LOWER(s.description) LIKE LOWER(CONCAT('%', :q, '%')))")
   Page<Snippet> searchPublic(@Param("q") String q, Pageable pageable);
 
-  @Query("SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND s.owner.username = :username")
-  Page<Snippet> findPublicByOwnerUsername(@Param("username") String username, Pageable pageable);
+  @Query("SELECT s FROM Snippet s WHERE s.visibility = 'PUBLIC' AND s.ownerId = :ownerId")
+  Page<Snippet> findPublicByOwnerId(@Param("ownerId") UUID ownerId, Pageable pageable);
 
-  @Query(
-      "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.owner.id = :ownerId ORDER BY s.createdAt DESC")
+  @Query("SELECT s FROM Snippet s WHERE s.ownerId = :ownerId ORDER BY s.createdAt DESC")
   List<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(@Param("ownerId") UUID ownerId);
 
   @Query(
-      value =
-          "SELECT s FROM Snippet s JOIN FETCH s.owner WHERE s.owner.id = :ownerId ORDER BY s.createdAt DESC",
-      countQuery = "SELECT COUNT(s) FROM Snippet s WHERE s.owner.id = :ownerId")
+      value = "SELECT s FROM Snippet s WHERE s.ownerId = :ownerId ORDER BY s.createdAt DESC",
+      countQuery = "SELECT COUNT(s) FROM Snippet s WHERE s.ownerId = :ownerId")
   Page<Snippet> findAllByOwnerIdOrderByCreatedAtDesc(
       @Param("ownerId") UUID ownerId, Pageable pageable);
 
   @Query(
       value =
           """
-          SELECT DISTINCT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE
-            r.id = :repoId AND s.visibility = 'PUBLIC'
+          SELECT DISTINCT s FROM Snippet s JOIN s.repoIds r WHERE
+            r = :repoId AND s.visibility = 'PUBLIC'
         """,
       countQuery =
-          "SELECT COUNT(DISTINCT s) FROM Snippet s JOIN s.repos r WHERE r.id = :repoId AND s.visibility = 'PUBLIC'")
+          "SELECT COUNT(DISTINCT s) FROM Snippet s JOIN s.repoIds r WHERE r = :repoId AND s.visibility = 'PUBLIC'")
   Page<Snippet> findPublicByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Query(
-      value =
-          "SELECT DISTINCT s FROM Snippet s JOIN FETCH s.owner JOIN s.repos r WHERE r.id = :repoId",
-      countQuery = "SELECT COUNT(DISTINCT s) FROM Snippet s JOIN s.repos r WHERE r.id = :repoId")
+      value = "SELECT DISTINCT s FROM Snippet s JOIN s.repoIds r WHERE r = :repoId",
+      countQuery = "SELECT COUNT(DISTINCT s) FROM Snippet s JOIN s.repoIds r WHERE r = :repoId")
   Page<Snippet> findAllByRepoId(@Param("repoId") UUID repoId, Pageable pageable);
 
   @Modifying

@@ -15,12 +15,12 @@
  */
 package dev.gitnode.os.migration.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.migration.entities.MigrationJob;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import org.jspecify.annotations.NullMarked;
 
 @NullMarked
 public interface CloudMigrationService {
 
-  void process(MigrationJob job, String accessToken, Tenant tenant);
+  void process(MigrationJob job, String accessToken, TenantRef tenant);
 }

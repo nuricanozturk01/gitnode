@@ -22,10 +22,10 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.admin.dtos.RepoActivityStat;
 import dev.gitnode.os.auth.api.OrganizationAdminPort;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.repo.repositories.RepoStatRow;
-import dev.gitnode.os.shared.repo.services.RepoStorageService;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.repositories.RepoStatRow;
+import dev.gitnode.os.repo.services.RepoStorageService;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;

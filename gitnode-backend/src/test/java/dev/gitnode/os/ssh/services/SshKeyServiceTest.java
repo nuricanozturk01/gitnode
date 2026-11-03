@@ -22,10 +22,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.ssh.dtos.AddSshKeyForm;
 import dev.gitnode.os.ssh.entities.SshKey;
 import dev.gitnode.os.ssh.repositories.SshKeyRepository;
@@ -46,9 +45,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class SshKeyServiceTest {
 
   @Mock private SshKeyRepository sshKeyRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
 
   @InjectMocks private SshKeyService sshKeyService;
+
+  private static TenantQueryPort.TenantRef ref(UUID id, String username) {
+    return new TenantQueryPort.TenantRef(id, username, username + "@example.org", null, null, true);
+  }
 
   @Test
   @DisplayName("addKey throws ItemNotFoundException when tenant not found")
@@ -66,8 +69,7 @@ class SshKeyServiceTest {
   @DisplayName("addKey throws ErrorOccurredException when title already exists")
   void addKey_throws_whenTitleExists() {
     UUID tenantId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(tenantId);
+    var tenant = ref(tenantId, "user");
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     when(sshKeyRepository.existsByTenantIdAndTitle(tenantId, "mytitle")).thenReturn(true);
 
@@ -81,8 +83,7 @@ class SshKeyServiceTest {
   @DisplayName("addKey throws ErrorOccurredException when public key format invalid")
   void addKey_throws_whenInvalidKeyFormat() {
     UUID tenantId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(tenantId);
+    var tenant = ref(tenantId, "user");
     when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
     when(sshKeyRepository.existsByTenantIdAndTitle(tenantId, "t")).thenReturn(false);
 
@@ -97,8 +98,7 @@ class SshKeyServiceTest {
   @DisplayName("addKey returns SshKeyInfo and saves key when valid")
   void addKey_returnsInfoAndSaves_whenValid() {
     UUID tenantId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(tenantId);
+    var tenant = ref(tenantId, "user");
     SshKey savedKey = new SshKey();
     savedKey.setId(UUID.randomUUID());
     savedKey.setTitle("mykey");
@@ -175,7 +175,7 @@ class SshKeyServiceTest {
   @Test
   @DisplayName("findTenantByFingerprint throws when key not found")
   void findTenantByFingerprint_throws_whenNotFound() {
-    when(sshKeyRepository.findByFingerprintWithTenant("unknown")).thenReturn(Optional.empty());
+    when(sshKeyRepository.findByFingerprint("unknown")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> sshKeyService.findTenantByFingerprint("unknown"))
         .isInstanceOf(ItemNotFoundException.class)
@@ -185,15 +185,14 @@ class SshKeyServiceTest {
   @Test
   @DisplayName("findTenantByFingerprint returns tenant and updates lastUsedAt")
   void findTenantByFingerprint_returnsTenantAndUpdatesLastUsed() {
-    Tenant tenant = new Tenant();
-    tenant.setId(UUID.randomUUID());
-    tenant.setUsername("alice");
+    var tenant = ref(UUID.randomUUID(), "alice");
     SshKey sshKey = new SshKey();
-    sshKey.setTenant(tenant);
-    when(sshKeyRepository.findByFingerprintWithTenant("fp")).thenReturn(Optional.of(sshKey));
+    sshKey.setTenantId(tenant.id());
+    when(sshKeyRepository.findByFingerprint("fp")).thenReturn(Optional.of(sshKey));
+    when(tenantRepository.findById(tenant.id())).thenReturn(Optional.of(tenant));
     when(sshKeyRepository.save(any(SshKey.class))).thenAnswer(i -> i.getArgument(0));
 
-    Tenant result = sshKeyService.findTenantByFingerprint("fp");
+    TenantQueryPort.TenantRef result = sshKeyService.findTenantByFingerprint("fp");
 
     assertThat(result).isSameAs(tenant);
     verify(sshKeyRepository).save(sshKey);

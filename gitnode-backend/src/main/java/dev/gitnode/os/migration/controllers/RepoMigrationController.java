@@ -15,12 +15,12 @@
  */
 package dev.gitnode.os.migration.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.migration.dtos.MigrationForm;
 import dev.gitnode.os.migration.dtos.MigrationJobResponse;
 import dev.gitnode.os.migration.dtos.MigrationStatus;
 import dev.gitnode.os.migration.entities.MigrationJob;
 import dev.gitnode.os.migration.services.GitMigrationService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import java.util.UUID;

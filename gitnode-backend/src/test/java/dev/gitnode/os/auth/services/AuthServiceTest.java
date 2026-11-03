@@ -28,12 +28,12 @@ import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
-import dev.gitnode.os.shared.auth.dtos.LoginInfo;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.dtos.LoginInfo;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -58,8 +58,8 @@ class AuthServiceTest {
   @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
 
   @org.mockito.Spy
-  private dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher =
-      new dev.gitnode.os.shared.auth.services.PasswordHasher();
+  private dev.gitnode.os.identity.services.PasswordHasher passwordHasher =
+      new dev.gitnode.os.identity.services.PasswordHasher();
 
   @InjectMocks private AuthService authService;
 

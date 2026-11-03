@@ -18,19 +18,20 @@ package dev.gitnode.os.tag.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
+import dev.gitnode.os.repo.cache.RepoCacheInvalidator;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.tag.dtos.CreateReleaseForm;
 import dev.gitnode.os.tag.dtos.ReleaseInfo;
 import dev.gitnode.os.tag.dtos.TenantReleaseInfo;
@@ -54,8 +55,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ReleaseTxServiceTest {
 
   @Mock private ReleaseRepository releaseRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private ReleaseMapper releaseMapper;
   @Mock private RepoCacheInvalidator cacheInvalidator;
   @Mock private CollaboratorAccessPort collaboratorAccess;
@@ -72,15 +73,15 @@ class ReleaseTxServiceTest {
     final var author = createTenant(authorId, "owner");
     final var form = createReleaseForm("v1.0.0", "Release 1.0", false, false);
 
-    when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-        .thenReturn(Optional.of(repo));
+    when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repo));
     when(tenantRepository.findById(authorId)).thenReturn(Optional.of(author));
     when(releaseRepository.existsByRepoIdAndTagName(repoId, "v1.0.0")).thenReturn(false);
 
     final var savedRelease = createRelease(UUID.randomUUID(), repo, author, "v1.0.0");
     final var expectedInfo = createReleaseInfo(savedRelease);
     when(releaseRepository.save(any(Release.class))).thenReturn(savedRelease);
-    when(releaseMapper.toInfo(savedRelease)).thenReturn(expectedInfo);
+    when(releaseMapper.toTenantInfo(author)).thenReturn(expectedInfo.author());
+    when(releaseMapper.toInfo(eq(savedRelease), any())).thenReturn(expectedInfo);
 
     final var result = releaseTxService.create("owner", "my-repo", authorId, form);
 
@@ -97,8 +98,7 @@ class ReleaseTxServiceTest {
     final var author = createTenant(authorId, "owner");
     final var form = createReleaseForm("v1.0.0", "Duplicate", false, false);
 
-    when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-        .thenReturn(Optional.of(repo));
+    when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repo));
     when(tenantRepository.findById(authorId)).thenReturn(Optional.of(author));
     when(releaseRepository.existsByRepoIdAndTagName(repoId, "v1.0.0")).thenReturn(true);
 
@@ -113,8 +113,7 @@ class ReleaseTxServiceTest {
     final var repoId = UUID.randomUUID();
     final var repo = createRepo(repoId, "owner", "my-repo");
 
-    when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-        .thenReturn(Optional.of(repo));
+    when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repo));
     when(releaseRepository.findAllByRepoIdOrderByCreatedAtDesc(repoId)).thenReturn(List.of());
 
     final var result = releaseTxService.getAll("owner", "my-repo");
@@ -135,9 +134,8 @@ class ReleaseTxServiceTest {
     final var form = new UpdateReleaseForm();
     form.setName("Updated");
 
-    when(repoRepository.findByOwnerUsernameAndName("repoOwner", "repo"))
-        .thenReturn(Optional.of(repo));
-    when(releaseRepository.findByIdAndRepoId(releaseId, repo.getId()))
+    when(repoRepository.find("repoOwner", "repo")).thenReturn(Optional.of(repo));
+    when(releaseRepository.findByIdAndRepoId(releaseId, repo.id()))
         .thenReturn(Optional.of(release));
 
     assertThatThrownBy(
@@ -151,12 +149,11 @@ class ReleaseTxServiceTest {
     final var releaseId = UUID.randomUUID();
     final var authorId = UUID.randomUUID();
     final var author = createTenant(authorId, "owner");
-    final var repo = createRepo(UUID.randomUUID(), "owner", "repo");
-    repo.getOwner().setId(authorId);
+    final var repo = new RepoRef(UUID.randomUUID(), authorId, "owner", "repo", false, "main");
     final var release = createRelease(releaseId, repo, author, "v2.0.0");
 
-    when(repoRepository.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
-    when(releaseRepository.findByIdAndRepoId(releaseId, repo.getId()))
+    when(repoRepository.find("owner", "repo")).thenReturn(Optional.of(repo));
+    when(releaseRepository.findByIdAndRepoId(releaseId, repo.id()))
         .thenReturn(Optional.of(release));
 
     releaseTxService.delete(releaseId, authorId, "owner", "repo");
@@ -168,8 +165,8 @@ class ReleaseTxServiceTest {
   void manage_allowsCollaboratorWithPushPermission() {
     final var repo = createRepo(UUID.randomUUID(), "owner", "repo");
     final var requesterId = UUID.randomUUID();
-    when(repoRepository.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
-    when(collaboratorAccess.hasPermission(repo.getId(), requesterId, CollaboratorPermission.PUSH))
+    when(repoRepository.find("owner", "repo")).thenReturn(Optional.of(repo));
+    when(collaboratorAccess.hasPermission(repo.id(), requesterId, CollaboratorPermission.PUSH))
         .thenReturn(true);
     releaseTxService.assertCanManage("owner", "repo", requesterId);
   }
@@ -180,7 +177,7 @@ class ReleaseTxServiceTest {
     final var repoId = UUID.randomUUID();
     final var repo = createRepo(repoId, "owner", "repo");
 
-    when(repoRepository.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
+    when(repoRepository.find("owner", "repo")).thenReturn(Optional.of(repo));
     when(releaseRepository
             .findFirstByRepoIdAndIsDraftFalseAndIsPrereleaseFalseOrderByPublishedAtDesc(repoId))
         .thenReturn(Optional.empty());
@@ -193,41 +190,28 @@ class ReleaseTxServiceTest {
   @Test
   @DisplayName("findRepo throws ItemNotFoundException when repo does not exist")
   void findRepo_throws_whenRepoNotFound() {
-    when(repoRepository.findByOwnerUsernameAndName("owner", "missing"))
-        .thenReturn(Optional.empty());
+    when(repoRepository.find("owner", "missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> releaseTxService.findRepo("owner", "missing"))
         .isInstanceOf(ItemNotFoundException.class)
         .hasMessageContaining("Repo not found");
   }
 
-  private static Repo createRepo(final UUID id, final String ownerUsername, final String name) {
-    final var owner = new Tenant();
-    owner.setId(UUID.randomUUID());
-    owner.setUsername(ownerUsername);
-    final var repo = new Repo();
-    repo.setId(id);
-    repo.setOwner(owner);
-    repo.setName(name);
-    repo.setDefaultBranch("main");
-    return repo;
+  private static RepoRef createRepo(final UUID id, final String ownerUsername, final String name) {
+    return new RepoRef(id, UUID.randomUUID(), ownerUsername, name, false, "main");
   }
 
-  private static Tenant createTenant(final UUID id, final String username) {
-    final var tenant = new Tenant();
-    tenant.setId(id);
-    tenant.setUsername(username);
-    tenant.setDisplayName(username);
-    return tenant;
+  private static TenantRef createTenant(final UUID id, final String username) {
+    return new TenantRef(id, username, username + "@example.org", username, null, true);
   }
 
   private static Release createRelease(
-      final UUID id, final Repo repo, final Tenant author, final String tagName) {
+      final UUID id, final RepoRef repo, final TenantRef author, final String tagName) {
 
     final var release = new Release();
     release.setId(id);
-    release.setRepo(repo);
-    release.setAuthor(author);
+    release.setRepoId(repo.id());
+    release.setAuthorId(author.id());
     release.setTagName(tagName);
     release.setCreatedAt(Instant.now());
     release.setUpdatedAt(Instant.now());
@@ -251,9 +235,7 @@ class ReleaseTxServiceTest {
         .tagName(release.getTagName())
         .isDraft(release.isDraft())
         .isPrerelease(release.isPrerelease())
-        .author(
-            new TenantReleaseInfo(
-                release.getAuthor().getId(), release.getAuthor().getUsername(), null, null))
+        .author(new TenantReleaseInfo(release.getAuthorId(), "owner", null, null))
         .createdAt(release.getCreatedAt())
         .updatedAt(release.getUpdatedAt())
         .build();

@@ -18,8 +18,8 @@ package dev.gitnode.os.task.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.project.dtos.ProjectSummary;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.task.api.ProjectSummary;
 import dev.gitnode.os.task.entities.Project;
 import dev.gitnode.os.task.repositories.ProjectRepository;
 import java.util.Optional;
@@ -36,14 +36,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class ProjectAccessServiceImplTest {
 
   @Mock private ProjectRepository projectRepository;
+  @Mock private TenantQueryPort tenants;
 
   @InjectMocks private ProjectAccessServiceImpl projectAccessService;
 
   @Test
   @DisplayName("findByOwnerAndCode returns empty when project not found")
   void findByOwnerAndCode_returnsEmpty_whenMissing() {
-    when(projectRepository.findByOwnerUsernameAndCodePrefix("alice", "APP"))
-        .thenReturn(Optional.empty());
+    UUID ownerId = UUID.randomUUID();
+    when(tenants.findByUsername("alice")).thenReturn(Optional.of(alice(ownerId)));
+    when(projectRepository.findByOwnerIdAndCodePrefix(ownerId, "APP")).thenReturn(Optional.empty());
 
     Optional<ProjectSummary> result = projectAccessService.findByOwnerAndCode("alice", "APP");
 
@@ -54,12 +56,12 @@ class ProjectAccessServiceImplTest {
   @DisplayName("findByOwnerAndCode returns summary with id and owner username")
   void findByOwnerAndCode_returnsSummary_whenFound() {
     UUID projectId = UUID.randomUUID();
-    Tenant owner = new Tenant();
-    owner.setUsername("alice");
+    UUID ownerId = UUID.randomUUID();
     Project project = new Project();
     project.setId(projectId);
-    project.setOwner(owner);
-    when(projectRepository.findByOwnerUsernameAndCodePrefix("alice", "APP"))
+    project.setOwnerId(ownerId);
+    when(tenants.findByUsername("alice")).thenReturn(Optional.of(alice(ownerId)));
+    when(projectRepository.findByOwnerIdAndCodePrefix(ownerId, "APP"))
         .thenReturn(Optional.of(project));
 
     Optional<ProjectSummary> result = projectAccessService.findByOwnerAndCode("alice", "APP");
@@ -70,5 +72,9 @@ class ProjectAccessServiceImplTest {
               assertThat(summary.id()).isEqualTo(projectId);
               assertThat(summary.ownerUsername()).isEqualTo("alice");
             });
+  }
+
+  private static TenantQueryPort.TenantRef alice(UUID id) {
+    return new TenantQueryPort.TenantRef(id, "alice", "alice@example.org", null, null, true);
   }
 }

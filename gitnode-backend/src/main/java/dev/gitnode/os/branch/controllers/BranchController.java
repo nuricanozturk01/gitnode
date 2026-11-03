@@ -15,13 +15,13 @@
  */
 package dev.gitnode.os.branch.controllers;
 
+import dev.gitnode.os.branch.api.BranchForm;
+import dev.gitnode.os.branch.api.BranchInfo;
 import dev.gitnode.os.branch.dtos.DefaultBranchForm;
 import dev.gitnode.os.branch.services.BranchNonTxService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.branch.dtos.BranchForm;
-import dev.gitnode.os.shared.branch.dtos.BranchInfo;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.repo.services.RepoService;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
@@ -48,9 +48,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class BranchController {
 
   private final BranchNonTxService branchNonTxService;
-  private final dev.gitnode.os.shared.branch.BranchProtectionService branchProtection;
+  private final dev.gitnode.os.branch.services.BranchProtectionService branchProtection;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @PostMapping
   public ResponseEntity<BranchInfo> create(

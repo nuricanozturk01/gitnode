@@ -25,7 +25,7 @@ import dev.gitnode.os.auth.api.OrganizationSsoForm;
 import dev.gitnode.os.auth.api.OrganizationUpdateForm;
 import dev.gitnode.os.auth.api.SamlMetadataTestResult;
 import dev.gitnode.os.auth.api.SsoEnabledForm;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;

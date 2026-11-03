@@ -38,9 +38,8 @@ import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.services.WorkflowParserService.ParsedWorkflow;
 import dev.gitnode.os.events.actions.WorkflowJobQueuedEvent;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -68,7 +67,7 @@ class WorkflowTriggerServiceTest {
   @Mock private WorkflowDefinitionRepository definitionRepository;
   @Mock private WorkflowRunRepository runRepository;
   @Mock private WorkflowJobRepository jobRepository;
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @Spy private MatrixExpander matrixExpander = new MatrixExpander();
@@ -82,12 +81,7 @@ class WorkflowTriggerServiceTest {
 
   @Test
   void pullRequestRunUsesEventCommitForWorkflowAndCheckout() {
-    final var tenant = new Tenant();
-    tenant.setUsername(OWNER);
-    final var repo = new Repo();
-    repo.setId(REPO_ID);
-    repo.setName(REPO_NAME);
-    repo.setOwner(tenant);
+    final var repo = new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false);
     final var sha = "a".repeat(40);
     final var actor = UUID.randomUUID();
     final var model =
@@ -97,7 +91,7 @@ class WorkflowTriggerServiceTest {
             null,
             null,
             Map.of("build", jobWithNeeds(null)));
-    when(repoRepository.findByIdWithOwner(REPO_ID)).thenReturn(Optional.of(repo));
+    when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
     when(parserService.parseWorkflows(OWNER, REPO_NAME, sha)).thenReturn(List.of(parsed(model)));
     when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
         .thenReturn(Optional.empty());
@@ -184,13 +178,8 @@ class WorkflowTriggerServiceTest {
 
     @BeforeEach
     void stubRepo() {
-      final var tenant = new Tenant();
-      tenant.setUsername(OWNER);
-      final var repo = new Repo();
-      repo.setId(REPO_ID);
-      repo.setName(REPO_NAME);
-      repo.setOwner(tenant);
-      when(repoRepository.findByIdWithOwner(REPO_ID)).thenReturn(Optional.of(repo));
+      final var repo = new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false);
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
     }
 
     @Test
@@ -277,13 +266,8 @@ class WorkflowTriggerServiceTest {
 
     @BeforeEach
     void stubRepo() {
-      final var tenant = new Tenant();
-      tenant.setUsername(OWNER);
-      final var repo = new Repo();
-      repo.setId(REPO_ID);
-      repo.setName(REPO_NAME);
-      repo.setOwner(tenant);
-      when(repoRepository.findByIdWithOwner(REPO_ID)).thenReturn(Optional.of(repo));
+      final var repo = new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false);
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
       when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
           .thenReturn(Optional.empty());
       stubDefinitionSave();

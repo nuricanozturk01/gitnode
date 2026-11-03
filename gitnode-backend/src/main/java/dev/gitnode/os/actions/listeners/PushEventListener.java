@@ -16,8 +16,8 @@
 package dev.gitnode.os.actions.listeners;
 
 import dev.gitnode.os.actions.services.WorkflowTriggerService;
+import dev.gitnode.os.branch.api.OpenPullRequestQueryPort;
 import dev.gitnode.os.events.repo.RepoPushedEvent;
-import dev.gitnode.os.shared.branch.OpenPullRequestQueryPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;

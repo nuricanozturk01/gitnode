@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.admin.controllers;
 
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.audit.annotations.Audited;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
 import dev.gitnode.os.webhook.api.WebhookDlqAdminPort;
 import dev.gitnode.os.webhook.api.WebhookDlqEntry;
 import java.util.Map;

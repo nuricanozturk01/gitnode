@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.profile.services;
 
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.TenantSearchResult;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;

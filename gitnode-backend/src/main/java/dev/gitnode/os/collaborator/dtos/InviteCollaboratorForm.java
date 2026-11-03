@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.collaborator.dtos;
 
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
 import jakarta.validation.constraints.NotBlank;
 import java.util.Set;
 import lombok.Getter;

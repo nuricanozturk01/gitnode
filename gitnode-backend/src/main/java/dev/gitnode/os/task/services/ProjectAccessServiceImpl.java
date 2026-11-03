@@ -15,8 +15,9 @@
  */
 package dev.gitnode.os.task.services;
 
-import dev.gitnode.os.shared.project.dtos.ProjectSummary;
-import dev.gitnode.os.shared.project.services.ProjectAccessService;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.task.api.ProjectAccessService;
+import dev.gitnode.os.task.api.ProjectSummary;
 import dev.gitnode.os.task.repositories.ProjectRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -31,12 +32,14 @@ import org.springframework.transaction.annotation.Transactional;
 class ProjectAccessServiceImpl implements ProjectAccessService {
 
   private final ProjectRepository projectRepository;
+  private final TenantQueryPort tenants;
 
   @Override
   public Optional<ProjectSummary> findByOwnerAndCode(
       final String ownerUsername, final String codePrefix) {
-    return this.projectRepository
-        .findByOwnerUsernameAndCodePrefix(ownerUsername, codePrefix)
-        .map(p -> new ProjectSummary(p.getId(), p.getOwner().getUsername()));
+    return this.tenants
+        .findByUsername(ownerUsername)
+        .flatMap(owner -> this.projectRepository.findByOwnerIdAndCodePrefix(owner.id(), codePrefix))
+        .map(p -> new ProjectSummary(p.getId(), ownerUsername));
   }
 }

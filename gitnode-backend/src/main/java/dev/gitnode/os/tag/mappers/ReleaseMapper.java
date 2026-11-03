@@ -15,26 +15,49 @@
  */
 package dev.gitnode.os.tag.mappers;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.tag.dtos.ReleaseInfo;
 import dev.gitnode.os.tag.dtos.TenantReleaseInfo;
 import dev.gitnode.os.tag.entities.Release;
 import org.jspecify.annotations.NullMarked;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Builder;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants;
+import org.springframework.stereotype.Component;
 
-@Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
+/** Maps a release plus its (separately looked up) author; the release only stores the author id. */
+@Component
 @NullMarked
-public interface ReleaseMapper {
+public class ReleaseMapper {
 
-  @BeanMapping(builder = @Builder())
-  @Mapping(target = "isDraft", source = "draft")
-  @Mapping(target = "isPrerelease", source = "prerelease")
-  @Mapping(target = "isLatest", ignore = true)
-  ReleaseInfo toInfo(Release release);
+  /** Used when the author account no longer resolves (deleted concurrently). */
+  private static TenantReleaseInfo ghost(final java.util.UUID id) {
+    return new TenantReleaseInfo(id, "ghost", null, null);
+  }
 
-  TenantReleaseInfo toTenantInfo(Tenant tenant);
+  public ReleaseInfo toInfo(final Release release, final TenantReleaseInfo author) {
+    return ReleaseInfo.builder()
+        .id(release.getId())
+        .tagName(release.getTagName())
+        .name(release.getName())
+        .body(release.getBody())
+        .isDraft(release.isDraft())
+        .isPrerelease(release.isPrerelease())
+        .isLatest(false)
+        .author(author)
+        .publishedAt(release.getPublishedAt())
+        .createdAt(release.getCreatedAt())
+        .updatedAt(release.getUpdatedAt())
+        .build();
+  }
+
+  public TenantReleaseInfo toTenantInfo(final TenantRef tenant) {
+    return new TenantReleaseInfo(
+        tenant.id(), tenant.username(), tenant.displayName(), tenant.avatarUrl());
+  }
+
+  public TenantReleaseInfo toTenantInfoOrGhost(
+      final java.util.UUID authorId,
+      final java.util.@org.jspecify.annotations.Nullable Map<java.util.UUID, TenantReleaseInfo>
+          known) {
+    final var found = known == null ? null : known.get(authorId);
+    return found != null ? found : ghost(authorId);
+  }
 }

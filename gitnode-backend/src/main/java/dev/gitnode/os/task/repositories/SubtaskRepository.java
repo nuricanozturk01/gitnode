@@ -31,7 +31,6 @@ public interface SubtaskRepository extends JpaRepository<Subtask, UUID> {
   @Query(
 """
       SELECT s FROM Subtask s
-      LEFT JOIN FETCH s.branchRepo
       WHERE s.task.id = :taskId
       ORDER BY s.position ASC
 """)

@@ -25,14 +25,13 @@ import static org.mockito.Mockito.when;
 import dev.gitnode.os.filecomment.dtos.FileCommentForm;
 import dev.gitnode.os.filecomment.entities.FileComment;
 import dev.gitnode.os.filecomment.repositories.FileCommentRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -52,8 +51,9 @@ class FileCommentServiceTest {
 
   private final List<FileComment> store = new ArrayList<>();
   private final FileCommentRepository comments = mock(FileCommentRepository.class);
-  private final RepoRepository repos = mock(RepoRepository.class);
-  private final TenantRepository tenants = mock(TenantRepository.class);
+  private final RepoLookupPort repos = mock(RepoLookupPort.class);
+  private final TenantQueryPort tenants = mock(TenantQueryPort.class);
+  private final java.util.Map<UUID, Tenant> accounts = new java.util.HashMap<>();
   private final GitProvider provider = mock(GitProvider.class);
   private final org.springframework.context.ApplicationEventPublisher events =
       mock(org.springframework.context.ApplicationEventPublisher.class);
@@ -68,8 +68,18 @@ class FileCommentServiceTest {
     tenant.setId(UUID.randomUUID());
     tenant.setUsername(name);
     tenant.setEmail(name + "@example.org");
-    when(tenants.findById(tenant.getId())).thenReturn(Optional.of(tenant));
+    accounts.put(tenant.getId(), tenant);
     return tenant;
+  }
+
+  private static TenantQueryPort.TenantRef ref(final Tenant tenant) {
+    return new TenantQueryPort.TenantRef(
+        tenant.getId(),
+        tenant.getUsername(),
+        tenant.getEmail(),
+        tenant.getDisplayName(),
+        tenant.getAvatarUrl(),
+        tenant.isEnabled());
   }
 
   @BeforeEach
@@ -78,10 +88,21 @@ class FileCommentServiceTest {
     alice = user("alice");
     bob = user("bob");
     repoOwner = user("owner");
-    final var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(repoOwner);
-    when(repos.findByOwnerUsernameAndName("o", "r")).thenReturn(Optional.of(repo));
+    when(tenants.findById(any()))
+        .thenAnswer(
+            i -> Optional.ofNullable(accounts.get((UUID) i.getArgument(0))).map(t -> ref(t)));
+    when(tenants.findAllByIds(any()))
+        .thenAnswer(
+            i ->
+                ((java.util.Collection<UUID>) i.getArgument(0))
+                    .stream()
+                        .filter(accounts::containsKey)
+                        .collect(
+                            java.util.stream.Collectors.toMap(
+                                id -> id, id -> ref(accounts.get(id)))));
+    final var repoRef =
+        new RepoLookupPort.RepoRef(UUID.randomUUID(), repoOwner.getId(), "owner", "r", false);
+    when(repos.find("o", "r")).thenReturn(Optional.of(repoRef));
     when(provider.open("o", "r")).thenAnswer(i -> Git.open(dir.toFile()).getRepository());
     when(comments.save(any(FileComment.class)))
         .thenAnswer(

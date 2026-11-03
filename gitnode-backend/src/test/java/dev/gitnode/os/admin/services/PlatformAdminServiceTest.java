@@ -18,8 +18,8 @@ package dev.gitnode.os.admin.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;

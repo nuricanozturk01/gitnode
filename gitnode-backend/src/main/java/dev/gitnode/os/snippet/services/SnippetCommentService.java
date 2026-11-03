@@ -15,10 +15,10 @@
  */
 package dev.gitnode.os.snippet.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.snippet.dtos.SnippetCommentForm;
 import dev.gitnode.os.snippet.dtos.SnippetCommentInfo;
 import dev.gitnode.os.snippet.entities.Snippet;
@@ -46,7 +46,7 @@ public class SnippetCommentService {
 
   private final SnippetCommentRepository commentRepository;
   private final SnippetRepository snippetRepository;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenants;
   private final SnippetMapper snippetMapper;
 
   public PageResponse<SnippetCommentInfo> listComments(
@@ -54,16 +54,15 @@ public class SnippetCommentService {
 
     final var snippet =
         this.snippetRepository
-            .findByIdWithOwner(snippetId)
+            .findById(snippetId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
     this.requireSnippetReadAccess(snippet, callerId);
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").ascending());
     return PageResponse.from(
-        this.commentRepository
-            .findAllBySnippetIdOrderByCreatedAtAsc(snippetId, pageable)
-            .map(this.snippetMapper::toCommentInfo));
+        this.snippetMapper.toCommentInfoPage(
+            this.commentRepository.findAllBySnippetIdOrderByCreatedAtAsc(snippetId, pageable)));
   }
 
   @Transactional
@@ -72,19 +71,19 @@ public class SnippetCommentService {
 
     final var snippet =
         this.snippetRepository
-            .findByIdWithOwner(snippetId)
+            .findById(snippetId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
     this.requireSnippetReadAccess(snippet, tenantId);
 
     final var author =
-        this.tenantRepository
+        this.tenants
             .findById(tenantId)
             .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
 
     final var comment = new SnippetComment();
     comment.setSnippet(snippet);
-    comment.setAuthor(author);
+    comment.setAuthorId(author.id());
     comment.setBody(form.getBody());
 
     final var saved = this.commentRepository.save(comment);
@@ -95,7 +94,7 @@ public class SnippetCommentService {
 
   private void requireSnippetReadAccess(final Snippet snippet, final @Nullable UUID callerId) {
     if (snippet.getVisibility() == Visibility.PRIVATE
-        && (callerId == null || !callerId.equals(snippet.getOwner().getId()))) {
+        && (callerId == null || !callerId.equals(snippet.getOwnerId()))) {
       throw new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND);
     }
   }
@@ -105,7 +104,7 @@ public class SnippetCommentService {
 
     final var snippet =
         this.snippetRepository
-            .findByIdWithOwner(snippetId)
+            .findById(snippetId)
             .orElseThrow(() -> new ItemNotFoundException(ERR_SNIPPET_NOT_FOUND));
 
     final var comment =
@@ -113,8 +112,8 @@ public class SnippetCommentService {
             .findById(commentId)
             .orElseThrow(() -> new ItemNotFoundException("commentNotFound"));
 
-    final boolean isAuthor = tenantId.equals(comment.getAuthor().getId());
-    final boolean isSnippetOwner = tenantId.equals(snippet.getOwner().getId());
+    final boolean isAuthor = tenantId.equals(comment.getAuthorId());
+    final boolean isSnippetOwner = tenantId.equals(snippet.getOwnerId());
 
     if (!isAuthor && !isSnippetOwner) {
       throw new AccessNotAllowedException("notCommentAuthorOrSnippetOwner");

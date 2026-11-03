@@ -1,7 +1,7 @@
 package dev.gitnode.os.pr.adapters;
 
+import dev.gitnode.os.branch.api.OpenPullRequestQueryPort;
 import dev.gitnode.os.pr.repositories.PrRepository;
-import dev.gitnode.os.shared.branch.OpenPullRequestQueryPort;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

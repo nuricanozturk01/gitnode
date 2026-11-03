@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.auth.entities;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;

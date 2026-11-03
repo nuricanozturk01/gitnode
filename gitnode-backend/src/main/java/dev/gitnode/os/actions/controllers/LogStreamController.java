@@ -21,7 +21,7 @@ import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.services.RunnerTokenService;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
 import dev.gitnode.os.actions.websocket.SseEmitterRegistry;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

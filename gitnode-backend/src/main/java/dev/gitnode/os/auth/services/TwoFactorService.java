@@ -15,11 +15,11 @@
  */
 package dev.gitnode.os.auth.services;
 
-import dev.gitnode.os.shared.auth.services.PasswordHasher;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.services.PasswordHasher;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

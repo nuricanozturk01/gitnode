@@ -19,7 +19,7 @@ import dev.gitnode.os.admin.dtos.AdminUserDetail;
 import dev.gitnode.os.admin.dtos.AdminUserSummary;
 import dev.gitnode.os.admin.dtos.UserEnabledForm;
 import dev.gitnode.os.admin.services.AdminUserService;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

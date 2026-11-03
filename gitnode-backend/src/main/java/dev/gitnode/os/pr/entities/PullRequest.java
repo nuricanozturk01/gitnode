@@ -15,18 +15,12 @@
  */
 package dev.gitnode.os.pr.entities;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.HashSet;
@@ -36,8 +30,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
@@ -50,10 +42,8 @@ public class PullRequest {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "repo_id", nullable = false)
-  private Repo repo;
+  @Column(name = "repo_id", nullable = false)
+  private UUID repoId;
 
   @Column(name = "number", nullable = false)
   private int number;
@@ -68,27 +58,26 @@ public class PullRequest {
   @Column(name = "status", nullable = false, length = 20)
   private String status;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @JoinColumn(name = "author_id", nullable = false)
-  private Tenant author;
+  @Column(name = "author_id", nullable = false)
+  private UUID authorId;
 
-  @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "merged_by_id")
-  private Tenant mergedBy;
+  /** The database sets this to NULL when the merging account is deleted. */
+  @Column(name = "merged_by_id")
+  private UUID mergedById;
 
-  @ManyToMany
-  @JoinTable(
+  @jakarta.persistence.ElementCollection
+  @jakarta.persistence.CollectionTable(
       name = "pr_reviewers",
-      joinColumns = @JoinColumn(name = "pr_id"),
-      inverseJoinColumns = @JoinColumn(name = "tenant_id"))
-  private Set<Tenant> reviewers = new HashSet<>();
+      joinColumns = @JoinColumn(name = "pr_id"))
+  @Column(name = "tenant_id", nullable = false)
+  private Set<UUID> reviewerIds = new HashSet<>();
 
-  @ManyToMany
-  @JoinTable(
+  @jakarta.persistence.ElementCollection
+  @jakarta.persistence.CollectionTable(
       name = "pr_assignees",
-      joinColumns = @JoinColumn(name = "pr_id"),
-      inverseJoinColumns = @JoinColumn(name = "tenant_id"))
-  private Set<Tenant> assignees = new HashSet<>();
+      joinColumns = @JoinColumn(name = "pr_id"))
+  @Column(name = "tenant_id", nullable = false)
+  private Set<UUID> assigneeIds = new HashSet<>();
 
   @jakarta.persistence.ElementCollection
   @jakarta.persistence.CollectionTable(

@@ -17,7 +17,7 @@ package dev.gitnode.os.ai.listeners;
 
 import dev.gitnode.os.ai.services.AiCodeReviewService;
 import dev.gitnode.os.events.pr.PullRequestCreatedEvent;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -31,13 +31,13 @@ import org.springframework.stereotype.Service;
 public class AiCodeReviewListener {
 
   private final AiCodeReviewService reviewService;
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
 
   @ApplicationModuleListener
   public void onPullRequestCreated(final PullRequestCreatedEvent event) {
-    final var repo = this.repoRepository.findById(event.repoId()).orElse(null);
+    final var repo = this.repoLookup.findById(event.repoId()).orElse(null);
 
-    if (repo == null || !repo.isAiPrReviewEnabled()) {
+    if (repo == null || !repo.aiPrReviewEnabled()) {
       log.debug(
           "AI code review skipped for PR #{} in repo {} — feature disabled in repository settings",
           event.prNumber(),

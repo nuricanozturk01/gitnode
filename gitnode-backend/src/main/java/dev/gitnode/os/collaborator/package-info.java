@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {"events :: collaborator", "identity :: *", "repo :: *", "shared :: *"})
 package dev.gitnode.os.collaborator;
 
 import org.jspecify.annotations.NullMarked;

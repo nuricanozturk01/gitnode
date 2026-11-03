@@ -15,13 +15,13 @@
  */
 package dev.gitnode.os.profile.services;
 
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.ContributionBreakdown;
 import dev.gitnode.os.profile.dtos.ContributionDay;
 import dev.gitnode.os.profile.dtos.UserContributionsResponse;
 import dev.gitnode.os.profile.repositories.UserContributionRepository;
 import dev.gitnode.os.profile.repositories.UserContributionRepository.ContributionAggregateRow;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;

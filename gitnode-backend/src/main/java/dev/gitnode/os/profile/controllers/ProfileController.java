@@ -15,6 +15,8 @@
  */
 package dev.gitnode.os.profile.controllers;
 
+import dev.gitnode.os.identity.dtos.TenantInfo;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.TenantSearchResult;
@@ -26,8 +28,6 @@ import dev.gitnode.os.profile.services.ProfileService;
 import dev.gitnode.os.profile.services.TenantEmailService;
 import dev.gitnode.os.profile.services.TenantSearchService;
 import dev.gitnode.os.profile.services.UserContributionService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.tenant.dtos.TenantInfo;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;

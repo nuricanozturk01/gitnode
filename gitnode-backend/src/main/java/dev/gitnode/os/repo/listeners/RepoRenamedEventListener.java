@@ -17,8 +17,8 @@ package dev.gitnode.os.repo.listeners;
 
 import dev.gitnode.os.events.repo.RepoRenameRollbackRequstedEvent;
 import dev.gitnode.os.events.repo.RepoRenamedEvent;
-import dev.gitnode.os.shared.repo.services.RepoService;
-import dev.gitnode.os.shared.repo.services.RepoStorageService;
+import dev.gitnode.os.repo.services.RepoService;
+import dev.gitnode.os.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;

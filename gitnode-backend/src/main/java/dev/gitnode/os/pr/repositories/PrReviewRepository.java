@@ -7,7 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 public interface PrReviewRepository extends JpaRepository<PrReview, UUID> {
-  @Query(
-      "SELECT r FROM PrReview r JOIN FETCH r.author WHERE r.pullRequest.id = :prId ORDER BY r.createdAt ASC")
+  @Query("SELECT r FROM PrReview r WHERE r.pullRequest.id = :prId ORDER BY r.createdAt ASC")
   List<PrReview> findAllByPrId(UUID prId);
 }

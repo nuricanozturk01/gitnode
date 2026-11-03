@@ -16,7 +16,7 @@
 
 package dev.gitnode.os.pr.dtos;
 
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
+import dev.gitnode.os.commit.api.AuthorInfo;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.List;

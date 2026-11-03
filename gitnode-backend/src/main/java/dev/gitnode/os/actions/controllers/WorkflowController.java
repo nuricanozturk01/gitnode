@@ -18,12 +18,12 @@ package dev.gitnode.os.actions.controllers;
 import dev.gitnode.os.actions.dtos.response.WorkflowDetailResponse;
 import dev.gitnode.os.actions.dtos.response.WorkflowSummaryResponse;
 import dev.gitnode.os.actions.services.WorkflowDefinitionService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -46,8 +46,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class WorkflowController {
 
   private final WorkflowDefinitionService definitionService;
-  private final RepoRepository repoRepository;
-  private final RepoService repoService;
+  private final RepoLookupPort repoLookup;
+  private final RepoAccessPort repoService;
   private final JwtUtils jwtUtils;
 
   @GetMapping("/workflows")
@@ -107,9 +107,9 @@ public class WorkflowController {
 
   private UUID requireRepoId(final String owner, final String repo) {
 
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repo)
-        .map(Repo::getId)
+    return this.repoLookup
+        .find(owner, repo)
+        .map(RepoRef::id)
         .orElseThrow(
             () -> new ItemNotFoundException("Repository not found: " + owner + "/" + repo));
   }

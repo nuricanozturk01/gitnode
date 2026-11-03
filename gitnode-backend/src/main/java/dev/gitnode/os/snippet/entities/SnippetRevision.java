@@ -15,7 +15,6 @@
  */
 package dev.gitnode.os.snippet.entities;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -54,10 +53,8 @@ public class SnippetRevision {
   @JoinColumn(name = "snippet_id", nullable = false)
   private Snippet snippet;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "author_id", nullable = false)
-  private Tenant author;
+  @Column(name = "author_id", nullable = false)
+  private UUID authorId;
 
   @Column(name = "title", nullable = false, length = 200)
   private String title;

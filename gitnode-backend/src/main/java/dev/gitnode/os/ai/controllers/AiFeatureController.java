@@ -25,10 +25,11 @@ import dev.gitnode.os.ai.services.AiCodeReviewService;
 import dev.gitnode.os.ai.services.CodebaseAnalysisService;
 import dev.gitnode.os.ai.services.CommitSuggestionService;
 import dev.gitnode.os.ai.services.PrDescriptionService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoQueryPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
@@ -56,7 +57,8 @@ public class AiFeatureController {
   private final AiCodeReviewService codeReviewService;
   private final CodebaseAnalysisService codebaseAnalysisService;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoQueryPort repoService;
+  private final RepoAccessPort repoAccess;
 
   @PostMapping("/suggest/commit-message")
   @RateLimit(limit = 20, windowSeconds = 600, key = "ai.commit-suggest")
@@ -74,7 +76,7 @@ public class AiFeatureController {
       @Valid @RequestBody final PrDescriptionRequest request)
       throws IOException {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(tenantId, request.owner(), request.repo());
+    this.repoAccess.assertUserCanAccessRepo(tenantId, request.owner(), request.repo());
     return ResponseEntity.ok(this.prDescriptionService.generate(tenantId, request));
   }
 
@@ -86,7 +88,7 @@ public class AiFeatureController {
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
       @RequestParam(defaultValue = "") final String branch) {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(tenantId, owner, repo);
+    this.repoAccess.assertUserCanAccessRepo(tenantId, owner, repo);
     final var repoInfo = this.repoService.findByOwnerAndName(owner, repo, tenantId);
     final var effectiveBranch = branch.isBlank() ? repoInfo.getDefaultBranch() : branch;
     final var result =
@@ -101,7 +103,7 @@ public class AiFeatureController {
       @PathVariable final String repo,
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(tenantId, owner, repo);
+    this.repoAccess.assertUserCanAccessRepo(tenantId, owner, repo);
     final var repoInfo = this.repoService.findByOwnerAndName(owner, repo, tenantId);
     return this.codebaseAnalysisService
         .getLatest(repoInfo.getId())
@@ -117,7 +119,7 @@ public class AiFeatureController {
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "10") final int size) {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(tenantId, owner, repo);
+    this.repoAccess.assertUserCanAccessRepo(tenantId, owner, repo);
     final var repoInfo = this.repoService.findByOwnerAndName(owner, repo, tenantId);
     return ResponseEntity.ok(this.codebaseAnalysisService.list(repoInfo.getId(), page, size));
   }
@@ -131,7 +133,7 @@ public class AiFeatureController {
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "20") final int size) {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(tenantId, owner, repo);
+    this.repoAccess.assertUserCanAccessRepo(tenantId, owner, repo);
     final var repoEntity = this.repoService.findByOwnerAndName(owner, repo, tenantId);
     return this.codeReviewService
         .findReview(repoEntity.getId(), number, page, size)
@@ -147,7 +149,7 @@ public class AiFeatureController {
       @PathVariable final int number,
       @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader) {
     final var tenantId = this.jwtUtils.extractUserId(authHeader);
-    this.repoService.assertUserCanAccessRepo(tenantId, owner, repo);
+    this.repoAccess.assertUserCanAccessRepo(tenantId, owner, repo);
     final var repoEntity = this.repoService.findByOwnerAndName(owner, repo, tenantId);
     final var review =
         this.codeReviewService.retryReview(

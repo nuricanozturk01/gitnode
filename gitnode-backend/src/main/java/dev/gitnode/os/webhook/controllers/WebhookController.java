@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.webhook.controllers;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.webhook.dtos.WebhookForm;
 import dev.gitnode.os.webhook.dtos.WebhookInfo;

@@ -15,12 +15,12 @@
  */
 package dev.gitnode.os.migration.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.migration.dtos.MigrationForm;
 import dev.gitnode.os.migration.dtos.MigrationStatus;
 import dev.gitnode.os.migration.entities.MigrationJob;
 import dev.gitnode.os.migration.repositories.MigrationJobRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -35,13 +35,13 @@ public class GitMigrationService {
 
   private final MigrationJobRepository jobRepository;
   private final CloudMigrationService cloudMigrationService;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenants;
 
   @Async
   public void migrate(final MigrationForm form, final UUID tenantId, final UUID jobId) {
 
     final var tenant =
-        this.tenantRepository
+        this.tenants
             .findById(tenantId)
             .orElseThrow(() -> new ItemNotFoundException("Tenant not found"));
 

@@ -15,14 +15,14 @@
  */
 package dev.gitnode.os.webhook.services;
 
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.audit.annotations.Audited;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import dev.gitnode.os.webhook.dtos.WebhookForm;
 import dev.gitnode.os.webhook.dtos.WebhookInfo;
 import dev.gitnode.os.webhook.dtos.WebhookUpdateForm;
@@ -45,8 +45,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class WebhookService {
 
   private final WebhookRepository webhookRepository;
-  private final RepoRepository repoRepository;
-  private final RepoService repoService;
+  private final RepoLookupPort repoLookup;
+  private final RepoAccessPort repoService;
   private final WebhookMapper webhookMapper;
 
   public List<WebhookInfo> list(final UUID requesterId, final String owner, final String repoName) {
@@ -145,9 +145,9 @@ public class WebhookService {
   }
 
   private UUID resolveRepoId(final String owner, final String repoName) {
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
-        .map(Repo::getId)
+    return this.repoLookup
+        .find(owner, repoName)
+        .map(RepoRef::id)
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
   }
 

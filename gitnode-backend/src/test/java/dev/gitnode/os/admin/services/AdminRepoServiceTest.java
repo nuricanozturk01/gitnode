@@ -20,9 +20,9 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.repo.entities.Repo;
+import dev.gitnode.os.repo.repositories.RepoRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

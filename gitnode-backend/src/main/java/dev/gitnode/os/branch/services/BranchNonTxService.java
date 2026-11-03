@@ -17,12 +17,11 @@ package dev.gitnode.os.branch.services;
 
 import static java.util.Comparator.comparing;
 
+import dev.gitnode.os.branch.api.BranchForm;
+import dev.gitnode.os.branch.api.BranchInfo;
+import dev.gitnode.os.branch.api.BranchProtocolService;
 import dev.gitnode.os.events.branch.BranchCreatedEvent;
 import dev.gitnode.os.events.branch.BranchDeletedEvent;
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.branch.dtos.BranchForm;
-import dev.gitnode.os.shared.branch.dtos.BranchInfo;
-import dev.gitnode.os.shared.branch.services.BranchProtocolService;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -73,7 +72,7 @@ public class BranchNonTxService implements BranchProtocolService {
       this.checkCreateResult(result);
 
       final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
-      this.eventPublisher.publishEvent(new BranchCreatedEvent(repo.getId(), form.getName()));
+      this.eventPublisher.publishEvent(new BranchCreatedEvent(repo.id(), form.getName()));
 
       return this.get(owner, repoName, form.getName());
     }
@@ -88,7 +87,7 @@ public class BranchNonTxService implements BranchProtocolService {
 
     final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
 
-    this.checkDefaultBranch(branchName, repo.getDefaultBranch());
+    this.checkDefaultBranch(branchName, repo.defaultBranch());
 
     try (final var gitRepo = this.gitProvider.open(owner, repoName)) {
 
@@ -99,7 +98,7 @@ public class BranchNonTxService implements BranchProtocolService {
       this.checkDeleteResult(result);
     }
 
-    this.eventPublisher.publishEvent(new BranchDeletedEvent(repo.getId(), branchName));
+    this.eventPublisher.publishEvent(new BranchDeletedEvent(repo.id(), branchName));
   }
 
   @Override
@@ -118,7 +117,7 @@ public class BranchNonTxService implements BranchProtocolService {
       this.checkLinkResult(result);
     }
 
-    this.branchTxService.updateDefaultBranch(repo.getId(), branchName);
+    this.branchTxService.updateDefaultBranch(repo.id(), branchName);
   }
 
   @Override
@@ -133,15 +132,15 @@ public class BranchNonTxService implements BranchProtocolService {
       final var refs = gitRepo.getRefDatabase().getRefsByPrefix(Constants.R_HEADS);
 
       if (refs.isEmpty()) {
-        return this.unbornBranchList(gitRepo, repo.getDefaultBranch());
+        return this.unbornBranchList(gitRepo, repo.defaultBranch());
       }
 
       final var comparator =
           comparing((BranchInfo b) -> b.isDefault() ? 0 : 1).thenComparing(BranchInfo::name);
 
-      final var defaultRef = gitRepo.exactRef(Constants.R_HEADS + repo.getDefaultBranch());
+      final var defaultRef = gitRepo.exactRef(Constants.R_HEADS + repo.defaultBranch());
       return refs.stream()
-          .map(ref -> this.buildBranchInfo(walk, ref, repo.getDefaultBranch()))
+          .map(ref -> this.buildBranchInfo(walk, ref, repo.defaultBranch()))
           .map(info -> this.withDivergence(gitRepo, info, defaultRef))
           .sorted(comparator)
           .toList();
@@ -159,7 +158,7 @@ public class BranchNonTxService implements BranchProtocolService {
 
       final var ref = this.getBranchRef(gitRepo, branchName);
 
-      return this.buildBranchInfo(walk, ref, repo.getDefaultBranch());
+      return this.buildBranchInfo(walk, ref, repo.defaultBranch());
     }
   }
 

@@ -1,6 +1,6 @@
 package dev.gitnode.os.issue.dtos;
 
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
+import dev.gitnode.os.commit.api.AuthorInfo;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.Builder;

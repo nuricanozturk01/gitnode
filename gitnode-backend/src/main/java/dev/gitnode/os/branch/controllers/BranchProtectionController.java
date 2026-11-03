@@ -1,14 +1,14 @@
 package dev.gitnode.os.branch.controllers;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.branch.BranchProtectionRule;
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.branch.entities.BranchProtectionRule;
+import dev.gitnode.os.branch.services.BranchProtectionService;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.repo.services.RepoService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -37,8 +37,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class BranchProtectionController {
   private final JwtUtils jwt;
-  private final RepoService access;
-  private final RepoRepository repos;
+  private final RepoAccessPort access;
+  private final RepoLookupPort repos;
   private final BranchProtectionService protection;
   private final GitProvider git;
 
@@ -119,8 +119,8 @@ public class BranchProtectionController {
     this.access.assertUserHasPermission(
         requester, owner, repo, CollaboratorPermission.SETTINGS_WRITE);
     return this.repos
-        .findByOwnerUsernameAndName(owner, repo)
+        .find(owner, repo)
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"))
-        .getId();
+        .id();
   }
 }

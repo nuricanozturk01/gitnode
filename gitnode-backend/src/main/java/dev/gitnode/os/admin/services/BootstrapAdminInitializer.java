@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.admin.services;
 
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.shared.lock.DistributedLockService;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -40,7 +40,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
   private static final Duration BOOTSTRAP_LOCK_TTL = Duration.ofSeconds(30);
 
   private final TenantRepository tenantRepository;
-  private final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher;
+  private final dev.gitnode.os.identity.services.PasswordHasher passwordHasher;
   private final DistributedLockService lockService;
   private final TransactionTemplate transactionTemplate;
   private final boolean enabled;
@@ -49,7 +49,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
 
   public BootstrapAdminInitializer(
       final TenantRepository tenantRepository,
-      final dev.gitnode.os.shared.auth.services.PasswordHasher passwordHasher,
+      final dev.gitnode.os.identity.services.PasswordHasher passwordHasher,
       final DistributedLockService lockService,
       final TransactionTemplate transactionTemplate,
       @Value("${gitnode.bootstrap.admin.enabled:true}") final boolean enabled,

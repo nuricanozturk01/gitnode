@@ -16,7 +16,7 @@
 package dev.gitnode.os.ai.dtos;
 
 import dev.gitnode.os.ai.entities.ReviewStatus;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import java.time.Instant;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;

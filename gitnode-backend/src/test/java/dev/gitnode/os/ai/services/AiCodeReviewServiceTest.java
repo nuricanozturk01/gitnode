@@ -28,8 +28,8 @@ import dev.gitnode.os.ai.entities.ReviewStatus;
 import dev.gitnode.os.ai.repositories.AiCodeReviewCommentRepository;
 import dev.gitnode.os.ai.repositories.AiCodeReviewRepository;
 import dev.gitnode.os.pr.api.PrQueryPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -55,7 +55,7 @@ class AiCodeReviewServiceTest {
   @Mock private GitProvider gitProvider;
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private PrQueryPort prQueryPort;
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
   @Mock private AiCodeReviewRunner reviewRunner;
 
   @InjectMocks private AiCodeReviewService service;

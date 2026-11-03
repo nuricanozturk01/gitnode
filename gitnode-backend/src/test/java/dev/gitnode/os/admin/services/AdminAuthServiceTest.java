@@ -21,7 +21,7 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.admin.dtos.AdminLoginForm;
 import dev.gitnode.os.auth.api.AuthLoginPort;
-import dev.gitnode.os.shared.auth.dtos.LoginInfo;
+import dev.gitnode.os.identity.dtos.LoginInfo;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

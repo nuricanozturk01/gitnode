@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -25,7 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class GitNodeSshServerAccessTest {
 
   @Mock private SshKeyService sshKeyService;
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
 
   @InjectMocks private GitNodeSshServer sshServer;
 
@@ -35,11 +35,11 @@ class GitNodeSshServerAccessTest {
   void setUp() throws NoSuchMethodException {
     assertAccessMethod =
         GitNodeSshServer.class.getDeclaredMethod(
-            "assertAccess", Tenant.class, String.class, String.class, boolean.class);
+            "assertAccess", TenantRef.class, String.class, String.class, boolean.class);
     assertAccessMethod.setAccessible(true);
   }
 
-  private void callAssertAccess(Tenant tenant, String owner, String repo, boolean isWrite)
+  private void callAssertAccess(TenantRef tenant, String owner, String repo, boolean isWrite)
       throws IOException {
     try {
       assertAccessMethod.invoke(sshServer, tenant, owner, repo, isWrite);
@@ -55,18 +55,12 @@ class GitNodeSshServerAccessTest {
   // helpers
   // -----------------------------------------------------------------------
 
-  private static Tenant tenant(String username) {
-    Tenant t = new Tenant();
-    t.setId(UUID.randomUUID());
-    t.setUsername(username);
-    return t;
+  private static TenantRef tenant(String username) {
+    return new TenantRef(UUID.randomUUID(), username, username + "@example.org", null, null, true);
   }
 
-  private static Repo repo(boolean isPrivate) {
-    Repo r = new Repo();
-    r.setId(UUID.randomUUID());
-    r.setPrivate(isPrivate);
-    return r;
+  private static RepoRef repo(boolean isPrivate) {
+    return new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "owner", "repo", isPrivate);
   }
 
   // -----------------------------------------------------------------------
@@ -76,7 +70,7 @@ class GitNodeSshServerAccessTest {
   @Test
   @DisplayName("write — denied when requester is not repo owner")
   void write_denied_forNonOwner() {
-    Tenant stranger = tenant("stranger");
+    TenantRef stranger = tenant("stranger");
 
     assertThatThrownBy(() -> callAssertAccess(stranger, "alice", "myrepo", true))
         .isInstanceOf(IOException.class)
@@ -86,9 +80,9 @@ class GitNodeSshServerAccessTest {
   @Test
   @DisplayName("write — allowed when tenant username matches repo owner")
   void write_allowed_forOwner() {
-    Tenant owner = tenant("alice");
-    Repo r = repo(false);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    TenantRef owner = tenant("alice");
+    RepoRef r = repo(false);
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(owner, "alice", "myrepo", true));
   }
@@ -100,9 +94,9 @@ class GitNodeSshServerAccessTest {
   @Test
   @DisplayName("read — denied on private repo for non-owner")
   void read_denied_privateRepo_forNonOwner() {
-    Tenant stranger = tenant("stranger");
-    Repo r = repo(true);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    TenantRef stranger = tenant("stranger");
+    RepoRef r = repo(true);
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
 
     assertThatThrownBy(() -> callAssertAccess(stranger, "alice", "myrepo", false))
         .isInstanceOf(IOException.class)
@@ -112,9 +106,9 @@ class GitNodeSshServerAccessTest {
   @Test
   @DisplayName("read — allowed on private repo for owner")
   void read_allowed_privateRepo_forOwner() {
-    Tenant owner = tenant("alice");
-    Repo r = repo(true);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    TenantRef owner = tenant("alice");
+    RepoRef r = repo(true);
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(owner, "alice", "myrepo", false));
   }
@@ -126,9 +120,9 @@ class GitNodeSshServerAccessTest {
   @Test
   @DisplayName("read — allowed on public repo for anonymous / any user")
   void read_allowed_publicRepo_forStranger() {
-    Tenant stranger = tenant("stranger");
-    Repo r = repo(false);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "myrepo")).thenReturn(Optional.of(r));
+    TenantRef stranger = tenant("stranger");
+    RepoRef r = repo(false);
+    when(repoRepository.find("alice", "myrepo")).thenReturn(Optional.of(r));
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(stranger, "alice", "myrepo", false));
   }
@@ -136,8 +130,8 @@ class GitNodeSshServerAccessTest {
   @Test
   @DisplayName("read — allowed on public repo when repo not found (no privacy check)")
   void read_allowed_whenRepoNotFound() {
-    Tenant stranger = tenant("stranger");
-    when(repoRepository.findByOwnerUsernameAndName("alice", "ghost")).thenReturn(Optional.empty());
+    TenantRef stranger = tenant("stranger");
+    when(repoRepository.find("alice", "ghost")).thenReturn(Optional.empty());
 
     assertThatNoException().isThrownBy(() -> callAssertAccess(stranger, "alice", "ghost", false));
   }

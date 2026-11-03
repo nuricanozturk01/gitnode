@@ -17,10 +17,10 @@
 package dev.gitnode.os.profile.services;
 
 import dev.gitnode.os.events.repo.RepoPushedEvent;
+import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.time.Instant;

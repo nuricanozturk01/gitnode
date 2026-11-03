@@ -23,13 +23,13 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.pr.GithubPullRequestMigrationRequestedEvent;
 import dev.gitnode.os.events.tag.GithubTagReleaseMigrationRequestedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.migration.dtos.MigrationItem;
 import dev.gitnode.os.migration.dtos.MigrationServiceProvider;
 import dev.gitnode.os.migration.dtos.MigrationStatus;
 import dev.gitnode.os.migration.entities.MigrationJob;
 import dev.gitnode.os.migration.repositories.MigrationJobRepository;
-import dev.gitnode.os.shared.repo.services.RepoMigrationService;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.repo.api.RepoImportPort;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +47,7 @@ import org.springframework.context.ApplicationEventPublisher;
 class GitHubMigrationServiceTest {
 
   @Mock private MigrationJobRepository jobRepository;
-  @Mock private RepoMigrationService repoMigrationService;
+  @Mock private RepoImportPort repoMigrationService;
   @Mock private ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private GitHubMigrationService gitHubMigrationService;
@@ -57,14 +57,14 @@ class GitHubMigrationServiceTest {
   void process_marksCompleted_whenRepositoryMigrationSucceeds() throws IOException {
     UUID requesterId = UUID.randomUUID();
     MigrationJob job = baseJob(requesterId, List.of(MigrationItem.REPOSITORIES));
-    Tenant tenant = tenant(requesterId, "alice");
+    TenantRef tenant = tenant(requesterId, "alice");
     when(jobRepository.save(any(MigrationJob.class))).thenAnswer(inv -> inv.getArgument(0));
 
     gitHubMigrationService.process(job, "gh-token", tenant);
 
     assertThat(job.getStatus()).isEqualTo(MigrationStatus.COMPLETED);
     assertThat(job.getCompletedAt()).isNotNull();
-    verify(repoMigrationService).migrateFromGithub("demo", "acme", tenant, "gh-token");
+    verify(repoMigrationService).importFromGithub("demo", "acme", tenant.id(), "gh-token");
   }
 
   @Test
@@ -72,7 +72,7 @@ class GitHubMigrationServiceTest {
   void process_publishesPrMigrationEvent_whenPullRequestsRequested() {
     UUID requesterId = UUID.randomUUID();
     MigrationJob job = baseJob(requesterId, List.of(MigrationItem.PULL_REQUESTS));
-    Tenant tenant = tenant(requesterId, "alice");
+    TenantRef tenant = tenant(requesterId, "alice");
     when(jobRepository.save(any(MigrationJob.class))).thenAnswer(inv -> inv.getArgument(0));
 
     gitHubMigrationService.process(job, "gh-token", tenant);
@@ -90,7 +90,7 @@ class GitHubMigrationServiceTest {
   void process_publishesTagReleaseEvent_whenTagsRequested() {
     UUID requesterId = UUID.randomUUID();
     MigrationJob job = baseJob(requesterId, List.of(MigrationItem.TAGS_AND_RELEASES));
-    Tenant tenant = tenant(requesterId, "alice");
+    TenantRef tenant = tenant(requesterId, "alice");
     when(jobRepository.save(any(MigrationJob.class))).thenAnswer(inv -> inv.getArgument(0));
 
     gitHubMigrationService.process(job, "gh-token", tenant);
@@ -104,11 +104,11 @@ class GitHubMigrationServiceTest {
   void process_marksFailed_whenRepositoryMigrationFails() throws IOException {
     UUID requesterId = UUID.randomUUID();
     MigrationJob job = baseJob(requesterId, List.of(MigrationItem.REPOSITORIES));
-    Tenant tenant = tenant(requesterId, "alice");
+    TenantRef tenant = tenant(requesterId, "alice");
     when(jobRepository.save(any(MigrationJob.class))).thenAnswer(inv -> inv.getArgument(0));
     doThrow(new IOException("network"))
         .when(repoMigrationService)
-        .migrateFromGithub("demo", "acme", tenant, "gh-token");
+        .importFromGithub("demo", "acme", tenant.id(), "gh-token");
 
     gitHubMigrationService.process(job, "gh-token", tenant);
 
@@ -129,10 +129,7 @@ class GitHubMigrationServiceTest {
         .build();
   }
 
-  private static Tenant tenant(UUID id, String username) {
-    Tenant tenant = new Tenant();
-    tenant.setId(id);
-    tenant.setUsername(username);
-    return tenant;
+  private static TenantRef tenant(UUID id, String username) {
+    return new TenantRef(id, username, username + "@example.org", null, null, true);
   }
 }

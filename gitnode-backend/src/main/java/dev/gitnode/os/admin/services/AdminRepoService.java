@@ -16,8 +16,8 @@
 package dev.gitnode.os.admin.services;
 
 import dev.gitnode.os.admin.dtos.AdminRepoSummary;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.entities.Repo;
+import dev.gitnode.os.repo.repositories.RepoRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;

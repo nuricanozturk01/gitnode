@@ -15,8 +15,6 @@
  */
 package dev.gitnode.os.task.entities;
 
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -24,9 +22,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.LinkedHashSet;
@@ -36,8 +31,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
@@ -51,10 +44,8 @@ public class Project {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "owner_id", nullable = false)
-  private Tenant owner;
+  @Column(name = "owner_id", nullable = false)
+  private UUID ownerId;
 
   @Column(name = "name", nullable = false, length = 120)
   private String name;
@@ -77,12 +68,12 @@ public class Project {
   @Column(name = "is_public", nullable = false)
   private boolean isPublic = false;
 
-  @ManyToMany(fetch = FetchType.LAZY)
-  @JoinTable(
+  @jakarta.persistence.ElementCollection(fetch = FetchType.LAZY)
+  @jakarta.persistence.CollectionTable(
       name = "project_repos",
-      joinColumns = @JoinColumn(name = "project_id"),
-      inverseJoinColumns = @JoinColumn(name = "repo_id"))
-  private Set<Repo> repos = new LinkedHashSet<>();
+      joinColumns = @JoinColumn(name = "project_id"))
+  @Column(name = "repo_id", nullable = false)
+  private Set<UUID> repoIds = new LinkedHashSet<>();
 
   @CreationTimestamp
   @Column(name = "created_at")

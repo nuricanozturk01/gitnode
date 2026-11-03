@@ -22,13 +22,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.repo.services.RepoService;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.webhook.dtos.WebhookForm;
 import dev.gitnode.os.webhook.dtos.WebhookInfo;
 import dev.gitnode.os.webhook.dtos.WebhookUpdateForm;
@@ -59,8 +58,8 @@ class WebhookServiceTest {
   private static final Set<String> VALID_EVENTS = Set.of(WebhookEventType.REPO_CREATED.name());
 
   @Mock private WebhookRepository webhookRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private RepoService repoService;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoAccessPort repoService;
   @Mock private WebhookMapper webhookMapper;
 
   @InjectMocks private WebhookService webhookService;
@@ -69,7 +68,7 @@ class WebhookServiceTest {
   @DisplayName("create throws ItemNotFoundException when repository does not exist")
   void create_throws_whenRepoMissing() {
     WebhookForm form = new WebhookForm("https://hook.test", null, true, VALID_EVENTS);
-    when(repoRepository.findByOwnerUsernameAndName(OWNER, "missing")).thenReturn(Optional.empty());
+    when(repoRepository.find(OWNER, "missing")).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> webhookService.create(REQUESTER_ID, OWNER, "missing", form))
         .isInstanceOf(ItemNotFoundException.class)
@@ -202,11 +201,7 @@ class WebhookServiceTest {
   }
 
   private void stubRepo(UUID repoId) {
-    Repo repo = new Repo();
-    repo.setId(repoId);
-    Tenant owner = new Tenant();
-    owner.setUsername(OWNER);
-    repo.setOwner(owner);
-    when(repoRepository.findByOwnerUsernameAndName(OWNER, REPO_NAME)).thenReturn(Optional.of(repo));
+    RepoRef repo = new RepoRef(repoId, UUID.randomUUID(), OWNER, REPO_NAME, false);
+    when(repoRepository.find(OWNER, REPO_NAME)).thenReturn(Optional.of(repo));
   }
 }

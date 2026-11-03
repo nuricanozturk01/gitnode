@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "events :: snippet",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "repo :: dtos",
+      "shared :: *"
+    })
 package dev.gitnode.os.snippet;
 
 import org.jspecify.annotations.NullMarked;

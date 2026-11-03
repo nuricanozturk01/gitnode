@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.ai.services;
 
-import static dev.gitnode.os.shared.util.FileDiffParser.prepareTreeParser;
+import static dev.gitnode.os.commit.api.FileDiffParser.prepareTreeParser;
 
 import dev.gitnode.os.ai.dtos.PrDescriptionRequest;
 import dev.gitnode.os.ai.dtos.PrDescriptionResponse;

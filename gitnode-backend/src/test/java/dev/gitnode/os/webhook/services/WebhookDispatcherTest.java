@@ -29,10 +29,9 @@ import dev.gitnode.os.events.repo.RepoCreatedEvent;
 import dev.gitnode.os.events.repo.RepoPushedEvent;
 import dev.gitnode.os.events.snippet.SnippetCreatedEvent;
 import dev.gitnode.os.events.task.TaskCreatedEvent;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.webhook.entities.ProjectWebhook;
 import dev.gitnode.os.webhook.entities.UserWebhook;
 import dev.gitnode.os.webhook.entities.Webhook;
@@ -59,8 +58,8 @@ class WebhookDispatcherTest {
   @Mock private WebhookRepository webhookRepository;
   @Mock private UserWebhookRepository userWebhookRepository;
   @Mock private ProjectWebhookRepository projectWebhookRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private WebhookDeliveryService deliveryService;
 
   @InjectMocks private WebhookDispatcher webhookDispatcher;
@@ -126,7 +125,7 @@ class WebhookDispatcherTest {
   @Test
   @DisplayName("onRepoCreated skips delivery when repository row is missing")
   void onRepoCreated_skips_whenRepoNotInDatabase() {
-    when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.empty());
+    when(repoRepository.find("alice", "demo")).thenReturn(Optional.empty());
 
     webhookDispatcher.onRepoCreated(new RepoCreatedEvent("alice", "demo"));
 
@@ -137,10 +136,9 @@ class WebhookDispatcherTest {
   @DisplayName("onRepoCreated delivers REPO_CREATED when repository exists")
   void onRepoCreated_delivers_whenRepoFound() {
     UUID repoId = UUID.randomUUID();
-    Repo repo = new Repo();
-    repo.setId(repoId);
+    RepoRef repo = new RepoRef(repoId, UUID.randomUUID(), "alice", "demo", false);
     Webhook webhook = repoWebhook(repoId, WebhookEventType.REPO_CREATED);
-    when(repoRepository.findByOwnerUsernameAndName("alice", "demo")).thenReturn(Optional.of(repo));
+    when(repoRepository.find("alice", "demo")).thenReturn(Optional.of(repo));
     when(webhookRepository.findAllByRepoIdAndEnabledTrue(repoId)).thenReturn(List.of(webhook));
 
     webhookDispatcher.onRepoCreated(new RepoCreatedEvent("alice", "demo"));
@@ -214,9 +212,8 @@ class WebhookDispatcherTest {
   @DisplayName("onProjectCreated delivers to subscribed user webhooks")
   void onProjectCreated_deliversUserWebhook_whenTenantExists() {
     UUID userId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(userId);
-    tenant.setUsername("alice");
+    var tenant =
+        new TenantQueryPort.TenantRef(userId, "alice", "alice@example.org", null, null, true);
     UserWebhook webhook = userWebhook(userId, WebhookEventType.PROJECT_CREATED);
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(tenant));
     when(userWebhookRepository.findAllByUserIdAndEnabledTrue(userId)).thenReturn(List.of(webhook));
@@ -265,9 +262,8 @@ class WebhookDispatcherTest {
     UUID userId = UUID.randomUUID();
     UUID repoId = UUID.randomUUID();
     UUID snippetId = UUID.randomUUID();
-    Tenant tenant = new Tenant();
-    tenant.setId(userId);
-    tenant.setUsername("alice");
+    var tenant =
+        new TenantQueryPort.TenantRef(userId, "alice", "alice@example.org", null, null, true);
     UserWebhook webhook = userWebhook(userId, WebhookEventType.SNIPPET_CREATED);
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(tenant));
     when(userWebhookRepository.findAllByUserIdAndEnabledTrue(userId)).thenReturn(List.of(webhook));

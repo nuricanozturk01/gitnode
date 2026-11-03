@@ -17,12 +17,12 @@ package dev.gitnode.os.migration.services;
 
 import dev.gitnode.os.events.pr.GithubPullRequestMigrationRequestedEvent;
 import dev.gitnode.os.events.tag.GithubTagReleaseMigrationRequestedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.migration.dtos.MigrationServiceProvider;
 import dev.gitnode.os.migration.dtos.MigrationStatus;
 import dev.gitnode.os.migration.entities.MigrationJob;
 import dev.gitnode.os.migration.repositories.MigrationJobRepository;
-import dev.gitnode.os.shared.repo.services.RepoMigrationService;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.repo.api.RepoImportPort;
 import java.io.IOException;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -39,11 +39,11 @@ import org.springframework.stereotype.Service;
 public class GitHubMigrationService implements CloudMigrationService {
 
   private final MigrationJobRepository jobRepository;
-  private final RepoMigrationService repoMigrationService;
+  private final RepoImportPort repoImport;
   private final ApplicationEventPublisher eventPublisher;
 
   @Override
-  public void process(final MigrationJob job, final String accessToken, final Tenant tenant) {
+  public void process(final MigrationJob job, final String accessToken, final TenantRef tenant) {
 
     this.updateStatus(job, MigrationStatus.IN_PROGRESS, null);
 
@@ -64,16 +64,15 @@ public class GitHubMigrationService implements CloudMigrationService {
   }
 
   private void migrateRepository(
-      final MigrationJob job, final String accessToken, final Tenant tenant) throws IOException {
+      final MigrationJob job, final String accessToken, final TenantRef tenant) throws IOException {
 
     if (job.getService() == MigrationServiceProvider.GITHUB) {
-      this.repoMigrationService.migrateFromGithub(
-          job.getRepoName(), job.getOwner(), tenant, accessToken);
+      this.repoImport.importFromGithub(job.getRepoName(), job.getOwner(), tenant.id(), accessToken);
     }
   }
 
   private void migratePullRequests(
-      final MigrationJob job, final String token, final Tenant tenant) {
+      final MigrationJob job, final String token, final TenantRef tenant) {
 
     final var event =
         GithubPullRequestMigrationRequestedEvent.builder()
@@ -81,14 +80,14 @@ public class GitHubMigrationService implements CloudMigrationService {
             .remoteRepoOwner(job.getOwner())
             .remoteRepoName(job.getRepoName())
             .tenantId(job.getRequesterId())
-            .tenantUsername(tenant.getUsername())
+            .tenantUsername(tenant.username())
             .build();
 
     this.eventPublisher.publishEvent(event);
   }
 
   private void migrateTagsAndReleases(
-      final MigrationJob job, final String token, final Tenant tenant) {
+      final MigrationJob job, final String token, final TenantRef tenant) {
 
     final var event =
         GithubTagReleaseMigrationRequestedEvent.builder()
@@ -96,7 +95,7 @@ public class GitHubMigrationService implements CloudMigrationService {
             .remoteRepoOwner(job.getOwner())
             .remoteRepoName(job.getRepoName())
             .tenantId(job.getRequesterId())
-            .tenantUsername(tenant.getUsername())
+            .tenantUsername(tenant.username())
             .build();
 
     this.eventPublisher.publishEvent(event);

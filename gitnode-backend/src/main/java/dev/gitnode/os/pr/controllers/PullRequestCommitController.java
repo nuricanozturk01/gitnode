@@ -15,15 +15,15 @@
  */
 package dev.gitnode.os.pr.controllers;
 
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.pr.dtos.PrCommentForm;
 import dev.gitnode.os.pr.dtos.PrCommentInfo;
 import dev.gitnode.os.pr.dtos.PrCommentResolveForm;
 import dev.gitnode.os.pr.dtos.PrCommentUpdateForm;
 import dev.gitnode.os.pr.services.PullRequestCommentService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.services.RepoService;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -52,7 +52,7 @@ public class PullRequestCommitController {
 
   private final PullRequestCommentService prService;
   private final JwtUtils tokenService;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @PostMapping("/comments")
   public ResponseEntity<PrCommentInfo> addComment(

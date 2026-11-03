@@ -13,7 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-@ApplicationModule(type = ApplicationModule.Type.OPEN)
+@ApplicationModule(
+    displayName = "Domain events",
+    allowedDependencies = {})
 @NullMarked
 package dev.gitnode.os.events;
 

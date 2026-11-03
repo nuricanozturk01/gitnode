@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "events :: branch",
+      "identity :: security",
+      "repo :: api",
+      "shared :: *"
+    })
 package dev.gitnode.os.branch;
 
 import org.jspecify.annotations.NullMarked;

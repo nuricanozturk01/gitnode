@@ -21,15 +21,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.branch.api.BranchProtocolService;
 import dev.gitnode.os.events.task.TaskCreatedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.issue.api.IssueQueryService;
 import dev.gitnode.os.pr.api.PrQueryPort;
-import dev.gitnode.os.shared.branch.services.BranchProtocolService;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.task.dtos.TaskDetail;
 import dev.gitnode.os.task.dtos.TaskForm;
 import dev.gitnode.os.task.entities.BoardColumn;
@@ -58,8 +57,8 @@ class TaskServiceTest {
   @Mock private SubtaskRepository subtaskRepository;
   @Mock private BoardColumnRepository boardColumnRepository;
   @Mock private ProjectRepository projectRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private PrQueryPort prQueryPort;
   @Mock private IssueQueryService issueQueryService;
   @Mock private ProjectService projectService;
@@ -102,7 +101,7 @@ class TaskServiceTest {
     saved.setCode("APP-6");
     when(taskRepository.save(any(Task.class))).thenReturn(saved);
     TaskDetail detail = TaskDetail.builder().code("APP-6").title("Implement").build();
-    when(taskMapper.toDetail(any(), any(), any(), any())).thenReturn(detail);
+    when(taskMapper.toDetail(any(), any(), any(), any(), any())).thenReturn(detail);
     TaskForm form = taskForm(columnId, "TASK", null);
     form.setTitle("Implement");
 
@@ -165,9 +164,7 @@ class TaskServiceTest {
   private static Project project() {
     Project p = new Project();
     p.setId(UUID.randomUUID());
-    Tenant owner = new Tenant();
-    owner.setUsername("alice");
-    p.setOwner(owner);
+    p.setOwnerId(UUID.randomUUID());
     p.setCodePrefix("APP");
     p.setTaskSeq(0);
     return p;

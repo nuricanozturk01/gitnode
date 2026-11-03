@@ -15,13 +15,13 @@
  */
 package dev.gitnode.os.commit.controllers;
 
+import dev.gitnode.os.commit.api.CommitDetail;
+import dev.gitnode.os.commit.api.CommitInfo;
+import dev.gitnode.os.commit.api.FileDiff;
+import dev.gitnode.os.commit.api.PagedResult;
 import dev.gitnode.os.commit.services.CommitNonTxService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.commit.dtos.CommitDetail;
-import dev.gitnode.os.shared.commit.dtos.CommitInfo;
-import dev.gitnode.os.shared.commit.dtos.FileDiff;
-import dev.gitnode.os.shared.commit.dtos.PagedResult;
-import dev.gitnode.os.shared.repo.services.RepoService;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ public class CommitController {
 
   private final CommitNonTxService commitNonTxService;
   private final JwtUtils jwtUtils;
-  private final RepoService repoService;
+  private final RepoAccessPort repoService;
 
   @GetMapping
   public ResponseEntity<PagedResult<CommitInfo>> getCommits(

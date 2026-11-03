@@ -15,14 +15,15 @@
  */
 package dev.gitnode.os.pr.services;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.repositories.PrRepository;
+import dev.gitnode.os.repo.api.RepoCommandPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -34,21 +35,23 @@ import org.springframework.stereotype.Component;
 @NullMarked
 class PrFinder {
 
-  private final RepoRepository repoRepository;
+  private final RepoLookupPort repoLookup;
+  private final RepoCommandPort repoCommands;
   private final PrRepository prRepository;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenants;
 
-  Repo findRepo(final String owner, final String repoName) {
-    return this.repoRepository
-        .findByOwnerUsernameAndName(owner, repoName)
+  RepoRef findRepo(final String owner, final String repoName) {
+    return this.repoLookup
+        .find(owner, repoName)
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
   }
 
-  Repo findRepoForUpdate(final String owner, final String repoName) {
+  RepoRef findRepoForUpdate(final String owner, final String repoName) {
     final var repo = this.findRepo(owner, repoName);
-    return this.repoRepository
-        .findByIdForUpdate(repo.getId())
-        .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
+    if (!this.repoCommands.lockForUpdate(repo.id())) {
+      throw new ItemNotFoundException("Repository not found");
+    }
+    return repo;
   }
 
   PullRequest findPr(final UUID repoId, final int number) {
@@ -63,15 +66,30 @@ class PrFinder {
         .orElseThrow(() -> new ItemNotFoundException("Pull request not found: #" + number));
   }
 
-  Tenant findTenant(final UUID id) {
-    return this.tenantRepository
-        .findById(id)
-        .orElseThrow(() -> new ItemNotFoundException("User not found"));
+  TenantRef findTenant(final UUID id) {
+    return this.tenants.findById(id).orElseThrow(() -> new ItemNotFoundException("User not found"));
+  }
+
+  java.util.Optional<RepoRef> findRepoOrNull(final String owner, final String repoName) {
+    return this.repoLookup.find(owner, repoName);
+  }
+
+  java.util.Optional<PullRequest> findPrOrNull(final UUID repoId, final int number) {
+    return this.prRepository.findByRepoIdAndNumber(repoId, number);
+  }
+
+  /** The account id of a user name (case-insensitive), or empty. */
+  java.util.Optional<UUID> findTenantIdIgnoreCase(final String username) {
+    return this.tenants.findByUsernameIgnoreCase(username).map(TenantRef::id);
+  }
+
+  java.util.Map<UUID, TenantRef> findTenants(final java.util.Collection<UUID> ids) {
+    return this.tenants.findAllByIds(ids);
   }
 
   @Cacheable(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   long countOpen(final String owner, final String repoName) {
     final var repo = this.findRepo(owner, repoName);
-    return this.prRepository.countByRepoIdAndStatus(repo.getId(), "OPEN");
+    return this.prRepository.countByRepoIdAndStatus(repo.id(), "OPEN");
   }
 }

@@ -22,16 +22,14 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.branch.api.BranchForm;
 import dev.gitnode.os.events.branch.BranchCreatedEvent;
 import dev.gitnode.os.events.branch.BranchDeletedEvent;
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.branch.dtos.BranchForm;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
@@ -67,7 +65,7 @@ class BranchNonTxServiceTest {
   private Git git;
   private Path gitDir;
   private String defaultBranch;
-  private Repo repo;
+  private RepoRef repo;
 
   @BeforeEach
   void setUp() throws Exception {
@@ -134,7 +132,6 @@ class BranchNonTxServiceTest {
   @DisplayName("delete removes non-default branch and publishes event")
   void delete_removesBranch_whenNotDefault() throws Exception {
     git.branchCreate().setName("feature").call();
-    repo.setDefaultBranch(defaultBranch);
 
     branchNonTxService.delete("owner", "demo", "feature");
 
@@ -157,7 +154,7 @@ class BranchNonTxServiceTest {
 
     branchNonTxService.setDefaultBranch("owner", "demo", "develop");
 
-    verify(branchTxService).updateDefaultBranch(eq(repo.getId()), eq("develop"));
+    verify(branchTxService).updateDefaultBranch(eq(repo.id()), eq("develop"));
   }
 
   @Test
@@ -171,14 +168,7 @@ class BranchNonTxServiceTest {
     assertThat(branches.getFirst().isDefault()).isTrue();
   }
 
-  private static Repo repo(UUID id, String owner, String name, String defaultBranch) {
-    Tenant ownerTenant = new Tenant();
-    ownerTenant.setUsername(owner);
-    Repo r = new Repo();
-    r.setId(id);
-    r.setName(name);
-    r.setOwner(ownerTenant);
-    r.setDefaultBranch(defaultBranch);
-    return r;
+  private static RepoRef repo(UUID id, String owner, String name, String defaultBranch) {
+    return new RepoRef(id, UUID.randomUUID(), owner, name, false, defaultBranch);
   }
 }

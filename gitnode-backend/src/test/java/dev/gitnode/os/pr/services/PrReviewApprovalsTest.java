@@ -24,16 +24,16 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.entities.PrReview;
 import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.repositories.PrReviewRepository;
 import dev.gitnode.os.pr.services.PrReviewService.BranchHeads;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -49,40 +49,41 @@ class PrReviewApprovalsTest {
 
   private final PrReviewRepository reviews = mock(PrReviewRepository.class);
   private final CollaboratorAccessPort access = mock(CollaboratorAccessPort.class);
+  private final PrFinder finder = mock(PrFinder.class);
+  private final java.util.Map<UUID, TenantRef> accounts = new java.util.HashMap<>();
   private final PrReviewService service =
       new PrReviewService(
-          mock(PrFinder.class),
+          finder,
           reviews,
           access,
           mock(GitProvider.class),
           mock(org.springframework.context.ApplicationEventPublisher.class));
-  private final Repo repo = new Repo();
+  private final RepoRef repo =
+      new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "owner", "repo", false);
   private final PullRequest pr = new PullRequest();
   private final List<PrReview> history = new ArrayList<>();
   private final BranchHeads heads = new BranchHeads(SOURCE, TARGET);
 
   @BeforeEach
   void setUp() {
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(user("owner"));
     pr.setId(UUID.randomUUID());
-    pr.setAuthor(user("author"));
+    pr.setAuthorId(user("author").id());
+    when(finder.findTenants(any())).thenAnswer(i -> accounts);
     when(reviews.findAllByPrId(any())).thenReturn(history);
     when(access.hasPermission(any(), any(), eq(CollaboratorPermission.PULL_REQUEST_REVIEW)))
         .thenReturn(true);
   }
 
-  private Tenant user(final String name) {
-    final var tenant = new Tenant();
-    tenant.setId(UUID.randomUUID());
-    tenant.setUsername(name);
-    tenant.setEnabled(true);
+  private TenantRef user(final String name) {
+    final var tenant =
+        new TenantRef(UUID.randomUUID(), name, name + "@example.org", null, null, true);
+    accounts.put(tenant.id(), tenant);
     return tenant;
   }
 
-  private void review(final Tenant author, final String state, final String sha) {
+  private void review(final TenantRef author, final String state, final String sha) {
     final var review = new PrReview();
-    review.setAuthor(author);
+    review.setAuthorId(author.id());
     review.setState(state);
     review.setCommitSha(sha);
     review.setTargetSha(TARGET);
@@ -119,7 +120,7 @@ class PrReviewApprovalsTest {
     final var bob = user("bob");
     review(alice, "APPROVED", SOURCE);
     review(bob, "CHANGES_REQUESTED", SOURCE);
-    when(access.hasPermission(any(), eq(bob.getId()), any())).thenReturn(false);
+    when(access.hasPermission(any(), eq(bob.id()), any())).thenReturn(false);
 
     assertThatCode(() -> service.assertApprovals(repo, pr, heads, 1)).doesNotThrowAnyException();
   }

@@ -16,11 +16,11 @@
 
 package dev.gitnode.os.tree.services;
 
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.branch.api.BranchProtectionPort;
+import dev.gitnode.os.repo.cache.RepoCacheInvalidator;
+import dev.gitnode.os.repo.events.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.git.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.tree.dtos.CommitChangesRequest;
 import dev.gitnode.os.tree.dtos.CommitChangesRequest.Change;
@@ -57,7 +57,7 @@ public class ChangeCommitService {
 
   private final GitProvider gitProvider;
   private final RepoCacheInvalidator cacheInvalidator;
-  private final BranchProtectionService branchProtection;
+  private final BranchProtectionPort branchProtection;
   private final TreeCommitEventPublisher treeCommitEvents;
 
   public String commit(

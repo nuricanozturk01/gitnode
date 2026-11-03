@@ -21,11 +21,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.webhook.dtos.WebhookForm;
 import dev.gitnode.os.webhook.dtos.WebhookInfo;
 import dev.gitnode.os.webhook.dtos.WebhookUpdateForm;
@@ -53,7 +52,7 @@ class UserWebhookServiceTest {
       Set.of(WebhookEventType.PROJECT_CREATED.name());
 
   @Mock private UserWebhookRepository userWebhookRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private WebhookMapper webhookMapper;
 
   @InjectMocks private UserWebhookService userWebhookService;
@@ -156,9 +155,8 @@ class UserWebhookServiceTest {
   }
 
   private void stubUser(UUID userId) {
-    Tenant tenant = new Tenant();
-    tenant.setId(userId);
-    tenant.setUsername("alice");
+    var tenant =
+        new TenantQueryPort.TenantRef(userId, "alice", "alice@example.org", null, null, true);
     when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(tenant));
   }
 }

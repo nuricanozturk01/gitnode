@@ -24,16 +24,16 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.branch.api.BranchProtectionPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.dtos.PrConflictResolveForm;
 import dev.gitnode.os.pr.dtos.PrConflictResolveForm.Resolution;
 import dev.gitnode.os.pr.entities.PullRequest;
-import dev.gitnode.os.shared.branch.BranchProtectionService;
-import dev.gitnode.os.shared.cache.RepoCacheInvalidator;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
+import dev.gitnode.os.repo.cache.RepoCacheInvalidator;
+import dev.gitnode.os.repo.events.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
-import dev.gitnode.os.shared.git.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -52,21 +52,19 @@ class PrConflictServiceTest {
 
   private final PrFinder finder = mock(PrFinder.class);
   private final GitProvider provider = mock(GitProvider.class);
-  private final BranchProtectionService protection = mock(BranchProtectionService.class);
+  private final BranchProtectionPort protection = mock(BranchProtectionPort.class);
   private final TreeCommitEventPublisher events = mock(TreeCommitEventPublisher.class);
   private final RepoCacheInvalidator cache = mock(RepoCacheInvalidator.class);
   private PrConflictService service;
   private Git git;
   private PullRequest pr;
-  private final Tenant actor = new Tenant();
+  private final TenantRef actor =
+      new TenantRef(UUID.randomUUID(), "dev", "dev@example.org", null, null, true);
 
   @BeforeEach
   void setUp() throws Exception {
     git = Git.init().setInitialBranch("main").setDirectory(dir.toFile()).call();
-    final var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    actor.setUsername("dev");
-    actor.setEmail("dev@example.org");
+    final var repo = new RepoRef(UUID.randomUUID(), UUID.randomUUID(), "o", "r", false);
     pr = new PullRequest();
     pr.setStatus("OPEN");
     pr.setSourceBranch("feature");

@@ -35,8 +35,8 @@ import dev.gitnode.os.events.snippet.SnippetUpdatedEvent;
 import dev.gitnode.os.events.task.TaskCreatedEvent;
 import dev.gitnode.os.events.task.TaskDeletedEvent;
 import dev.gitnode.os.events.task.TaskUpdatedEvent;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.webhook.entities.WebhookEventType;
 import dev.gitnode.os.webhook.repositories.ProjectWebhookRepository;
 import dev.gitnode.os.webhook.repositories.UserWebhookRepository;
@@ -62,8 +62,8 @@ public class WebhookDispatcher {
   private final WebhookRepository webhookRepository;
   private final UserWebhookRepository userWebhookRepository;
   private final ProjectWebhookRepository projectWebhookRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
+  private final RepoLookupPort repoLookup;
+  private final TenantQueryPort tenants;
   private final WebhookDeliveryService deliveryService;
 
   // ── PR events ──────────────────────────────────────────────────────────
@@ -104,12 +104,12 @@ public class WebhookDispatcher {
 
   @ApplicationModuleListener
   void onRepoCreated(final RepoCreatedEvent event) {
-    this.repoRepository
-        .findByOwnerUsernameAndName(event.repoOwner(), event.repoName())
+    this.repoLookup
+        .find(event.repoOwner(), event.repoName())
         .ifPresent(
             repo ->
                 this.dispatch(
-                    repo.getId(),
+                    repo.id(),
                     WebhookEventType.REPO_CREATED,
                     Map.of("owner", event.repoOwner(), "name", event.repoName())));
   }
@@ -332,12 +332,12 @@ public class WebhookDispatcher {
 
   private void dispatchToUserWebhooks(
       final String ownerUsername, final WebhookEventType type, final Map<String, Object> data) {
-    this.tenantRepository
+    this.tenants
         .findByUsername(ownerUsername)
         .ifPresent(
             tenant -> {
               final var webhooks =
-                  this.userWebhookRepository.findAllByUserIdAndEnabledTrue(tenant.getId());
+                  this.userWebhookRepository.findAllByUserIdAndEnabledTrue(tenant.id());
               for (var webhook : webhooks) {
                 if (webhook.getSubscribedEvents().contains(type.name())) {
                   this.deliveryService.deliver(

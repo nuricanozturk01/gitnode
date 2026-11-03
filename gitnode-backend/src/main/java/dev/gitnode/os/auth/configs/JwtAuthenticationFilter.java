@@ -15,12 +15,12 @@
  */
 package dev.gitnode.os.auth.configs;
 
-import static dev.gitnode.os.shared.auth.utils.BearerTokenUtils.getJwtToken;
-import static dev.gitnode.os.shared.auth.utils.BearerTokenUtils.isBearerToken;
+import static dev.gitnode.os.identity.utils.BearerTokenUtils.getJwtToken;
+import static dev.gitnode.os.identity.utils.BearerTokenUtils.isBearerToken;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

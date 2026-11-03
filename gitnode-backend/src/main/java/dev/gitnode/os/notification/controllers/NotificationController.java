@@ -15,14 +15,13 @@
  */
 package dev.gitnode.os.notification.controllers;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.notification.dtos.NotificationInfo;
 import dev.gitnode.os.notification.services.NotificationService;
 import dev.gitnode.os.notification.services.NotificationSseRegistry;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.auth.services.TenantAuthGuard;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +49,7 @@ public class NotificationController {
   private final NotificationService notificationService;
   private final NotificationSseRegistry sseRegistry;
   private final JwtUtils jwtUtils;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenantRepository;
 
   @GetMapping
   public ResponseEntity<PageResponse<NotificationInfo>> list(
@@ -136,7 +135,9 @@ public class NotificationController {
         this.tenantRepository
             .findById(recipientId)
             .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
-    TenantAuthGuard.requireEnabled(recipient);
+    if (!recipient.enabled()) {
+      throw new AccessNotAllowedException("userDisabled");
+    }
 
     return this.sseRegistry.subscribe(recipientId);
   }

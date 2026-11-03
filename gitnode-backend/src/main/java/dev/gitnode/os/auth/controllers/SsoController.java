@@ -17,7 +17,7 @@ package dev.gitnode.os.auth.controllers;
 
 import dev.gitnode.os.auth.dtos.LdapLoginForm;
 import dev.gitnode.os.auth.services.LdapAuthService;
-import dev.gitnode.os.shared.auth.dtos.LoginInfo;
+import dev.gitnode.os.identity.dtos.LoginInfo;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

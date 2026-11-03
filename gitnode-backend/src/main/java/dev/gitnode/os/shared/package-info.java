@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule(type = ApplicationModule.Type.OPEN)
+@ApplicationModule(
+    displayName = "Shared technical kernel",
+    allowedDependencies = {})
 package dev.gitnode.os.shared;
 
 import org.jspecify.annotations.NullMarked;

@@ -24,13 +24,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.shared.cache.SnippetCacheInvalidator;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
+import dev.gitnode.os.snippet.cache.SnippetCacheInvalidator;
 import dev.gitnode.os.snippet.dtos.SnippetDetail;
 import dev.gitnode.os.snippet.dtos.SnippetFileForm;
 import dev.gitnode.os.snippet.dtos.SnippetForm;
@@ -68,28 +68,48 @@ class SnippetServiceTest {
 
   @Mock private SnippetRepository snippetRepository;
   @Mock private SnippetRevisionRepository revisionRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private SnippetMapper snippetMapper;
   @Mock private SnippetFileStorageService fileStorage;
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private SnippetCacheInvalidator snippetCacheInvalidator;
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
+
+  private final java.util.Map<UUID, TenantRef> accounts = new java.util.HashMap<>();
+
+  @org.junit.jupiter.api.BeforeEach
+  void defaultAccountLookup() {
+    org.mockito.Mockito.lenient()
+        .when(tenantRepository.findById(any()))
+        .thenAnswer(i -> Optional.ofNullable(accounts.get((UUID) i.getArgument(0))));
+    org.mockito.Mockito.lenient()
+        .when(snippetMapper.toInfoPage(any()))
+        .thenAnswer(
+            i ->
+                ((org.springframework.data.domain.Page<Snippet>) i.getArgument(0))
+                    .map(snippetMapper::toInfo));
+    org.mockito.Mockito.lenient()
+        .when(snippetMapper.toRevisionInfoPage(any()))
+        .thenAnswer(
+            i ->
+                ((org.springframework.data.domain.Page<SnippetRevision>) i.getArgument(0))
+                    .map(snippetMapper::toRevisionInfo));
+  }
 
   @InjectMocks private SnippetService snippetService;
 
   // ──────────────────────────── helpers ────────────────────────────
 
-  private Tenant tenant(UUID id, String username) {
-    Tenant t = new Tenant();
-    t.setId(id);
-    t.setUsername(username);
+  private TenantRef tenant(UUID id, String username) {
+    TenantRef t = new TenantRef(id, username, username + "@example.org", null, null, true);
+    accounts.put(id, t);
     return t;
   }
 
-  private Snippet publicSnippet(UUID id, Tenant owner, String title) {
+  private Snippet publicSnippet(UUID id, TenantRef owner, String title) {
     Snippet s = new Snippet();
     s.setId(id);
-    s.setOwner(owner);
+    s.setOwnerId(owner.id());
     s.setTitle(title);
     s.setVisibility(Visibility.PUBLIC);
     s.setFileCount(0);
@@ -97,7 +117,7 @@ class SnippetServiceTest {
     return s;
   }
 
-  private Snippet privateSnippet(UUID id, Tenant owner, String title) {
+  private Snippet privateSnippet(UUID id, TenantRef owner, String title) {
     Snippet s = publicSnippet(id, owner, title);
     s.setVisibility(Visibility.PRIVATE);
     return s;
@@ -175,7 +195,7 @@ class SnippetServiceTest {
     @DisplayName("saves snippet, writes files to disk, creates initial revision")
     void savesSnippetAndWritesFiles() {
       UUID tenantId = UUID.randomUUID();
-      Tenant owner = tenant(tenantId, "alice");
+      TenantRef owner = tenant(tenantId, "alice");
       SnippetFileForm fileForm = new SnippetFileForm("hello.py", "print('hi')");
       SnippetForm form = new SnippetForm("My Snippet", null, Visibility.PUBLIC, List.of(fileForm));
 
@@ -208,7 +228,7 @@ class SnippetServiceTest {
     @DisplayName("sets fileCount equal to number of files in form")
     void setsFileCount() {
       UUID tenantId = UUID.randomUUID();
-      Tenant owner = tenant(tenantId, "alice");
+      TenantRef owner = tenant(tenantId, "alice");
       List<SnippetFileForm> fileForms =
           List.of(new SnippetFileForm("a.py", "a"), new SnippetFileForm("b.py", "b"));
       SnippetForm form = new SnippetForm("Snippet", null, Visibility.PUBLIC, fileForms);
@@ -241,11 +261,11 @@ class SnippetServiceTest {
     @DisplayName("returns detail for public snippet with null callerId")
     void returnsDetail_forPublicSnippet_anonymousCaller() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "bob");
+      TenantRef owner = tenant(UUID.randomUUID(), "bob");
       Snippet snippet = publicSnippet(snippetId, owner, "Public");
       SnippetDetail expected = stubDetail(snippetId, "Public");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(snippetMapper.toDetail(any(), any())).thenReturn(expected);
 
       SnippetDetail result = snippetService.get(snippetId, null);
@@ -257,10 +277,10 @@ class SnippetServiceTest {
     @DisplayName("throws ItemNotFoundException for private snippet with null callerId")
     void throws_forPrivateSnippet_anonymousCaller() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "bob");
+      TenantRef owner = tenant(UUID.randomUUID(), "bob");
       Snippet snippet = privateSnippet(snippetId, owner, "Secret");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> snippetService.get(snippetId, null))
           .isInstanceOf(ItemNotFoundException.class)
@@ -273,10 +293,10 @@ class SnippetServiceTest {
       UUID snippetId = UUID.randomUUID();
       UUID ownerId = UUID.randomUUID();
       UUID otherId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "bob");
+      TenantRef owner = tenant(ownerId, "bob");
       Snippet snippet = privateSnippet(snippetId, owner, "Secret");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> snippetService.get(snippetId, otherId))
           .isInstanceOf(ItemNotFoundException.class)
@@ -288,11 +308,11 @@ class SnippetServiceTest {
     void returnsDetail_forPrivateSnippet_ownerCaller() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "bob");
+      TenantRef owner = tenant(ownerId, "bob");
       Snippet snippet = privateSnippet(snippetId, owner, "Secret");
       SnippetDetail expected = stubDetail(snippetId, "Secret");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(snippetMapper.toDetail(any(), any())).thenReturn(expected);
 
       SnippetDetail result = snippetService.get(snippetId, ownerId);
@@ -304,7 +324,7 @@ class SnippetServiceTest {
     @DisplayName("throws ItemNotFoundException when snippet does not exist")
     void throws_whenSnippetMissing() {
       UUID snippetId = UUID.randomUUID();
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.empty());
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.empty());
 
       assertThatThrownBy(() -> snippetService.get(snippetId, null))
           .isInstanceOf(ItemNotFoundException.class)
@@ -324,10 +344,10 @@ class SnippetServiceTest {
       UUID snippetId = UUID.randomUUID();
       UUID ownerId = UUID.randomUUID();
       UUID otherId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "owner");
+      TenantRef owner = tenant(ownerId, "owner");
       Snippet snippet = publicSnippet(snippetId, owner, "title");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> snippetService.update(otherId, snippetId, new SnippetUpdateForm()))
           .isInstanceOf(AccessNotAllowedException.class)
@@ -339,7 +359,7 @@ class SnippetServiceTest {
     void updatesMetadata_whenNoFilesProvided() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "alice");
+      TenantRef owner = tenant(ownerId, "alice");
       Snippet snippet = publicSnippet(snippetId, owner, "Old Title");
       SnippetFile existingFile = file(UUID.randomUUID(), snippetId, "main.py");
       snippet.getFiles().add(existingFile);
@@ -351,7 +371,7 @@ class SnippetServiceTest {
 
       SnippetDetail expected = stubDetail(snippetId, "New Title");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(snippetRepository.save(snippet)).thenReturn(snippet);
       when(tenantRepository.findById(ownerId)).thenReturn(Optional.of(owner));
       when(revisionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -371,7 +391,7 @@ class SnippetServiceTest {
     void replacesFiles_whenFilesProvided() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "alice");
+      TenantRef owner = tenant(ownerId, "alice");
       Snippet snippet = publicSnippet(snippetId, owner, "title");
 
       SnippetUpdateForm form = new SnippetUpdateForm();
@@ -385,7 +405,7 @@ class SnippetServiceTest {
       newFile.setSnippet(saved);
       saved.setFileCount(1);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(snippetRepository.save(snippet)).thenReturn(saved);
       when(tenantRepository.findById(ownerId)).thenReturn(Optional.of(owner));
       when(revisionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -416,7 +436,7 @@ class SnippetServiceTest {
       UUID otherId = UUID.randomUUID();
       Snippet snippet = publicSnippet(snippetId, tenant(ownerId, "owner"), "title");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> snippetService.delete(otherId, snippetId))
           .isInstanceOf(AccessNotAllowedException.class)
@@ -428,10 +448,10 @@ class SnippetServiceTest {
     void deletesSnippetAndDiskDir() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "alice");
+      TenantRef owner = tenant(ownerId, "alice");
       Snippet snippet = publicSnippet(snippetId, owner, "title");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       snippetService.delete(ownerId, snippetId);
 
@@ -454,7 +474,7 @@ class SnippetServiceTest {
       UUID forkerId = UUID.randomUUID();
       Snippet snippet = privateSnippet(snippetId, tenant(ownerId, "owner"), "secret");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> snippetService.fork(forkerId, snippetId))
           .isInstanceOf(ItemNotFoundException.class)
@@ -469,8 +489,8 @@ class SnippetServiceTest {
       UUID snippetId = UUID.randomUUID();
       UUID fileId = UUID.randomUUID();
 
-      Tenant originalOwner = tenant(originalOwnerId, "alice");
-      Tenant forker = tenant(forkerId, "bob");
+      TenantRef originalOwner = tenant(originalOwnerId, "alice");
+      TenantRef forker = tenant(forkerId, "bob");
 
       Snippet original = publicSnippet(snippetId, originalOwner, "Awesome Snippet");
       SnippetFile originalFile = file(fileId, snippetId, "main.go");
@@ -488,7 +508,7 @@ class SnippetServiceTest {
 
       SnippetDetail expectedDetail = stubDetail(forkedId, "Awesome Snippet");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(original));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(original));
       when(tenantRepository.findById(forkerId)).thenReturn(Optional.of(forker));
       when(snippetRepository.save(any())).thenReturn(savedFork);
       when(tenantRepository.findById(forkerId)).thenReturn(Optional.of(forker));
@@ -512,12 +532,12 @@ class SnippetServiceTest {
     void forkPrivateSnippet_succeedsForOwner() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "alice");
+      TenantRef owner = tenant(ownerId, "alice");
       Snippet original = privateSnippet(snippetId, owner, "Private Snippet");
 
       Snippet savedFork = publicSnippet(UUID.randomUUID(), owner, "Private Snippet");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(original));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(original));
       when(tenantRepository.findById(ownerId)).thenReturn(Optional.of(owner));
       when(snippetRepository.save(any())).thenReturn(savedFork);
       when(revisionRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -539,7 +559,7 @@ class SnippetServiceTest {
     @Test
     @DisplayName("returns paged public snippets without search term")
     void returnsPagedPublicSnippets() {
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet s1 = publicSnippet(UUID.randomUUID(), owner, "A");
       Snippet s2 = publicSnippet(UUID.randomUUID(), owner, "B");
       SnippetInfo i1 = stubInfo(s1.getId(), "A");
@@ -558,7 +578,7 @@ class SnippetServiceTest {
     @Test
     @DisplayName("uses search query when q is provided")
     void usesSearch_whenQProvided() {
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet s = publicSnippet(UUID.randomUUID(), owner, "Java Tips");
       SnippetInfo info = stubInfo(s.getId(), "Java Tips");
 
@@ -583,7 +603,7 @@ class SnippetServiceTest {
     @DisplayName("returns all snippets for the owner including private ones")
     void returnsAllSnippets_includingPrivate() {
       UUID ownerId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "alice");
+      TenantRef owner = tenant(ownerId, "alice");
       Snippet pub = publicSnippet(UUID.randomUUID(), owner, "Public");
       Snippet priv = privateSnippet(UUID.randomUUID(), owner, "Private");
       SnippetInfo pubInfo = stubInfo(pub.getId(), "Public");
@@ -612,7 +632,7 @@ class SnippetServiceTest {
       UUID snippetId = UUID.randomUUID();
       Snippet snippet = privateSnippet(snippetId, tenant(UUID.randomUUID(), "alice"), "secret");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> snippetService.listRevisions(snippetId, null, 0, 10))
           .isInstanceOf(ItemNotFoundException.class)
@@ -623,13 +643,13 @@ class SnippetServiceTest {
     @DisplayName("returns paged revisions for public snippet")
     void returnsPagedRevisions_forPublicSnippet() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "alice");
+      TenantRef owner = tenant(UUID.randomUUID(), "alice");
       Snippet snippet = publicSnippet(snippetId, owner, "Snippet");
 
       SnippetRevision rev = new SnippetRevision();
       rev.setId(UUID.randomUUID());
       rev.setSnippet(snippet);
-      rev.setAuthor(owner);
+      rev.setAuthorId(owner.id());
       rev.setCreatedAt(Instant.now());
 
       SnippetRevisionInfo revInfo =
@@ -637,13 +657,13 @@ class SnippetServiceTest {
               .id(rev.getId())
               .author(
                   SnippetOwnerInfo.builder()
-                      .id(owner.getId())
+                      .id(owner.id())
                       .username("alice")
                       .email("alice@example.com")
                       .build())
               .build();
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(revisionRepository.findAllBySnippetIdOrderByCreatedAtDesc(
               eq(snippetId), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of(rev)));
@@ -666,7 +686,7 @@ class SnippetServiceTest {
     @DisplayName("each create produces exactly one initial revision with summary=null")
     void createProducesOneRevisionWithNullSummary() {
       UUID tenantId = UUID.randomUUID();
-      Tenant owner = tenant(tenantId, "alice");
+      TenantRef owner = tenant(tenantId, "alice");
       SnippetForm form =
           new SnippetForm("s", null, Visibility.PUBLIC, List.of(new SnippetFileForm("f.py", "x")));
 

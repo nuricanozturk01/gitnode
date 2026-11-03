@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.task.controllers;
 
-import dev.gitnode.os.shared.branch.dtos.BranchInfo;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
+import dev.gitnode.os.branch.api.BranchInfo;
+import dev.gitnode.os.identity.api.AuthenticatedUser;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.task.dtos.CreateBranchFromTaskForm;
 import dev.gitnode.os.task.dtos.SubtaskForm;
 import dev.gitnode.os.task.dtos.SubtaskInfo;
@@ -70,7 +70,7 @@ public class TaskController {
       @PathVariable final String projectCode,
       @RequestParam(defaultValue = "0") final int page,
       @RequestParam(defaultValue = "500") final int size,
-      @AuthenticationPrincipal final @Nullable Tenant viewer) {
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer) {
 
     return ResponseEntity.ok(
         PageResponse.from(this.taskService.getAll(owner, projectCode, viewer, page, size)));
@@ -81,7 +81,7 @@ public class TaskController {
       @PathVariable final String owner,
       @PathVariable final String projectCode,
       @PathVariable final String taskCode,
-      @AuthenticationPrincipal final @Nullable Tenant viewer) {
+      @AuthenticationPrincipal final @Nullable AuthenticatedUser viewer) {
 
     return ResponseEntity.ok(this.taskService.get(owner, projectCode, taskCode, viewer));
   }

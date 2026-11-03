@@ -10,13 +10,12 @@ import static org.mockito.Mockito.when;
 import dev.gitnode.os.issue.dtos.IssueLabelForm;
 import dev.gitnode.os.issue.entities.IssueLabel;
 import dev.gitnode.os.issue.repositories.IssueLabelRepository;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -27,25 +26,20 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class IssueLabelServiceTest {
-  @Mock private RepoRepository repos;
+  @Mock private RepoLookupPort repos;
   @Mock private IssueLabelRepository labels;
   @Mock private CollaboratorAccessPort access;
   @InjectMocks private IssueLabelService service;
 
-  private Repo repo(UUID ownerId, UUID repoId) {
-    var owner = new Tenant();
-    owner.setId(ownerId);
-    var repo = new Repo();
-    repo.setId(repoId);
-    repo.setOwner(owner);
-    return repo;
+  private RepoRef repo(UUID ownerId, UUID repoId) {
+    return new RepoRef(repoId, ownerId, "owner", "repo", false);
   }
 
   @Test
   void ownerCreatesNormalizedLabel() {
     var owner = UUID.randomUUID();
     var repo = repo(owner, UUID.randomUUID());
-    when(repos.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
+    when(repos.find("owner", "repo")).thenReturn(Optional.of(repo));
     when(labels.save(any())).thenAnswer(call -> call.getArgument(0));
     var result =
         service.save("owner", "repo", owner, null, new IssueLabelForm(" Bug ", "FF0000", "A bug"));
@@ -56,7 +50,7 @@ class IssueLabelServiceTest {
   @Test
   void unauthorizedUserCannotCreateLabel() {
     var repo = repo(UUID.randomUUID(), UUID.randomUUID());
-    when(repos.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
+    when(repos.find("owner", "repo")).thenReturn(Optional.of(repo));
     assertThatThrownBy(
             () ->
                 service.save(
@@ -75,9 +69,8 @@ class IssueLabelServiceTest {
     var repo = repo(owner, UUID.randomUUID());
     var existing = new IssueLabel();
     existing.setId(UUID.randomUUID());
-    when(repos.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
-    when(labels.findByRepoIdAndNameIgnoreCase(repo.getId(), "BUG"))
-        .thenReturn(Optional.of(existing));
+    when(repos.find("owner", "repo")).thenReturn(Optional.of(repo));
+    when(labels.findByRepoIdAndNameIgnoreCase(repo.id(), "BUG")).thenReturn(Optional.of(existing));
     assertThatThrownBy(
             () ->
                 service.save(
@@ -91,8 +84,8 @@ class IssueLabelServiceTest {
     var owner = UUID.randomUUID();
     var repo = repo(owner, UUID.randomUUID());
     var id = UUID.randomUUID();
-    when(repos.findByOwnerUsernameAndName("owner", "repo")).thenReturn(Optional.of(repo));
-    when(labels.findByIdAndRepoId(id, repo.getId())).thenReturn(Optional.empty());
+    when(repos.find("owner", "repo")).thenReturn(Optional.of(repo));
+    when(labels.findByIdAndRepoId(id, repo.id())).thenReturn(Optional.empty());
     assertThatThrownBy(() -> service.delete("owner", "repo", owner, id))
         .isInstanceOf(ItemNotFoundException.class);
     verify(labels, never()).delete(any());

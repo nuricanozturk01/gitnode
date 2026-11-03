@@ -14,7 +14,22 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "events :: actions",
+      "events :: branch",
+      "events :: issue",
+      "events :: pr",
+      "events :: project",
+      "events :: repo",
+      "events :: snippet",
+      "events :: task",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "shared :: *",
+      "task :: api"
+    })
 package dev.gitnode.os.webhook;
 
 import org.jspecify.annotations.NullMarked;

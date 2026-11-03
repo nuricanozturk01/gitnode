@@ -17,7 +17,7 @@ package dev.gitnode.os.repo.listeners;
 
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
-import dev.gitnode.os.shared.repo.services.RepoStorageService;
+import dev.gitnode.os.repo.services.RepoStorageService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.modulith.events.ApplicationModuleListener;

@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule
+@ApplicationModule(
+    allowedDependencies = {
+      "events :: tag",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "repo :: cache",
+      "shared :: *"
+    })
 package dev.gitnode.os.tag;
 
 import org.jspecify.annotations.NullMarked;

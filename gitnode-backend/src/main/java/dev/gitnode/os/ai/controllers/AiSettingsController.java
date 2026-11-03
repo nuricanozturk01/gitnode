@@ -20,7 +20,7 @@ import dev.gitnode.os.ai.dtos.TestAiConnectionResponse;
 import dev.gitnode.os.ai.dtos.UpdateAiSettingsRequest;
 import dev.gitnode.os.ai.dtos.UserAiSettingsDto;
 import dev.gitnode.os.ai.services.UserAiSettingsService;
-import dev.gitnode.os.shared.auth.services.JwtUtils;
+import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

@@ -1,6 +1,5 @@
 package dev.gitnode.os.issue.entities;
 
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -35,10 +34,8 @@ public class IssueComment {
   @JoinColumn(name = "issue_id", nullable = false)
   private Issue issue;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "author_id", nullable = false)
-  private Tenant author;
+  @Column(name = "author_id", nullable = false)
+  private UUID authorId;
 
   @Column(name = "body", nullable = false, columnDefinition = "TEXT")
   private String body;

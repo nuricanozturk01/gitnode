@@ -4,15 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.pr.entities.PullRequest;
 import dev.gitnode.os.pr.repositories.PrRepository;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
-import dev.gitnode.os.shared.collaborator.services.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorAccessPort;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,56 +26,70 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class PrReviewerServiceTest {
   @Mock PrFinder finder;
   @Mock PrRepository pullRequests;
-  @Mock TenantRepository tenants;
+  @Mock TenantQueryPort tenants;
   @Mock CollaboratorAccessPort access;
   @Mock org.springframework.context.ApplicationEventPublisher events;
   @InjectMocks PrReviewerService service;
 
-  private Tenant user(String name) {
-    var user = new Tenant();
-    user.setId(UUID.randomUUID());
-    user.setUsername(name);
+  private final java.util.Map<UUID, TenantRef> accounts = new java.util.HashMap<>();
+
+  private TenantRef user(String name) {
+    return user(name, true);
+  }
+
+  private TenantRef user(String name, boolean enabled) {
+    var user = new TenantRef(UUID.randomUUID(), name, name + "@example.org", null, null, enabled);
+    accounts.put(user.id(), user);
     return user;
+  }
+
+  @org.junit.jupiter.api.BeforeEach
+  void lookupAccounts() {
+    org.mockito.Mockito.lenient()
+        .when(tenants.findAllByIds(org.mockito.ArgumentMatchers.any()))
+        .thenAnswer(
+            i ->
+                ((java.util.Collection<UUID>) i.getArgument(0))
+                    .stream()
+                        .filter(accounts::containsKey)
+                        .collect(
+                            java.util.stream.Collectors.toMap(id -> id, id -> accounts.get(id))));
   }
 
   @Test
   void ownerCanAssignMultipleReviewersIncludingMergeCapableCollaborator() {
     var owner = user("owner");
     var reviewer = user("reviewer");
-    var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(owner);
+    var repo = new RepoRef(UUID.randomUUID(), owner.id(), "owner", "repo", false);
     var pr = new PullRequest();
-    pr.setAuthor(owner);
+    pr.setAuthorId(owner.id());
     pr.setStatus("OPEN");
     when(finder.findRepo("owner", "repo")).thenReturn(repo);
-    when(finder.findPrForUpdate(repo.getId(), 1)).thenReturn(pr);
+    when(finder.findPrForUpdate(repo.id(), 1)).thenReturn(pr);
     when(tenants.findByUsername("owner")).thenReturn(Optional.of(owner));
     when(tenants.findByUsername("reviewer")).thenReturn(Optional.of(reviewer));
-    when(access.hasPermission(
-            repo.getId(), reviewer.getId(), CollaboratorPermission.PULL_REQUEST_MERGE))
+    when(access.hasPermission(repo.id(), reviewer.id(), CollaboratorPermission.PULL_REQUEST_MERGE))
         .thenReturn(true);
-    var result = service.replace("owner", "repo", 1, owner.getId(), List.of("owner", "reviewer"));
+    var result = service.replace("owner", "repo", 1, owner.id(), List.of("owner", "reviewer"));
     assertThat(result).hasSize(2).allMatch(PrReviewerService.Reviewer::canMerge);
-    assertThat(pr.getReviewers()).containsExactlyInAnyOrder(owner, reviewer);
+    assertThat(pr.getReviewerIds()).containsExactlyInAnyOrder(owner.id(), reviewer.id());
   }
 
   @Test
   void reviewerMustRetainMergePermissionWhenMerging() {
     var owner = user("owner");
     var reviewer = user("reviewer");
-    var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(owner);
+    var repo = new RepoRef(UUID.randomUUID(), owner.id(), "owner", "repo", false);
     var pr = new PullRequest();
-    pr.getReviewers().add(reviewer);
+    pr.getReviewerIds().add(reviewer.id());
     assertThatThrownBy(() -> service.assertEligibleReviewer(repo, pr))
         .isInstanceOf(BadRequestException.class);
-    when(access.hasPermission(
-            repo.getId(), reviewer.getId(), CollaboratorPermission.PULL_REQUEST_MERGE))
+    when(access.hasPermission(repo.id(), reviewer.id(), CollaboratorPermission.PULL_REQUEST_MERGE))
         .thenReturn(true);
     service.assertEligibleReviewer(repo, pr);
-    reviewer.setEnabled(false);
+    accounts.put(
+        reviewer.id(),
+        new TenantRef(reviewer.id(), "reviewer", "reviewer@example.org", null, null, false));
     assertThatThrownBy(() -> service.assertEligibleReviewer(repo, pr))
         .isInstanceOf(BadRequestException.class);
   }
@@ -83,13 +97,11 @@ class PrReviewerServiceTest {
   @Test
   void strangerCannotChangeReviewers() {
     var owner = user("owner");
-    var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(owner);
+    var repo = new RepoRef(UUID.randomUUID(), owner.id(), "owner", "repo", false);
     var pr = new PullRequest();
-    pr.setAuthor(owner);
+    pr.setAuthorId(owner.id());
     when(finder.findRepo("owner", "repo")).thenReturn(repo);
-    when(finder.findPrForUpdate(repo.getId(), 1)).thenReturn(pr);
+    when(finder.findPrForUpdate(repo.id(), 1)).thenReturn(pr);
     assertThatThrownBy(
             () -> service.replace("owner", "repo", 1, UUID.randomUUID(), List.of("owner")))
         .isInstanceOf(AccessNotAllowedException.class);
@@ -99,24 +111,19 @@ class PrReviewerServiceTest {
   void assignmentWithoutMergeCapableReviewerIsRejected() {
     var owner = user("owner");
     var reviewer = user("reviewer");
-    var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(owner);
+    var repo = new RepoRef(UUID.randomUUID(), owner.id(), "owner", "repo", false);
     var pr = new PullRequest();
-    pr.setAuthor(owner);
+    pr.setAuthorId(owner.id());
     pr.setStatus("OPEN");
     when(finder.findRepo("owner", "repo")).thenReturn(repo);
-    when(finder.findPrForUpdate(repo.getId(), 1)).thenReturn(pr);
+    when(finder.findPrForUpdate(repo.id(), 1)).thenReturn(pr);
     when(tenants.findByUsername("reviewer")).thenReturn(Optional.of(reviewer));
-    when(access.hasPermission(
-            repo.getId(), reviewer.getId(), CollaboratorPermission.PULL_REQUEST_MERGE))
+    when(access.hasPermission(repo.id(), reviewer.id(), CollaboratorPermission.PULL_REQUEST_MERGE))
         .thenReturn(false);
-    when(access.hasPermission(
-            repo.getId(), reviewer.getId(), CollaboratorPermission.PULL_REQUEST_REVIEW))
+    when(access.hasPermission(repo.id(), reviewer.id(), CollaboratorPermission.PULL_REQUEST_REVIEW))
         .thenReturn(true);
-    assertThatThrownBy(
-            () -> service.replace("owner", "repo", 1, owner.getId(), List.of("reviewer")))
+    assertThatThrownBy(() -> service.replace("owner", "repo", 1, owner.id(), List.of("reviewer")))
         .isInstanceOf(BadRequestException.class);
-    assertThat(pr.getReviewers()).isEmpty();
+    assertThat(pr.getReviewerIds()).isEmpty();
   }
 }

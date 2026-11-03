@@ -35,7 +35,7 @@ import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.websocket.RunnerSession;
 import dev.gitnode.os.actions.websocket.RunnerSessionRegistry;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -62,7 +62,7 @@ class JobDispatcherTest {
   @Mock private RunnerSessionRegistry sessionRegistry;
   @Mock private WorkflowParserService parserService;
   @Mock private RunnerSession runnerSession;
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
   @Mock private SecretVaultService secretVaultService;
   @Mock private StringRedisTemplate redisTemplate;
 
@@ -205,12 +205,11 @@ class JobDispatcherTest {
     run.setId(RUN_ID);
     run.setRepoId(REPO_ID);
 
-    final List<Object[]> emptyOwners = List.of();
     when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE))
         .thenReturn(List.of(buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID)));
     when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
-    when(this.repoRepository.findOwnerIdsByRepoIds(Set.of(REPO_ID))).thenReturn(emptyOwners);
+    when(this.repoRepository.findOwnerIds(Set.of(REPO_ID))).thenReturn(java.util.Map.of());
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
 
     this.dispatcher.dispatch();
@@ -236,9 +235,8 @@ class JobDispatcherTest {
     run.setId(RUN_ID);
     run.setRepoId(REPO_ID);
     when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
-    final List<Object[]> ownerRow = new java.util.ArrayList<>();
-    ownerRow.add(new Object[] {REPO_ID, tenantId});
-    when(this.repoRepository.findOwnerIdsByRepoIds(Set.of(REPO_ID))).thenReturn(ownerRow);
+    when(this.repoRepository.findOwnerIds(Set.of(REPO_ID)))
+        .thenReturn(java.util.Map.of(REPO_ID, tenantId));
   }
 
   private static WorkflowJob buildJob(final List<String> requiredLabels) {

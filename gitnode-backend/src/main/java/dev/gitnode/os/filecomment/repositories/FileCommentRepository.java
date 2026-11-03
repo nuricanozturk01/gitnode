@@ -26,14 +26,14 @@ import org.springframework.data.jpa.repository.Query;
 public interface FileCommentRepository extends JpaRepository<FileComment, UUID> {
 
   @Query(
-      "SELECT c FROM FileComment c JOIN FETCH c.author"
+      "SELECT c FROM FileComment c"
           + " WHERE c.repoId = :repoId AND c.path = :path ORDER BY c.createdAt ASC")
   List<FileComment> findForPath(UUID repoId, String path, Pageable pageable);
 
   @Query(
-      "SELECT DISTINCT c.author.id FROM FileComment c WHERE c.id = :rootId OR c.parentId = :rootId")
+      "SELECT DISTINCT c.authorId FROM FileComment c WHERE c.id = :rootId OR c.parentId = :rootId")
   List<UUID> findThreadParticipantIds(UUID rootId);
 
-  @Query("SELECT c FROM FileComment c JOIN FETCH c.author WHERE c.id = :id AND c.repoId = :repoId")
+  @Query("SELECT c FROM FileComment c WHERE c.id = :id AND c.repoId = :repoId")
   java.util.Optional<FileComment> findInRepo(UUID id, UUID repoId);
 }

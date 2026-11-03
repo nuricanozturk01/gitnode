@@ -23,13 +23,14 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.project.ProjectCreatedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.pr.api.PrQueryPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
 import dev.gitnode.os.task.dtos.ProjectForm;
 import dev.gitnode.os.task.dtos.ProjectInfo;
 import dev.gitnode.os.task.entities.Project;
@@ -52,7 +53,8 @@ import org.springframework.context.ApplicationEventPublisher;
 class ProjectServiceTest {
 
   @Mock private ProjectRepository projectRepository;
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private TenantQueryPort tenants;
   @Mock private PrQueryPort prQueryPort;
   @Mock private ProjectMapper projectMapper;
   @Mock private TaskRepository taskRepository;
@@ -110,8 +112,7 @@ class ProjectServiceTest {
   @DisplayName("get throws AccessNotAllowedException for private project when viewer is not owner")
   void get_throws_whenPrivateAndNotOwner() {
     Project project = project("alice", "APP", false);
-    when(projectRepository.findByOwnerUsernameAndCodePrefix("alice", "APP"))
-        .thenReturn(Optional.of(project));
+    stubProjectLookup("alice", "APP", Optional.of(project));
     Tenant viewer = tenant("bob");
 
     assertThatThrownBy(() -> projectService.get("alice", "APP", viewer))
@@ -125,11 +126,9 @@ class ProjectServiceTest {
     Tenant caller = tenant("alice");
     UUID repoId = UUID.randomUUID();
     Project project = project("alice", "APP", true);
-    Repo repo = new Repo();
-    repo.setId(repoId);
-    project.getRepos().add(repo);
-    when(projectRepository.findByOwnerUsernameAndCodePrefix("alice", "APP"))
-        .thenReturn(Optional.of(project));
+    RepoRef repo = new RepoRef(repoId, UUID.randomUUID(), "alice", "demo", false);
+    project.getRepoIds().add(repoId);
+    stubProjectLookup("alice", "APP", Optional.of(project));
     when(repoRepository.findById(repoId)).thenReturn(Optional.of(repo));
 
     assertThatThrownBy(() -> projectService.linkRepo("alice", "APP", repoId, caller))
@@ -142,9 +141,8 @@ class ProjectServiceTest {
   void unlinkRepo_throws_whenNotLinked() {
     Tenant caller = tenant("alice");
     Project project = project("alice", "APP", true);
-    project.setRepos(new LinkedHashSet<>());
-    when(projectRepository.findByOwnerUsernameAndCodePrefix("alice", "APP"))
-        .thenReturn(Optional.of(project));
+    project.setRepoIds(new LinkedHashSet<>());
+    stubProjectLookup("alice", "APP", Optional.of(project));
 
     assertThatThrownBy(() -> projectService.unlinkRepo("alice", "APP", UUID.randomUUID(), caller))
         .isInstanceOf(ErrorOccurredException.class)
@@ -154,8 +152,7 @@ class ProjectServiceTest {
   @Test
   @DisplayName("findProject throws ItemNotFoundException when project missing")
   void findProject_throws_whenMissing() {
-    when(projectRepository.findByOwnerUsernameAndCodePrefix("alice", "X"))
-        .thenReturn(Optional.empty());
+    stubProjectLookup("alice", "X", Optional.empty());
 
     assertThatThrownBy(() -> projectService.findProject("alice", "X"))
         .isInstanceOf(ItemNotFoundException.class)
@@ -166,11 +163,8 @@ class ProjectServiceTest {
   @DisplayName("getLinkedProjects throws AccessNotAllowedException for private repo non-owner")
   void getLinkedProjects_throws_whenPrivateRepoAndNotOwner() {
     UUID repoId = UUID.randomUUID();
-    Repo repo = new Repo();
-    repo.setId(repoId);
-    repo.setPrivate(true);
     Tenant owner = tenant("alice");
-    repo.setOwner(owner);
+    RepoRef repo = new RepoRef(repoId, owner.getId(), "alice", "demo", true);
     when(repoRepository.findById(repoId)).thenReturn(Optional.of(repo));
     Tenant viewer = tenant("bob");
 
@@ -179,6 +173,17 @@ class ProjectServiceTest {
         .hasMessageContaining("repoAccessDenied");
 
     verify(projectRepository, never()).findVisibleByRepoId(any(), any(), any());
+  }
+
+  /** Stubs the user-name lookup and the project query the service runs for "owner/code". */
+  private void stubProjectLookup(String username, String code, Optional<Project> project) {
+    UUID ownerId = project.map(Project::getOwnerId).orElse(UUID.randomUUID());
+    when(tenants.findByUsername(username))
+        .thenReturn(
+            Optional.of(
+                new TenantQueryPort.TenantRef(
+                    ownerId, username, username + "@example.org", null, null, true)));
+    when(projectRepository.findByOwnerIdAndCodePrefix(ownerId, code)).thenReturn(project);
   }
 
   private static Tenant tenant(String username) {
@@ -192,10 +197,10 @@ class ProjectServiceTest {
     Tenant owner = tenant(ownerUsername);
     Project p = new Project();
     p.setId(UUID.randomUUID());
-    p.setOwner(owner);
+    p.setOwnerId(owner.getId());
     p.setCodePrefix(code);
     p.setPublic(isPublic);
-    p.setRepos(new LinkedHashSet<>());
+    p.setRepoIds(new LinkedHashSet<>());
     return p;
   }
 }

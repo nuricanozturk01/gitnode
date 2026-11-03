@@ -16,20 +16,20 @@
 
 package dev.gitnode.os.filecomment.services;
 
+import dev.gitnode.os.commit.api.AuthorInfo;
 import dev.gitnode.os.events.filecomment.FileCommentedEvent;
 import dev.gitnode.os.filecomment.dtos.FileCommentForm;
 import dev.gitnode.os.filecomment.dtos.FileCommentInfo;
 import dev.gitnode.os.filecomment.entities.FileComment;
 import dev.gitnode.os.filecomment.repositories.FileCommentRepository;
-import dev.gitnode.os.shared.commit.dtos.AuthorInfo;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
-import dev.gitnode.os.shared.repo.entities.Repo;
-import dev.gitnode.os.shared.repo.repositories.RepoRepository;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.HashSet;
@@ -62,8 +62,8 @@ public class FileCommentService {
   static final int MAX_LINE_COMMENT_FILE_BYTES = 1024 * 1024;
 
   private final FileCommentRepository comments;
-  private final RepoRepository repos;
-  private final TenantRepository tenants;
+  private final RepoLookupPort repos;
+  private final TenantQueryPort tenants;
   private final GitProvider gitProvider;
   private final ApplicationEventPublisher events;
 
@@ -78,10 +78,14 @@ public class FileCommentService {
     final var repo = this.findRepo(owner, repoName);
     this.assertValidPath(path);
     final var head = this.headSha(owner, repoName, branch);
-    final var viewer = viewerId == null ? null : this.tenants.findById(viewerId).orElse(null);
+    final var found = this.comments.findForPath(repo.id(), path, PageRequest.of(0, MAX_COMMENTS));
+    final var authors =
+        this.tenants.findAllByIds(found.stream().map(FileComment::getAuthorId).distinct().toList());
     final var infos =
-        this.comments.findForPath(repo.getId(), path, PageRequest.of(0, MAX_COMMENTS)).stream()
-            .map(comment -> this.toInfo(comment, head, repo, viewer))
+        found.stream()
+            .map(
+                comment ->
+                    this.toInfo(comment, head, repo, authors.get(comment.getAuthorId()), viewerId))
             .toList();
     return new FileCommentInfo.Page(head, infos);
   }
@@ -96,7 +100,7 @@ public class FileCommentService {
         this.tenants
             .findById(authorId)
             .orElseThrow(() -> new ItemNotFoundException("userNotExist"));
-    if (!author.isEnabled()) {
+    if (!author.enabled()) {
       throw new AccessNotAllowedException("userDisabled");
     }
     final var comment = new FileComment();
@@ -111,7 +115,7 @@ public class FileCommentService {
     } else {
       parent =
           this.comments
-              .findInRepo(form.parentId(), repo.getId())
+              .findInRepo(form.parentId(), repo.id())
               .orElseThrow(() -> new BadRequestException("Comment to reply to not found"));
       if (parent.getParentId() != null) {
         throw new BadRequestException("Replies cannot be replied to");
@@ -121,23 +125,23 @@ public class FileCommentService {
       comment.setPath(parent.getPath());
       comment.setLine(parent.getLine());
     }
-    comment.setRepoId(repo.getId());
+    comment.setRepoId(repo.id());
     comment.setBody(form.body().strip());
-    comment.setAuthor(author);
+    comment.setAuthorId(author.id());
     comment.setCreatedAt(Instant.now());
     final var saved = this.comments.save(comment);
     this.notifyParticipants(repo, saved, parent, authorId, form.branch());
-    return this.toInfo(saved, head, repo, author);
+    return this.toInfo(saved, head, repo, author, authorId);
   }
 
   private void notifyParticipants(
-      final Repo repo,
+      final RepoRef repo,
       final FileComment saved,
       final @Nullable FileComment parent,
       final UUID authorId,
       final String branch) {
     final Set<UUID> recipients = new HashSet<>();
-    recipients.add(repo.getOwner().getId());
+    recipients.add(repo.ownerId());
     if (parent != null) {
       recipients.addAll(this.comments.findThreadParticipantIds(parent.getId()));
     }
@@ -148,10 +152,10 @@ public class FileCommentService {
     this.events.publishEvent(
         new FileCommentedEvent(
             saved.getId(),
-            repo.getId(),
+            repo.id(),
             authorId,
-            repo.getOwner().getUsername(),
-            repo.getName(),
+            repo.ownerUsername(),
+            repo.name(),
             branch.strip(),
             saved.getPath(),
             parent != null,
@@ -167,13 +171,13 @@ public class FileCommentService {
       final String body) {
     final var repo = this.findRepo(owner, repoName);
     final var comment = this.find(commentId, repo);
-    if (!comment.getAuthor().getId().equals(editorId)) {
+    if (!comment.getAuthorId().equals(editorId)) {
       throw new AccessNotAllowedException("notAuthorized");
     }
     comment.setBody(body.strip());
     comment.setUpdatedAt(Instant.now());
-    return this.toInfo(
-        this.comments.save(comment), comment.getCommitSha(), repo, comment.getAuthor());
+    final var author = this.tenants.findById(comment.getAuthorId()).orElse(null);
+    return this.toInfo(this.comments.save(comment), comment.getCommitSha(), repo, author, editorId);
   }
 
   @Transactional
@@ -187,30 +191,29 @@ public class FileCommentService {
     this.comments.delete(comment);
   }
 
-  private FileComment find(final UUID commentId, final Repo repo) {
+  private FileComment find(final UUID commentId, final RepoRef repo) {
     return this.comments
-        .findInRepo(commentId, repo.getId())
+        .findInRepo(commentId, repo.id())
         .orElseThrow(() -> new ItemNotFoundException("File comment not found"));
   }
 
-  private Repo findRepo(final String owner, final String repoName) {
+  private RepoRef findRepo(final String owner, final String repoName) {
     return this.repos
-        .findByOwnerUsernameAndName(owner, repoName)
+        .find(owner, repoName)
         .orElseThrow(() -> new ItemNotFoundException("Repository not found"));
   }
 
-  private boolean canDelete(final FileComment comment, final Repo repo, final @Nullable UUID user) {
-    return user != null
-        && (comment.getAuthor().getId().equals(user) || repo.getOwner().getId().equals(user));
+  private boolean canDelete(
+      final FileComment comment, final RepoRef repo, final @Nullable UUID user) {
+    return user != null && (comment.getAuthorId().equals(user) || repo.ownerId().equals(user));
   }
 
   private FileCommentInfo toInfo(
       final FileComment comment,
       final String headSha,
-      final Repo repo,
-      final @Nullable Tenant viewer) {
-    final var author = comment.getAuthor();
-    final var viewerId = viewer == null ? null : viewer.getId();
+      final RepoRef repo,
+      final @Nullable TenantRef author,
+      final @Nullable UUID viewerId) {
     return new FileCommentInfo(
         comment.getId(),
         comment.getPath(),
@@ -219,15 +222,22 @@ public class FileCommentService {
         comment.getBody(),
         comment.getCommitSha(),
         !comment.getCommitSha().equals(headSha),
-        new AuthorInfo(
-            author.getDisplayName() != null ? author.getDisplayName() : author.getUsername(),
-            author.getEmail(),
-            author.getUsername(),
-            author.getAvatarUrl() == null ? "" : author.getAvatarUrl()),
-        viewerId != null && author.getId().equals(viewerId),
+        toAuthorInfo(author),
+        viewerId != null && comment.getAuthorId().equals(viewerId),
         this.canDelete(comment, repo, viewerId),
         comment.getCreatedAt(),
         comment.getUpdatedAt());
+  }
+
+  private static AuthorInfo toAuthorInfo(final @Nullable TenantRef author) {
+    if (author == null) {
+      return new AuthorInfo("ghost", "", "ghost", "");
+    }
+    return new AuthorInfo(
+        author.nameForDisplay(),
+        author.email(),
+        author.username(),
+        author.avatarUrl() == null ? "" : author.avatarUrl());
   }
 
   private String headSha(final String owner, final String repoName, final String branch)

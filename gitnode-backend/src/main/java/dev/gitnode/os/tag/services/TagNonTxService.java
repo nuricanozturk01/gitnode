@@ -73,7 +73,7 @@ public class TagNonTxService {
       }
 
       return refs.stream()
-          .map(ref -> this.buildTagInfo(gitRepo, walk, ref, repo.getId()))
+          .map(ref -> this.buildTagInfo(gitRepo, walk, ref, repo.id()))
           .sorted((a, b) -> b.taggerDate().compareTo(a.taggerDate()))
           .toList();
     }
@@ -88,7 +88,7 @@ public class TagNonTxService {
         final var walk = new RevWalk(gitRepo)) {
 
       final var ref = this.getTagRef(gitRepo, tagName);
-      return this.buildTagInfo(gitRepo, walk, ref, repo.getId());
+      return this.buildTagInfo(gitRepo, walk, ref, repo.id());
     }
   }
 
@@ -186,7 +186,7 @@ public class TagNonTxService {
     }
 
     final var dbRepo = this.releaseTxService.findRepo(owner, repoName);
-    final var headRef = gitRepo.findRef(Constants.R_HEADS + dbRepo.getDefaultBranch());
+    final var headRef = gitRepo.findRef(Constants.R_HEADS + dbRepo.defaultBranch());
 
     if (headRef == null) {
       throw new ErrorOccurredException("emptyRepo: no commits on default branch");

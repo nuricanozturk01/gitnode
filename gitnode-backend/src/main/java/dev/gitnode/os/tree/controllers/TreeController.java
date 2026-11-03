@@ -15,12 +15,12 @@
  */
 package dev.gitnode.os.tree.controllers;
 
-import dev.gitnode.os.shared.auth.services.JwtUtils;
-import dev.gitnode.os.shared.collaborator.dtos.CollaboratorPermission;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
-import dev.gitnode.os.shared.repo.services.RepoService;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.tree.dtos.BlobResponse;
 import dev.gitnode.os.tree.dtos.CommitChangesRequest;
 import dev.gitnode.os.tree.dtos.LanguageStats;
@@ -74,8 +74,8 @@ public class TreeController {
 
   private final TreeNonTxService treeNonTxService;
   private final LanguageService languageService;
-  private final RepoService repoService;
-  private final TenantRepository tenantRepository;
+  private final RepoAccessPort repoService;
+  private final TenantQueryPort tenantRepository;
   private final ChangeCommitService changeCommitService;
   private final JwtUtils jwtUtils;
 
@@ -212,16 +212,13 @@ public class TreeController {
             : body.commitMessage();
 
     final var authorName =
-        StringUtils.isNotBlank(tenant.getDisplayName())
-            ? tenant.getDisplayName()
-            : tenant.getUsername();
+        StringUtils.isNotBlank(tenant.displayName()) ? tenant.displayName() : tenant.username();
 
-    final var author =
-        new PersonIdent(authorName, tenant.getEmail(), Instant.now(), ZoneOffset.UTC);
+    final var author = new PersonIdent(authorName, tenant.email(), Instant.now(), ZoneOffset.UTC);
 
     final var result =
         this.treeNonTxService.updateFile(
-            owner, repo, branch, path, rawContent, fullMessage, author, tenant.getUsername());
+            owner, repo, branch, path, rawContent, fullMessage, author, tenant.username());
 
     return ResponseEntity.ok(result);
   }
@@ -242,14 +239,10 @@ public class TreeController {
             .findById(userId)
             .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
     final var authorName =
-        StringUtils.isNotBlank(tenant.getDisplayName())
-            ? tenant.getDisplayName()
-            : tenant.getUsername();
-    final var author =
-        new PersonIdent(authorName, tenant.getEmail(), Instant.now(), ZoneOffset.UTC);
+        StringUtils.isNotBlank(tenant.displayName()) ? tenant.displayName() : tenant.username();
+    final var author = new PersonIdent(authorName, tenant.email(), Instant.now(), ZoneOffset.UTC);
 
-    final var sha =
-        this.changeCommitService.commit(owner, repo, author, tenant.getUsername(), body);
+    final var sha = this.changeCommitService.commit(owner, repo, author, tenant.username(), body);
     return ResponseEntity.ok(Map.of("commitSha", sha));
   }
 

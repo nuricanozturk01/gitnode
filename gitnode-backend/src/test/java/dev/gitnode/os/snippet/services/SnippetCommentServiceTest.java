@@ -22,11 +22,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
-import dev.gitnode.os.shared.repo.dtos.PageResponse;
-import dev.gitnode.os.shared.tenant.entities.Tenant;
-import dev.gitnode.os.shared.tenant.repositories.TenantRepository;
 import dev.gitnode.os.snippet.dtos.SnippetCommentForm;
 import dev.gitnode.os.snippet.dtos.SnippetCommentInfo;
 import dev.gitnode.os.snippet.dtos.SnippetOwnerInfo;
@@ -57,39 +57,53 @@ class SnippetCommentServiceTest {
 
   @Mock private SnippetCommentRepository commentRepository;
   @Mock private SnippetRepository snippetRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private SnippetMapper snippetMapper;
+
+  private final java.util.Map<UUID, TenantRef> accounts = new java.util.HashMap<>();
+
+  @org.junit.jupiter.api.BeforeEach
+  void defaultAccountLookup() {
+    org.mockito.Mockito.lenient()
+        .when(tenantRepository.findById(any()))
+        .thenAnswer(i -> Optional.ofNullable(accounts.get((UUID) i.getArgument(0))));
+    org.mockito.Mockito.lenient()
+        .when(snippetMapper.toCommentInfoPage(any()))
+        .thenAnswer(
+            i ->
+                ((org.springframework.data.domain.Page<SnippetComment>) i.getArgument(0))
+                    .map(snippetMapper::toCommentInfo));
+  }
 
   @InjectMocks private SnippetCommentService commentService;
 
   // ──────────────────────────── helpers ────────────────────────────
 
-  private Tenant tenant(UUID id, String username) {
-    Tenant t = new Tenant();
-    t.setId(id);
-    t.setUsername(username);
+  private TenantRef tenant(UUID id, String username) {
+    TenantRef t = new TenantRef(id, username, username + "@example.org", null, null, true);
+    accounts.put(id, t);
     return t;
   }
 
-  private Snippet publicSnippet(UUID id, Tenant owner) {
+  private Snippet publicSnippet(UUID id, TenantRef owner) {
     Snippet s = new Snippet();
     s.setId(id);
-    s.setOwner(owner);
+    s.setOwnerId(owner.id());
     s.setVisibility(Visibility.PUBLIC);
     s.setFiles(new ArrayList<>());
     return s;
   }
 
-  private Snippet privateSnippet(UUID id, Tenant owner) {
+  private Snippet privateSnippet(UUID id, TenantRef owner) {
     Snippet s = publicSnippet(id, owner);
     s.setVisibility(Visibility.PRIVATE);
     return s;
   }
 
-  private SnippetComment comment(UUID id, Tenant author, Snippet snippet, String body) {
+  private SnippetComment comment(UUID id, TenantRef author, Snippet snippet, String body) {
     SnippetComment c = new SnippetComment();
     c.setId(id);
-    c.setAuthor(author);
+    c.setAuthorId(author.id());
     c.setSnippet(snippet);
     c.setBody(body);
     return c;
@@ -118,7 +132,7 @@ class SnippetCommentServiceTest {
     @DisplayName("throws ItemNotFoundException when snippet not found")
     void throws_whenSnippetMissing() {
       UUID snippetId = UUID.randomUUID();
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.empty());
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.empty());
 
       assertThatThrownBy(() -> commentService.listComments(snippetId, null, 0, 10))
           .isInstanceOf(ItemNotFoundException.class)
@@ -129,10 +143,10 @@ class SnippetCommentServiceTest {
     @DisplayName("throws ItemNotFoundException for private snippet with anonymous caller")
     void throws_forPrivateSnippet_anonymousCaller() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet snippet = privateSnippet(snippetId, owner);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> commentService.listComments(snippetId, null, 0, 10))
           .isInstanceOf(ItemNotFoundException.class)
@@ -143,10 +157,10 @@ class SnippetCommentServiceTest {
     @DisplayName("throws ItemNotFoundException for private snippet when caller is not owner")
     void throws_forPrivateSnippet_differentCaller() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet snippet = privateSnippet(snippetId, owner);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(() -> commentService.listComments(snippetId, UUID.randomUUID(), 0, 10))
           .isInstanceOf(ItemNotFoundException.class);
@@ -156,13 +170,13 @@ class SnippetCommentServiceTest {
     @DisplayName("returns paged comments for public snippet")
     void returnsPaged_forPublicSnippet() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet snippet = publicSnippet(snippetId, owner);
 
       SnippetComment c1 = comment(UUID.randomUUID(), owner, snippet, "Nice!");
       SnippetCommentInfo info1 = commentInfo(c1.getId(), "Nice!");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findAllBySnippetIdOrderByCreatedAtAsc(
               eq(snippetId), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of(c1)));
@@ -178,10 +192,10 @@ class SnippetCommentServiceTest {
     void allowsOwner_forPrivateSnippet() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "owner");
+      TenantRef owner = tenant(ownerId, "owner");
       Snippet snippet = privateSnippet(snippetId, owner);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findAllBySnippetIdOrderByCreatedAtAsc(
               eq(snippetId), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
@@ -196,10 +210,10 @@ class SnippetCommentServiceTest {
     @DisplayName("returns empty page when there are no comments")
     void returnsEmptyPage_whenNoComments() {
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet snippet = publicSnippet(snippetId, owner);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findAllBySnippetIdOrderByCreatedAtAsc(
               eq(snippetId), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
@@ -221,7 +235,7 @@ class SnippetCommentServiceTest {
     @DisplayName("throws ItemNotFoundException when snippet not found")
     void throws_whenSnippetMissing() {
       UUID snippetId = UUID.randomUUID();
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.empty());
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.empty());
 
       assertThatThrownBy(
               () ->
@@ -237,10 +251,10 @@ class SnippetCommentServiceTest {
       UUID snippetId = UUID.randomUUID();
       UUID ownerId = UUID.randomUUID();
       UUID otherId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "owner");
+      TenantRef owner = tenant(ownerId, "owner");
       Snippet snippet = privateSnippet(snippetId, owner);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
 
       assertThatThrownBy(
               () -> commentService.addComment(otherId, snippetId, new SnippetCommentForm("body")))
@@ -253,13 +267,13 @@ class SnippetCommentServiceTest {
     void savesCommentAndIncrementsCount() {
       UUID tenantId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant author = tenant(tenantId, "alice");
+      TenantRef author = tenant(tenantId, "alice");
       Snippet snippet = publicSnippet(snippetId, author);
 
       SnippetComment savedComment = comment(UUID.randomUUID(), author, snippet, "Great snippet!");
       SnippetCommentInfo expectedInfo = commentInfo(savedComment.getId(), "Great snippet!");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(author));
       when(commentRepository.save(any(SnippetComment.class))).thenReturn(savedComment);
       when(snippetMapper.toCommentInfo(savedComment)).thenReturn(expectedInfo);
@@ -273,7 +287,7 @@ class SnippetCommentServiceTest {
       ArgumentCaptor<SnippetComment> captor = ArgumentCaptor.forClass(SnippetComment.class);
       verify(commentRepository).save(captor.capture());
       assertThat(captor.getValue().getBody()).isEqualTo("Great snippet!");
-      assertThat(captor.getValue().getAuthor()).isSameAs(author);
+      assertThat(captor.getValue().getAuthorId()).isEqualTo(author.id());
     }
 
     @Test
@@ -281,13 +295,13 @@ class SnippetCommentServiceTest {
     void allowsOwner_toCommentOnPrivateSnippet() {
       UUID ownerId = UUID.randomUUID();
       UUID snippetId = UUID.randomUUID();
-      Tenant owner = tenant(ownerId, "alice");
+      TenantRef owner = tenant(ownerId, "alice");
       Snippet snippet = privateSnippet(snippetId, owner);
 
       SnippetComment saved = comment(UUID.randomUUID(), owner, snippet, "my note");
       SnippetCommentInfo info = commentInfo(saved.getId(), "my note");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(tenantRepository.findById(ownerId)).thenReturn(Optional.of(owner));
       when(commentRepository.save(any())).thenReturn(saved);
       when(snippetMapper.toCommentInfo(saved)).thenReturn(info);
@@ -309,7 +323,7 @@ class SnippetCommentServiceTest {
     @DisplayName("throws ItemNotFoundException when snippet not found")
     void throws_whenSnippetMissing() {
       UUID snippetId = UUID.randomUUID();
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.empty());
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.empty());
 
       assertThatThrownBy(
               () -> commentService.deleteComment(UUID.randomUUID(), snippetId, UUID.randomUUID()))
@@ -321,10 +335,10 @@ class SnippetCommentServiceTest {
     void throws_whenCommentMissing() {
       UUID snippetId = UUID.randomUUID();
       UUID commentId = UUID.randomUUID();
-      Tenant owner = tenant(UUID.randomUUID(), "owner");
+      TenantRef owner = tenant(UUID.randomUUID(), "owner");
       Snippet snippet = publicSnippet(snippetId, owner);
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findById(commentId)).thenReturn(Optional.empty());
 
       assertThatThrownBy(
@@ -342,12 +356,12 @@ class SnippetCommentServiceTest {
       UUID authorId = UUID.randomUUID();
       UUID otherId = UUID.randomUUID();
 
-      Tenant owner = tenant(ownerId, "owner");
-      Tenant author = tenant(authorId, "commenter");
+      TenantRef owner = tenant(ownerId, "owner");
+      TenantRef author = tenant(authorId, "commenter");
       Snippet snippet = publicSnippet(snippetId, owner);
       SnippetComment c = comment(commentId, author, snippet, "body");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findById(commentId)).thenReturn(Optional.of(c));
 
       assertThatThrownBy(() -> commentService.deleteComment(otherId, snippetId, commentId))
@@ -363,12 +377,12 @@ class SnippetCommentServiceTest {
       UUID authorId = UUID.randomUUID();
       UUID ownerId = UUID.randomUUID();
 
-      Tenant owner = tenant(ownerId, "owner");
-      Tenant author = tenant(authorId, "alice");
+      TenantRef owner = tenant(ownerId, "owner");
+      TenantRef author = tenant(authorId, "alice");
       Snippet snippet = publicSnippet(snippetId, owner);
       SnippetComment c = comment(commentId, author, snippet, "body");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findById(commentId)).thenReturn(Optional.of(c));
 
       commentService.deleteComment(authorId, snippetId, commentId);
@@ -385,12 +399,12 @@ class SnippetCommentServiceTest {
       UUID ownerId = UUID.randomUUID();
       UUID authorId = UUID.randomUUID();
 
-      Tenant owner = tenant(ownerId, "owner");
-      Tenant author = tenant(authorId, "bob");
+      TenantRef owner = tenant(ownerId, "owner");
+      TenantRef author = tenant(authorId, "bob");
       Snippet snippet = publicSnippet(snippetId, owner);
       SnippetComment c = comment(commentId, author, snippet, "rude comment");
 
-      when(snippetRepository.findByIdWithOwner(snippetId)).thenReturn(Optional.of(snippet));
+      when(snippetRepository.findById(snippetId)).thenReturn(Optional.of(snippet));
       when(commentRepository.findById(commentId)).thenReturn(Optional.of(c));
 
       commentService.deleteComment(ownerId, snippetId, commentId);

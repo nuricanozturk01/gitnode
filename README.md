@@ -211,11 +211,6 @@ Everything is an environment variable. The ones you will almost always set:
 
 </details>
 
-## Contributing
-
-Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the workflow and run profiles (`make test` runs unit tests and lint;
-end-to-end tests live in `e2e/`), and **[ARCHITECTURE.md](ARCHITECTURE.md)** before adding or changing modules.
-
 ## License
 
 [MIT](LICENSE.txt)

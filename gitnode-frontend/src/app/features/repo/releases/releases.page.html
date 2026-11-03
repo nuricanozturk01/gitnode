@@ -148,7 +148,11 @@
           <lucide-icon name="plus" class="size-3.5"></lucide-icon>
           Create release
         </a>
-        <button class="btn btn-ghost btn-xs text-error gap-1" [attr.aria-label]="'Delete tag ' + tag.name" (click)="deleteTag(tag.name)">
+        <button
+          class="btn btn-ghost btn-xs text-error gap-1"
+          [attr.aria-label]="'Delete tag ' + tag.name"
+          (click)="deleteTag(tag.name)"
+        >
           <lucide-icon name="trash2" class="size-3.5"></lucide-icon>
         </button>
         }

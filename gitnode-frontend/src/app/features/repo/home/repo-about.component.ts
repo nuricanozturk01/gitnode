@@ -54,8 +54,9 @@ export class RepoAboutComponent {
 
   onDialogKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Tab') return;
-    const controls = (event.currentTarget as HTMLElement)
-      .querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), textarea:not([disabled])');
+    const controls = (event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), textarea:not([disabled])',
+    );
     const first = controls.item(0);
     const last = controls.item(controls.length - 1);
     if (event.shiftKey && document.activeElement === first) {
@@ -71,7 +72,14 @@ export class RepoAboutComponent {
     const repo = this.context.repo();
     const owner = repo?.owner?.username;
     if (!repo || !owner || !this.context.canWriteSettings() || this.saving()) return;
-    const topics = [...new Set(this.topics().split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))];
+    const topics = [
+      ...new Set(
+        this.topics()
+          .split(',')
+          .map((value) => value.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ];
     if (topics.length > 6 || topics.some((topic) => topic.length > 50 || !/^[a-z0-9-]+$/.test(topic))) {
       this.error.set('Use up to 6 topics, each up to 50 letters, numbers or hyphens.');
       return;

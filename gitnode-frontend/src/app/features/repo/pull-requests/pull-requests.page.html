@@ -53,14 +53,24 @@
     </div>
     <div class="flex flex-wrap items-center gap-2 px-3 pb-3 sm:px-4">
       <label class="sr-only" for="pr-filter-label">Filter by label</label>
-      <select id="pr-filter-label" class="select select-bordered select-sm" [value]="labelFilter()" (change)="setFilter('label', $any($event.target).value)">
+      <select
+        id="pr-filter-label"
+        class="select select-bordered select-sm"
+        [value]="labelFilter()"
+        (change)="setFilter('label', $any($event.target).value)"
+      >
         <option value="">All labels</option>
         @for (label of allLabels(); track label.id) {
         <option [value]="label.id" [selected]="label.id === labelFilter()">{{ label.name }}</option>
         }
       </select>
       <label class="sr-only" for="pr-filter-milestone">Filter by milestone</label>
-      <select id="pr-filter-milestone" class="select select-bordered select-sm" [value]="milestoneFilter()" (change)="setFilter('milestone', $any($event.target).value)">
+      <select
+        id="pr-filter-milestone"
+        class="select select-bordered select-sm"
+        [value]="milestoneFilter()"
+        (change)="setFilter('milestone', $any($event.target).value)"
+      >
         <option value="">All milestones</option>
         @for (m of allMilestones(); track m.id) {
         <option [value]="m.id" [selected]="m.id === milestoneFilter()">{{ m.title }}</option>
@@ -128,21 +138,15 @@
     >
       <div class="mt-0.5 shrink-0">
         @if (pr.status === 'OPEN') {
-        <div
-          class="text-success flex size-6 items-center justify-center"
-        >
+        <div class="text-success flex size-6 items-center justify-center">
           <lucide-icon name="git-pull-request" class="size-4"></lucide-icon>
         </div>
         } @else if (pr.status === 'MERGED') {
-        <div
-          class="text-primary flex size-6 items-center justify-center"
-        >
+        <div class="text-primary flex size-6 items-center justify-center">
           <lucide-icon name="gitMerge" class="size-4"></lucide-icon>
         </div>
         } @else {
-        <div
-          class="text-base-content/55 flex size-6 items-center justify-center"
-        >
+        <div class="text-base-content/55 flex size-6 items-center justify-center">
           <lucide-icon name="git-pull-request-closed" class="size-4"></lucide-icon>
         </div>
         }
@@ -163,12 +167,17 @@
               }
               <span [class]="'badge-pill ' + statusBadgeClass(pr.status)">{{ statusLabel(pr.status) }}</span>
               @for (label of pr.labels; track label.id) {
-              <span class="rounded-full px-2 py-0.5 text-xs font-semibold" [style.background]="'#' + label.color" [style.color]="labelTextColor(label.color)">{{ label.name }}</span>
-              }
-              @if (pr.milestone) {
-              <span class="text-base-content/60 inline-flex items-center gap-1 text-xs"><lucide-icon name="tag" class="size-3"></lucide-icon>{{ pr.milestone.title }}</span>
-              }
-              @for (a of pr.assignees; track a.username) {
+              <span
+                class="rounded-full px-2 py-0.5 text-xs font-semibold"
+                [style.background]="'#' + label.color"
+                [style.color]="labelTextColor(label.color)"
+                >{{ label.name }}</span
+              >
+              } @if (pr.milestone) {
+              <span class="text-base-content/60 inline-flex items-center gap-1 text-xs"
+                ><lucide-icon name="tag" class="size-3"></lucide-icon>{{ pr.milestone.title }}</span
+              >
+              } @for (a of pr.assignees; track a.username) {
               <span class="text-base-content/60 text-xs" title="Assignee">&#64;{{ a.username }}</span>
               }
             </div>

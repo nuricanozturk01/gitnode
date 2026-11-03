@@ -155,7 +155,9 @@ export class BranchesPage {
   onDialogKeydown(event: KeyboardEvent): void {
     if (event.key !== 'Tab') return;
     const dialog = event.currentTarget as HTMLElement;
-    const controls = dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled])');
+    const controls = dialog.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), select:not([disabled])',
+    );
     const first = controls.item(0);
     const last = controls.item(controls.length - 1);
     if (event.shiftKey && document.activeElement === first) {

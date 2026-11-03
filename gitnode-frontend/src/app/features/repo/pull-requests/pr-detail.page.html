@@ -36,12 +36,18 @@
           }
           <span class="text-base-content/40 font-mono text-xs">#{{ p.number }}</span>
           @if (p.status === 'OPEN' && isLoggedIn() && canEditPr()) {
-          <button type="button" class="btn btn-outline btn-xs ml-auto" [disabled]="savingDraft()" (click)="setDraft(!p.isDraft)">
+          <button
+            type="button"
+            class="btn btn-outline btn-xs ml-auto"
+            [disabled]="savingDraft()"
+            (click)="setDraft(!p.isDraft)"
+          >
             {{ p.isDraft ? 'Ready for review' : 'Convert to draft' }}
           </button>
-          }
-          @if (p.status === 'CLOSED' && isLoggedIn() && canEditPr()) {
-          <button type="button" class="btn btn-outline btn-xs ml-auto" [disabled]="savingDraft()" (click)="reopen()">Reopen pull request</button>
+          } @if (p.status === 'CLOSED' && isLoggedIn() && canEditPr()) {
+          <button type="button" class="btn btn-outline btn-xs ml-auto" [disabled]="savingDraft()" (click)="reopen()">
+            Reopen pull request
+          </button>
           }
         </div>
 
@@ -170,7 +176,13 @@
       <app-pr-metadata [owner]="owner()" [repoName]="repoName()" [number]="number()" />
 
       @if (pr(); as pt) {
-      <app-pr-timeline [owner]="owner()" [repoName]="repoName()" [number]="number()" [pr]="pt" [refreshKey]="'' + requirementsRefresh()" />
+      <app-pr-timeline
+        [owner]="owner()"
+        [repoName]="repoName()"
+        [number]="number()"
+        [pr]="pt"
+        [refreshKey]="'' + requirementsRefresh()"
+      />
       }
 
       <section class="repo-panel space-y-3 p-4" aria-labelledby="pr-reviewers-heading">
@@ -183,23 +195,35 @@
         } @else {
         <ul class="space-y-1 text-sm">
           @for (reviewer of reviewers(); track reviewer.username) {
-          <li>{{ reviewer.displayName || reviewer.username }} (@{{ reviewer.username }})
-            @if (reviewer.canMerge) { <span class="text-base-content/60">· Can merge</span> }
+          <li>
+            {{ reviewer.displayName || reviewer.username }} (@{{ reviewer.username }}) @if (reviewer.canMerge) {
+            <span class="text-base-content/60">· Can merge</span> }
           </li>
-          } @empty { <li class="text-base-content/60">No reviewers assigned.</li> }
+          } @empty {
+          <li class="text-base-content/60">No reviewers assigned.</li>
+          }
         </ul>
         @if (!hasMergeReviewer() && p.status === 'OPEN') {
         <p class="text-sm">Assign at least one reviewer with merge permission before merging.</p>
-        }
-        @if (isLoggedIn() && canEditPr() && p.status === 'OPEN') {
+        } @if (isLoggedIn() && canEditPr() && p.status === 'OPEN') {
         <form class="space-y-2" (ngSubmit)="saveReviewers()">
           <label for="reviewer-names" class="block text-sm">Reviewer usernames, separated by commas</label>
-          <input id="reviewer-names" name="reviewerNames" class="input input-bordered input-sm w-full"
-            [ngModel]="reviewerNames()" (ngModelChange)="reviewerNames.set($event)" />
-          <button type="submit" class="btn btn-outline btn-sm" [disabled]="reviewersSaving() || !reviewerNames().trim()">Save reviewers</button>
+          <input
+            id="reviewer-names"
+            name="reviewerNames"
+            class="input input-bordered input-sm w-full"
+            [ngModel]="reviewerNames()"
+            (ngModelChange)="reviewerNames.set($event)"
+          />
+          <button
+            type="submit"
+            class="btn btn-outline btn-sm"
+            [disabled]="reviewersSaving() || !reviewerNames().trim()"
+          >
+            Save reviewers
+          </button>
         </form>
-        }
-        }
+        } }
       </section>
 
       @if (pr(); as pc) { @if (pc.status === 'OPEN') {
@@ -214,18 +238,22 @@
         (conflicted)="conflicted.set($event)"
         (resolved)="onConflictsResolved()"
       />
-      } }
-
-      @if (pr(); as pb) { @if (sourceBranchDeletable()) {
+      } } @if (pr(); as pb) { @if (sourceBranchDeletable()) {
       <section class="repo-panel flex flex-wrap items-center gap-3 p-4" aria-label="Branch cleanup">
         <p class="min-w-0 flex-1 text-sm">
-          This pull request is {{ pb.status === 'MERGED' ? 'merged' : 'closed' }}. The <code>{{ pb.sourceBranch }}</code> branch can be deleted.
+          This pull request is {{ pb.status === 'MERGED' ? 'merged' : 'closed' }}. The
+          <code>{{ pb.sourceBranch }}</code> branch can be deleted.
         </p>
-        <button type="button" class="btn btn-outline btn-sm" [disabled]="deletingBranch()" (click)="deleteSourceBranch()">Delete branch</button>
+        <button
+          type="button"
+          class="btn btn-outline btn-sm"
+          [disabled]="deletingBranch()"
+          (click)="deleteSourceBranch()"
+        >
+          Delete branch
+        </button>
       </section>
-      } }
-
-      @if (pr(); as pm) { @if (pm.status === 'OPEN') {
+      } } @if (pr(); as pm) { @if (pm.status === 'OPEN') {
       <app-pr-merge-requirements
         [owner]="owner()"
         [repoName]="repoName()"
@@ -279,7 +307,12 @@
             <span>{{ mergeError() }}</span>
           </div>
           }
-          <button type="button" class="btn btn-primary btn-sm w-full gap-2" [disabled]="merging() || reviewersLoading() || reviewersError() || !hasMergeReviewer() || conflicted() || requirementsBlocked()" (click)="merge()">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm w-full gap-2"
+            [disabled]="merging() || reviewersLoading() || reviewersError() || !hasMergeReviewer() || conflicted() || requirementsBlocked()"
+            (click)="merge()"
+          >
             @if (merging()) {
             <span class="loading loading-spinner loading-sm"></span>
             } @else { {{ mergeActionLabel() }} }
@@ -333,7 +366,12 @@
             <span>{{ mergeError() }}</span>
           </div>
           }
-          <button type="button" class="btn btn-primary btn-sm w-full gap-2" [disabled]="merging() || reviewersLoading() || reviewersError() || !hasMergeReviewer() || conflicted() || requirementsBlocked()" (click)="merge()">
+          <button
+            type="button"
+            class="btn btn-primary btn-sm w-full gap-2"
+            [disabled]="merging() || reviewersLoading() || reviewersError() || !hasMergeReviewer() || conflicted() || requirementsBlocked()"
+            (click)="merge()"
+          >
             @if (merging()) {
             <span class="loading loading-spinner loading-sm"></span>
             } @else { {{ mergeActionLabel() }} }
@@ -442,31 +480,49 @@
     </div>
 
     <!-- Conversation -->
-    <div id="pr-panel-conversation" role="tabpanel" aria-labelledby="pr-tab-conversation" tabindex="0" class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'conversation'">
+    <div
+      id="pr-panel-conversation"
+      role="tabpanel"
+      aria-labelledby="pr-tab-conversation"
+      tabindex="0"
+      class="px-3 py-4 sm:px-5 sm:py-5"
+      [class.hidden]="activeTab() !== 'conversation'"
+    >
       <section class="border-base-300/60 mb-4 space-y-3 border-b pb-4" aria-labelledby="pr-reviews-heading">
         <h2 id="pr-reviews-heading" class="text-sm font-semibold">Reviews</h2>
-        @if (reviewsLoading()) { <p class="text-sm">Loading reviews…</p> }
-        @else if (reviewsError()) {
+        @if (reviewsLoading()) {
+        <p class="text-sm">Loading reviews…</p>
+        } @else if (reviewsError()) {
         <p role="alert" class="text-sm">Could not load reviews.</p>
         <button type="button" class="btn btn-outline btn-sm" (click)="loadReviews()">Retry reviews</button>
-        } @else {
-        @for (review of reviews(); track review.id) {
+        } @else { @for (review of reviews(); track review.id) {
         <article class="border-base-300 rounded border p-3 text-sm">
-          <p><strong>{{ review.username }}</strong> · {{ review.state }} · {{ review.commitSha.slice(0, 7) }}
-            @if ((reviewHeadSha() && review.commitSha !== reviewHeadSha()) || (reviewTargetSha() && review.targetSha !== reviewTargetSha())) { <span>· Outdated</span> }
+          <p>
+            <strong>{{ review.username }}</strong> · {{ review.state }} · {{ review.commitSha.slice(0, 7) }} @if
+            ((reviewHeadSha() && review.commitSha !== reviewHeadSha()) || (reviewTargetSha() && review.targetSha !==
+            reviewTargetSha())) { <span>· Outdated</span> }
           </p>
-          @if (review.body) { <p class="mt-1 whitespace-pre-wrap">{{ review.body }}</p> }
+          @if (review.body) {
+          <p class="mt-1 whitespace-pre-wrap">{{ review.body }}</p>
+          }
         </article>
-        } @empty { <p class="text-base-content/60 text-sm">No reviews yet.</p> }
-        @if (canSubmitReview() && p.status === 'OPEN') {
+        } @empty {
+        <p class="text-base-content/60 text-sm">No reviews yet.</p>
+        } @if (canSubmitReview() && p.status === 'OPEN') {
         <button type="button" class="btn btn-primary btn-sm" (click)="openReviewDialog()">Review changes</button>
-        }
-        }
+        } }
       </section>
       @if (commentsError()) {
       <div role="alert" class="mb-4 flex flex-wrap items-center gap-3">
         <p class="text-sm">Could not load comments.</p>
-        <button type="button" class="btn btn-sm btn-outline" [disabled]="commentsLoadingMore()" (click)="retryComments()">Try again</button>
+        <button
+          type="button"
+          class="btn btn-sm btn-outline"
+          [disabled]="commentsLoadingMore()"
+          (click)="retryComments()"
+        >
+          Try again
+        </button>
       </div>
       }
       <div class="space-y-0">
@@ -596,7 +652,14 @@
     </div>
 
     <!-- Commits -->
-    <div id="pr-panel-commits" role="tabpanel" aria-labelledby="pr-tab-commits" tabindex="0" class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'commits'">
+    <div
+      id="pr-panel-commits"
+      role="tabpanel"
+      aria-labelledby="pr-tab-commits"
+      tabindex="0"
+      class="px-3 py-4 sm:px-5 sm:py-5"
+      [class.hidden]="activeTab() !== 'commits'"
+    >
       @if (commitsLoading()) {
       <div class="flex justify-center py-16">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -645,7 +708,14 @@
     </div>
 
     <!-- Files -->
-    <div id="pr-panel-files" role="tabpanel" aria-labelledby="pr-tab-files" tabindex="0" class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'files'">
+    <div
+      id="pr-panel-files"
+      role="tabpanel"
+      aria-labelledby="pr-tab-files"
+      tabindex="0"
+      class="px-3 py-4 sm:px-5 sm:py-5"
+      [class.hidden]="activeTab() !== 'files'"
+    >
       @if (filesLoading()) {
       <div class="flex justify-center py-16">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -658,13 +728,28 @@
       } @else if (files().length > 0) {
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <label class="sr-only" for="pr-file-search">Filter changed files</label>
-        <input id="pr-file-search" type="search" class="input input-bordered input-sm w-full sm:max-w-xs" placeholder="Filter changed files" autocomplete="off" [ngModel]="fileQuery()" (ngModelChange)="fileQuery.set($event)" />
-        @if (fileQuery()) { <span class="text-base-content/70 text-xs" role="status">{{ visibleFiles().length }} of {{ files().length }} files</span> }
-        @if (canSubmitReview() && p.status === 'OPEN') {
-        <button type="button" class="btn btn-success btn-sm ml-auto" (click)="openReviewDialog()">Review changes</button>
+        <input
+          id="pr-file-search"
+          type="search"
+          class="input input-bordered input-sm w-full sm:max-w-xs"
+          placeholder="Filter changed files"
+          autocomplete="off"
+          [ngModel]="fileQuery()"
+          (ngModelChange)="fileQuery.set($event)"
+        />
+        @if (fileQuery()) {
+        <span class="text-base-content/70 text-xs" role="status"
+          >{{ visibleFiles().length }} of {{ files().length }} files</span
+        >
+        } @if (canSubmitReview() && p.status === 'OPEN') {
+        <button type="button" class="btn btn-success btn-sm ml-auto" (click)="openReviewDialog()">
+          Review changes
+        </button>
         }
       </div>
-      @if (visibleFiles().length === 0) { <p class="text-base-content/70 py-8 text-center text-sm">No changed files match "{{ fileQuery() }}".</p> }
+      @if (visibleFiles().length === 0) {
+      <p class="text-base-content/70 py-8 text-center text-sm">No changed files match "{{ fileQuery() }}".</p>
+      }
       <div class="border-base-300/70 overflow-hidden rounded-lg border">
         @for (file of visibleFiles(); track file.newPath || file.oldPath) {
         <div class="border-base-300/50 border-b last:border-b-0">
@@ -723,7 +808,11 @@
               @let filePath = file.newPath || file.oldPath; @let ln = line.type === 'ADD' ? line.newLineNumber :
               line.oldLineNumber; @let side = line.type === 'ADD' ? 'RIGHT' : 'LEFT'; @for (lc of
               getCommentsForFileLine(filePath, ln, side); track lc.id) {
-              <div class="border-primary/30 bg-base-100/60 border-l-2 py-2 pr-3 pl-4 sm:ml-10" [style.padding-left.rem]="lc.parentId ? 2.5 : null" [attr.data-reply]="lc.parentId ? 1 : null">
+              <div
+                class="border-primary/30 bg-base-100/60 border-l-2 py-2 pr-3 pl-4 sm:ml-10"
+                [style.padding-left.rem]="lc.parentId ? 2.5 : null"
+                [attr.data-reply]="lc.parentId ? 1 : null"
+              >
                 <div class="flex items-start gap-2">
                   <app-avatar
                     [avatarUrl]="lc.author.avatarUrl"
@@ -735,17 +824,24 @@
                   <div class="min-w-0 flex-1 text-sm">
                     <span class="font-medium">{{ lc.author.name || lc.author.username }}</span>
                     <span class="text-base-content/50 ml-1.5 text-xs">{{ lc.createdAt | relativeTime }}</span>
-                    @if (lc.isResolved) { <span class="badge-pill badge-pill--success ml-1.5">Resolved</span> }
-                    @if (!lc.isResolved || isThreadOpen(lc.id)) {
+                    @if (lc.isResolved) { <span class="badge-pill badge-pill--success ml-1.5">Resolved</span> } @if
+                    (!lc.isResolved || isThreadOpen(lc.id)) {
                     <p class="text-base-content/85 mt-1 whitespace-pre-wrap">{{ lc.body }}</p>
                     } @else {
-                    <button type="button" class="btn btn-ghost btn-xs mt-1" (click)="toggleThread(lc.id)">Show resolved conversation</button>
-                    }
-                    @if (isLoggedIn() && !lc.parentId && !isMergedOrClosed()) {
-                    <button type="button" class="btn btn-ghost btn-xs mt-1" (click)="startReplyToComment(lc)">Reply</button>
-                    }
-                    @if (isLoggedIn() && !lc.parentId && canResolveThread(lc)) {
-                    <button type="button" class="btn btn-ghost btn-xs mt-1" [disabled]="resolvingId() === lc.id" (click)="toggleResolved(lc)">
+                    <button type="button" class="btn btn-ghost btn-xs mt-1" (click)="toggleThread(lc.id)">
+                      Show resolved conversation
+                    </button>
+                    } @if (isLoggedIn() && !lc.parentId && !isMergedOrClosed()) {
+                    <button type="button" class="btn btn-ghost btn-xs mt-1" (click)="startReplyToComment(lc)">
+                      Reply
+                    </button>
+                    } @if (isLoggedIn() && !lc.parentId && canResolveThread(lc)) {
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-xs mt-1"
+                      [disabled]="resolvingId() === lc.id"
+                      (click)="toggleResolved(lc)"
+                    >
                       {{ lc.isResolved ? 'Unresolve conversation' : 'Resolve conversation' }}
                     </button>
                     }
@@ -796,7 +892,14 @@
     </div>
 
     <!-- Actions -->
-    <div id="pr-panel-actions" role="tabpanel" aria-labelledby="pr-tab-actions" tabindex="0" class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'actions'">
+    <div
+      id="pr-panel-actions"
+      role="tabpanel"
+      aria-labelledby="pr-tab-actions"
+      tabindex="0"
+      class="px-3 py-4 sm:px-5 sm:py-5"
+      [class.hidden]="activeTab() !== 'actions'"
+    >
       @if (runsLoading()) {
       <div class="flex justify-center py-16">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -846,7 +949,14 @@
     </div>
 
     <!-- AI Code Review -->
-    <div id="pr-panel-ai-review" role="tabpanel" aria-labelledby="pr-tab-ai-review" tabindex="0" class="px-3 py-4 sm:px-5 sm:py-5" [class.hidden]="activeTab() !== 'ai-review'">
+    <div
+      id="pr-panel-ai-review"
+      role="tabpanel"
+      aria-labelledby="pr-tab-ai-review"
+      tabindex="0"
+      class="px-3 py-4 sm:px-5 sm:py-5"
+      [class.hidden]="activeTab() !== 'ai-review'"
+    >
       @if (aiReviewLoading()) {
       <div class="flex justify-center py-16">
         <span class="loading loading-spinner loading-md text-primary"></span>
@@ -1060,41 +1170,102 @@
     <p class="m-0 text-sm font-medium">Pull request not found</p>
     }
   </section>
-  }
-  @if (pr(); as p) { @if (reviewDialogOpen()) {
-  @let ownPr = p.author.username === currentUsername();
+  } @if (pr(); as p) { @if (reviewDialogOpen()) { @let ownPr = p.author.username === currentUsername();
   <dialog class="modal modal-open" aria-labelledby="review-dialog-title">
     <div class="modal-box max-w-xl">
       <div class="mb-3 flex items-center justify-between">
         <h2 id="review-dialog-title" class="text-base font-semibold">Finish your review</h2>
-        <button type="button" class="btn btn-ghost btn-sm btn-circle" aria-label="Close" (click)="closeReviewDialog()">✕</button>
+        <button type="button" class="btn btn-ghost btn-sm btn-circle" aria-label="Close" (click)="closeReviewDialog()">
+          ✕
+        </button>
       </div>
       <form class="space-y-3" (ngSubmit)="submitReview()">
         <p class="text-base-content/60 text-xs">Reviewing commit {{ reviewHeadSha().slice(0, 7) }}.</p>
         <label for="review-body" class="sr-only">Review comment</label>
-        <textarea id="review-body" name="reviewBody" rows="5" placeholder="Leave a comment" class="textarea textarea-bordered w-full" maxlength="65535" [ngModel]="reviewBody()" (ngModelChange)="reviewBody.set($event)"></textarea>
+        <textarea
+          id="review-body"
+          name="reviewBody"
+          rows="5"
+          placeholder="Leave a comment"
+          class="textarea textarea-bordered w-full"
+          maxlength="65535"
+          [ngModel]="reviewBody()"
+          (ngModelChange)="reviewBody.set($event)"
+        ></textarea>
         <fieldset class="space-y-2">
           <legend class="sr-only">Review decision</legend>
           <label class="flex cursor-pointer items-start gap-3">
-            <input type="radio" name="reviewState" class="radio radio-sm mt-1" value="COMMENTED" [checked]="reviewState() === 'COMMENTED'" (change)="reviewState.set('COMMENTED')" />
-            <span><span class="block text-sm font-medium">Comment</span><span class="text-base-content/60 text-xs">Submit general feedback without explicit approval.</span></span>
+            <input
+              type="radio"
+              name="reviewState"
+              class="radio radio-sm mt-1"
+              value="COMMENTED"
+              [checked]="reviewState() === 'COMMENTED'"
+              (change)="reviewState.set('COMMENTED')"
+            />
+            <span
+              ><span class="block text-sm font-medium">Comment</span
+              ><span class="text-base-content/60 text-xs"
+                >Submit general feedback without explicit approval.</span
+              ></span
+            >
           </label>
           <label class="flex items-start gap-3" [class.cursor-pointer]="!ownPr" [class.opacity-50]="ownPr">
-            <input type="radio" name="reviewState" class="radio radio-sm mt-1" value="APPROVED" [disabled]="ownPr" [checked]="reviewState() === 'APPROVED'" (change)="reviewState.set('APPROVED')" />
-            <span><span class="block text-sm font-medium">Approve</span><span class="text-base-content/60 text-xs">{{ ownPr ? "Pull request authors can't approve their own pull requests." : 'Submit feedback and approve merging these changes.' }}</span></span>
+            <input
+              type="radio"
+              name="reviewState"
+              class="radio radio-sm mt-1"
+              value="APPROVED"
+              [disabled]="ownPr"
+              [checked]="reviewState() === 'APPROVED'"
+              (change)="reviewState.set('APPROVED')"
+            />
+            <span
+              ><span class="block text-sm font-medium">Approve</span
+              ><span class="text-base-content/60 text-xs"
+                >{{ ownPr ? "Pull request authors can't approve their own pull requests." : 'Submit feedback and approve
+                merging these changes.' }}</span
+              ></span
+            >
           </label>
           <label class="flex items-start gap-3" [class.cursor-pointer]="!ownPr" [class.opacity-50]="ownPr">
-            <input type="radio" name="reviewState" class="radio radio-sm mt-1" value="CHANGES_REQUESTED" [disabled]="ownPr" [checked]="reviewState() === 'CHANGES_REQUESTED'" (change)="reviewState.set('CHANGES_REQUESTED')" />
-            <span><span class="block text-sm font-medium">Request changes</span><span class="text-base-content/60 text-xs">{{ ownPr ? "Pull request authors can't request changes on their own pull requests." : 'Submit feedback that must be addressed before merging.' }}</span></span>
+            <input
+              type="radio"
+              name="reviewState"
+              class="radio radio-sm mt-1"
+              value="CHANGES_REQUESTED"
+              [disabled]="ownPr"
+              [checked]="reviewState() === 'CHANGES_REQUESTED'"
+              (change)="reviewState.set('CHANGES_REQUESTED')"
+            />
+            <span
+              ><span class="block text-sm font-medium">Request changes</span
+              ><span class="text-base-content/60 text-xs"
+                >{{ ownPr ? "Pull request authors can't request changes on their own pull requests." : 'Submit feedback
+                that must be addressed before merging.' }}</span
+              ></span
+            >
           </label>
         </fieldset>
         <div class="modal-action mt-2">
           <button type="button" class="btn btn-ghost btn-sm" (click)="closeReviewDialog()">Cancel</button>
-          <button type="submit" class="btn btn-success btn-sm" [disabled]="reviewSubmitting() || (reviewState() !== 'APPROVED' && !reviewBody().trim())">Submit review</button>
+          <button
+            type="submit"
+            class="btn btn-success btn-sm"
+            [disabled]="reviewSubmitting() || (reviewState() !== 'APPROVED' && !reviewBody().trim())"
+          >
+            Submit review
+          </button>
         </div>
       </form>
     </div>
-    <button type="button" class="modal-backdrop" tabindex="-1" aria-label="Close review dialog" (click)="closeReviewDialog()"></button>
+    <button
+      type="button"
+      class="modal-backdrop"
+      tabindex="-1"
+      aria-label="Close review dialog"
+      (click)="closeReviewDialog()"
+    ></button>
   </dialog>
   } }
 </div>

@@ -14,7 +14,17 @@
 /// limitations under the License.
 ///
 
-import { ChangeDetectionStrategy, Component, computed, effect, inject, input, model, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  model,
+  output,
+  signal,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -195,7 +205,13 @@ export class FileCommentsComponent {
   }
 
   async remove(comment: FileComment): Promise<void> {
-    if (!(await this.confirmModal.confirm('Delete comment', 'Delete this comment?', { confirmLabel: 'Delete', variant: 'danger' }))) return;
+    if (
+      !(await this.confirmModal.confirm('Delete comment', 'Delete this comment?', {
+        confirmLabel: 'Delete',
+        variant: 'danger',
+      }))
+    )
+      return;
     try {
       await this.service.delete(this.owner(), this.repoName(), comment.id);
       this.comments.update((list) => list.filter((c) => c.id !== comment.id && c.parentId !== comment.id));

@@ -96,7 +96,8 @@ export class RepoLayoutComponent {
 
   @HostListener('document:keydown', ['$event'])
   onShortcut(event: KeyboardEvent): void {
-    if (event.key !== '.' || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.isComposing) return;
+    if (event.key !== '.' || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey || event.isComposing)
+      return;
     if (event.defaultPrevented || isTypingTarget(event.target)) return;
     if (!this.isLoggedIn() || !this.repoContext.hasPermission('PUSH')) return;
     const repo = this.repo();

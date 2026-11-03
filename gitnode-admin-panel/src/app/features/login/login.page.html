@@ -49,7 +49,16 @@
         @if (needsOtp()) {
         <div class="form-control">
           <label class="label" for="otp"><span class="label-text font-medium">Authentication code</span></label>
-          <input id="otp" type="text" formControlName="otp" inputmode="numeric" autocomplete="one-time-code" maxlength="32" placeholder="123456 or recovery code" class="input input-bordered w-full" />
+          <input
+            id="otp"
+            type="text"
+            formControlName="otp"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="32"
+            placeholder="123456 or recovery code"
+            class="input input-bordered w-full"
+          />
         </div>
         }
 

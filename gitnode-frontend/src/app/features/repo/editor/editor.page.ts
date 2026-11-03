@@ -14,7 +14,16 @@
 /// limitations under the License.
 ///
 
-import { ChangeDetectionStrategy, Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  HostListener,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal,
+} from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
@@ -133,7 +142,19 @@ export class EditorPage implements OnDestroy {
   private languageOf(path: string, hljs: HLJSApi): string | null {
     const name = this.baseName(path).toLowerCase();
     const ext = name.includes('.') ? name.slice(name.lastIndexOf('.') + 1) : name;
-    const aliases: Record<string, string> = { dockerfile: 'dockerfile', makefile: 'makefile', tsx: 'typescript', jsx: 'javascript', mjs: 'javascript', cjs: 'javascript', yml: 'yaml', htm: 'xml', html: 'xml', svg: 'xml', vue: 'xml' };
+    const aliases: Record<string, string> = {
+      dockerfile: 'dockerfile',
+      makefile: 'makefile',
+      tsx: 'typescript',
+      jsx: 'javascript',
+      mjs: 'javascript',
+      cjs: 'javascript',
+      yml: 'yaml',
+      htm: 'xml',
+      html: 'xml',
+      svg: 'xml',
+      vue: 'xml',
+    };
     const candidate = aliases[ext] ?? ext;
     return hljs.getLanguage(candidate) ? candidate : null;
   }
@@ -230,7 +251,11 @@ export class EditorPage implements OnDestroy {
             content: editable ? decodeBase64Utf8(blob.content) : '',
             deleted: false,
             editable,
-            reason: blob.isBinary ? 'Binary files cannot be edited here.' : tooBig ? 'This file is too large to edit here.' : undefined,
+            reason: blob.isBinary
+              ? 'Binary files cannot be edited here.'
+              : tooBig
+                ? 'This file is too large to edit here.'
+                : undefined,
           },
         }));
       } catch {
@@ -298,7 +323,14 @@ export class EditorPage implements OnDestroy {
       const next = { ...f };
       if (file.original === null) delete next[file.path];
       else next[file.path] = { ...file, deleted: true };
-      next[target] = { path: target, original: null, content: file.content, deleted: false, editable: true, renamedFrom };
+      next[target] = {
+        path: target,
+        original: null,
+        content: file.content,
+        deleted: false,
+        editable: true,
+        renamedFrom,
+      };
       return next;
     });
     this.openPaths.update((p) => [...p.filter((x) => x !== file.path), target]);
@@ -307,7 +339,8 @@ export class EditorPage implements OnDestroy {
 
   private knownPaths(): Set<string> {
     const known = new Set<string>();
-    for (const entries of Object.values(this.children())) for (const e of entries) if (e.type !== 'TREE') known.add(e.path);
+    for (const entries of Object.values(this.children()))
+      for (const e of entries) if (e.type !== 'TREE') known.add(e.path);
     for (const f of Object.values(this.files())) if (f.original !== null && !f.deleted) known.add(f.path);
     return known;
   }
@@ -315,7 +348,13 @@ export class EditorPage implements OnDestroy {
   async deleteActive(): Promise<void> {
     const file = this.active();
     if (!file) return;
-    if (!(await this.confirmModal.confirm('Delete file', `Delete ${file.path}?`, { confirmLabel: 'Delete', variant: 'danger' }))) return;
+    if (
+      !(await this.confirmModal.confirm('Delete file', `Delete ${file.path}?`, {
+        confirmLabel: 'Delete',
+        variant: 'danger',
+      }))
+    )
+      return;
     if (file.original === null) {
       this.files.update((f) => {
         const rest = { ...f };
@@ -406,13 +445,28 @@ export class EditorPage implements OnDestroy {
   }
 
   async exit(): Promise<void> {
-    if (this.dirty() && !(await this.confirmModal.confirm('Discard changes', 'You have uncommitted changes. Leave the editor and discard them?', { confirmLabel: 'Discard', variant: 'danger' }))) return;
+    if (
+      this.dirty() &&
+      !(await this.confirmModal.confirm(
+        'Discard changes',
+        'You have uncommitted changes. Leave the editor and discard them?',
+        { confirmLabel: 'Discard', variant: 'danger' },
+      ))
+    )
+      return;
     this.dirty(); // keep signal read for lint
     await this.router.navigate(['/', this.owner(), this.repoName(), 'tree', this.branch()]);
   }
 
   async reloadLatest(): Promise<void> {
-    if (!(await this.confirmModal.confirm('Reload editor', 'Discard your edits and load the latest version of the branch?', { confirmLabel: 'Reload', variant: 'danger' }))) return;
+    if (
+      !(await this.confirmModal.confirm(
+        'Reload editor',
+        'Discard your edits and load the latest version of the branch?',
+        { confirmLabel: 'Reload', variant: 'danger' },
+      ))
+    )
+      return;
     this.commitOpen.set(false);
     await this.start();
   }

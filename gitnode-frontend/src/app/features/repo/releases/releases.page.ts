@@ -144,7 +144,7 @@ export class ReleasesPage {
         this.syncReleasesCache(next);
         return next;
       });
-      this.tags.update((list) => list.map((tag) => tag.release?.id === release.id ? { ...tag, release: null } : tag));
+      this.tags.update((list) => list.map((tag) => (tag.release?.id === release.id ? { ...tag, release: null } : tag)));
       this.releasePage.update((page) => Math.min(page, Math.max(0, this.totalReleasePages() - 1)));
       this.toast.success('Release deleted');
     } catch {

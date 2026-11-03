@@ -49,8 +49,12 @@
 
   <div class="border-base-300 flex flex-wrap items-center gap-3 border-t px-4 py-3">
     <label for="issue-label-filter" class="text-sm font-medium">Filter by label</label>
-    <select id="issue-label-filter" class="select select-bordered select-sm" [ngModel]="labelFilter()"
-      (ngModelChange)="filterLabels($event)">
+    <select
+      id="issue-label-filter"
+      class="select select-bordered select-sm"
+      [ngModel]="labelFilter()"
+      (ngModelChange)="filterLabels($event)"
+    >
       <option value="">All labels</option>
       @for (label of labels(); track label.id) {
       <option [value]="label.id">{{ label.name }}</option>
@@ -61,15 +65,18 @@
     <button type="button" class="btn btn-outline btn-sm" (click)="loadMilestones()">Retry milestones</button>
     } @else {
     <label for="issue-milestone-filter" class="text-sm font-medium">Filter by milestone</label>
-    <select id="issue-milestone-filter" class="select select-bordered select-sm" [ngModel]="milestoneFilter()"
-      (ngModelChange)="filterMilestones($event)">
+    <select
+      id="issue-milestone-filter"
+      class="select select-bordered select-sm"
+      [ngModel]="milestoneFilter()"
+      (ngModelChange)="filterMilestones($event)"
+    >
       <option value="">All milestones</option>
       @for (milestone of milestones(); track milestone.id) {
       <option [value]="milestone.id">{{ milestone.title }} ({{ milestone.status }})</option>
       }
     </select>
-    }
-    @if (repoContext.hasPermission('ISSUE_MANAGE')) {
+    } @if (repoContext.hasPermission('ISSUE_MANAGE')) {
     <details class="w-full">
       <summary class="cursor-pointer text-sm font-medium">Manage milestones</summary>
       <div class="mt-3 space-y-2">
@@ -77,23 +84,63 @@
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-sm font-medium">{{ milestone.title }}</span>
           <span class="text-base-content/60 text-sm">{{ milestone.status }} {{ milestone.dueDate || '' }}</span>
-          <button type="button" class="btn btn-ghost btn-xs" (click)="editMilestone(milestone)">Edit {{ milestone.title }}</button>
-          <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deleteMilestone(milestone)">Delete {{ milestone.title }}</button>
+          <button type="button" class="btn btn-ghost btn-xs" (click)="editMilestone(milestone)">
+            Edit {{ milestone.title }}
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deleteMilestone(milestone)">
+            Delete {{ milestone.title }}
+          </button>
         </div>
         }
         <form class="flex flex-wrap items-end gap-2" (ngSubmit)="saveMilestone()">
-          <label class="text-sm">Title <input name="milestoneTitle" class="input input-bordered input-sm" maxlength="255"
-            [ngModel]="milestoneTitle()" (ngModelChange)="milestoneTitle.set($event)" /></label>
-          <label class="text-sm">Description <input name="milestoneDescription" class="input input-bordered input-sm" maxlength="2000"
-            [ngModel]="milestoneDescription()" (ngModelChange)="milestoneDescription.set($event)" /></label>
-          <label class="text-sm">Due date <input type="date" name="milestoneDueDate" class="input input-bordered input-sm"
-            [ngModel]="milestoneDueDate()" (ngModelChange)="milestoneDueDate.set($event)" /></label>
-          <label class="text-sm">Status <select name="milestoneStatus" class="select select-bordered select-sm"
-            [ngModel]="milestoneStatus()" (ngModelChange)="milestoneStatus.set($event)"><option value="OPEN">Open</option><option value="CLOSED">Closed</option></select></label>
-          <button class="btn btn-primary btn-sm" type="submit" [disabled]="savingMilestone() || !milestoneTitle().trim()">
+          <label class="text-sm"
+            >Title
+            <input
+              name="milestoneTitle"
+              class="input input-bordered input-sm"
+              maxlength="255"
+              [ngModel]="milestoneTitle()"
+              (ngModelChange)="milestoneTitle.set($event)"
+          /></label>
+          <label class="text-sm"
+            >Description
+            <input
+              name="milestoneDescription"
+              class="input input-bordered input-sm"
+              maxlength="2000"
+              [ngModel]="milestoneDescription()"
+              (ngModelChange)="milestoneDescription.set($event)"
+          /></label>
+          <label class="text-sm"
+            >Due date
+            <input
+              type="date"
+              name="milestoneDueDate"
+              class="input input-bordered input-sm"
+              [ngModel]="milestoneDueDate()"
+              (ngModelChange)="milestoneDueDate.set($event)"
+          /></label>
+          <label class="text-sm"
+            >Status
+            <select
+              name="milestoneStatus"
+              class="select select-bordered select-sm"
+              [ngModel]="milestoneStatus()"
+              (ngModelChange)="milestoneStatus.set($event)"
+            >
+              <option value="OPEN">Open</option>
+              <option value="CLOSED">Closed</option>
+            </select></label
+          >
+          <button
+            class="btn btn-primary btn-sm"
+            type="submit"
+            [disabled]="savingMilestone() || !milestoneTitle().trim()"
+          >
             {{ editingMilestone() ? 'Save milestone' : 'Create milestone' }}
           </button>
-          @if (editingMilestone()) { <button class="btn btn-ghost btn-sm" type="button" (click)="resetMilestone()">Cancel</button> }
+          @if (editingMilestone()) {
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetMilestone()">Cancel</button> }
         </form>
       </div>
     </details>
@@ -102,23 +149,44 @@
       <div class="mt-3 space-y-2">
         @for (label of labels(); track label.id) {
         <div class="flex flex-wrap items-center gap-2">
-          <span class="rounded-full border px-2 py-0.5 text-sm" [style.border-color]="'#' + label.color">{{ label.name }}</span>
+          <span class="rounded-full border px-2 py-0.5 text-sm" [style.border-color]="'#' + label.color"
+            >{{ label.name }}</span
+          >
           <span class="text-base-content/60 text-sm">{{ label.description }}</span>
           <button type="button" class="btn btn-ghost btn-xs" (click)="editLabel(label)">Edit {{ label.name }}</button>
-          <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deleteLabel(label)">Delete {{ label.name }}</button>
+          <button type="button" class="btn btn-ghost btn-xs text-error" (click)="deleteLabel(label)">
+            Delete {{ label.name }}
+          </button>
         </div>
         }
         <form class="flex flex-wrap items-end gap-2" (ngSubmit)="saveLabel()">
-          <label class="text-sm">Name <input name="labelName" class="input input-bordered input-sm" maxlength="50"
-            [ngModel]="labelName()" (ngModelChange)="labelName.set($event)" /></label>
-          <label class="text-sm">Color <input type="color" name="labelColor" [ngModel]="labelColor()"
-            (ngModelChange)="labelColor.set($event)" /></label>
-          <label class="text-sm">Description <input name="labelDescription" class="input input-bordered input-sm" maxlength="255"
-            [ngModel]="labelDescription()" (ngModelChange)="labelDescription.set($event)" /></label>
+          <label class="text-sm"
+            >Name
+            <input
+              name="labelName"
+              class="input input-bordered input-sm"
+              maxlength="50"
+              [ngModel]="labelName()"
+              (ngModelChange)="labelName.set($event)"
+          /></label>
+          <label class="text-sm"
+            >Color
+            <input type="color" name="labelColor" [ngModel]="labelColor()" (ngModelChange)="labelColor.set($event)"
+          /></label>
+          <label class="text-sm"
+            >Description
+            <input
+              name="labelDescription"
+              class="input input-bordered input-sm"
+              maxlength="255"
+              [ngModel]="labelDescription()"
+              (ngModelChange)="labelDescription.set($event)"
+          /></label>
           <button class="btn btn-primary btn-sm" type="submit" [disabled]="savingLabel() || !labelName().trim()">
             {{ editingLabel() ? 'Save label' : 'Create label' }}
           </button>
-          @if (editingLabel()) { <button class="btn btn-ghost btn-sm" type="button" (click)="resetLabel()">Cancel</button> }
+          @if (editingLabel()) {
+          <button class="btn btn-ghost btn-sm" type="button" (click)="resetLabel()">Cancel</button> }
         </form>
       </div>
     </details>
@@ -149,10 +217,12 @@
     >
       <lucide-icon name="circleDot" class="size-8 sm:size-10"></lucide-icon>
     </div>
-    <p class="text-base-content text-center text-base font-semibold">No {{ tab() }} issues{{ labelFilter() || milestoneFilter() ? ' match these filters' : '' }}</p>
+    <p class="text-base-content text-center text-base font-semibold">
+      No {{ tab() }} issues{{ labelFilter() || milestoneFilter() ? ' match these filters' : '' }}
+    </p>
     <p class="max-w-sm text-center text-sm leading-relaxed">
-      @if (labelFilter() || milestoneFilter()) { Try another filter or clear the filters. }
-      @else { There aren't any {{ tab() }} issues in this repository yet. }
+      @if (labelFilter() || milestoneFilter()) { Try another filter or clear the filters. } @else { There aren't any {{
+      tab() }} issues in this repository yet. }
     </p>
     @if (tab() === 'open' && repoContext.isLoggedIn() && !labelFilter() && !milestoneFilter()) {
     <a [routerLink]="['/', owner(), repoName(), 'issues', 'new']" class="btn btn-primary btn-sm mt-3 gap-2">
@@ -170,15 +240,11 @@
     >
       <div class="mt-0.5 shrink-0">
         @if (issue.status === 'OPEN') {
-        <div
-          class="text-success flex size-6 items-center justify-center"
-        >
+        <div class="text-success flex size-6 items-center justify-center">
           <lucide-icon name="circleDot" class="size-4"></lucide-icon>
         </div>
         } @else {
-        <div
-          class="text-primary flex size-6 items-center justify-center"
-        >
+        <div class="text-primary flex size-6 items-center justify-center">
           <lucide-icon name="checkCircle" class="size-4"></lucide-icon>
         </div>
         }
@@ -193,9 +259,10 @@
               <span class="text-pretty">{{ issue.title }}</span>
               <span class="text-base-content/45 ml-1.5 font-mono text-sm font-normal">#{{ issue.number }}</span>
               @for (label of issue.labels ?? []; track label.id) {
-              <span class="ml-2 rounded-full border px-2 py-0.5 text-xs" [style.border-color]="'#' + label.color">{{ label.name }}</span>
-              }
-              @if (issue.milestone; as milestone) { <span class="ml-2 text-xs">{{ milestone.title }}</span> }
+              <span class="ml-2 rounded-full border px-2 py-0.5 text-xs" [style.border-color]="'#' + label.color"
+                >{{ label.name }}</span
+              >
+              } @if (issue.milestone; as milestone) { <span class="ml-2 text-xs">{{ milestone.title }}</span> }
             </p>
           </div>
           @if (issue.commentCount > 0) {

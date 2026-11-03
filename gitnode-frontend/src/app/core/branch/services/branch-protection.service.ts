@@ -3,7 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
-export interface BranchProtection { id: string; branchName: string; requiredApprovals: number; requiredChecks: string[]; requireConversationResolution: boolean }
+export interface BranchProtection {
+  id: string;
+  branchName: string;
+  requiredApprovals: number;
+  requiredChecks: string[];
+  requireConversationResolution: boolean;
+}
 
 @Injectable({ providedIn: 'root' })
 export class BranchProtectionService {
@@ -23,7 +29,12 @@ export class BranchProtectionService {
     requireConversationResolution = false,
   ): Promise<BranchProtection> {
     return firstValueFrom(
-      this.http.put<BranchProtection>(this.base(owner, repo), { branchName, requiredApprovals, requiredChecks, requireConversationResolution }),
+      this.http.put<BranchProtection>(this.base(owner, repo), {
+        branchName,
+        requiredApprovals,
+        requiredChecks,
+        requireConversationResolution,
+      }),
     );
   }
   delete(owner: string, repo: string, id: string): Promise<void> {

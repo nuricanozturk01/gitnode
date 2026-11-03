@@ -63,7 +63,10 @@ export class LoginPage implements OnInit {
         await this.rejectNonAdmin(e.message);
         return;
       }
-      if (e instanceof HttpErrorResponse && (e.error === 'twoFactorRequired' || e.error?.message === 'twoFactorRequired')) {
+      if (
+        e instanceof HttpErrorResponse &&
+        (e.error === 'twoFactorRequired' || e.error?.message === 'twoFactorRequired')
+      ) {
         this.needsOtp.set(true);
         return;
       }

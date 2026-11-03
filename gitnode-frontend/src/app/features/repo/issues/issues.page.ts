@@ -126,10 +126,17 @@ export class IssuesPage implements OnInit {
     if (!this.milestoneTitle().trim() || this.savingMilestone()) return;
     this.savingMilestone.set(true);
     try {
-      await this.issueService.saveMilestone(this.owner(), this.repoName(), {
-        title: this.milestoneTitle().trim(), description: this.milestoneDescription().trim() || null,
-        dueDate: this.milestoneDueDate() || null, status: this.milestoneStatus(),
-      }, this.editingMilestone() ?? undefined);
+      await this.issueService.saveMilestone(
+        this.owner(),
+        this.repoName(),
+        {
+          title: this.milestoneTitle().trim(),
+          description: this.milestoneDescription().trim() || null,
+          dueDate: this.milestoneDueDate() || null,
+          status: this.milestoneStatus(),
+        },
+        this.editingMilestone() ?? undefined,
+      );
       this.resetMilestone();
       await this.loadMilestones();
       await this.loadPage();
@@ -141,8 +148,13 @@ export class IssuesPage implements OnInit {
   }
 
   async deleteMilestone(milestone: IssueMilestone): Promise<void> {
-    if (!await this.confirm.confirm('Delete milestone', `Delete milestone "${milestone.title}"? Issues will remain.`,
-      { confirmLabel: 'Delete', variant: 'danger' })) return;
+    if (
+      !(await this.confirm.confirm('Delete milestone', `Delete milestone "${milestone.title}"? Issues will remain.`, {
+        confirmLabel: 'Delete',
+        variant: 'danger',
+      }))
+    )
+      return;
     try {
       await this.issueService.deleteMilestone(this.owner(), this.repoName(), milestone.id);
       if (this.milestoneFilter() === milestone.id) this.milestoneFilter.set('');
@@ -187,9 +199,16 @@ export class IssuesPage implements OnInit {
     if (!this.labelName().trim() || this.savingLabel()) return;
     this.savingLabel.set(true);
     try {
-      await this.issueService.saveLabel(this.owner(), this.repoName(), {
-        name: this.labelName().trim(), color: this.labelColor().slice(1), description: this.labelDescription().trim(),
-      }, this.editingLabel() ?? undefined);
+      await this.issueService.saveLabel(
+        this.owner(),
+        this.repoName(),
+        {
+          name: this.labelName().trim(),
+          color: this.labelColor().slice(1),
+          description: this.labelDescription().trim(),
+        },
+        this.editingLabel() ?? undefined,
+      );
       this.resetLabel();
       await this.loadLabels();
       await this.loadPage();
@@ -201,8 +220,13 @@ export class IssuesPage implements OnInit {
   }
 
   async deleteLabel(label: IssueLabel): Promise<void> {
-    if (!await this.confirm.confirm('Delete label', `Delete label "${label.name}" from this repository?`,
-      { confirmLabel: 'Delete', variant: 'danger' })) return;
+    if (
+      !(await this.confirm.confirm('Delete label', `Delete label "${label.name}" from this repository?`, {
+        confirmLabel: 'Delete',
+        variant: 'danger',
+      }))
+    )
+      return;
     try {
       await this.issueService.deleteLabel(this.owner(), this.repoName(), label.id);
       if (this.labelFilter() === label.id) this.labelFilter.set('');
@@ -249,7 +273,14 @@ export class IssuesPage implements OnInit {
     this.loadFailed.set(false);
     const status: IssueStatus = this.tab() === 'open' ? 'OPEN' : 'CLOSED';
     try {
-      const result = await this.issueService.getAll(owner, repo, status, this.page(), this.labelFilter(), this.milestoneFilter());
+      const result = await this.issueService.getAll(
+        owner,
+        repo,
+        status,
+        this.page(),
+        this.labelFilter(),
+        this.milestoneFilter(),
+      );
       if (version !== this.loadVersion) return;
       this.issues.set(result.content);
       this.totalPages.set(result.totalPages);

@@ -1,4 +1,3 @@
-
 .docs-callout {
   border: 1px solid color-mix(in oklch, var(--color-primary) 18%, var(--color-base-300));
   border-left: 3px solid var(--color-primary);

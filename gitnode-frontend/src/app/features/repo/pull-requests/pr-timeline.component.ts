@@ -52,9 +52,15 @@ export class PrTimelineComponent {
   private readonly prService = inject(PullRequestService);
   private readonly runService = inject(WorkflowRunService);
 
-  private readonly commits = signal<{ sha: string; shortSha: string; message: string; author: string; at: string }[]>([]);
-  private readonly reviews = signal<{ id: string; username: string; state: string; body: string | null; at: string | null }[]>([]);
-  private readonly runs = signal<{ id: string; name: string; status: string; conclusion: string | null; at: string; number: number }[]>([]);
+  private readonly commits = signal<{ sha: string; shortSha: string; message: string; author: string; at: string }[]>(
+    [],
+  );
+  private readonly reviews = signal<
+    { id: string; username: string; state: string; body: string | null; at: string | null }[]
+  >([]);
+  private readonly runs = signal<
+    { id: string; name: string; status: string; conclusion: string | null; at: string; number: number }[]
+  >([]);
   readonly failed = signal(false);
   readonly expanded = signal(false);
   private requestId = 0;
@@ -62,25 +68,65 @@ export class PrTimelineComponent {
   readonly events = computed<TimelineEvent[]>(() => {
     const pr = this.pr();
     const list: TimelineEvent[] = [
-      { key: 'opened', at: Date.parse(pr.createdAt), icon: 'gitPullRequest', tone: 'primary', text: `${pr.author.username} opened this pull request` },
+      {
+        key: 'opened',
+        at: Date.parse(pr.createdAt),
+        icon: 'gitPullRequest',
+        tone: 'primary',
+        text: `${pr.author.username} opened this pull request`,
+      },
     ];
     for (const c of this.commits()) {
-      list.push({ key: `c-${c.sha}`, at: Date.parse(c.at), icon: 'gitCommit', tone: 'neutral', text: `${c.author} added a commit`, detail: `${c.shortSha} ${c.message}`, link: ['/', this.owner(), this.repoName(), 'commit', c.sha] });
+      list.push({
+        key: `c-${c.sha}`,
+        at: Date.parse(c.at),
+        icon: 'gitCommit',
+        tone: 'neutral',
+        text: `${c.author} added a commit`,
+        detail: `${c.shortSha} ${c.message}`,
+        link: ['/', this.owner(), this.repoName(), 'commit', c.sha],
+      });
     }
     for (const r of this.reviews()) {
       if (!r.at) continue;
       const approved = r.state === 'APPROVED';
       const changes = r.state === 'CHANGES_REQUESTED';
-      list.push({ key: `r-${r.id}`, at: Date.parse(r.at), icon: approved ? 'checkCircle' : 'alertTriangle', tone: approved ? 'success' : changes ? 'danger' : 'neutral', text: `${r.username} ${approved ? 'approved these changes' : changes ? 'requested changes' : 'reviewed'}`, detail: r.body ?? undefined });
+      list.push({
+        key: `r-${r.id}`,
+        at: Date.parse(r.at),
+        icon: approved ? 'checkCircle' : 'alertTriangle',
+        tone: approved ? 'success' : changes ? 'danger' : 'neutral',
+        text: `${r.username} ${approved ? 'approved these changes' : changes ? 'requested changes' : 'reviewed'}`,
+        detail: r.body ?? undefined,
+      });
     }
     for (const run of this.runs()) {
       const done = run.status === 'SUCCESS' || run.status === 'FAILURE' || run.status === 'CANCELLED';
-      list.push({ key: `w-${run.id}`, at: Date.parse(run.at), icon: 'workflow', tone: run.status === 'SUCCESS' ? 'success' : run.status === 'FAILURE' ? 'danger' : done ? 'warning' : 'neutral', text: `Workflow ${run.name} #${run.number}: ${this.runLabel(run.status)}`, link: ['/', this.owner(), this.repoName(), 'actions', 'runs', run.id] });
+      list.push({
+        key: `w-${run.id}`,
+        at: Date.parse(run.at),
+        icon: 'workflow',
+        tone: run.status === 'SUCCESS' ? 'success' : run.status === 'FAILURE' ? 'danger' : done ? 'warning' : 'neutral',
+        text: `Workflow ${run.name} #${run.number}: ${this.runLabel(run.status)}`,
+        link: ['/', this.owner(), this.repoName(), 'actions', 'runs', run.id],
+      });
     }
     if (pr.mergedAt) {
-      list.push({ key: 'merged', at: Date.parse(pr.mergedAt), icon: 'gitMerge', tone: 'primary', text: `${pr.mergedBy?.username ?? 'Someone'} merged this pull request` });
+      list.push({
+        key: 'merged',
+        at: Date.parse(pr.mergedAt),
+        icon: 'gitMerge',
+        tone: 'primary',
+        text: `${pr.mergedBy?.username ?? 'Someone'} merged this pull request`,
+      });
     } else if (pr.closedAt) {
-      list.push({ key: 'closed', at: Date.parse(pr.closedAt), icon: 'x', tone: 'danger', text: 'This pull request was closed' });
+      list.push({
+        key: 'closed',
+        at: Date.parse(pr.closedAt),
+        icon: 'x',
+        tone: 'danger',
+        text: 'This pull request was closed',
+      });
     }
     return list.filter((e) => !Number.isNaN(e.at)).sort((a, b) => a.at - b.at);
   });
@@ -100,8 +146,17 @@ export class PrTimelineComponent {
 
   runLabel(status: string): string {
     return (
-      { SUCCESS: 'passed', FAILURE: 'failed', CANCELLED: 'cancelled', SKIPPED: 'skipped', QUEUED: 'queued', IN_PROGRESS: 'running' } as Record<string, string>
-    )[status] ?? status.toLowerCase();
+      (
+        {
+          SUCCESS: 'passed',
+          FAILURE: 'failed',
+          CANCELLED: 'cancelled',
+          SKIPPED: 'skipped',
+          QUEUED: 'queued',
+          IN_PROGRESS: 'running',
+        } as Record<string, string>
+      )[status] ?? status.toLowerCase()
+    );
   }
 
   async load(): Promise<void> {
@@ -117,17 +172,36 @@ export class PrTimelineComponent {
     if (id !== this.requestId) return;
     this.commits.set(
       commits.status === 'fulfilled'
-        ? commits.value.map((c) => ({ sha: c.sha, shortSha: c.shortSha, message: c.message, author: c.author.username || c.author.name, at: c.committedAt }))
+        ? commits.value.map((c) => ({
+            sha: c.sha,
+            shortSha: c.shortSha,
+            message: c.message,
+            author: c.author.username || c.author.name,
+            at: c.committedAt,
+          }))
         : [],
     );
     this.reviews.set(
       reviews.status === 'fulfilled'
-        ? reviews.value.reviews.map((r) => ({ id: r.id, username: r.username, state: r.state, body: r.body, at: r.createdAt }))
+        ? reviews.value.reviews.map((r) => ({
+            id: r.id,
+            username: r.username,
+            state: r.state,
+            body: r.body,
+            at: r.createdAt,
+          }))
         : [],
     );
     this.runs.set(
       runs.status === 'fulfilled'
-        ? runs.value.content.map((r) => ({ id: r.id, name: r.workflowName, status: r.status, conclusion: r.conclusion, at: r.createdAt, number: r.runNumber }))
+        ? runs.value.content.map((r) => ({
+            id: r.id,
+            name: r.workflowName,
+            status: r.status,
+            conclusion: r.conclusion,
+            at: r.createdAt,
+            number: r.runNumber,
+          }))
         : [],
     );
     this.failed.set([commits, reviews, runs].every((r) => r.status === 'rejected'));

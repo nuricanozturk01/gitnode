@@ -19,7 +19,7 @@
         size="lg"
       />
       <div class="min-w-0 flex-1">
-        <h1 class="text-base-content break-words text-xl font-semibold">{{ c.message }}</h1>
+        <h1 class="text-base-content text-xl font-semibold break-words">{{ c.message }}</h1>
         @if (c.description) {
         <p class="text-base-content/70 mt-1 whitespace-pre-wrap">{{ c.description }}</p>
         }
@@ -60,11 +60,24 @@
     @if (c.files.length > 3) {
     <div class="mb-3 flex flex-wrap items-center gap-2">
       <label class="sr-only" for="commit-file-search">Filter changed files</label>
-      <input id="commit-file-search" type="search" class="input input-bordered input-sm w-full sm:max-w-xs" placeholder="Filter changed files" autocomplete="off" [ngModel]="fileQuery()" (ngModelChange)="fileQuery.set($event)" />
-      @if (fileQuery()) { <span class="text-base-content/70 text-xs" role="status">{{ matchingFiles(c.files).length }} of {{ c.files.length }} files</span> }
+      <input
+        id="commit-file-search"
+        type="search"
+        class="input input-bordered input-sm w-full sm:max-w-xs"
+        placeholder="Filter changed files"
+        autocomplete="off"
+        [ngModel]="fileQuery()"
+        (ngModelChange)="fileQuery.set($event)"
+      />
+      @if (fileQuery()) {
+      <span class="text-base-content/70 text-xs" role="status"
+        >{{ matchingFiles(c.files).length }} of {{ c.files.length }} files</span
+      >
+      }
     </div>
-    @if (matchingFiles(c.files).length === 0) { <p class="text-base-content/70 py-8 text-center text-sm">No changed files match "{{ fileQuery() }}".</p> }
-    }
+    @if (matchingFiles(c.files).length === 0) {
+    <p class="text-base-content/70 py-8 text-center text-sm">No changed files match "{{ fileQuery() }}".</p>
+    } }
     <div class="border-base-300 overflow-hidden rounded-lg border">
       @for (file of matchingFiles(c.files); track file.newPath || file.oldPath) {
       <div class="border-base-300 border-b last:border-b-0">

@@ -98,7 +98,9 @@ export class EditReleasePage {
       if (!this.form.value.name) this.form.patchValue({ name: notes.name });
       this.bodyTab.set('write');
       this.toast.success(
-        notes.commitCount === 0 ? 'No new commits since the previous tag' : `Generated notes from ${notes.commitCount} commits`,
+        notes.commitCount === 0
+          ? 'No new commits since the previous tag'
+          : `Generated notes from ${notes.commitCount} commits`,
       );
     } catch {
       this.toast.error('Could not generate release notes.');

@@ -131,7 +131,9 @@ export class PrMetadataComponent {
       this.editing.set(false);
       this.toast.success('Pull request updated');
     } catch (e) {
-      this.error.set((e as { error?: { message?: string } })?.error?.message ?? 'Could not save. Check the assignee usernames.');
+      this.error.set(
+        (e as { error?: { message?: string } })?.error?.message ?? 'Could not save. Check the assignee usernames.',
+      );
     } finally {
       this.saving.set(false);
     }

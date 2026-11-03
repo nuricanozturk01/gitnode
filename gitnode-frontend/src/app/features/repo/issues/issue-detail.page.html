@@ -37,9 +37,7 @@
     }
   </div>
 
-  <section
-    class="repo-panel overflow-hidden border"
-  >
+  <section class="repo-panel overflow-hidden border">
     <div class="repo-toolbar flex flex-wrap items-center gap-2 px-4 py-3 sm:px-5">
       <span [class]="'badge-pill ' + statusBadgeClass(iss.status)">{{ statusLabel(iss.status) }}</span>
       <span class="text-base-content/45 font-mono text-sm">#{{ iss.number }}</span>
@@ -60,15 +58,22 @@
       <div class="mt-4 flex flex-wrap items-center gap-2" aria-label="Issue labels">
         <span class="text-base-content/60 text-sm">Labels</span>
         @for (label of iss.labels ?? []; track label.id) {
-        <span class="rounded-full border px-2 py-0.5 text-xs" [style.border-color]="'#' + label.color">{{ label.name }}</span>
-        } @empty { <span class="text-base-content/50 text-sm">None</span> }
-        @if (isLoggedIn() && (isOwnIssue() || canManageIssues())) {
+        <span class="rounded-full border px-2 py-0.5 text-xs" [style.border-color]="'#' + label.color"
+          >{{ label.name }}</span
+        >
+        } @empty { <span class="text-base-content/50 text-sm">None</span> } @if (isLoggedIn() && (isOwnIssue() ||
+        canManageIssues())) {
         <details class="relative">
           <summary class="cursor-pointer text-sm">Edit labels</summary>
           <div class="border-base-300 bg-base-100 absolute z-10 mt-1 min-w-48 rounded border p-2 shadow">
             @for (label of labels(); track label.id) {
             <label class="flex items-center gap-2 py-1 text-sm">
-              <input type="checkbox" [checked]="hasLabel(label.id)" [disabled]="updatingLabel()" (change)="toggleLabel(label)" />
+              <input
+                type="checkbox"
+                [checked]="hasLabel(label.id)"
+                [disabled]="updatingLabel()"
+                (change)="toggleLabel(label)"
+              />
               {{ label.name }}
             </label>
             } @empty { <span class="text-sm">No labels available</span> }
@@ -83,8 +88,13 @@
         <span role="alert" class="text-sm">Could not load milestones.</span>
         <button type="button" class="btn btn-outline btn-sm" (click)="retryMilestones()">Retry milestones</button>
         } @else if (isLoggedIn() && (isOwnIssue() || canManageIssues())) {
-        <select aria-label="Issue milestone" class="select select-bordered select-sm" [disabled]="updatingMilestone()"
-          [ngModel]="selectedMilestone()" (ngModelChange)="setMilestone($event)">
+        <select
+          aria-label="Issue milestone"
+          class="select select-bordered select-sm"
+          [disabled]="updatingMilestone()"
+          [ngModel]="selectedMilestone()"
+          (ngModelChange)="setMilestone($event)"
+        >
           <option value="">No milestone</option>
           @for (milestone of milestones(); track milestone.id) {
           <option [value]="milestone.id">{{ milestone.title }} ({{ milestone.status }})</option>
@@ -117,9 +127,15 @@
             <span class="text-base-content/90 font-medium">{{ assignee.name || assignee.username }}</span>
           </span>
           @if (isLoggedIn() && (isOwnIssue() || canManageIssues())) {
-          <button type="button" class="btn btn-ghost btn-xs" [disabled]="updatingAssignee()"
+          <button
+            type="button"
+            class="btn btn-ghost btn-xs"
+            [disabled]="updatingAssignee()"
             [attr.aria-label]="'Remove ' + assignee.username + ' from assignees'"
-            (click)="removeAssignee(assignee.username)">Remove</button>
+            (click)="removeAssignee(assignee.username)"
+          >
+            Remove
+          </button>
           }
         </div>
         } @if (isLoggedIn() && (isOwnIssue() || canManageIssues())) {
@@ -139,10 +155,14 @@
             />
             <datalist id="assignee-suggestions">
               @for (user of assigneeSuggestions(); track user.username) {
-                <option [value]="user.username">{{ user.displayName }}</option>
+              <option [value]="user.username">{{ user.displayName }}</option>
               }
             </datalist>
-            <button type="submit" class="btn btn-ghost btn-xs" [disabled]="updatingAssignee() || !assigneeUsername().trim()">
+            <button
+              type="submit"
+              class="btn btn-ghost btn-xs"
+              [disabled]="updatingAssignee() || !assigneeUsername().trim()"
+            >
               Assign user
             </button>
           </form>

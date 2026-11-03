@@ -25,7 +25,9 @@ export class EditorService {
 
   tree(owner: string, repo: string, branch: string, path: string): Promise<TreeResponse> {
     const suffix = path ? `/${this.encode(path)}` : '';
-    return firstValueFrom(this.http.get<TreeResponse>(`${this.base(owner, repo)}/tree/${encodeURIComponent(branch)}${suffix}`));
+    return firstValueFrom(
+      this.http.get<TreeResponse>(`${this.base(owner, repo)}/tree/${encodeURIComponent(branch)}${suffix}`),
+    );
   }
 
   blob(owner: string, repo: string, branch: string, path: string): Promise<BlobResponse> {

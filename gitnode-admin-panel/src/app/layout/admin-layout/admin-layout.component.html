@@ -1,12 +1,29 @@
 <div class="drawer lg:drawer-open app-shell min-h-screen">
-  <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded focus:bg-base-100 focus:p-2">Skip to main content</a>
-  <input id="admin-drawer" type="checkbox" class="drawer-toggle" aria-label="Toggle sidebar" tabindex="-1" [checked]="drawerOpen()" />
+  <a
+    href="#main-content"
+    class="focus:bg-base-100 sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:rounded focus:p-2"
+    >Skip to main content</a
+  >
+  <input
+    id="admin-drawer"
+    type="checkbox"
+    class="drawer-toggle"
+    aria-label="Toggle sidebar"
+    tabindex="-1"
+    [checked]="drawerOpen()"
+  />
 
   <div class="drawer-content flex min-h-screen flex-col">
     <header class="navbar bg-base-100 border-base-300 sticky top-0 z-40 border-b px-4">
       <div class="flex-none lg:hidden">
-        <button type="button" class="btn btn-ghost btn-square btn-sm" aria-label="Open sidebar"
-          aria-controls="admin-navigation" [attr.aria-expanded]="drawerOpen()" (click)="drawerOpen.set(true)">
+        <button
+          type="button"
+          class="btn btn-ghost btn-square btn-sm"
+          aria-label="Open sidebar"
+          aria-controls="admin-navigation"
+          [attr.aria-expanded]="drawerOpen()"
+          (click)="drawerOpen.set(true)"
+        >
           <lucide-icon name="menu" class="size-5"></lucide-icon>
         </button>
       </div>
@@ -60,31 +77,59 @@
   </div>
 
   <div class="drawer-side z-50">
-    <label for="admin-drawer" class="drawer-overlay" aria-hidden="true" (click)="$event.preventDefault(); drawerOpen.set(false)"></label>
-    <aside id="admin-navigation" aria-label="Administration navigation" class="bg-base-100 border-base-300 flex min-h-full w-64 flex-col border-r">
+    <label
+      for="admin-drawer"
+      class="drawer-overlay"
+      aria-hidden="true"
+      (click)="$event.preventDefault(); drawerOpen.set(false)"
+    ></label>
+    <aside
+      id="admin-navigation"
+      aria-label="Administration navigation"
+      class="bg-base-100 border-base-300 flex min-h-full w-64 flex-col border-r"
+    >
       <div class="border-base-300 flex items-center justify-between border-b p-4">
         <p class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">Control center</p>
-        <button type="button" class="btn btn-ghost btn-square btn-sm lg:hidden" aria-label="Close sidebar"
-          (click)="drawerOpen.set(false)">
+        <button
+          type="button"
+          class="btn btn-ghost btn-square btn-sm lg:hidden"
+          aria-label="Close sidebar"
+          (click)="drawerOpen.set(false)"
+        >
           <lucide-icon name="x" class="size-4" aria-hidden="true"></lucide-icon>
         </button>
       </div>
       <ul class="menu menu-md flex-1 gap-1 p-3">
         <li>
-          <a routerLink="/dashboard" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/dashboard"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="layoutDashboard" class="size-4"></lucide-icon>
             Dashboard
           </a>
         </li>
         <li class="menu-title mt-2 px-3 text-[0.65rem]">Directory</li>
         <li>
-          <a routerLink="/users" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/users"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="users" class="size-4"></lucide-icon>
             Users
           </a>
         </li>
         <li>
-          <a routerLink="/repos" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/repos"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="gitBranch" class="size-4"></lucide-icon>
             Repositories
           </a>
@@ -92,7 +137,8 @@
         <li>
           <a
             routerLink="/organizations"
-            routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
             class="gap-3 rounded-lg"
             [routerLinkActiveOptions]="{ exact: false }"
           >
@@ -102,7 +148,12 @@
         </li>
         <li class="menu-title mt-2 px-3 text-[0.65rem]">Operations</li>
         <li>
-          <a routerLink="/audit-logs" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/audit-logs"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="scrollText" class="size-4"></lucide-icon>
             Audit logs
           </a>
@@ -110,7 +161,8 @@
         <li>
           <a
             routerLink="/pgaudit-logs"
-            routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
             class="gap-3 rounded-lg"
           >
             <lucide-icon name="database" class="size-4"></lucide-icon>
@@ -120,7 +172,8 @@
         <li>
           <a
             routerLink="/modulith-events"
-            routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
             class="gap-3 rounded-lg"
           >
             <lucide-icon name="workflow" class="size-4"></lucide-icon>
@@ -130,7 +183,8 @@
         <li>
           <a
             routerLink="/webhooks/dlq"
-            routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
             class="gap-3 rounded-lg"
           >
             <lucide-icon name="webhook" class="size-4"></lucide-icon>
@@ -138,20 +192,35 @@
           </a>
         </li>
         <li>
-          <a routerLink="/actions" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/actions"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="play" class="size-4"></lucide-icon>
             Actions
           </a>
         </li>
         <li>
-          <a routerLink="/system" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/system"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="activity" class="size-4"></lucide-icon>
             System health
           </a>
         </li>
         <li class="menu-title mt-2 px-3 text-[0.65rem]">Configuration</li>
         <li>
-          <a routerLink="/settings" routerLinkActive="bg-base-200 text-primary font-medium" ariaCurrentWhenActive="page" class="gap-3 rounded-lg">
+          <a
+            routerLink="/settings"
+            routerLinkActive="bg-base-200 text-primary font-medium"
+            ariaCurrentWhenActive="page"
+            class="gap-3 rounded-lg"
+          >
             <lucide-icon name="settings" class="size-4"></lucide-icon>
             Platform settings
           </a>

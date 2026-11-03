@@ -223,7 +223,13 @@ export class BlobPage implements OnDestroy {
     return `${environment.apiUrl}/api/repos/${owner}/${repo}/raw/${branch}/${path}`;
   }
 
-  private async loadPdfAsBlob(owner: string, repo: string, branch: string, path: string, version: number): Promise<void> {
+  private async loadPdfAsBlob(
+    owner: string,
+    repo: string,
+    branch: string,
+    path: string,
+    version: number,
+  ): Promise<void> {
     const rawUrl = this.buildRawUrl(owner, repo, branch, path);
     try {
       const blob = await firstValueFrom(this.http.get(rawUrl, { responseType: 'blob' }));
@@ -249,7 +255,13 @@ export class BlobPage implements OnDestroy {
     }
   }
 
-  private async loadImageAsBlob(owner: string, repo: string, branch: string, path: string, version: number): Promise<void> {
+  private async loadImageAsBlob(
+    owner: string,
+    repo: string,
+    branch: string,
+    path: string,
+    version: number,
+  ): Promise<void> {
     const rawUrl = this.buildRawUrl(owner, repo, branch, path);
     try {
       const blob = await firstValueFrom(this.http.get(rawUrl, { responseType: 'blob' }));

@@ -1,39 +1,80 @@
 @if (failed()) {
-<p class="text-base-content/70 mt-2 text-sm" role="status">Could not load the attached files. <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button></p>
+  <p class="text-base-content/70 mt-2 text-sm" role="status">
+    Could not load the attached files.
+    <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button>
+  </p>
 }
 <ul class="divide-base-300 border-base-300 mt-3 divide-y rounded-lg border" aria-label="Attached files">
   @for (asset of assets(); track asset.id) {
-  <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
-    <button type="button" class="link link-primary min-w-0 break-all text-left" [disabled]="downloading() === asset.id" (click)="download(asset)">{{ asset.name }}</button>
-    <span class="text-base-content/70 text-xs">{{ formatSize(asset.size) }} · {{ asset.downloadCount }} {{ asset.downloadCount === 1 ? 'download' : 'downloads' }}</span>
-    <code class="text-base-content/60 hidden text-xs sm:inline" [attr.title]="'SHA-256 ' + asset.sha256">{{ asset.sha256.slice(0, 12) }}</code>
-    @if (canManage()) {
-    <button type="button" class="btn btn-ghost btn-xs text-error ml-auto" [attr.aria-label]="'Delete ' + asset.name" (click)="remove(asset)">Delete</button>
-    }
-  </li>
-  } @empty { <li class="text-base-content/60 px-3 py-2 text-sm">No files attached.</li> }
+    <li class="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm">
+      <button
+        type="button"
+        class="link link-primary min-w-0 text-left break-all"
+        [disabled]="downloading() === asset.id"
+        (click)="download(asset)"
+      >
+        {{ asset.name }}
+      </button>
+      <span class="text-base-content/70 text-xs"
+        >{{ formatSize(asset.size) }} · {{ asset.downloadCount }}
+        {{ asset.downloadCount === 1 ? 'download' : 'downloads' }}</span
+      >
+      <code class="text-base-content/60 hidden text-xs sm:inline" [attr.title]="'SHA-256 ' + asset.sha256">{{
+        asset.sha256.slice(0, 12)
+      }}</code>
+      @if (canManage()) {
+        <button
+          type="button"
+          class="btn btn-ghost btn-xs text-error ml-auto"
+          [attr.aria-label]="'Delete ' + asset.name"
+          (click)="remove(asset)"
+        >
+          Delete
+        </button>
+      }
+    </li>
+  } @empty {
+    <li class="text-base-content/60 px-3 py-2 text-sm">No files attached.</li>
+  }
 </ul>
 @if (canManage()) {
-<div
-  class="border-base-300 mt-3 rounded-lg border border-dashed p-4 text-center text-sm transition-colors"
-  [class.border-primary]="dragging()"
-  [class.bg-base-200]="dragging()"
-  data-testid="asset-dropzone"
-  (dragover)="onDragOver($event)"
-  (dragleave)="dragging.set(false)"
-  (drop)="onDrop($event)"
->
-  <p class="text-base-content/65 mb-2">Drag files here or</p>
-  <label class="btn btn-outline btn-sm" [class.btn-disabled]="uploading()" for="release-files">
-    @if (uploading()) { <span class="loading loading-spinner loading-xs"></span> } Attach files
-  </label>
-  <input id="release-files" type="file" multiple class="sr-only" [disabled]="uploading()" (change)="onFilesPicked($event)" />
-  @if (uploading()) {
-  <div class="mx-auto mt-3 max-w-sm" role="status" aria-live="polite">
-    <p class="text-base-content/70 mb-1 truncate text-xs">Uploading {{ currentFile() }} — {{ progress() }}%</p>
-    <progress class="progress progress-primary w-full" [value]="progress()" max="100" aria-label="Upload progress"></progress>
+  <div
+    class="border-base-300 mt-3 rounded-lg border border-dashed p-4 text-center text-sm transition-colors"
+    [class.border-primary]="dragging()"
+    [class.bg-base-200]="dragging()"
+    data-testid="asset-dropzone"
+    (dragover)="onDragOver($event)"
+    (dragleave)="dragging.set(false)"
+    (drop)="onDrop($event)"
+  >
+    <p class="text-base-content/65 mb-2">Drag files here or</p>
+    <label class="btn btn-outline btn-sm" [class.btn-disabled]="uploading()" for="release-files">
+      @if (uploading()) {
+        <span class="loading loading-spinner loading-xs"></span>
+      }
+      Attach files
+    </label>
+    <input
+      id="release-files"
+      type="file"
+      multiple
+      class="sr-only"
+      [disabled]="uploading()"
+      (change)="onFilesPicked($event)"
+    />
+    @if (uploading()) {
+      <div class="mx-auto mt-3 max-w-sm" role="status" aria-live="polite">
+        <p class="text-base-content/70 mb-1 truncate text-xs">Uploading {{ currentFile() }} — {{ progress() }}%</p>
+        <progress
+          class="progress progress-primary w-full"
+          [value]="progress()"
+          max="100"
+          aria-label="Upload progress"
+        ></progress>
+      </div>
+    }
+    @if (error()) {
+      <p role="alert" class="text-error mt-2 text-sm">{{ error() }}</p>
+    }
   </div>
-  }
-  @if (error()) { <p role="alert" class="text-error mt-2 text-sm">{{ error() }}</p> }
-</div>
 }

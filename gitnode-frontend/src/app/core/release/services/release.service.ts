@@ -55,10 +55,13 @@ export class ReleaseService {
     let params = new HttpParams().set('tagName', tagName);
     if (targetCommitish) params = params.set('targetCommitish', targetCommitish);
     return firstValueFrom(
-      this.http.get<{ name: string; body: string; previousTag: string | null; commitCount: number; truncated: boolean }>(
-        `${this.base(owner, repo)}/generate-notes`,
-        { params },
-      ),
+      this.http.get<{
+        name: string;
+        body: string;
+        previousTag: string | null;
+        commitCount: number;
+        truncated: boolean;
+      }>(`${this.base(owner, repo)}/generate-notes`, { params }),
     );
   }
 

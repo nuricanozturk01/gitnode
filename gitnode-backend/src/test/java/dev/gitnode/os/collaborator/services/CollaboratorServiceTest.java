@@ -29,11 +29,13 @@ import dev.gitnode.os.collaborator.entities.CollaboratorStatus;
 import dev.gitnode.os.collaborator.entities.RepoCollaborator;
 import dev.gitnode.os.collaborator.mappers.CollaboratorMapper;
 import dev.gitnode.os.collaborator.repositories.CollaboratorRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.repo.entities.Repo;
-import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -42,6 +44,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -63,8 +66,8 @@ import org.springframework.data.domain.Pageable;
 class CollaboratorServiceTest {
 
   @Mock private CollaboratorRepository collaboratorRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private RepoLookupPort repoRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private CollaboratorMapper collaboratorMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -77,6 +80,9 @@ class CollaboratorServiceTest {
   private Tenant owner;
   private Tenant invitee;
   private Repo repo;
+  private RepoRef repoRef;
+  private TenantRef ownerRef;
+  private TenantRef inviteeRef;
 
   @BeforeEach
   void setup() {
@@ -98,6 +104,16 @@ class CollaboratorServiceTest {
     repo.setDefaultBranch("main");
     repo.setCreatedAt(Instant.now());
     repo.setUpdatedAt(Instant.now());
+
+    ownerRef = new TenantRef(OWNER_ID, "owner", "owner@example.com", null, null, true);
+    inviteeRef = new TenantRef(INVITEE_ID, "invitee", "invitee@example.com", null, null, true);
+    repoRef = new RepoRef(REPO_ID, OWNER_ID, "owner", "my-repo", true, "main");
+    org.mockito.Mockito.lenient()
+        .when(collaboratorMapper.toInfoPage(org.mockito.ArgumentMatchers.any()))
+        .thenAnswer(
+            i ->
+                ((org.springframework.data.domain.Page<RepoCollaborator>) i.getArgument(0))
+                    .map(collaboratorMapper::toInfo));
   }
 
   @Nested
@@ -107,8 +123,7 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws ItemNotFoundException when repo not found")
     void invite_throwsRepoNotFound() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.empty());
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.empty());
 
       assertThatThrownBy(
               () ->
@@ -121,8 +136,7 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws AccessNotAllowedException when requester is not repo owner")
     void invite_throwsAccessDenied_whenNotOwner() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
 
       assertThatThrownBy(
               () ->
@@ -134,8 +148,7 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws ItemNotFoundException when invitee user not found")
     void invite_throwsUserNotFound() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
       when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.empty());
 
       assertThatThrownBy(
@@ -149,9 +162,8 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws BadRequestException when owner invites themselves")
     void invite_throwsBadRequest_whenSelfInvite() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerRef));
 
       assertThatThrownBy(
               () ->
@@ -163,9 +175,8 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws ItemAlreadyExistsException when user is already an accepted collaborator")
     void invite_throwsAlreadyExists_whenAlreadyCollaborator() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
               REPO_ID, INVITEE_ID, CollaboratorStatus.ACCEPTED))
           .thenReturn(true);
@@ -181,9 +192,8 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("creates new collaborator with READ permission always included")
     void invite_createsCollaborator_withReadAlwaysIncluded() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(any(), any(), any()))
           .thenReturn(false);
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
@@ -213,9 +223,8 @@ class CollaboratorServiceTest {
     @DisplayName("re-invites declined collaborator by resetting status to PENDING")
     void invite_reInvites_whenPreviouslyDeclined() {
       final var existing = collaborator(CollaboratorStatus.DECLINED, Set.of());
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(any(), any(), any()))
           .thenReturn(false);
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
@@ -238,8 +247,7 @@ class CollaboratorServiceTest {
     void respond_acceptsInvitation() {
       final var existing =
           collaborator(CollaboratorStatus.PENDING, Set.of(CollaboratorPermission.READ));
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
       when(collaboratorRepository.save(any())).thenReturn(existing);
@@ -257,8 +265,7 @@ class CollaboratorServiceTest {
     void respond_declinesInvitation() {
       final var existing =
           collaborator(CollaboratorStatus.PENDING, Set.of(CollaboratorPermission.READ));
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
       when(collaboratorRepository.save(any())).thenReturn(existing);
@@ -273,8 +280,7 @@ class CollaboratorServiceTest {
     @DisplayName("throws BadRequestException when invitation already handled")
     void respond_throwsBadRequest_whenAlreadyHandled() {
       final var existing = collaborator(CollaboratorStatus.ACCEPTED, Set.of());
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
 
@@ -293,9 +299,8 @@ class CollaboratorServiceTest {
     @DisplayName("owner can remove any collaborator")
     void remove_ownerCanRemove() {
       final var existing = collaborator(CollaboratorStatus.ACCEPTED, Set.of());
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
 
@@ -308,9 +313,8 @@ class CollaboratorServiceTest {
     @DisplayName("collaborator can remove themselves")
     void remove_collaboratorCanRemoveSelf() {
       final var existing = collaborator(CollaboratorStatus.ACCEPTED, Set.of());
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
 
@@ -323,9 +327,8 @@ class CollaboratorServiceTest {
     @DisplayName("throws AccessNotAllowedException when third party tries to remove collaborator")
     void remove_throwsAccessDenied_forThirdParty() {
       final var thirdPartyId = UUID.randomUUID();
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
 
       assertThatThrownBy(
               () -> collaboratorService.remove(thirdPartyId, "owner", "my-repo", "invitee"))
@@ -342,9 +345,8 @@ class CollaboratorServiceTest {
     void updatePermissions_ownerCanUpdate() {
       final var existing =
           collaborator(CollaboratorStatus.ACCEPTED, Set.of(CollaboratorPermission.READ));
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
       when(collaboratorRepository.save(any())).thenReturn(existing);
@@ -361,8 +363,7 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws AccessNotAllowedException when non-owner tries to update permissions")
     void updatePermissions_throwsAccessDenied_whenNotOwner() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
 
       final var form = new UpdateCollaboratorPermissionsForm();
       form.setPermissions(Set.of(CollaboratorPermission.PUSH));
@@ -465,8 +466,7 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("owner can list collaborators")
     void list_ownerCanList() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
       when(collaboratorRepository.findAllByRepoId(any(UUID.class), any(Pageable.class)))
           .thenReturn(new PageImpl<>(List.of()));
 
@@ -479,8 +479,7 @@ class CollaboratorServiceTest {
     @DisplayName("non-owner non-collaborator is denied")
     void list_throwsAccessDenied_forStranger() {
       final var strangerId = UUID.randomUUID();
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
       when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
               REPO_ID, strangerId, CollaboratorStatus.ACCEPTED))
           .thenReturn(false);
@@ -640,9 +639,8 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("empty permission set resolves to READ only")
     void emptySet_resolvesToReadOnly() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(any(), any(), any()))
           .thenReturn(false);
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
@@ -663,9 +661,8 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("ADMIN permission set includes READ automatically")
     void admin_alwaysContainsRead() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(any(), any(), any()))
           .thenReturn(false);
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
@@ -694,9 +691,8 @@ class CollaboratorServiceTest {
     void generate_createsTokenWithExpiry() {
       final var existing =
           collaborator(CollaboratorStatus.PENDING, Set.of(CollaboratorPermission.READ));
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.of(existing));
       when(collaboratorRepository.save(any())).thenReturn(existing);
@@ -717,8 +713,7 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws AccessNotAllowedException when requester is not owner")
     void generate_throwsAccessDenied_whenNotOwner() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
 
       assertThatThrownBy(
               () ->
@@ -729,9 +724,8 @@ class CollaboratorServiceTest {
     @Test
     @DisplayName("throws ItemNotFoundException when collaborator does not exist")
     void generate_throwsNotFound_whenNoCollaborator() {
-      when(repoRepository.findByOwnerUsernameAndName("owner", "my-repo"))
-          .thenReturn(Optional.of(repo));
-      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(invitee));
+      when(repoRepository.find("owner", "my-repo")).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findByUsername("invitee")).thenReturn(Optional.of(inviteeRef));
       when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
           .thenReturn(Optional.empty());
 
@@ -840,6 +834,9 @@ class CollaboratorServiceTest {
 
       when(collaboratorRepository.findByInviteToken("valid-token"))
           .thenReturn(Optional.of(existing));
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repoRef));
+      when(tenantRepository.findAllByIds(any()))
+          .thenReturn(Map.of(OWNER_ID, ownerRef, INVITEE_ID, inviteeRef));
 
       final var result = collaboratorService.getInvitationByToken("valid-token");
 
@@ -888,9 +885,9 @@ class CollaboratorServiceTest {
       final CollaboratorStatus status, final Set<CollaboratorPermission> perms) {
     final var c = new RepoCollaborator();
     c.setId(UUID.randomUUID());
-    c.setRepo(repo);
-    c.setTenant(invitee);
-    c.setInvitedBy(owner);
+    c.setRepoId(repo.getId());
+    c.setTenantId(invitee.getId());
+    c.setInvitedById(owner.getId());
     c.setStatus(status);
     c.setPermissions(
         perms.isEmpty() ? EnumSet.noneOf(CollaboratorPermission.class) : EnumSet.copyOf(perms));

@@ -19,7 +19,7 @@ package dev.gitnode.os.profile.services;
 import dev.gitnode.os.events.repo.RepoPushedEvent;
 import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -59,7 +59,7 @@ public class CommitContributionIndexer {
   private static final java.util.regex.Pattern NOREPLY =
       java.util.regex.Pattern.compile("^(?:\\d+\\+)?([a-z0-9._-]+)@users\\.noreply\\.[a-z0-9.-]+$");
 
-  private final RepoRepository repos;
+  private final RepoLookupPort repos;
   private final TenantRepository tenants;
   private final GitProvider gitProvider;
   private final NamedParameterJdbcTemplate jdbc;
@@ -70,12 +70,14 @@ public class CommitContributionIndexer {
     if (sha == null) {
       return;
     }
-    final var repo = this.repos.findByIdWithOwner(event.repoId()).orElse(null);
-    if (repo == null || !repo.getDefaultBranch().equals(event.branchName())) {
+    final var repo = this.repos.findById(event.repoId()).orElse(null);
+    if (repo == null
+        || repo.defaultBranch() == null
+        || !repo.defaultBranch().equals(event.branchName())) {
       return;
     }
-    try (final var git = this.gitProvider.open(repo.getOwner().getUsername(), repo.getName())) {
-      this.index(git, repo.getId(), ObjectId.fromString(sha));
+    try (final var git = this.gitProvider.open(repo.ownerUsername(), repo.name())) {
+      this.index(git, repo.id(), ObjectId.fromString(sha));
     }
   }
 

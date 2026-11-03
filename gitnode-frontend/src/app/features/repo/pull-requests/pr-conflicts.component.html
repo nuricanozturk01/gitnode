@@ -1,104 +1,130 @@
 @if (loadFailed()) {
-<section class="repo-panel p-4" role="status">
-  <p class="text-sm">Could not check this pull request for conflicts.</p>
-  <button type="button" class="btn btn-outline btn-sm mt-2" (click)="load()">Check again</button>
-</section>
-} @else if (info(); as data) { @if (!data.mergeable) {
-<section class="repo-panel conflict-panel" aria-labelledby="conflict-heading">
-  <div class="conflict-head">
-    <lucide-icon name="alertTriangle" class="conflict-icon size-5 shrink-0" aria-hidden="true"></lucide-icon>
-    <div class="min-w-0">
-      <h3 id="conflict-heading" class="text-sm font-semibold">This branch has conflicts that must be resolved</h3>
-      <p class="conflict-sub">
-        {{ files().length }} conflicting {{ files().length === 1 ? 'file' : 'files' }} between
-        <code>{{ sourceBranch() }}</code> and <code>{{ targetBranch() }}</code>. Merging is disabled until they are resolved.
-      </p>
-    </div>
-  </div>
-
-  @if (!editing()) {
-  <ul class="conflict-list" aria-label="Conflicting files">
-    @for (file of files(); track file.path) {
-    <li class="conflict-row">
-      <lucide-icon name="fileText" class="size-4 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
-      <span class="conflict-path">{{ file.path }}</span>
-      @if (!file.resolvable) {
-      <span class="conflict-tag conflict-tag--local">{{ file.reason }}</span>
-      }
-    </li>
-    }
-  </ul>
-  <div class="conflict-actions">
-    @if (canResolve() && allResolvable()) {
-    <button type="button" class="btn btn-primary btn-sm" (click)="startEditing()">Resolve conflicts</button>
-    } @else if (canResolve()) {
-    <p class="conflict-sub">Some files cannot be resolved in the browser. Resolve them locally:</p>
-    }
-    @if (!allResolvable() || !canResolve()) {
-    <pre class="conflict-cmd"><code>{{ fetchUrl() }}</code></pre>
-    }
-  </div>
-  } @else {
-  <div class="conflict-editor">
-    <div class="conflict-bar">
-      <span class="text-xs font-medium" aria-live="polite">
-        {{ remaining() === 0 ? 'All conflicts resolved' : remaining() + ' of ' + files().length + ' files still have conflict markers' }}
-      </span>
-    </div>
-    <div class="conflict-body">
-      <ul class="conflict-files" role="tablist" aria-label="Files to resolve">
-        @for (file of files(); track file.path; let i = $index) {
-        <li>
-          <button
-            type="button"
-            role="tab"
-            class="conflict-file"
-            [class.conflict-file--active]="i === active()"
-            [attr.aria-selected]="i === active()"
-            (click)="select(i)"
-          >
-            <lucide-icon
-              [name]="isFileDone(file) ? 'checkCircle' : 'alertTriangle'"
-              class="size-3.5 shrink-0"
-              [class.text-success]="isFileDone(file)"
-              aria-hidden="true"
-            ></lucide-icon>
-            <span class="conflict-path">{{ file.path }}</span>
-            <span class="sr-only">{{ isFileDone(file) ? '(resolved)' : '(has conflicts)' }}</span>
-          </button>
-        </li>
-        }
-      </ul>
-      @if (activeFile(); as file) {
-      <div class="conflict-main" role="tabpanel">
-        <div class="conflict-tools" role="group" aria-label="Quick resolve for {{ file.path }}">
-          <button type="button" class="btn btn-outline btn-xs" (click)="choose('source')">Accept {{ sourceBranch() }}</button>
-          <button type="button" class="btn btn-outline btn-xs" (click)="choose('target')">Accept {{ targetBranch() }}</button>
-          <button type="button" class="btn btn-outline btn-xs" (click)="choose('both')">Accept both</button>
+  <section class="repo-panel p-4" role="status">
+    <p class="text-sm">Could not check this pull request for conflicts.</p>
+    <button type="button" class="btn btn-outline btn-sm mt-2" (click)="load()">Check again</button>
+  </section>
+} @else if (info(); as data) {
+  @if (!data.mergeable) {
+    <section class="repo-panel conflict-panel" aria-labelledby="conflict-heading">
+      <div class="conflict-head">
+        <lucide-icon name="alertTriangle" class="conflict-icon size-5 shrink-0" aria-hidden="true"></lucide-icon>
+        <div class="min-w-0">
+          <h3 id="conflict-heading" class="text-sm font-semibold">This branch has conflicts that must be resolved</h3>
+          <p class="conflict-sub">
+            {{ files().length }} conflicting {{ files().length === 1 ? 'file' : 'files' }} between
+            <code>{{ sourceBranch() }}</code> and <code>{{ targetBranch() }}</code
+            >. Merging is disabled until they are resolved.
+          </p>
         </div>
-        <label class="sr-only" for="conflict-text">Contents of {{ file.path }}</label>
-        <textarea
-          id="conflict-text"
-          class="conflict-text"
-          spellcheck="false"
-          wrap="off"
-          [ngModel]="drafts()[file.path]"
-          (ngModelChange)="setDraft(file.path, $event)"
-        ></textarea>
-        <p class="conflict-sub">Remove every <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> and <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> marker line, or use the quick buttons.</p>
       </div>
+
+      @if (!editing()) {
+        <ul class="conflict-list" aria-label="Conflicting files">
+          @for (file of files(); track file.path) {
+            <li class="conflict-row">
+              <lucide-icon name="fileText" class="size-4 shrink-0 opacity-70" aria-hidden="true"></lucide-icon>
+              <span class="conflict-path">{{ file.path }}</span>
+              @if (!file.resolvable) {
+                <span class="conflict-tag conflict-tag--local">{{ file.reason }}</span>
+              }
+            </li>
+          }
+        </ul>
+        <div class="conflict-actions">
+          @if (canResolve() && allResolvable()) {
+            <button type="button" class="btn btn-primary btn-sm" (click)="startEditing()">Resolve conflicts</button>
+          } @else if (canResolve()) {
+            <p class="conflict-sub">Some files cannot be resolved in the browser. Resolve them locally:</p>
+          }
+          @if (!allResolvable() || !canResolve()) {
+            <pre class="conflict-cmd"><code>{{ fetchUrl() }}</code></pre>
+          }
+        </div>
+      } @else {
+        <div class="conflict-editor">
+          <div class="conflict-bar">
+            <span class="text-xs font-medium" aria-live="polite">
+              {{
+                remaining() === 0
+                  ? 'All conflicts resolved'
+                  : remaining() + ' of ' + files().length + ' files still have conflict markers'
+              }}
+            </span>
+          </div>
+          <div class="conflict-body">
+            <ul class="conflict-files" role="tablist" aria-label="Files to resolve">
+              @for (file of files(); track file.path; let i = $index) {
+                <li>
+                  <button
+                    type="button"
+                    role="tab"
+                    class="conflict-file"
+                    [class.conflict-file--active]="i === active()"
+                    [attr.aria-selected]="i === active()"
+                    (click)="select(i)"
+                  >
+                    <lucide-icon
+                      [name]="isFileDone(file) ? 'checkCircle' : 'alertTriangle'"
+                      class="size-3.5 shrink-0"
+                      [class.text-success]="isFileDone(file)"
+                      aria-hidden="true"
+                    ></lucide-icon>
+                    <span class="conflict-path">{{ file.path }}</span>
+                    <span class="sr-only">{{ isFileDone(file) ? '(resolved)' : '(has conflicts)' }}</span>
+                  </button>
+                </li>
+              }
+            </ul>
+            @if (activeFile(); as file) {
+              <div class="conflict-main" role="tabpanel">
+                <div class="conflict-tools" role="group" aria-label="Quick resolve for {{ file.path }}">
+                  <button type="button" class="btn btn-outline btn-xs" (click)="choose('source')">
+                    Accept {{ sourceBranch() }}
+                  </button>
+                  <button type="button" class="btn btn-outline btn-xs" (click)="choose('target')">
+                    Accept {{ targetBranch() }}
+                  </button>
+                  <button type="button" class="btn btn-outline btn-xs" (click)="choose('both')">Accept both</button>
+                </div>
+                <label class="sr-only" for="conflict-text">Contents of {{ file.path }}</label>
+                <textarea
+                  id="conflict-text"
+                  class="conflict-text"
+                  spellcheck="false"
+                  wrap="off"
+                  [ngModel]="drafts()[file.path]"
+                  (ngModelChange)="setDraft(file.path, $event)"
+                ></textarea>
+                <p class="conflict-sub">
+                  Remove every <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> and
+                  <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> marker line, or use the quick buttons.
+                </p>
+              </div>
+            }
+          </div>
+          @if (error()) {
+            <div class="alert alert-error m-3 py-2 text-sm" role="alert">
+              <span>{{ error() }}</span>
+            </div>
+          }
+          <div class="conflict-actions">
+            <button
+              type="button"
+              class="btn btn-primary btn-sm"
+              [disabled]="remaining() > 0 || saving()"
+              (click)="commit()"
+            >
+              @if (saving()) {
+                <span class="loading loading-spinner loading-xs"></span>
+              }
+              Commit merge
+            </button>
+            <button type="button" class="btn btn-ghost btn-sm" [disabled]="saving()" (click)="editing.set(false)">
+              Cancel
+            </button>
+          </div>
+        </div>
       }
-    </div>
-    @if (error()) {
-    <div class="alert alert-error m-3 py-2 text-sm" role="alert"><span>{{ error() }}</span></div>
-    }
-    <div class="conflict-actions">
-      <button type="button" class="btn btn-primary btn-sm" [disabled]="remaining() > 0 || saving()" (click)="commit()">
-        @if (saving()) { <span class="loading loading-spinner loading-xs"></span> } Commit merge
-      </button>
-      <button type="button" class="btn btn-ghost btn-sm" [disabled]="saving()" (click)="editing.set(false)">Cancel</button>
-    </div>
-  </div>
+    </section>
   }
-</section>
-} }
+}

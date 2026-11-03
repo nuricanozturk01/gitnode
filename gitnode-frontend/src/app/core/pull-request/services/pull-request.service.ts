@@ -47,7 +47,11 @@ export interface PrReview {
   createdAt: string | null;
 }
 
-export interface PrReviews { headSha: string | null; targetSha: string | null; reviews: PrReview[] }
+export interface PrReviews {
+  headSha: string | null;
+  targetSha: string | null;
+  reviews: PrReview[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class PullRequestService {
@@ -88,7 +92,12 @@ export class PullRequestService {
     return firstValueFrom(this.http.get<PrReviews>(`${this.base(owner, repo)}/${number}/reviews`));
   }
 
-  submitReview(owner: string, repo: string, number: number, form: { state: PrReview['state']; body: string; expectedSha: string; expectedTargetSha: string }): Promise<PrReview> {
+  submitReview(
+    owner: string,
+    repo: string,
+    number: number,
+    form: { state: PrReview['state']; body: string; expectedSha: string; expectedTargetSha: string },
+  ): Promise<PrReview> {
     return firstValueFrom(this.http.post<PrReview>(`${this.base(owner, repo)}/${number}/reviews`, form));
   }
 
@@ -110,7 +119,13 @@ export class PullRequestService {
     return firstValueFrom(this.http.delete<void>(`${this.base(owner, repo)}/${number}`));
   }
 
-  setCommentResolved(owner: string, repo: string, number: number, commentId: string, resolved: boolean): Promise<PrCommentInfo> {
+  setCommentResolved(
+    owner: string,
+    repo: string,
+    number: number,
+    commentId: string,
+    resolved: boolean,
+  ): Promise<PrCommentInfo> {
     return firstValueFrom(
       this.http.put<PrCommentInfo>(`${this.base(owner, repo)}/${number}/comments/${commentId}/resolved`, { resolved }),
     );
@@ -130,9 +145,7 @@ export class PullRequestService {
   }
 
   getMergeRequirements(owner: string, repo: string, number: number): Promise<PrMergeRequirements> {
-    return firstValueFrom(
-      this.http.get<PrMergeRequirements>(`${this.base(owner, repo)}/${number}/merge-requirements`),
-    );
+    return firstValueFrom(this.http.get<PrMergeRequirements>(`${this.base(owner, repo)}/${number}/merge-requirements`));
   }
 
   getConflicts(owner: string, repo: string, number: number): Promise<PrConflictInfo> {

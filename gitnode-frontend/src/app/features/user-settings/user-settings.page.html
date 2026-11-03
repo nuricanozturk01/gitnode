@@ -219,7 +219,9 @@
           </div>
           <div class="settings-field">
             <label for="profile-timezone" class="settings-label">Time zone</label>
-            <p class="text-base-content/55 mb-2 text-xs">Contributions are assigned to calendar days in this zone. Empty means UTC.</p>
+            <p class="text-base-content/55 mb-2 text-xs">
+              Contributions are assigned to calendar days in this zone. Empty means UTC.
+            </p>
             <div class="flex flex-wrap items-center gap-2">
               <input
                 id="profile-timezone"
@@ -231,9 +233,13 @@
                 (ngModelChange)="timezone.set($event)"
               />
               <datalist id="timezone-options">
-                @for (zone of timezones; track zone) { <option [value]="zone"></option> }
+                @for (zone of timezones; track zone) {
+                <option [value]="zone"></option>
+                }
               </datalist>
-              <button type="button" class="btn btn-ghost btn-sm" (click)="detectTimezone()">Use this device's time zone</button>
+              <button type="button" class="btn btn-ghost btn-sm" (click)="detectTimezone()">
+                Use this device's time zone
+              </button>
             </div>
           </div>
           <div class="settings-field" role="group" aria-labelledby="extra-emails-label">
@@ -246,16 +252,42 @@
               @for (item of extraEmails(); track item.id) {
               <li class="flex items-center gap-2 text-sm">
                 <span class="break-all">{{ item.email }}</span>
-                <button type="button" class="btn btn-ghost btn-xs text-error" [attr.aria-label]="'Remove ' + item.email" (click)="removeEmail(item)">Remove</button>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  [attr.aria-label]="'Remove ' + item.email"
+                  (click)="removeEmail(item)"
+                >
+                  Remove
+                </button>
               </li>
-              } @empty { <li class="text-base-content/60 text-sm">No extra e-mails.</li> }
+              } @empty {
+              <li class="text-base-content/60 text-sm">No extra e-mails.</li>
+              }
             </ul>
             <div class="flex flex-wrap items-center gap-2">
               <label for="extra-email" class="sr-only">New e-mail address</label>
-              <input id="extra-email" type="email" class="settings-input input input-bordered border-base-300 w-full max-w-xs" placeholder="name@example.com" [ngModel]="newEmail()" (ngModelChange)="newEmail.set($event)" (keydown.enter)="addEmail()" />
-              <button type="button" class="btn btn-outline btn-sm" [disabled]="addingEmail() || !newEmail().trim()" (click)="addEmail()">Add e-mail</button>
+              <input
+                id="extra-email"
+                type="email"
+                class="settings-input input input-bordered border-base-300 w-full max-w-xs"
+                placeholder="name@example.com"
+                [ngModel]="newEmail()"
+                (ngModelChange)="newEmail.set($event)"
+                (keydown.enter)="addEmail()"
+              />
+              <button
+                type="button"
+                class="btn btn-outline btn-sm"
+                [disabled]="addingEmail() || !newEmail().trim()"
+                (click)="addEmail()"
+              >
+                Add e-mail
+              </button>
             </div>
-            @if (emailError()) { <p role="alert" class="text-error mt-1 text-sm">{{ emailError() }}</p> }
+            @if (emailError()) {
+            <p role="alert" class="text-error mt-1 text-sm">{{ emailError() }}</p>
+            }
           </div>
           <div class="settings-field">
             <span class="settings-label">Profile README</span>
@@ -1099,7 +1131,14 @@
 
 @if (readmeModalOpen()) {
 <div class="modal modal-open">
-  <div class="modal-box flex max-h-[90vh] w-11/12 max-w-4xl flex-col p-0" role="dialog" aria-modal="true" aria-labelledby="readme-modal-title" appModalFocus (appModalDismiss)="closeReadmeModal()">
+  <div
+    class="modal-box flex max-h-[90vh] w-11/12 max-w-4xl flex-col p-0"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="readme-modal-title"
+    appModalFocus
+    (appModalDismiss)="closeReadmeModal()"
+  >
     <!-- modal header -->
     <div class="border-base-300 flex items-center justify-between border-b px-5 py-4">
       <h3 id="readme-modal-title" class="text-base-content text-base font-semibold">Edit Profile README</h3>
@@ -1170,7 +1209,14 @@
 </div>
 } @if (addSshModal()) {
 <div class="modal modal-open">
-  <div class="modal-box max-w-lg" role="dialog" aria-modal="true" aria-labelledby="ssh-modal-title" appModalFocus (appModalDismiss)="closeAddSsh()">
+  <div
+    class="modal-box max-w-lg"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="ssh-modal-title"
+    appModalFocus
+    (appModalDismiss)="closeAddSsh()"
+  >
     <h3 id="ssh-modal-title" class="text-base-content text-lg font-bold">Add SSH key</h3>
     <p class="text-base-content/60 mt-1 text-sm">
       Paste your <span class="font-mono text-xs">ssh-ed25519</span> or RSA public key.

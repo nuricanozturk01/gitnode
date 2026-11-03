@@ -24,7 +24,14 @@ export class IssueService {
     return `${environment.apiUrl}/api/repos/${owner}/${repo}/issues`;
   }
 
-  getAll(owner: string, repo: string, status: 'OPEN' | 'CLOSED' = 'OPEN', page = 0, labelId = '', milestoneId = ''): Promise<IssuePage> {
+  getAll(
+    owner: string,
+    repo: string,
+    status: 'OPEN' | 'CLOSED' = 'OPEN',
+    page = 0,
+    labelId = '',
+    milestoneId = '',
+  ): Promise<IssuePage> {
     let params = new HttpParams().set('status', status).set('page', String(page));
     if (labelId) params = params.set('labelId', labelId);
     if (milestoneId) params = params.set('milestoneId', milestoneId);
@@ -32,12 +39,16 @@ export class IssueService {
   }
 
   listMilestones(owner: string, repo: string): Promise<IssueMilestone[]> {
-    return firstValueFrom(this.http.get<IssueMilestone[]>(`${environment.apiUrl}/api/repos/${owner}/${repo}/milestones`));
+    return firstValueFrom(
+      this.http.get<IssueMilestone[]>(`${environment.apiUrl}/api/repos/${owner}/${repo}/milestones`),
+    );
   }
 
   saveMilestone(owner: string, repo: string, form: Omit<IssueMilestone, 'id'>, id?: string): Promise<IssueMilestone> {
     const base = `${environment.apiUrl}/api/repos/${owner}/${repo}/milestones`;
-    return firstValueFrom(id ? this.http.put<IssueMilestone>(`${base}/${id}`, form) : this.http.post<IssueMilestone>(base, form));
+    return firstValueFrom(
+      id ? this.http.put<IssueMilestone>(`${base}/${id}`, form) : this.http.post<IssueMilestone>(base, form),
+    );
   }
 
   deleteMilestone(owner: string, repo: string, id: string): Promise<void> {
@@ -48,9 +59,16 @@ export class IssueService {
     return firstValueFrom(this.http.get<IssueLabel[]>(`${environment.apiUrl}/api/repos/${owner}/${repo}/labels`));
   }
 
-  saveLabel(owner: string, repo: string, form: { name: string; color: string; description: string }, id?: string): Promise<IssueLabel> {
+  saveLabel(
+    owner: string,
+    repo: string,
+    form: { name: string; color: string; description: string },
+    id?: string,
+  ): Promise<IssueLabel> {
     const base = `${environment.apiUrl}/api/repos/${owner}/${repo}/labels`;
-    return firstValueFrom(id ? this.http.put<IssueLabel>(`${base}/${id}`, form) : this.http.post<IssueLabel>(base, form));
+    return firstValueFrom(
+      id ? this.http.put<IssueLabel>(`${base}/${id}`, form) : this.http.post<IssueLabel>(base, form),
+    );
   }
 
   deleteLabel(owner: string, repo: string, id: string): Promise<void> {

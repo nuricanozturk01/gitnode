@@ -24,7 +24,7 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,7 +74,7 @@ class CommitContributionIndexerTest {
             });
     indexer =
         new CommitContributionIndexer(
-            mock(RepoRepository.class), tenants, mock(GitProvider.class), jdbc);
+            mock(RepoLookupPort.class), tenants, mock(GitProvider.class), jdbc);
   }
 
   private String commit(final String email, final String message) throws Exception {

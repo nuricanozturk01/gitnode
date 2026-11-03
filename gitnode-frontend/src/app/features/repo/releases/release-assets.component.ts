@@ -134,7 +134,9 @@ export class ReleaseAssetsComponent implements OnInit {
       a.rel = 'noopener';
       a.click();
       URL.revokeObjectURL(url);
-      this.assets.update((list) => list.map((x) => (x.id === asset.id ? { ...x, downloadCount: x.downloadCount + 1 } : x)));
+      this.assets.update((list) =>
+        list.map((x) => (x.id === asset.id ? { ...x, downloadCount: x.downloadCount + 1 } : x)),
+      );
     } catch {
       this.toast.error('Could not download the file');
     } finally {
@@ -143,7 +145,13 @@ export class ReleaseAssetsComponent implements OnInit {
   }
 
   async remove(asset: ReleaseAssetInfo): Promise<void> {
-    if (!(await this.confirmModal.confirm('Delete file', `Delete ${asset.name} from this release?`, { confirmLabel: 'Delete', variant: 'danger' }))) return;
+    if (
+      !(await this.confirmModal.confirm('Delete file', `Delete ${asset.name} from this release?`, {
+        confirmLabel: 'Delete',
+        variant: 'danger',
+      }))
+    )
+      return;
     try {
       await this.releaseService.deleteAsset(this.owner(), this.repo(), this.releaseId(), asset.id);
       this.assets.update((list) => list.filter((x) => x.id !== asset.id));

@@ -123,7 +123,9 @@ export class CreateReleasePage implements OnInit {
       if (!this.form.value.name) this.form.patchValue({ name: notes.name });
       this.bodyTab.set('write');
       this.toast.success(
-        notes.commitCount === 0 ? 'No new commits since the previous tag' : `Generated notes from ${notes.commitCount} commits`,
+        notes.commitCount === 0
+          ? 'No new commits since the previous tag'
+          : `Generated notes from ${notes.commitCount} commits`,
       );
     } catch {
       this.toast.error('Could not generate release notes. Check the tag and target branch.');
@@ -133,8 +135,14 @@ export class CreateReleasePage implements OnInit {
   }
 
   async submit(publish: boolean): Promise<void> {
-    if (this.form.invalid || this.metaLoading() || this.metaFailed() || this.submitting()
-      || (this.createNewTag() && !this.form.value.targetCommitish)) return;
+    if (
+      this.form.invalid ||
+      this.metaLoading() ||
+      this.metaFailed() ||
+      this.submitting() ||
+      (this.createNewTag() && !this.form.value.targetCommitish)
+    )
+      return;
     this.submitting.set(true);
     const val = this.form.value;
     try {

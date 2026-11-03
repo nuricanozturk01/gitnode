@@ -27,28 +27,28 @@ export type ConfirmVariant = 'danger' | 'primary';
   template: `
     <div class="modal" [class.modal-open]="visible()">
       @if (visible()) {
-      <div
-        class="modal-box"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="confirm-modal-title"
-        [attr.aria-describedby]="message() ? 'confirm-modal-message' : null"
-        appModalFocus
-        (appModalDismiss)="canceled.emit()"
-      >
-        <h3 id="confirm-modal-title" class="text-base-content text-lg font-bold">{{ title() }}</h3>
-        @if (message()) {
-          <p id="confirm-modal-message" class="text-base-content/80 py-4">{{ message() }}</p>
-        }
-        <div class="modal-action">
-          <button type="button" class="btn btn-ghost" data-modal-initial (click)="canceled.emit()">
-            {{ cancelLabel() }}
-          </button>
-          <button type="button" [class]="confirmBtnClass()" (click)="confirm.emit()">
-            {{ confirmLabel() }}
-          </button>
+        <div
+          class="modal-box"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="confirm-modal-title"
+          [attr.aria-describedby]="message() ? 'confirm-modal-message' : null"
+          appModalFocus
+          (appModalDismiss)="canceled.emit()"
+        >
+          <h3 id="confirm-modal-title" class="text-base-content text-lg font-bold">{{ title() }}</h3>
+          @if (message()) {
+            <p id="confirm-modal-message" class="text-base-content/80 py-4">{{ message() }}</p>
+          }
+          <div class="modal-action">
+            <button type="button" class="btn btn-ghost" data-modal-initial (click)="canceled.emit()">
+              {{ cancelLabel() }}
+            </button>
+            <button type="button" [class]="confirmBtnClass()" (click)="confirm.emit()">
+              {{ confirmLabel() }}
+            </button>
+          </div>
         </div>
-      </div>
       }
       <form method="dialog" class="modal-backdrop">
         <button type="button" tabindex="-1" aria-hidden="true" (click)="canceled.emit()">close</button>

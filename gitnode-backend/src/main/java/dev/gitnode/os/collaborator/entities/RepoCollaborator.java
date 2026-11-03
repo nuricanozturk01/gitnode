@@ -15,9 +15,7 @@
  */
 package dev.gitnode.os.collaborator.entities;
 
-import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
-import dev.gitnode.os.repo.entities.Repo;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -29,7 +27,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.EnumSet;
@@ -38,8 +35,6 @@ import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.jspecify.annotations.Nullable;
 
@@ -54,20 +49,14 @@ public class RepoCollaborator {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "repo_id", nullable = false)
-  private Repo repo;
+  @Column(name = "repo_id", nullable = false)
+  private UUID repoId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "tenant_id", nullable = false)
-  private Tenant tenant;
+  @Column(name = "tenant_id", nullable = false)
+  private UUID tenantId;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "invited_by_id", nullable = false)
-  private Tenant invitedBy;
+  @Column(name = "invited_by_id", nullable = false)
+  private UUID invitedById;
 
   @ElementCollection(targetClass = CollaboratorPermission.class, fetch = FetchType.EAGER)
   @CollectionTable(

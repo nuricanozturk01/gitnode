@@ -16,7 +16,16 @@
 
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, DestroyRef, HostListener } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  signal,
+  computed,
+  effect,
+  DestroyRef,
+  HostListener,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
@@ -24,7 +33,11 @@ import { FormsModule } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
 import { AvatarComponent } from '../../../shared/components/avatar/avatar.component';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
-import { PullRequestService, type PrReviewer, type PrReview } from '../../../core/pull-request/services/pull-request.service';
+import {
+  PullRequestService,
+  type PrReviewer,
+  type PrReview,
+} from '../../../core/pull-request/services/pull-request.service';
 import { TokenService } from '../../../core/auth/services/token.service';
 import { UserService } from '../../../core/user/services/user.service';
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
@@ -64,7 +77,17 @@ import { PrTimelineComponent } from './pr-timeline.component';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-pr-detail',
   standalone: true,
-  imports: [RouterLink, LucideAngularModule, FormsModule, RelativeTimePipe, AvatarComponent, PrConflictsComponent, PrMergeRequirementsComponent, PrMetadataComponent, PrTimelineComponent],
+  imports: [
+    RouterLink,
+    LucideAngularModule,
+    FormsModule,
+    RelativeTimePipe,
+    AvatarComponent,
+    PrConflictsComponent,
+    PrMergeRequirementsComponent,
+    PrMetadataComponent,
+    PrTimelineComponent,
+  ],
   templateUrl: './pr-detail.page.html',
   styleUrl: './pull-requests.page.css',
   host: { class: 'block' },
@@ -168,9 +191,7 @@ export class PrDetailPage {
   readonly requirementsBlocked = signal(false);
   readonly requirementsRefresh = signal(0);
   readonly conflictRefresh = signal(0);
-  readonly canResolveConflicts = computed(
-    () => this.isLoggedIn() && this.repoContext.hasPermission('PUSH'),
-  );
+  readonly canResolveConflicts = computed(() => this.isLoggedIn() && this.repoContext.hasPermission('PUSH'));
   readonly mergeStrategy = signal<'MERGE_COMMIT' | 'SQUASH' | 'REBASE'>('MERGE_COMMIT');
   readonly mergeCommitMessage = signal('');
   readonly merging = signal(false);
@@ -426,7 +447,9 @@ export class PrDetailPage {
     this.reviewSubmitting.set(true);
     try {
       const review = await this.prService.submitReview(this.owner(), this.repoName(), this.number(), {
-        state: this.reviewState(), body: this.reviewBody().trim(), expectedSha: this.reviewHeadSha(),
+        state: this.reviewState(),
+        body: this.reviewBody().trim(),
+        expectedSha: this.reviewHeadSha(),
         expectedTargetSha: this.reviewTargetSha(),
       });
       if (request !== this.dataRequest) return;
@@ -444,7 +467,14 @@ export class PrDetailPage {
   }
 
   async saveReviewers(): Promise<void> {
-    const names = [...new Set(this.reviewerNames().split(',').map((name) => name.trim()).filter(Boolean))];
+    const names = [
+      ...new Set(
+        this.reviewerNames()
+          .split(',')
+          .map((name) => name.trim())
+          .filter(Boolean),
+      ),
+    ];
     if (!names.length || this.reviewersSaving()) return;
     const request = this.dataRequest;
     this.reviewersSaving.set(true);
@@ -610,7 +640,13 @@ export class PrDetailPage {
   async deleteSourceBranch(): Promise<void> {
     const p = this.pr();
     if (!p || this.deletingBranch()) return;
-    if (!(await this.confirmModal.confirm('Delete branch', `Delete the ${p.sourceBranch} branch?`, { confirmLabel: 'Delete branch', variant: 'danger' }))) return;
+    if (
+      !(await this.confirmModal.confirm('Delete branch', `Delete the ${p.sourceBranch} branch?`, {
+        confirmLabel: 'Delete branch',
+        variant: 'danger',
+      }))
+    )
+      return;
     this.deletingBranch.set(true);
     try {
       await this.branchService.deleteBranch(this.owner(), this.repoName(), p.sourceBranch);
@@ -666,7 +702,13 @@ export class PrDetailPage {
     if (this.resolvingId()) return;
     this.resolvingId.set(comment.id);
     try {
-      const updated = await this.prService.setCommentResolved(this.owner(), this.repoName(), this.number(), comment.id, !comment.isResolved);
+      const updated = await this.prService.setCommentResolved(
+        this.owner(),
+        this.repoName(),
+        this.number(),
+        comment.id,
+        !comment.isResolved,
+      );
       this.comments.update((list) => list.map((c) => (c.id === updated.id ? updated : c)));
       if (updated.isResolved) {
         const next = new Set(this.openThreads());
@@ -732,8 +774,12 @@ export class PrDetailPage {
     const current = tabs.indexOf(document.activeElement as HTMLButtonElement);
     if (current < 0 || tabs.length === 0) return;
     event.preventDefault();
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
-      : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    const next =
+      event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? tabs.length - 1
+          : (current + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
     tabs[next].focus();
   }
 

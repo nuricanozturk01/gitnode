@@ -42,7 +42,10 @@ import { parseUrlTabPrefix, replaceUrlFragment } from '../../../shared/utils/url
 import { AiService } from '../../../core/ai/services/ai.service';
 import type { CodebaseAnalysis, CodebaseAnalysisDimension } from '../../../domain/ai/ai-settings.model';
 import { WorkflowService } from '../../../core/actions/services/workflow.service';
-import { BranchProtectionService, type BranchProtection } from '../../../core/branch/services/branch-protection.service';
+import {
+  BranchProtectionService,
+  type BranchProtection,
+} from '../../../core/branch/services/branch-protection.service';
 
 type RepoSettingsTab = 'general' | 'pullRequests' | 'webhooks' | 'collaborators' | 'actions' | 'ai-analysis' | 'danger';
 const REPO_SETTINGS_TABS = [
@@ -219,7 +222,14 @@ export class RepoSettingsPage {
             .filter(Boolean),
         ),
       ];
-      await this.branchProtectionService.save(this.owner(), this.repoName(), branch, approvals, checks, this.protectionConversations());
+      await this.branchProtectionService.save(
+        this.owner(),
+        this.repoName(),
+        branch,
+        approvals,
+        checks,
+        this.protectionConversations(),
+      );
       this.protectionBranch.set('');
       this.protectionChecks.set('');
       this.protectionConversations.set(false);
@@ -233,8 +243,13 @@ export class RepoSettingsPage {
   }
 
   async deleteProtectionRule(rule: BranchProtection): Promise<void> {
-    if (!await this.confirmModal.confirm('Remove branch protection', `Allow direct writes to ${rule.branchName}?`,
-      { confirmLabel: 'Remove protection', variant: 'danger' })) return;
+    if (
+      !(await this.confirmModal.confirm('Remove branch protection', `Allow direct writes to ${rule.branchName}?`, {
+        confirmLabel: 'Remove protection',
+        variant: 'danger',
+      }))
+    )
+      return;
     try {
       await this.branchProtectionService.delete(this.owner(), this.repoName(), rule.id);
       await this.loadProtectionRules();

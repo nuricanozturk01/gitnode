@@ -12,7 +12,13 @@ import { UserService, type UserSearchResult } from '../../../core/user/services/
 import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { ToastService } from '../../../core/toast/toast.service';
-import type { IssueDetail, IssueCommentInfo, IssueLinkedTaskInfo, IssueLabel, IssueMilestone } from '../../../domain/repository/models/issue.model';
+import type {
+  IssueDetail,
+  IssueCommentInfo,
+  IssueLinkedTaskInfo,
+  IssueLabel,
+  IssueMilestone,
+} from '../../../domain/repository/models/issue.model';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -193,8 +199,12 @@ export class IssueDetailPage {
     this.selectedMilestone.set(id);
     this.updatingMilestone.set(true);
     try {
-      const updated = await this.issueService.update(this.owner(), this.repoName(), issue.number,
-        id ? { milestoneId: id } : { clearMilestone: true });
+      const updated = await this.issueService.update(
+        this.owner(),
+        this.repoName(),
+        issue.number,
+        id ? { milestoneId: id } : { clearMilestone: true },
+      );
       if (version !== this.loadVersion) return;
       this.issue.set(updated);
       this.selectedMilestone.set(updated.milestone?.id ?? '');
@@ -212,8 +222,14 @@ export class IssueDetailPage {
     if (!issue || this.updatingLabel()) return;
     this.updatingLabel.set(true);
     try {
-      this.issue.set(await this.issueService.update(this.owner(), this.repoName(), issue.number,
-        this.hasLabel(label.id) ? { removeLabelId: label.id } : { addLabelId: label.id }));
+      this.issue.set(
+        await this.issueService.update(
+          this.owner(),
+          this.repoName(),
+          issue.number,
+          this.hasLabel(label.id) ? { removeLabelId: label.id } : { addLabelId: label.id },
+        ),
+      );
     } catch {
       this.toast.error('Failed to update label');
     } finally {
@@ -331,11 +347,14 @@ export class IssueDetailPage {
     this.assigneeSuggestions.set([]);
     if (query.length < 3) return;
     this.assigneeSearchTimer = setTimeout(() => {
-      void this.userService.searchUsers(query).then((users) => {
-        if (version === this.assigneeSearchVersion) this.assigneeSuggestions.set(users);
-      }).catch(() => {
-        if (version === this.assigneeSearchVersion) this.assigneeSuggestions.set([]);
-      });
+      void this.userService
+        .searchUsers(query)
+        .then((users) => {
+          if (version === this.assigneeSearchVersion) this.assigneeSuggestions.set(users);
+        })
+        .catch(() => {
+          if (version === this.assigneeSearchVersion) this.assigneeSuggestions.set([]);
+        });
     }, 250);
   }
 

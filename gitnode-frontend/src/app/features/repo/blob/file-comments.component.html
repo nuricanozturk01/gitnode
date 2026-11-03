@@ -2,50 +2,75 @@
   <div class="fc-head">
     <h2 id="fc-heading" class="text-sm font-semibold">
       Comments
-      @if (comments().length) { <span class="fc-count">{{ current().length }}</span> }
+      @if (comments().length) {
+        <span class="fc-count">{{ current().length }}</span>
+      }
     </h2>
     @if (outdated().length) {
-    <button type="button" class="btn btn-ghost btn-xs" [attr.aria-expanded]="showOutdated()" (click)="showOutdated.set(!showOutdated())">
-      {{ showOutdated() ? 'Hide' : 'Show' }} {{ outdated().length }} outdated
-    </button>
+      <button
+        type="button"
+        class="btn btn-ghost btn-xs"
+        [attr.aria-expanded]="showOutdated()"
+        (click)="showOutdated.set(!showOutdated())"
+      >
+        {{ showOutdated() ? 'Hide' : 'Show' }} {{ outdated().length }} outdated
+      </button>
     }
   </div>
 
   @if (loadFailed()) {
-  <p class="fc-note" role="status">
-    Could not load comments.
-    <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button>
-  </p>
+    <p class="fc-note" role="status">
+      Could not load comments.
+      <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button>
+    </p>
   } @else if (loading() && !comments().length) {
-  <p class="fc-note">Loading comments…</p>
+    <p class="fc-note">Loading comments…</p>
   } @else if (!comments().length) {
-  <p class="fc-note">No comments on this file yet.</p>
+    <p class="fc-note">No comments on this file yet.</p>
   }
 
   <ul class="fc-list">
     @for (comment of showOutdated() ? roots() : current(); track comment.id) {
-    <ng-container *ngTemplateOutlet="item; context: { $implicit: comment, reply: false }"></ng-container>
-    @for (reply of repliesOf(comment.id); track reply.id) {
-    <ng-container *ngTemplateOutlet="item; context: { $implicit: reply, reply: true }"></ng-container>
-    }
-    @if (replyingTo() === comment.id) {
-    <li class="fc-item fc-item--reply">
-      <form class="fc-form w-full" (ngSubmit)="submitReply(comment)">
-        <label class="sr-only" [for]="'fc-reply-' + comment.id">Reply</label>
-        <textarea [id]="'fc-reply-' + comment.id" name="reply" class="textarea textarea-bordered w-full" rows="2" maxlength="4000" placeholder="Reply…" [ngModel]="replyDraft()" (ngModelChange)="replyDraft.set($event)"></textarea>
-        @if (error()) { <p role="alert" class="text-error text-sm">{{ error() }}</p> }
-        <div class="fc-actions">
-          <button type="submit" class="btn btn-primary btn-xs" [disabled]="saving() || !replyDraft().trim()">Reply</button>
-          <button type="button" class="btn btn-ghost btn-xs" (click)="replyingTo.set(null)">Cancel</button>
-        </div>
-      </form>
-    </li>
-    }
+      <ng-container *ngTemplateOutlet="item; context: { $implicit: comment, reply: false }"></ng-container>
+      @for (reply of repliesOf(comment.id); track reply.id) {
+        <ng-container *ngTemplateOutlet="item; context: { $implicit: reply, reply: true }"></ng-container>
+      }
+      @if (replyingTo() === comment.id) {
+        <li class="fc-item fc-item--reply">
+          <form class="fc-form w-full" (ngSubmit)="submitReply(comment)">
+            <label class="sr-only" [for]="'fc-reply-' + comment.id">Reply</label>
+            <textarea
+              [id]="'fc-reply-' + comment.id"
+              name="reply"
+              class="textarea textarea-bordered w-full"
+              rows="2"
+              maxlength="4000"
+              placeholder="Reply…"
+              [ngModel]="replyDraft()"
+              (ngModelChange)="replyDraft.set($event)"
+            ></textarea>
+            @if (error()) {
+              <p role="alert" class="text-error text-sm">{{ error() }}</p>
+            }
+            <div class="fc-actions">
+              <button type="submit" class="btn btn-primary btn-xs" [disabled]="saving() || !replyDraft().trim()">
+                Reply
+              </button>
+              <button type="button" class="btn btn-ghost btn-xs" (click)="replyingTo.set(null)">Cancel</button>
+            </div>
+          </form>
+        </li>
+      }
     }
   </ul>
 
   <ng-template #item let-comment let-reply="reply">
-    <li class="fc-item" [class.fc-item--outdated]="comment.outdated" [class.fc-item--reply]="reply" [id]="'fc-' + comment.id">
+    <li
+      class="fc-item"
+      [class.fc-item--outdated]="comment.outdated"
+      [class.fc-item--reply]="reply"
+      [id]="'fc-' + comment.id"
+    >
       <app-avatar
         [avatarUrl]="comment.author.avatarUrl"
         [email]="comment.author.email"
@@ -57,44 +82,89 @@
         <div class="fc-meta">
           <strong>{{ comment.author.username }}</strong>
           <span>{{ comment.createdAt | relativeTime }}</span>
-          @if (comment.updatedAt) { <span>(edited)</span> }
-          @if (comment.line) { <span class="fc-chip">Line {{ comment.line }}</span> }
-          @if (comment.outdated) { <span class="fc-chip fc-chip--outdated" title="Left on commit {{ comment.commitSha }}">Outdated · {{ shortSha(comment.commitSha) }}</span> }
+          @if (comment.updatedAt) {
+            <span>(edited)</span>
+          }
+          @if (comment.line) {
+            <span class="fc-chip">Line {{ comment.line }}</span>
+          }
+          @if (comment.outdated) {
+            <span class="fc-chip fc-chip--outdated" title="Left on commit {{ comment.commitSha }}"
+              >Outdated · {{ shortSha(comment.commitSha) }}</span
+            >
+          }
         </div>
         @if (editingId() === comment.id) {
-        <label class="sr-only" [for]="'fc-edit-' + comment.id">Edit comment</label>
-        <textarea [id]="'fc-edit-' + comment.id" class="textarea textarea-bordered w-full" rows="3" maxlength="4000" [ngModel]="editBody()" (ngModelChange)="editBody.set($event)"></textarea>
-        <div class="fc-actions">
-          <button type="button" class="btn btn-primary btn-xs" [disabled]="saving() || !editBody().trim()" (click)="saveEdit(comment)">Save</button>
-          <button type="button" class="btn btn-ghost btn-xs" (click)="cancelEdit()">Cancel</button>
-        </div>
+          <label class="sr-only" [for]="'fc-edit-' + comment.id">Edit comment</label>
+          <textarea
+            [id]="'fc-edit-' + comment.id"
+            class="textarea textarea-bordered w-full"
+            rows="3"
+            maxlength="4000"
+            [ngModel]="editBody()"
+            (ngModelChange)="editBody.set($event)"
+          ></textarea>
+          <div class="fc-actions">
+            <button
+              type="button"
+              class="btn btn-primary btn-xs"
+              [disabled]="saving() || !editBody().trim()"
+              (click)="saveEdit(comment)"
+            >
+              Save
+            </button>
+            <button type="button" class="btn btn-ghost btn-xs" (click)="cancelEdit()">Cancel</button>
+          </div>
         } @else {
-        <p class="fc-body">{{ comment.body }}</p>
-        <div class="fc-actions">
-          @if (canComment() && !reply) { <button type="button" class="btn btn-ghost btn-xs" (click)="startReply(comment)">Reply</button> }
-          @if (comment.canEdit) { <button type="button" class="btn btn-ghost btn-xs" (click)="startEdit(comment)">Edit</button> }
-          @if (comment.canDelete) { <button type="button" class="btn btn-ghost btn-xs text-error" (click)="remove(comment)">Delete</button> }
-        </div>
+          <p class="fc-body">{{ comment.body }}</p>
+          <div class="fc-actions">
+            @if (canComment() && !reply) {
+              <button type="button" class="btn btn-ghost btn-xs" (click)="startReply(comment)">Reply</button>
+            }
+            @if (comment.canEdit) {
+              <button type="button" class="btn btn-ghost btn-xs" (click)="startEdit(comment)">Edit</button>
+            }
+            @if (comment.canDelete) {
+              <button type="button" class="btn btn-ghost btn-xs text-error" (click)="remove(comment)">Delete</button>
+            }
+          </div>
         }
       </div>
     </li>
   </ng-template>
 
   @if (canComment()) {
-  <form class="fc-form" (ngSubmit)="submit()">
-    <label for="fc-new" class="text-sm font-medium">
-      @if (targetLine(); as line) { Comment on line {{ line }} } @else { Comment on this file }
-    </label>
-    @if (targetLine()) {
-    <button type="button" class="btn btn-ghost btn-xs" (click)="clearLine()">Comment on the whole file instead</button>
-    }
-    <textarea id="fc-new" name="comment" class="textarea textarea-bordered w-full" rows="3" maxlength="4000" placeholder="Leave a comment" [ngModel]="draft()" (ngModelChange)="draft.set($event)"></textarea>
-    @if (error()) { <p role="alert" class="text-error text-sm">{{ error() }}</p> }
-    <div class="fc-actions">
-      <button type="submit" class="btn btn-primary btn-sm" [disabled]="saving() || !draft().trim()">Comment</button>
-    </div>
-  </form>
+    <form class="fc-form" (ngSubmit)="submit()">
+      <label for="fc-new" class="text-sm font-medium">
+        @if (targetLine(); as line) {
+          Comment on line {{ line }}
+        } @else {
+          Comment on this file
+        }
+      </label>
+      @if (targetLine()) {
+        <button type="button" class="btn btn-ghost btn-xs" (click)="clearLine()">
+          Comment on the whole file instead
+        </button>
+      }
+      <textarea
+        id="fc-new"
+        name="comment"
+        class="textarea textarea-bordered w-full"
+        rows="3"
+        maxlength="4000"
+        placeholder="Leave a comment"
+        [ngModel]="draft()"
+        (ngModelChange)="draft.set($event)"
+      ></textarea>
+      @if (error()) {
+        <p role="alert" class="text-error text-sm">{{ error() }}</p>
+      }
+      <div class="fc-actions">
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="saving() || !draft().trim()">Comment</button>
+      </div>
+    </form>
   } @else {
-  <p class="fc-note">Sign in to leave a comment.</p>
+    <p class="fc-note">Sign in to leave a comment.</p>
   }
 </section>

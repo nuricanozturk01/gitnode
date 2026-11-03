@@ -844,7 +844,8 @@ a:not(.btn):hover {
 }
 
 /* Secondary text utilities must keep WCAG AA (4.5:1) contrast */
-html[data-theme='gitnode-light'] :is(
+html[data-theme='gitnode-light']
+  :is(
     .text-base-content\/30,
     .text-base-content\/35,
     .text-base-content\/40,
@@ -857,7 +858,8 @@ html[data-theme='gitnode-light'] :is(
 html[data-theme='gitnode-light'] :is(.label, .label-text, th, dt) {
   color: color-mix(in oklch, var(--color-base-content) 78%, transparent);
 }
-html[data-theme='gitnode'] :is(
+html[data-theme='gitnode']
+  :is(
     .text-base-content\/30,
     .text-base-content\/35,
     .text-base-content\/40,

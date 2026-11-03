@@ -38,9 +38,7 @@
       <a routerLink="/webhooks/dlq" class="btn btn-sm btn-warning">Review queue</a>
     </div>
   </div>
-  }
-
-  @if (overviewFailed() || activityFailed() || auditFailed() || dlqFailed() || organizationsFailed()) {
+  } @if (overviewFailed() || activityFailed() || auditFailed() || dlqFailed() || organizationsFailed()) {
   <div role="alert" class="alert alert-warning mb-6">
     <span>Some dashboard data could not be loaded.</span>
     <button type="button" class="btn btn-sm" (click)="retryDashboard()">Try again</button>
@@ -85,31 +83,37 @@
       <p class="text-base-content/60 text-sm font-medium">Total users</p>
       <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.totalUsers ?? '—' }}</p>
       <p class="text-base-content/55 mt-1 text-xs">
-        @if (overview(); as stats) { +{{ stats.newUsersThisWeek }} week · +{{ stats.newUsersToday }} today }
-        @else { Data unavailable }
+        @if (overview(); as stats) { +{{ stats.newUsersThisWeek }} week · +{{ stats.newUsersToday }} today } @else {
+        Data unavailable }
       </p>
     </div>
     <div class="repo-panel p-5">
       <p class="text-base-content/60 text-sm font-medium">Active users</p>
       <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.enabledUsers ?? '—' }}</p>
-      <p class="text-base-content/55 mt-1 text-xs">@if (overview()) { {{ disabledUsers() }} disabled } @else { Data unavailable }</p>
+      <p class="text-base-content/55 mt-1 text-xs">
+        @if (overview()) { {{ disabledUsers() }} disabled } @else { Data unavailable }
+      </p>
     </div>
     <div class="repo-panel p-5">
       <p class="text-base-content/60 text-sm font-medium">Repositories</p>
       <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.totalRepos ?? '—' }}</p>
       <p class="text-base-content/55 mt-1 text-xs">
-        @if (overview(); as stats) { +{{ stats.newReposThisWeek }} week · +{{ stats.newReposToday }} today }
-        @else { Data unavailable }
+        @if (overview(); as stats) { +{{ stats.newReposThisWeek }} week · +{{ stats.newReposToday }} today } @else {
+        Data unavailable }
       </p>
     </div>
     <div class="repo-panel p-5">
       <p class="text-base-content/60 text-sm font-medium">Organizations</p>
       <p class="text-base-content mt-1 text-3xl font-bold">{{ overview()?.totalOrganizations ?? '—' }}</p>
-      <p class="text-base-content/55 mt-1 text-xs">@if (overview(); as stats) { {{ stats.ssoEnabledOrganizations }} SSO enabled } @else { Data unavailable }</p>
+      <p class="text-base-content/55 mt-1 text-xs">
+        @if (overview(); as stats) { {{ stats.ssoEnabledOrganizations }} SSO enabled } @else { Data unavailable }
+      </p>
     </div>
     <div class="repo-panel p-5">
       <p class="text-base-content/60 text-sm font-medium">Storage used</p>
-      <p class="text-base-content mt-1 text-3xl font-bold">{{ overview() ? formatStorage(overview()?.totalStorageBytes) : '—' }}</p>
+      <p class="text-base-content mt-1 text-3xl font-bold">
+        {{ overview() ? formatStorage(overview()?.totalStorageBytes) : '—' }}
+      </p>
       @if (overview()?.storageEstimated) {
       <p class="text-base-content/55 mt-1 text-xs">Estimated from disk scan</p>
       }

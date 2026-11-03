@@ -65,7 +65,15 @@ const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-settings',
   standalone: true,
-  imports: [TwoFactorSettingsComponent, ModalFocusDirective, LucideAngularModule, FormsModule, RouterLink, MarkdownPipe, RelativeTimePipe],
+  imports: [
+    TwoFactorSettingsComponent,
+    ModalFocusDirective,
+    LucideAngularModule,
+    FormsModule,
+    RouterLink,
+    MarkdownPipe,
+    RelativeTimePipe,
+  ],
   templateUrl: './user-settings.page.html',
   styleUrl: './user-settings.page.css',
 })
@@ -125,7 +133,8 @@ export class UserSettingsPage {
   readonly location = signal('');
   readonly profileReadme = signal('');
   readonly timezone = signal('');
-  readonly timezones: string[] = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
+  readonly timezones: string[] =
+    (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf?.('timeZone') ?? [];
   readonly extraEmails = signal<ExtraEmail[]>([]);
   readonly newEmail = signal('');
   readonly emailError = signal<string | null>(null);
@@ -338,7 +347,9 @@ export class UserSettingsPage {
     const newP = this.newPassword().trim();
     if (!current || !newP) return;
     if (newP.length < 8 || newP.length > 128 || !/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\S+$).+$/.test(newP)) {
-      this.passwordError.set('Password must be at least 8 characters with a number, a lowercase and an uppercase letter, and no spaces');
+      this.passwordError.set(
+        'Password must be at least 8 characters with a number, a lowercase and an uppercase letter, and no spaces',
+      );
       return;
     }
     this.savingPassword.set(true);

@@ -41,10 +41,20 @@ export class RegisterPage {
   readonly error = signal<string | null>(null);
 
   readonly form = this.fb.nonNullable.group({
-    username: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(25), Validators.pattern(/^[a-z0-9_-]+$/)]],
+    username: [
+      '',
+      [Validators.required, Validators.minLength(3), Validators.maxLength(25), Validators.pattern(/^[a-z0-9_-]+$/)],
+    ],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(128),
-      Validators.pattern(/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])\S+$/)]],
+    password: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(8),
+        Validators.maxLength(128),
+        Validators.pattern(/^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])\S+$/),
+      ],
+    ],
   });
 
   async onSubmit(): Promise<void> {

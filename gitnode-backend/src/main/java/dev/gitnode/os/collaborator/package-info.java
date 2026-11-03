@@ -15,7 +15,14 @@
  */
 @NullMarked
 @ApplicationModule(
-    allowedDependencies = {"events :: collaborator", "identity :: *", "repo :: *", "shared :: *"})
+    allowedDependencies = {
+      "events :: collaborator",
+      "identity :: api",
+      "identity :: security",
+      "repo :: api",
+      "repo :: dtos",
+      "shared :: *"
+    })
 package dev.gitnode.os.collaborator;
 
 import org.jspecify.annotations.NullMarked;

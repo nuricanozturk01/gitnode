@@ -8,7 +8,7 @@
       [items]="breadcrumbItems()"
     />
     <div class="flex flex-wrap items-center justify-between gap-2">
-      <span class="mono text-base-content min-w-0 break-all text-sm">{{ fileName() }}</span>
+      <span class="mono text-base-content min-w-0 text-sm break-all">{{ fileName() }}</span>
       <div class="flex flex-wrap items-center gap-2">
         @if (blob(); as b) {
         <span class="text-base-content/60 text-xs">{{ b.size | fileSize }}</span>
@@ -23,7 +23,11 @@
           Copy }
         </button>
         @if (repoContext.hasPermission('PUSH') && canComment() && !isEditing()) {
-        <a class="btn btn-ghost btn-xs gap-1" [href]="'/' + owner() + '/' + repoName() + '/editor/' + branch() + '/' + path()" title="Open in the web editor (press .)">
+        <a
+          class="btn btn-ghost btn-xs gap-1"
+          [href]="'/' + owner() + '/' + repoName() + '/editor/' + branch() + '/' + path()"
+          title="Open in the web editor (press .)"
+        >
           <lucide-icon name="fileCode2" class="size-3"></lucide-icon>
           Open in editor
         </a>
@@ -153,12 +157,23 @@
         @for (line of highlightedLines(); track $index) {
         <tr class="hover:bg-base-300/40" [class.blob-line--target]="commentLine() === $index + 1">
           <td
-            class="text-base-content/40 border-base-300 w-[1%] min-w-[52px] whitespace-nowrap border-r px-3 py-0 text-right align-top leading-6 select-none"
+            class="text-base-content/40 border-base-300 w-[1%] min-w-[52px] border-r px-3 py-0 text-right align-top leading-6 whitespace-nowrap select-none"
           >
             @if (commentedLines().has($index + 1)) {
-            <lucide-icon name="messageCircle" class="text-primary mr-1 inline size-3" aria-label="Has comments"></lucide-icon>
+            <lucide-icon
+              name="messageCircle"
+              class="text-primary mr-1 inline size-3"
+              aria-label="Has comments"
+            ></lucide-icon>
             } @if (canComment()) {
-            <button type="button" class="blob-line-btn" [attr.aria-label]="'Comment on line ' + ($index + 1)" (click)="commentOnLine($index + 1)">{{ $index + 1 }}</button>
+            <button
+              type="button"
+              class="blob-line-btn"
+              [attr.aria-label]="'Comment on line ' + ($index + 1)"
+              (click)="commentOnLine($index + 1)"
+            >
+              {{ $index + 1 }}
+            </button>
             } @else { {{ $index + 1 }} }
           </td>
           <td class="px-4 py-0 align-top leading-6 whitespace-pre" [innerHTML]="line"></td>

@@ -41,21 +41,41 @@
       <li class="space-y-3 p-4">
         <div class="flex items-start justify-between gap-2">
           <div class="min-w-0">
-            <a [routerLink]="['/organizations', org.slug]" class="text-primary break-all font-semibold hover:underline">{{ org.name }}</a>
-            <p class="text-base-content/60 mt-1 break-all text-xs">{{ org.slug }}</p>
+            <a [routerLink]="['/organizations', org.slug]" class="text-primary font-semibold break-all hover:underline"
+              >{{ org.name }}</a
+            >
+            <p class="text-base-content/60 mt-1 text-xs break-all">{{ org.slug }}</p>
           </div>
-          <a [routerLink]="['/organizations', org.slug]" class="btn btn-ghost btn-sm" [attr.aria-label]="'Edit ' + org.name">Edit</a>
+          <a
+            [routerLink]="['/organizations', org.slug]"
+            class="btn btn-ghost btn-sm"
+            [attr.aria-label]="'Edit ' + org.name"
+            >Edit</a
+          >
         </div>
-        <p class="text-base-content/70 break-all text-sm">{{ formatDomains(org.emailDomains) }}</p>
+        <p class="text-base-content/70 text-sm break-all">{{ formatDomains(org.emailDomains) }}</p>
         <div class="flex flex-wrap gap-4">
-          <div class="flex items-center gap-2 text-sm"><span>SAML</span>
-            <app-sso-switch [checked]="org.ssoEnabled" [disabled]="togglingSlug() === org.slug || org.ldapEnabled"
-              size="sm" [showLabels]="true" [ariaLabel]="'Enable SAML for ' + org.name" (checkedChange)="onSsoToggle(org, $event)" />
+          <div class="flex items-center gap-2 text-sm">
+            <span>SAML</span>
+            <app-sso-switch
+              [checked]="org.ssoEnabled"
+              [disabled]="togglingSlug() === org.slug || org.ldapEnabled"
+              size="sm"
+              [showLabels]="true"
+              [ariaLabel]="'Enable SAML for ' + org.name"
+              (checkedChange)="onSsoToggle(org, $event)"
+            />
           </div>
-          <div class="flex items-center gap-2 text-sm"><span>LDAP</span>
-            <app-sso-switch [checked]="org.ldapEnabled"
+          <div class="flex items-center gap-2 text-sm">
+            <span>LDAP</span>
+            <app-sso-switch
+              [checked]="org.ldapEnabled"
               [disabled]="togglingLdapSlug() === org.slug || org.ssoEnabled || (!org.ldapEnabled && !org.ldapConfigured)"
-              size="sm" [showLabels]="true" [ariaLabel]="'Enable LDAP for ' + org.name" (checkedChange)="onLdapToggle(org, $event)" />
+              size="sm"
+              [showLabels]="true"
+              [ariaLabel]="'Enable LDAP for ' + org.name"
+              (checkedChange)="onLdapToggle(org, $event)"
+            />
           </div>
         </div>
       </li>

@@ -65,7 +65,9 @@
               />
               @if (form.get('username')?.invalid && form.get('username')?.touched) {
               <span class="label">
-                <span id="register-username-error" class="label-text-alt text-error">3–25 characters: lowercase letters, numbers, - and _.</span>
+                <span id="register-username-error" class="label-text-alt text-error"
+                  >3–25 characters: lowercase letters, numbers, - and _.</span
+                >
               </span>
               }
             </div>
@@ -107,7 +109,9 @@
               />
               @if (form.get('password')?.invalid && form.get('password')?.touched) {
               <span class="label">
-                <span id="register-password-error" class="label-text-alt text-error">8–128 characters with uppercase, lowercase and a number; no spaces.</span>
+                <span id="register-password-error" class="label-text-alt text-error"
+                  >8–128 characters with uppercase, lowercase and a number; no spaces.</span
+                >
               </span>
               }
             </div>

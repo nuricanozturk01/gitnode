@@ -48,7 +48,13 @@
   <!-- Tab bar -->
   <div class="docs-tabs-bar">
     <div class="docs-tabs-inner">
-      <button type="button" class="docs-tab" [class.docs-tab--active]="activeTab() === 'git'" [attr.aria-pressed]="activeTab() === 'git'" (click)="setTab('git')">
+      <button
+        type="button"
+        class="docs-tab"
+        [class.docs-tab--active]="activeTab() === 'git'"
+        [attr.aria-pressed]="activeTab() === 'git'"
+        (click)="setTab('git')"
+      >
         <lucide-icon name="gitBranch" class="size-4 shrink-0" aria-hidden="true"></lucide-icon>
         Git Transport
       </button>
@@ -252,7 +258,7 @@
               <button
                 type="button"
                 class="docs-code-copy btn btn-ghost btn-xs gap-1"
-                    aria-label="Copy command"
+                aria-label="Copy command"
                 (click)="copySnippet('https-clone', httpsCloneLine())"
               >
                 @if (copiedId() === 'https-clone') {
@@ -291,7 +297,7 @@
               <button
                 type="button"
                 class="docs-code-copy btn btn-ghost btn-xs gap-1"
-                    aria-label="Copy command"
+                aria-label="Copy command"
                 (click)="copySnippet('ssh-config', sshConfigBlock)"
               >
                 @if (copiedId() === 'ssh-config') {
@@ -311,7 +317,7 @@
               <button
                 type="button"
                 class="docs-code-copy btn btn-ghost btn-xs gap-1"
-                    aria-label="Copy command"
+                aria-label="Copy command"
                 (click)="copySnippet('alias-flow', sshAliasFlow)"
               >
                 @if (copiedId() === 'alias-flow') {
@@ -2155,7 +2161,7 @@
                       <button
                         type="button"
                         class="docs-code-copy btn btn-ghost btn-xs gap-1"
-                    aria-label="Copy command"
+                        aria-label="Copy command"
                         (click)="copySnippet('saml-keygen', samlKeygenCmd)"
                       >
                         @if (copiedId() === 'saml-keygen') {

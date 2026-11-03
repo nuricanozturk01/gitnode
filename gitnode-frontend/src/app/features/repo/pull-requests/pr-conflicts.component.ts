@@ -93,7 +93,9 @@ export class PrConflictsComponent {
       .map((f) => f.path),
   );
   readonly remaining = computed(() => this.unresolvedPaths().length);
-  readonly fetchUrl = computed(() => `git fetch origin && git checkout ${this.sourceBranch()} && git merge origin/${this.targetBranch()}`);
+  readonly fetchUrl = computed(
+    () => `git fetch origin && git checkout ${this.sourceBranch()} && git merge origin/${this.targetBranch()}`,
+  );
 
   constructor() {
     effect(() => {

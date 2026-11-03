@@ -53,9 +53,7 @@ export class PullRequestsPage implements OnInit {
   readonly labelFilter = signal('');
   readonly milestoneFilter = signal('');
   readonly assigneeFilter = signal('');
-  readonly hasFilter = computed(
-    () => !!(this.labelFilter() || this.milestoneFilter() || this.assigneeFilter().trim()),
-  );
+  readonly hasFilter = computed(() => !!(this.labelFilter() || this.milestoneFilter() || this.assigneeFilter().trim()));
   readonly loading = signal(true);
   readonly loadFailed = signal(false);
   private loadVersion = 0;
@@ -169,7 +167,14 @@ export class PullRequestsPage implements OnInit {
       merged: 'MERGED',
     };
     try {
-      const result = await this.prService.getPullRequests(owner, repo, statusMap[this.tab()], this.page(), 25, this.currentFilter());
+      const result = await this.prService.getPullRequests(
+        owner,
+        repo,
+        statusMap[this.tab()],
+        this.page(),
+        25,
+        this.currentFilter(),
+      );
       if (version !== this.loadVersion) return;
       this.pulls.set(result.content);
       this.totalPages.set(result.totalPages);

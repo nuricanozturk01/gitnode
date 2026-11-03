@@ -99,8 +99,15 @@
     </section>
 
     <section class="repo-panel p-5" aria-labelledby="edit-assets-heading">
-      <h2 id="edit-assets-heading" class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">Attached files</h2>
-      <app-release-assets [owner]="owner()" [repo]="repoName()" [releaseId]="r.id" [canManage]="repoContext.hasPermission('PUSH')" />
+      <h2 id="edit-assets-heading" class="text-base-content/60 text-xs font-semibold tracking-wide uppercase">
+        Attached files
+      </h2>
+      <app-release-assets
+        [owner]="owner()"
+        [repo]="repoName()"
+        [releaseId]="r.id"
+        [canManage]="repoContext.hasPermission('PUSH')"
+      />
     </section>
 
     <div class="flex flex-wrap gap-3">

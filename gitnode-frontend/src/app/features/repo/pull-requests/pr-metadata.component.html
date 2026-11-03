@@ -1,56 +1,122 @@
 @if (failed()) {
-<p class="pm-note" role="status">Could not load labels and assignees. <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button></p>
-} @else if (data(); as d) { @if (!isEmpty() || d.canEdit) {
-<section class="repo-panel pm" aria-labelledby="pm-heading">
-  <div class="pm-head">
-    <h2 id="pm-heading" class="text-sm font-semibold">Labels, assignees and milestone</h2>
-    @if (d.canEdit && !editing()) { <button type="button" class="btn btn-ghost btn-xs" (click)="startEdit()">Edit</button> }
-  </div>
-  @if (!editing()) {
-  <dl class="pm-body">
-    <div>
-      <dt>Labels</dt>
-      <dd>
-        @for (label of d.labels; track label.id) {
-        <span class="pm-label" [style.background]="'#' + label.color" [style.color]="textColor(label.color)" [attr.title]="label.description">{{ label.name }}</span>
-        } @empty { <span class="pm-none">None</span> }
-      </dd>
-    </div>
-    <div>
-      <dt>Assignees</dt>
-      <dd>
-        @for (a of d.assignees; track a.username) {
-        <span class="pm-person"><app-avatar [avatarUrl]="a.avatarUrl" [email]="a.email" [username]="a.username" [fallback]="a.username.charAt(0).toUpperCase()" size="xs" /> {{ a.username }}</span>
-        } @empty { <span class="pm-none">No one assigned</span> }
-      </dd>
-    </div>
-    <div>
-      <dt>Milestone</dt>
-      <dd>@if (d.milestone; as m) { <span>{{ m.title }} @if (m.status === 'CLOSED') { <span class="pm-none">(closed)</span> }</span> } @else { <span class="pm-none">No milestone</span> }</dd>
-    </div>
-  </dl>
-  } @else {
-  <form class="pm-form" (ngSubmit)="save()">
-    <fieldset>
-      <legend class="text-sm font-medium">Labels</legend>
-      @for (label of allLabels(); track label.id) {
-      <label class="pm-check"><input type="checkbox" class="checkbox checkbox-sm" [checked]="pickedLabels().has(label.id)" (change)="toggleLabel(label.id, $any($event.target).checked)" />
-        <span class="pm-label" [style.background]="'#' + label.color" [style.color]="textColor(label.color)">{{ label.name }}</span></label>
-      } @empty { <p class="pm-none">This repository has no labels yet.</p> }
-    </fieldset>
-    <label class="text-sm font-medium" for="pm-assignees">Assignees (usernames, separated by commas)</label>
-    <input id="pm-assignees" name="assignees" class="input input-bordered input-sm w-full" [ngModel]="assigneeText()" (ngModelChange)="assigneeText.set($event)" />
-    <label class="text-sm font-medium" for="pm-milestone">Milestone</label>
-    <select id="pm-milestone" name="milestone" class="select select-bordered select-sm w-full" [ngModel]="pickedMilestone()" (ngModelChange)="pickedMilestone.set($event)">
-      <option value="">No milestone</option>
-      @for (m of allMilestones(); track m.id) { <option [value]="m.id">{{ m.title }}</option> }
-    </select>
-    @if (error()) { <p role="alert" class="text-error text-sm">{{ error() }}</p> }
-    <div class="pm-actions">
-      <button type="submit" class="btn btn-primary btn-sm" [disabled]="saving()">Save</button>
-      <button type="button" class="btn btn-ghost btn-sm" [disabled]="saving()" (click)="editing.set(false)">Cancel</button>
-    </div>
-  </form>
+  <p class="pm-note" role="status">
+    Could not load labels and assignees.
+    <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button>
+  </p>
+} @else if (data(); as d) {
+  @if (!isEmpty() || d.canEdit) {
+    <section class="repo-panel pm" aria-labelledby="pm-heading">
+      <div class="pm-head">
+        <h2 id="pm-heading" class="text-sm font-semibold">Labels, assignees and milestone</h2>
+        @if (d.canEdit && !editing()) {
+          <button type="button" class="btn btn-ghost btn-xs" (click)="startEdit()">Edit</button>
+        }
+      </div>
+      @if (!editing()) {
+        <dl class="pm-body">
+          <div>
+            <dt>Labels</dt>
+            <dd>
+              @for (label of d.labels; track label.id) {
+                <span
+                  class="pm-label"
+                  [style.background]="'#' + label.color"
+                  [style.color]="textColor(label.color)"
+                  [attr.title]="label.description"
+                  >{{ label.name }}</span
+                >
+              } @empty {
+                <span class="pm-none">None</span>
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Assignees</dt>
+            <dd>
+              @for (a of d.assignees; track a.username) {
+                <span class="pm-person"
+                  ><app-avatar
+                    [avatarUrl]="a.avatarUrl"
+                    [email]="a.email"
+                    [username]="a.username"
+                    [fallback]="a.username.charAt(0).toUpperCase()"
+                    size="xs"
+                  />
+                  {{ a.username }}</span
+                >
+              } @empty {
+                <span class="pm-none">No one assigned</span>
+              }
+            </dd>
+          </div>
+          <div>
+            <dt>Milestone</dt>
+            <dd>
+              @if (d.milestone; as m) {
+                <span
+                  >{{ m.title }}
+                  @if (m.status === 'CLOSED') {
+                    <span class="pm-none">(closed)</span>
+                  }
+                </span>
+              } @else {
+                <span class="pm-none">No milestone</span>
+              }
+            </dd>
+          </div>
+        </dl>
+      } @else {
+        <form class="pm-form" (ngSubmit)="save()">
+          <fieldset>
+            <legend class="text-sm font-medium">Labels</legend>
+            @for (label of allLabels(); track label.id) {
+              <label class="pm-check"
+                ><input
+                  type="checkbox"
+                  class="checkbox checkbox-sm"
+                  [checked]="pickedLabels().has(label.id)"
+                  (change)="toggleLabel(label.id, $any($event.target).checked)"
+                />
+                <span class="pm-label" [style.background]="'#' + label.color" [style.color]="textColor(label.color)">{{
+                  label.name
+                }}</span></label
+              >
+            } @empty {
+              <p class="pm-none">This repository has no labels yet.</p>
+            }
+          </fieldset>
+          <label class="text-sm font-medium" for="pm-assignees">Assignees (usernames, separated by commas)</label>
+          <input
+            id="pm-assignees"
+            name="assignees"
+            class="input input-bordered input-sm w-full"
+            [ngModel]="assigneeText()"
+            (ngModelChange)="assigneeText.set($event)"
+          />
+          <label class="text-sm font-medium" for="pm-milestone">Milestone</label>
+          <select
+            id="pm-milestone"
+            name="milestone"
+            class="select select-bordered select-sm w-full"
+            [ngModel]="pickedMilestone()"
+            (ngModelChange)="pickedMilestone.set($event)"
+          >
+            <option value="">No milestone</option>
+            @for (m of allMilestones(); track m.id) {
+              <option [value]="m.id">{{ m.title }}</option>
+            }
+          </select>
+          @if (error()) {
+            <p role="alert" class="text-error text-sm">{{ error() }}</p>
+          }
+          <div class="pm-actions">
+            <button type="submit" class="btn btn-primary btn-sm" [disabled]="saving()">Save</button>
+            <button type="button" class="btn btn-ghost btn-sm" [disabled]="saving()" (click)="editing.set(false)">
+              Cancel
+            </button>
+          </div>
+        </form>
+      }
+    </section>
   }
-</section>
-} }
+}

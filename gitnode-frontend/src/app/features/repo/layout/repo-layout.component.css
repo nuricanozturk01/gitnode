@@ -52,5 +52,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .repo-tabs.tabs .tab { transition: none; }
+  .repo-tabs.tabs .tab {
+    transition: none;
+  }
 }

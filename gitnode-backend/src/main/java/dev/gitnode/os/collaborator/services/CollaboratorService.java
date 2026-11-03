@@ -26,11 +26,11 @@ import dev.gitnode.os.collaborator.mappers.CollaboratorMapper;
 import dev.gitnode.os.collaborator.repositories.CollaboratorRepository;
 import dev.gitnode.os.events.collaborator.CollaboratorInvitedEvent;
 import dev.gitnode.os.events.collaborator.CollaboratorRemovedEvent;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
-import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
@@ -58,8 +58,8 @@ public class CollaboratorService implements CollaboratorAccessPort {
   private static final int INVITE_LINK_EXPIRY_DAYS = 7;
 
   private final CollaboratorRepository collaboratorRepository;
-  private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
+  private final RepoLookupPort repoLookup;
+  private final TenantQueryPort tenants;
   private final CollaboratorMapper collaboratorMapper;
   private final ApplicationEventPublisher eventPublisher;
 
@@ -78,30 +78,30 @@ public class CollaboratorService implements CollaboratorAccessPort {
       final InviteCollaboratorForm form) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    if (!repo.getOwner().getId().equals(requesterId)) {
+    if (!repo.ownerId().equals(requesterId)) {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 
     final var invitee =
-        this.tenantRepository
+        this.tenants
             .findByUsername(form.getUsername())
             .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
 
-    if (invitee.getId().equals(requesterId)) {
+    if (invitee.id().equals(requesterId)) {
       throw new BadRequestException("cannotInviteYourself");
     }
 
     if (this.collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
-        repo.getId(), invitee.getId(), CollaboratorStatus.ACCEPTED)) {
+        repo.id(), invitee.id(), CollaboratorStatus.ACCEPTED)) {
       throw new ItemAlreadyExistsException("alreadyCollaborator");
     }
 
     final var existingOpt =
-        this.collaboratorRepository.findByRepoIdAndTenantId(repo.getId(), invitee.getId());
+        this.collaboratorRepository.findByRepoIdAndTenantId(repo.id(), invitee.id());
 
     final RepoCollaborator collaborator;
 
@@ -114,9 +114,9 @@ public class CollaboratorService implements CollaboratorAccessPort {
       collaborator.setPermissions(resolvePermissions(form.getPermissions()));
     } else {
       collaborator = new RepoCollaborator();
-      collaborator.setRepo(repo);
-      collaborator.setTenant(invitee);
-      collaborator.setInvitedBy(repo.getOwner());
+      collaborator.setRepoId(repo.id());
+      collaborator.setTenantId(invitee.id());
+      collaborator.setInvitedById(repo.ownerId());
       collaborator.setPermissions(resolvePermissions(form.getPermissions()));
       collaborator.setStatus(CollaboratorStatus.PENDING);
     }
@@ -127,11 +127,11 @@ public class CollaboratorService implements CollaboratorAccessPort {
 
     this.eventPublisher.publishEvent(
         new CollaboratorInvitedEvent(
-            repo.getId(),
-            repo.getName(),
-            repo.getOwner().getUsername(),
-            invitee.getId(),
-            invitee.getUsername(),
+            repo.id(),
+            repo.name(),
+            repo.ownerUsername(),
+            invitee.id(),
+            invitee.username(),
             requesterId,
             token));
 
@@ -146,12 +146,12 @@ public class CollaboratorService implements CollaboratorAccessPort {
       final int size) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    if (!repo.getOwner().getId().equals(requesterId)) {
-      if (!this.isActiveCollaborator(repo.getId(), requesterId)) {
+    if (!repo.ownerId().equals(requesterId)) {
+      if (!this.isActiveCollaborator(repo.id(), requesterId)) {
         throw new AccessNotAllowedException("repoAccessDenied");
       }
     }
@@ -159,9 +159,8 @@ public class CollaboratorService implements CollaboratorAccessPort {
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
     return PageResponse.from(
-        this.collaboratorRepository
-            .findAllByRepoId(repo.getId(), pageable)
-            .map(this.collaboratorMapper::toInfo));
+        this.collaboratorMapper.toInfoPage(
+            this.collaboratorRepository.findAllByRepoId(repo.id(), pageable)));
   }
 
   @Audited(
@@ -176,17 +175,17 @@ public class CollaboratorService implements CollaboratorAccessPort {
       final String targetUsername) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
     final var target =
-        this.tenantRepository
+        this.tenants
             .findByUsername(targetUsername)
             .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
 
-    final boolean isOwner = repo.getOwner().getId().equals(requesterId);
-    final boolean isSelf = target.getId().equals(requesterId);
+    final boolean isOwner = repo.ownerId().equals(requesterId);
+    final boolean isSelf = target.id().equals(requesterId);
 
     if (!isOwner && !isSelf) {
       throw new AccessNotAllowedException("repoAccessDenied");
@@ -194,14 +193,13 @@ public class CollaboratorService implements CollaboratorAccessPort {
 
     final var collaborator =
         this.collaboratorRepository
-            .findByRepoIdAndTenantId(repo.getId(), target.getId())
+            .findByRepoIdAndTenantId(repo.id(), target.id())
             .orElseThrow(() -> new ItemNotFoundException("collaboratorNotFound"));
 
     this.collaboratorRepository.delete(collaborator);
 
     this.eventPublisher.publishEvent(
-        new CollaboratorRemovedEvent(
-            repo.getId(), repo.getName(), target.getId(), target.getUsername()));
+        new CollaboratorRemovedEvent(repo.id(), repo.name(), target.id(), target.username()));
   }
 
   @Audited(
@@ -236,13 +234,13 @@ public class CollaboratorService implements CollaboratorAccessPort {
       final boolean accept) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
     final var collaborator =
         this.collaboratorRepository
-            .findByRepoIdAndTenantId(repo.getId(), requesterId)
+            .findByRepoIdAndTenantId(repo.id(), requesterId)
             .orElseThrow(() -> new ItemNotFoundException("invitationNotFound"));
 
     if (collaborator.getStatus() != CollaboratorStatus.PENDING) {
@@ -260,13 +258,13 @@ public class CollaboratorService implements CollaboratorAccessPort {
       final UUID requesterId, final String ownerUsername, final String repoName) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
     final var collaborator =
         this.collaboratorRepository
-            .findByRepoIdAndTenantId(repo.getId(), requesterId)
+            .findByRepoIdAndTenantId(repo.id(), requesterId)
             .orElseThrow(() -> new ItemNotFoundException("invitationNotFound"));
 
     return this.collaboratorMapper.toInfo(collaborator);
@@ -300,8 +298,11 @@ public class CollaboratorService implements CollaboratorAccessPort {
 
   @Override
   public Set<UUID> findAcceptedRepoIds(final UUID tenantId, final String ownerUsername) {
-    return this.collaboratorRepository.findAcceptedRepoIdsByTenantIdAndOwnerUsername(
-        tenantId, ownerUsername);
+    final var accepted = this.collaboratorRepository.findAcceptedRepoIdsByTenantId(tenantId);
+    return this.repoLookup.findAllByIds(accepted).values().stream()
+        .filter(repo -> repo.ownerUsername().equals(ownerUsername))
+        .map(RepoLookupPort.RepoRef::id)
+        .collect(java.util.stream.Collectors.toSet());
   }
 
   @Transactional
@@ -335,11 +336,24 @@ public class CollaboratorService implements CollaboratorAccessPort {
       throw new BadRequestException("invitationLinkExpired");
     }
 
+    final var repo =
+        this.repoLookup
+            .findById(collaborator.getRepoId())
+            .orElseThrow(() -> new ItemNotFoundException("invitationNotFound"));
+    final var accounts =
+        this.tenants.findAllByIds(
+            Set.of(collaborator.getTenantId(), collaborator.getInvitedById()));
+    final var tenant = accounts.get(collaborator.getTenantId());
+    final var inviter = accounts.get(collaborator.getInvitedById());
+    if (tenant == null || inviter == null) {
+      throw new ItemNotFoundException("invitationNotFound");
+    }
+
     return new InvitationTokenInfo(
-        collaborator.getRepo().getOwner().getUsername(),
-        collaborator.getRepo().getName(),
-        collaborator.getTenant().getUsername(),
-        collaborator.getInvitedBy().getUsername(),
+        repo.ownerUsername(),
+        repo.name(),
+        tenant.username(),
+        inviter.username(),
         collaborator.getPermissions(),
         collaborator.getTokenExpiresAt());
   }
@@ -356,7 +370,7 @@ public class CollaboratorService implements CollaboratorAccessPort {
             .findByInviteToken(token)
             .orElseThrow(() -> new ItemNotFoundException("invitationNotFound"));
 
-    if (!collaborator.getTenant().getId().equals(requesterId)) {
+    if (!collaborator.getTenantId().equals(requesterId)) {
       throw new AccessNotAllowedException("invitationNotForYou");
     }
 
@@ -389,7 +403,7 @@ public class CollaboratorService implements CollaboratorAccessPort {
             .findByInviteToken(token)
             .orElseThrow(() -> new ItemNotFoundException("invitationNotFound"));
 
-    if (!collaborator.getTenant().getId().equals(requesterId)) {
+    if (!collaborator.getTenantId().equals(requesterId)) {
       throw new AccessNotAllowedException("invitationNotForYou");
     }
 
@@ -424,21 +438,21 @@ public class CollaboratorService implements CollaboratorAccessPort {
       final String targetUsername) {
 
     final var repo =
-        this.repoRepository
-            .findByOwnerUsernameAndName(ownerUsername, repoName)
+        this.repoLookup
+            .find(ownerUsername, repoName)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    if (!repo.getOwner().getId().equals(requesterId)) {
+    if (!repo.ownerId().equals(requesterId)) {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 
     final var target =
-        this.tenantRepository
+        this.tenants
             .findByUsername(targetUsername)
             .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
 
     return this.collaboratorRepository
-        .findByRepoIdAndTenantId(repo.getId(), target.getId())
+        .findByRepoIdAndTenantId(repo.id(), target.id())
         .orElseThrow(() -> new ItemNotFoundException("collaboratorNotFound"));
   }
 }

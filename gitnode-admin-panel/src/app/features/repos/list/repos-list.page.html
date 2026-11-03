@@ -47,12 +47,14 @@
       @for (repo of repos(); track repo.id) {
       <li class="space-y-2 p-4">
         <div class="flex flex-wrap items-center gap-2">
-          <span class="min-w-0 break-all font-semibold">{{ repo.fullName }}</span>
-          @if (repo.isPrivate) { <span class="badge-pill">Private</span> }
-          @else { <span class="badge-pill badge-pill--success">Public</span> }
-          @if (repo.isArchived) { <span class="badge-pill badge-pill--neutral">Archived</span> }
+          <span class="min-w-0 font-semibold break-all">{{ repo.fullName }}</span>
+          @if (repo.isPrivate) { <span class="badge-pill">Private</span> } @else {
+          <span class="badge-pill badge-pill--success">Public</span> } @if (repo.isArchived) {
+          <span class="badge-pill badge-pill--neutral">Archived</span> }
         </div>
-        @if (repo.description) { <p class="text-base-content/70 break-words text-sm">{{ repo.description }}</p> }
+        @if (repo.description) {
+        <p class="text-base-content/70 text-sm break-words">{{ repo.description }}</p>
+        }
         <p class="text-base-content/60 flex flex-wrap gap-x-3 gap-y-1 text-xs">
           <span>Default branch: {{ repo.defaultBranch }}</span><span>Created {{ formatDate(repo.createdAt) }}</span>
         </p>

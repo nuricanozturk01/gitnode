@@ -17,8 +17,11 @@ export const repoPermissionGuard: CanActivateFn = async (route) => {
     try {
       const invitation = await collaborators.getMyInvitation(owner, repo);
       const permission = route.data['permission'] as CollaboratorPermission;
-      if (invitation.status === 'ACCEPTED'
-        && (invitation.permissions.includes(permission) || invitation.permissions.includes('ADMIN'))) return true;
+      if (
+        invitation.status === 'ACCEPTED' &&
+        (invitation.permissions.includes(permission) || invitation.permissions.includes('ADMIN'))
+      )
+        return true;
     } catch {
       // Treat missing or inaccessible invitations as no permission.
     }

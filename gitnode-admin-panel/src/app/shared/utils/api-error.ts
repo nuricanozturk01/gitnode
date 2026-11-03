@@ -2,6 +2,8 @@ import { HttpErrorResponse } from '@angular/common/http';
 
 const BACKEND_ERROR_MESSAGES: Record<string, string> = {
   wrongPassword: 'Invalid username or password.',
+  twoFactorRequired: 'Enter the code from your authenticator app.',
+  invalidTwoFactorCode: 'Invalid or expired authentication code.',
   userNotExist: 'Invalid username or password.',
   userDisabled: 'This account has been disabled.',
   platformAdminRequired: 'Platform administrator access required.',

@@ -1,4 +1,5 @@
 import { Component, ChangeDetectionStrategy, inject, OnInit, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LucideAngularModule } from 'lucide-angular';
@@ -28,7 +29,9 @@ export class LoginPage implements OnInit {
   readonly form = this.fb.nonNullable.group({
     usernameOrEmail: ['', [Validators.required]],
     password: ['', [Validators.required, Validators.minLength(6)]],
+    otp: [''],
   });
+  readonly needsOtp = signal(false);
 
   ngOnInit(): void {
     const queryError = this.route.snapshot.queryParamMap.get('error');
@@ -42,7 +45,8 @@ export class LoginPage implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.authService.login(this.form.getRawValue());
+      const { otp, ...credentials } = this.form.getRawValue();
+      await this.authService.login(otp.trim() ? { ...credentials, otp: otp.trim() } : credentials);
 
       if (this.platformAdminService.verified() !== true) {
         const allowed = await this.platformAdminService.verifyAccess();
@@ -57,6 +61,10 @@ export class LoginPage implements OnInit {
     } catch (e) {
       if (e instanceof PlatformAdminRequiredError) {
         await this.rejectNonAdmin(e.message);
+        return;
+      }
+      if (e instanceof HttpErrorResponse && (e.error === 'twoFactorRequired' || e.error?.message === 'twoFactorRequired')) {
+        this.needsOtp.set(true);
         return;
       }
       const msg = apiErrorMessage(e, 'Login failed');

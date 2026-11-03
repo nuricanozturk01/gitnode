@@ -36,7 +36,9 @@ public class AdminAuthService {
 
     final var loginInfo =
         this.authLoginPort.login(
-            form.getUsernameOrEmail().toLowerCase(Locale.getDefault()), form.getPassword());
+            form.getUsernameOrEmail().toLowerCase(Locale.getDefault()),
+            form.getPassword(),
+            form.getOtp());
 
     if (!this.platformAdminService.isPlatformAdmin(loginInfo.getUsername())) {
       throw new AccessNotAllowedException("platformAdminRequired");

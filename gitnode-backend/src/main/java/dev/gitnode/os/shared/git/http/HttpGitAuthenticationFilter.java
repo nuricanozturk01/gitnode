@@ -156,6 +156,7 @@ public class HttpGitAuthenticationFilter implements Filter {
       if (!this.passwordHasher.matches(password, tenant)) {
         throw new IllegalArgumentException("Invalid password");
       }
+      rejectWhenTwoFactor(tenant);
       if (this.passwordHasher.upgradeIfNeeded(tenant, password)) {
         this.tenantRepository.save(tenant);
       }
@@ -166,6 +167,14 @@ public class HttpGitAuthenticationFilter implements Filter {
       throw ex;
     } catch (final Exception ex) {
       throw new IllegalArgumentException("Auth failed: " + ex.getMessage(), ex);
+    }
+  }
+
+  private static void rejectWhenTwoFactor(
+      final dev.gitnode.os.shared.tenant.entities.Tenant tenant) {
+    if (tenant.isTotpEnabled()) {
+      throw new IllegalArgumentException(
+          "Two-factor authentication is enabled; use SSH to access repositories");
     }
   }
 

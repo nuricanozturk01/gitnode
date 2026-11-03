@@ -29,6 +29,8 @@ const COMMON_AUTH_ERRORS: Record<string, string> = {
 const STANDARD_AUTH_ERRORS: Record<string, string> = {
   ...COMMON_AUTH_ERRORS,
   wrongPassword: 'Invalid username or password.',
+  twoFactorRequired: 'Enter the code from your authenticator app.',
+  invalidTwoFactorCode: 'Invalid or expired authentication code.',
   userNotExist: 'Invalid username or password.',
 };
 
@@ -57,6 +59,9 @@ const REGISTRATION_ERRORS: Record<string, string> = {
 
 const PROFILE_ERRORS: Record<string, string> = {
   wrongPassword: 'Current password is incorrect.',
+  invalidTwoFactorCode: 'Invalid or expired authentication code.',
+  twoFactorAlreadyEnabled: 'Two-factor authentication is already enabled.',
+  twoFactorSetupRequired: 'Start the setup first.',
   validationError: 'Invalid request. Please check your input.',
   errorOccurred: 'Something went wrong. Please try again.',
 };

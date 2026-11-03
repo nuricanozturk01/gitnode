@@ -22,4 +22,7 @@ import org.jspecify.annotations.NullMarked;
 public interface AuthLoginPort {
 
   LoginInfo login(String usernameOrEmail, String password);
+
+  LoginInfo login(
+      String usernameOrEmail, String password, @org.jspecify.annotations.Nullable String otp);
 }

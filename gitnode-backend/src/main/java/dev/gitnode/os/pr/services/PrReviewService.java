@@ -107,7 +107,6 @@ public class PrReviewService {
       final dev.gitnode.os.shared.tenant.entities.Tenant author) {
     final var requester = author.getId();
     if (!author.isEnabled()
-        || pr.getReviewers().stream().noneMatch(user -> user.getId().equals(requester))
         || (!repo.getOwner().getId().equals(requester)
             && !this.access.hasPermission(
                 repo.getId(), requester, CollaboratorPermission.PULL_REQUEST_REVIEW)

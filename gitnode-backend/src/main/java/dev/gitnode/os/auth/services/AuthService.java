@@ -64,6 +64,7 @@ public class AuthService {
   private final PasswordRecoveryNotifier recoveryNotifier;
   private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
   private final AuditLogService auditLogService;
+  private final TwoFactorService twoFactor;
 
   @Value("${gitnode.audit.enabled:true}")
   private boolean auditEnabled;
@@ -118,6 +119,7 @@ public class AuthService {
 
       this.checkPassword(tenant, form);
       TenantAuthGuard.requireEnabled(tenant);
+      this.checkSecondFactor(tenant, form);
 
       final var loginInfo = this.createLoginInfo(tenant);
       this.auditLogin(AUTH_LOGIN_SUCCESS, tenant.getUsername(), null);
@@ -126,6 +128,19 @@ public class AuthService {
     } catch (final AccessNotAllowedException ex) {
       this.auditLogin(AUTH_LOGIN_FAILED, usernameOrEmail, ex.getMessage());
       throw ex;
+    }
+  }
+
+  private void checkSecondFactor(final Tenant tenant, final LoginForm form) {
+
+    if (!tenant.isTotpEnabled()) {
+      return;
+    }
+    if (form.getOtp() == null || form.getOtp().isBlank()) {
+      throw new AccessNotAllowedException("twoFactorRequired");
+    }
+    if (!this.twoFactor.verifyLogin(tenant, form.getOtp())) {
+      throw new AccessNotAllowedException("invalidTwoFactorCode");
     }
   }
 

@@ -14,6 +14,7 @@
 /// limitations under the License.
 ///
 
+import { TwoFactorSettingsComponent } from './two-factor-settings.component';
 import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
@@ -64,7 +65,7 @@ const DEFAULT_USER_SETTINGS_TAB: UserSettingsTab = 'profile';
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-user-settings',
   standalone: true,
-  imports: [ModalFocusDirective, LucideAngularModule, FormsModule, RouterLink, MarkdownPipe, RelativeTimePipe],
+  imports: [TwoFactorSettingsComponent, ModalFocusDirective, LucideAngularModule, FormsModule, RouterLink, MarkdownPipe, RelativeTimePipe],
   templateUrl: './user-settings.page.html',
   styleUrl: './user-settings.page.css',
 })

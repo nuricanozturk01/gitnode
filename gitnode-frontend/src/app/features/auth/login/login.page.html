@@ -103,6 +103,27 @@
               }
             </div>
 
+            @if (needsOtp()) {
+            <div class="form-control">
+              <label class="label" for="otp">
+                <span class="label-text font-medium">Authentication code</span>
+              </label>
+              <input
+                id="otp"
+                type="text"
+                formControlName="otp"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="32"
+                placeholder="123456 or recovery code"
+                class="input input-bordered w-full"
+              />
+              <span class="label"
+                ><span class="label-text-alt">Open your authenticator app, or use a recovery code.</span></span
+              >
+            </div>
+            }
+
             <button type="submit" class="btn btn-primary mt-2 w-full" [disabled]="form.invalid || loading()">
               @if (loading()) {
               <span class="loading loading-spinner loading-sm"></span>

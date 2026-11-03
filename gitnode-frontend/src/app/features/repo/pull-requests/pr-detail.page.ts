@@ -16,7 +16,7 @@
 
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, DestroyRef } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, computed, effect, DestroyRef, HostListener } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink, ActivatedRoute } from '@angular/router';
 import { parentParamMapSignal, paramMapSignal } from '../../../core/repo/utils/route-param-signals';
@@ -101,6 +101,7 @@ export class PrDetailPage {
   readonly reviewsError = signal(false);
   readonly reviewsLoading = signal(false);
   readonly reviewSubmitting = signal(false);
+  readonly reviewDialogOpen = signal(false);
   readonly reviewBody = signal('');
   readonly reviewState = signal<PrReview['state']>('COMMENTED');
   readonly moreCommentsError = signal(false);
@@ -228,8 +229,8 @@ export class PrDetailPage {
   });
 
   readonly generalComments = computed(() => this.comments().filter((c) => !c.filePath && !c.lineNumber));
+  readonly canSubmitReview = computed(() => this.canReview() && !!this.reviewHeadSha() && !!this.reviewTargetSha());
   readonly hasMergeReviewer = computed(() => this.reviewers().some((reviewer) => reviewer.canMerge));
-  readonly isAssignedReviewer = computed(() => this.reviewers().some((reviewer) => reviewer.username === this.currentUsername()));
 
   private readonly lineCommentsByKey = computed(() => {
     const map = new Map<string, PrCommentInfo[]>();
@@ -310,6 +311,7 @@ export class PrDetailPage {
     this.reviewTargetSha.set('');
     this.reviewBody.set('');
     this.reviewsError.set(false);
+    this.reviewDialogOpen.set(false);
     this.reviewSubmitting.set(false);
     this.reviewerNames.set('');
     this.reviewersError.set(false);
@@ -389,6 +391,7 @@ export class PrDetailPage {
     const request = this.dataRequest;
     this.reviewsLoading.set(true);
     this.reviewsError.set(false);
+    this.reviewDialogOpen.set(false);
     try {
       const data = await this.prService.getReviews(this.owner(), this.repoName(), this.number());
       if (request !== this.dataRequest) return;
@@ -400,6 +403,21 @@ export class PrDetailPage {
     } finally {
       if (request === this.dataRequest) this.reviewsLoading.set(false);
     }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.reviewDialogOpen()) this.closeReviewDialog();
+  }
+
+  openReviewDialog(): void {
+    const own = this.pr()?.author.username === this.currentUsername();
+    if (own) this.reviewState.set('COMMENTED');
+    this.reviewDialogOpen.set(true);
+  }
+
+  closeReviewDialog(): void {
+    this.reviewDialogOpen.set(false);
   }
 
   async submitReview(): Promise<void> {
@@ -415,6 +433,8 @@ export class PrDetailPage {
       this.reviews.update((reviews) => [...reviews, review]);
       this.requirementsRefresh.update((n) => n + 1);
       this.reviewBody.set('');
+      this.reviewState.set('COMMENTED');
+      this.reviewDialogOpen.set(false);
       this.toast.success('Review submitted');
     } catch (error) {
       if (request === this.dataRequest) this.toast.error(apiErrorMessage(error, 'Failed to submit review'));

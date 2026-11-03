@@ -21,7 +21,8 @@ import { LucideAngularModule } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 import { AuthService } from '../../../core/auth/services/auth.service';
 import { ToastService } from '../../../core/toast/toast.service';
-import { authErrorMessage, authQueryErrorMessage } from '../../../shared/utils/api-error.utils';
+import { HttpErrorResponse } from '@angular/common/http';
+import { authErrorMessage, authQueryErrorMessage, parseBackendErrorCode } from '../../../shared/utils/api-error.utils';
 
 type LoginMode = 'standard' | 'ldap' | 'saml';
 
@@ -43,10 +44,12 @@ export class LoginPage implements OnInit {
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
   readonly loginMode = signal<LoginMode>('standard');
+  readonly needsOtp = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     usernameOrEmail: ['', [Validators.required]],
     password: ['', [Validators.required, Validators.minLength(6)]],
+    otp: [''],
   });
 
   readonly ldapForm = this.fb.nonNullable.group({
@@ -96,11 +99,17 @@ export class LoginPage implements OnInit {
     this.loading.set(true);
     this.error.set(null);
     try {
-      await this.authService.login(this.form.getRawValue());
+      const { otp, ...credentials } = this.form.getRawValue();
+      await this.authService.login(otp.trim() ? { ...credentials, otp: otp.trim() } : credentials);
       this.toast.success('Login successful');
       this.router.navigate(['/dashboard']);
     } catch (e) {
       const msg = authErrorMessage(e, 'standard', 'Login failed');
+      if (e instanceof HttpErrorResponse && parseBackendErrorCode(e.error) === 'twoFactorRequired') {
+        this.needsOtp.set(true);
+        this.error.set(null);
+        return;
+      }
       this.error.set(msg);
       this.toast.error(msg);
     } finally {

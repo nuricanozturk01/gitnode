@@ -44,7 +44,7 @@ class AdminAuthServiceTest {
   void login_returnsAdminLoginInfo_whenPlatformAdmin() {
 
     final var form = AdminLoginForm.builder().usernameOrEmail("admin").password("Admin123").build();
-    when(authLoginPort.login("admin", "Admin123"))
+    when(authLoginPort.login("admin", "Admin123", null))
         .thenReturn(
             LoginInfo.builder()
                 .username("admin")
@@ -68,7 +68,7 @@ class AdminAuthServiceTest {
   void login_throws_whenNotPlatformAdmin() {
 
     final var form = AdminLoginForm.builder().usernameOrEmail("alice").password("Alice123").build();
-    when(authLoginPort.login("alice", "Alice123"))
+    when(authLoginPort.login("alice", "Alice123", null))
         .thenReturn(LoginInfo.builder().username("alice").email("alice@example.com").build());
     when(platformAdminService.isPlatformAdmin("alice")).thenReturn(false);
 

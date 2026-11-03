@@ -12,6 +12,7 @@ export interface TokenResponse {
 export interface LoginForm {
   usernameOrEmail: string;
   password: string;
+  otp?: string;
 }
 
 export interface OrganizationSummary {

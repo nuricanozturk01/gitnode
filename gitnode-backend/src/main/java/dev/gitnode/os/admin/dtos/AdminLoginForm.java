@@ -40,4 +40,8 @@ public class AdminLoginForm {
   @Size(min = 6, max = 50)
   @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).+$")
   private String password;
+
+  @jakarta.validation.constraints.Size(max = 32)
+  @org.jspecify.annotations.Nullable
+  private String otp;
 }

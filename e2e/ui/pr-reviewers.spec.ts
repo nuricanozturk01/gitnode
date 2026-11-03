@@ -45,6 +45,7 @@ test('reviewers can be assigned and merge requires an eligible reviewer', async 
   await page.getByRole('button', { name: 'Save reviewers' }).click();
   await expect(page.getByText('demo (@demo)')).toBeVisible();
   await expect(merge).toBeEnabled();
+  await page.getByRole('button', { name: 'Review changes' }).first().click();
   await page.getByLabel('Review comment').fill('Please check this');
   await page.getByRole('button', { name: 'Submit review' }).click();
   await expect(page.getByText('Please check this')).toBeVisible();

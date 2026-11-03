@@ -37,4 +37,7 @@ public class LoginForm {
   @Size(min = 6, max = 50)
   @Pattern(regexp = "^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=\\S+$).+$")
   private String password;
+
+  @Size(max = 32)
+  private String otp;
 }

@@ -52,6 +52,18 @@ public class Tenant {
   @Column(length = 16)
   private String salt;
 
+  @Column(name = "totp_secret", columnDefinition = "TEXT")
+  private String totpSecret;
+
+  @Column(name = "totp_enabled", nullable = false)
+  private boolean totpEnabled;
+
+  @Column(name = "totp_recovery_codes", columnDefinition = "TEXT")
+  private String totpRecoveryCodes;
+
+  @Column(name = "totp_last_step")
+  private Long totpLastStep;
+
   @Column(name = "display_name", length = 100)
   private String displayName;
 

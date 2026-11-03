@@ -458,19 +458,8 @@
           @if (review.body) { <p class="mt-1 whitespace-pre-wrap">{{ review.body }}</p> }
         </article>
         } @empty { <p class="text-base-content/60 text-sm">No reviews yet.</p> }
-        @if (isLoggedIn() && isAssignedReviewer() && p.status === 'OPEN' && reviewHeadSha() && reviewTargetSha()) {
-        <form class="space-y-2" (ngSubmit)="submitReview()">
-          <p class="text-base-content/60 text-xs">Reviewing commit {{ reviewHeadSha().slice(0, 7) }}.</p>
-          <label for="review-state" class="block text-sm">Review decision</label>
-          <select id="review-state" name="reviewState" class="select select-bordered select-sm" [ngModel]="reviewState()" (ngModelChange)="reviewState.set($event)">
-            <option value="COMMENTED">Comment</option>
-            @if (p.author.username !== currentUsername()) { <option value="APPROVED">Approve</option> }
-            <option value="CHANGES_REQUESTED">Request changes</option>
-          </select>
-          <label for="review-body" class="block text-sm">Review comment</label>
-          <textarea id="review-body" name="reviewBody" class="textarea textarea-bordered w-full" maxlength="65535" [ngModel]="reviewBody()" (ngModelChange)="reviewBody.set($event)"></textarea>
-          <button type="submit" class="btn btn-primary btn-sm" [disabled]="reviewSubmitting() || (reviewState() !== 'APPROVED' && !reviewBody().trim())">Submit review</button>
-        </form>
+        @if (canSubmitReview() && p.status === 'OPEN') {
+        <button type="button" class="btn btn-primary btn-sm" (click)="openReviewDialog()">Review changes</button>
         }
         }
       </section>
@@ -671,6 +660,9 @@
         <label class="sr-only" for="pr-file-search">Filter changed files</label>
         <input id="pr-file-search" type="search" class="input input-bordered input-sm w-full sm:max-w-xs" placeholder="Filter changed files" autocomplete="off" [ngModel]="fileQuery()" (ngModelChange)="fileQuery.set($event)" />
         @if (fileQuery()) { <span class="text-base-content/70 text-xs" role="status">{{ visibleFiles().length }} of {{ files().length }} files</span> }
+        @if (canSubmitReview() && p.status === 'OPEN') {
+        <button type="button" class="btn btn-success btn-sm ml-auto" (click)="openReviewDialog()">Review changes</button>
+        }
       </div>
       @if (visibleFiles().length === 0) { <p class="text-base-content/70 py-8 text-center text-sm">No changed files match "{{ fileQuery() }}".</p> }
       <div class="border-base-300/70 overflow-hidden rounded-lg border">
@@ -1069,4 +1061,40 @@
     }
   </section>
   }
+  @if (pr(); as p) { @if (reviewDialogOpen()) {
+  @let ownPr = p.author.username === currentUsername();
+  <dialog class="modal modal-open" aria-labelledby="review-dialog-title">
+    <div class="modal-box max-w-xl">
+      <div class="mb-3 flex items-center justify-between">
+        <h2 id="review-dialog-title" class="text-base font-semibold">Finish your review</h2>
+        <button type="button" class="btn btn-ghost btn-sm btn-circle" aria-label="Close" (click)="closeReviewDialog()">✕</button>
+      </div>
+      <form class="space-y-3" (ngSubmit)="submitReview()">
+        <p class="text-base-content/60 text-xs">Reviewing commit {{ reviewHeadSha().slice(0, 7) }}.</p>
+        <label for="review-body" class="sr-only">Review comment</label>
+        <textarea id="review-body" name="reviewBody" rows="5" placeholder="Leave a comment" class="textarea textarea-bordered w-full" maxlength="65535" [ngModel]="reviewBody()" (ngModelChange)="reviewBody.set($event)"></textarea>
+        <fieldset class="space-y-2">
+          <legend class="sr-only">Review decision</legend>
+          <label class="flex cursor-pointer items-start gap-3">
+            <input type="radio" name="reviewState" class="radio radio-sm mt-1" value="COMMENTED" [checked]="reviewState() === 'COMMENTED'" (change)="reviewState.set('COMMENTED')" />
+            <span><span class="block text-sm font-medium">Comment</span><span class="text-base-content/60 text-xs">Submit general feedback without explicit approval.</span></span>
+          </label>
+          <label class="flex items-start gap-3" [class.cursor-pointer]="!ownPr" [class.opacity-50]="ownPr">
+            <input type="radio" name="reviewState" class="radio radio-sm mt-1" value="APPROVED" [disabled]="ownPr" [checked]="reviewState() === 'APPROVED'" (change)="reviewState.set('APPROVED')" />
+            <span><span class="block text-sm font-medium">Approve</span><span class="text-base-content/60 text-xs">{{ ownPr ? "Pull request authors can't approve their own pull requests." : 'Submit feedback and approve merging these changes.' }}</span></span>
+          </label>
+          <label class="flex items-start gap-3" [class.cursor-pointer]="!ownPr" [class.opacity-50]="ownPr">
+            <input type="radio" name="reviewState" class="radio radio-sm mt-1" value="CHANGES_REQUESTED" [disabled]="ownPr" [checked]="reviewState() === 'CHANGES_REQUESTED'" (change)="reviewState.set('CHANGES_REQUESTED')" />
+            <span><span class="block text-sm font-medium">Request changes</span><span class="text-base-content/60 text-xs">{{ ownPr ? "Pull request authors can't request changes on their own pull requests." : 'Submit feedback that must be addressed before merging.' }}</span></span>
+          </label>
+        </fieldset>
+        <div class="modal-action mt-2">
+          <button type="button" class="btn btn-ghost btn-sm" (click)="closeReviewDialog()">Cancel</button>
+          <button type="submit" class="btn btn-success btn-sm" [disabled]="reviewSubmitting() || (reviewState() !== 'APPROVED' && !reviewBody().trim())">Submit review</button>
+        </div>
+      </form>
+    </div>
+    <button type="button" class="modal-backdrop" tabindex="-1" aria-label="Close review dialog" (click)="closeReviewDialog()"></button>
+  </dialog>
+  } }
 </div>

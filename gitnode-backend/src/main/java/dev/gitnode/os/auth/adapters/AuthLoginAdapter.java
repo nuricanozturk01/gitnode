@@ -32,9 +32,17 @@ public class AuthLoginAdapter implements AuthLoginPort {
 
   @Override
   public LoginInfo login(final String usernameOrEmail, final String password) {
+    return this.login(usernameOrEmail, password, null);
+  }
+
+  @Override
+  public LoginInfo login(
+      final String usernameOrEmail,
+      final String password,
+      final @org.jspecify.annotations.Nullable String otp) {
 
     final var form =
-        LoginForm.builder().usernameOrEmail(usernameOrEmail).password(password).build();
+        LoginForm.builder().usernameOrEmail(usernameOrEmail).password(password).otp(otp).build();
 
     return this.authService.login(form);
   }

@@ -12,6 +12,8 @@ for (const width of [375, 1280]) {
     await page.keyboard.press('Tab');
     await expect(page.getByLabel('Username or Email')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#login-username-error')).toHaveText('Required');
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
   });
 }

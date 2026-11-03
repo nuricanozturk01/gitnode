@@ -15,30 +15,68 @@ test('reviewers can be assigned and merge requires an eligible reviewer', async 
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (path === '/api/users/me') return route.fulfill({ json: user });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (path === '/api/repos/demo/project/pulls/1') return route.fulfill({ json: {
-      id: 'pr-id', number: 1, title: 'Update', status: 'OPEN', author: user,
-      sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null,
-      mergedBy: null, createdAt: null,
-    } });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls/1')
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Update',
+          status: 'OPEN',
+          author: user,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          mergedBy: null,
+          createdAt: null,
+        },
+      });
     if (path.endsWith('/reviews')) {
-      if (request.method() === 'POST') return route.fulfill({ json: {
-        id: 'review-id', username: 'demo', state: 'COMMENTED', body: request.postDataJSON().body,
-        commitSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), createdAt: null,
-      } });
-      return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
+      if (request.method() === 'POST')
+        return route.fulfill({
+          json: {
+            id: 'review-id',
+            username: 'demo',
+            state: 'COMMENTED',
+            body: request.postDataJSON().body,
+            commitSha: 'a'.repeat(40),
+            targetSha: 'b'.repeat(40),
+            createdAt: null,
+          },
+        });
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
     }
     if (path.endsWith('/reviewers')) {
       if (request.method() === 'PUT') assigned = request.postDataJSON().usernames;
-      return route.fulfill({ json: assigned.map((username) => ({ username, displayName: username, avatarUrl: null, canMerge: true })) });
+      return route.fulfill({
+        json: assigned.map((username) => ({
+          username,
+          displayName: username,
+          avatarUrl: null,
+          canMerge: true,
+        })),
+      });
     }
-    if (path.endsWith('/comments')) return route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
+    if (path.endsWith('/comments'))
+      return route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
     return route.fulfill({ status: 404 });
   });
   await page.goto('/demo/project/pulls/1');
-  await expect(page.getByText('Assign at least one reviewer with merge permission before merging.')).toBeVisible();
+  await expect(
+    page.getByText('Assign at least one reviewer with merge permission before merging.'),
+  ).toBeVisible();
   const merge = page.getByRole('button', { name: 'Merge', exact: true }).first();
   await expect(merge).toBeDisabled();
   await page.getByLabel('Reviewer usernames, separated by commas').fill('demo');

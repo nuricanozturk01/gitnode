@@ -16,15 +16,75 @@ test('a closed pull request can be reopened', async ({ page }) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
     if (path === '/api/users/me') return route.fulfill({ json: user });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: { id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false } });
-    if (path === '/api/repos/demo/project/pulls/1') return route.fulfill({ json: { id: 'pr-id', number: 1, title: 'Done', status: status, author: user, mergedBy: null, sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null, createdAt: null } });
-    if (path === '/api/repos/demo/project/pulls/1/reopen') { reopened += 1; status = 'OPEN'; return route.fulfill({ json: { id: 'pr-id', number: 1, title: 'Done', status, author: user, mergedBy: null, sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null, createdAt: null } }); }
-    if (path.endsWith('/merge-requirements')) return route.fulfill({ json: { protectedBranch: false, requiredApprovals: 0, currentApprovals: 0, changesRequestedBy: [], checks: [], satisfied: true } });
-    if (path.endsWith('/conflicts')) return route.fulfill({ json: { mergeable: true, sourceSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), files: [] } });
-    if (path === '/api/repos/demo/project/branches') return route.fulfill({ json: [{ name: 'main', isDefault: true }] });
-    if (path.endsWith('/reviews')) return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls/1')
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Done',
+          status: status,
+          author: user,
+          mergedBy: null,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          createdAt: null,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls/1/reopen') {
+      reopened += 1;
+      status = 'OPEN';
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Done',
+          status,
+          author: user,
+          mergedBy: null,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          createdAt: null,
+        },
+      });
+    }
+    if (path.endsWith('/merge-requirements'))
+      return route.fulfill({
+        json: {
+          protectedBranch: false,
+          requiredApprovals: 0,
+          currentApprovals: 0,
+          changesRequestedBy: [],
+          checks: [],
+          satisfied: true,
+        },
+      });
+    if (path.endsWith('/conflicts'))
+      return route.fulfill({
+        json: { mergeable: true, sourceSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), files: [] },
+      });
+    if (path === '/api/repos/demo/project/branches')
+      return route.fulfill({ json: [{ name: 'main', isDefault: true }] });
+    if (path.endsWith('/reviews'))
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
     if (path.endsWith('/reviewers')) return route.fulfill({ json: [] });
-    if (path.endsWith('/comments')) return route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
+    if (path.endsWith('/comments'))
+      return route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
     return route.fulfill({ status: 404 });
   });
   await page.goto('/demo/project/pulls/1');

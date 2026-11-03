@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 
-test('the pull request list shows labels, milestone and assignees and filters by them', async ({ page }) => {
+test('the pull request list shows labels, milestone and assignees and filters by them', async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     localStorage.setItem('token', 'test-token');
     localStorage.setItem('refresh_token', 'test-refresh');
@@ -10,19 +12,78 @@ test('the pull request list shows labels, milestone and assignees and filters by
   });
   const user = { id: 'user-id', username: 'demo', name: 'Demo', email: '', avatarUrl: null };
   const author = { name: 'Demo', email: '', username: 'demo', avatarUrl: '' };
-  const pr = (number: number, extra: object) => ({ id: `pr-${number}`, number, title: `PR ${number}`, status: 'OPEN', isDraft: false, author, mergedBy: null, sourceBranch: `f${number}`, targetBranch: 'main', mergeSha: null, commentCount: 0, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), mergedAt: null, closedAt: null, labels: [], assignees: [], milestone: null, ...extra });
-  const rows = [pr(1, { labels: [{ id: 'l1', name: 'bug', color: 'd73a4a', description: null }], assignees: [author], milestone: { id: 'm1', title: 'v1', status: 'OPEN' } }), pr(2, {})];
+  const pr = (number: number, extra: object) => ({
+    id: `pr-${number}`,
+    number,
+    title: `PR ${number}`,
+    status: 'OPEN',
+    isDraft: false,
+    author,
+    mergedBy: null,
+    sourceBranch: `f${number}`,
+    targetBranch: 'main',
+    mergeSha: null,
+    commentCount: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    mergedAt: null,
+    closedAt: null,
+    labels: [],
+    assignees: [],
+    milestone: null,
+    ...extra,
+  });
+  const rows = [
+    pr(1, {
+      labels: [{ id: 'l1', name: 'bug', color: 'd73a4a', description: null }],
+      assignees: [author],
+      milestone: { id: 'm1', title: 'v1', status: 'OPEN' },
+    }),
+    pr(2, {}),
+  ];
   const queries: string[] = [];
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
     if (url.pathname === '/api/users/me') return route.fulfill({ json: user });
-    if (url.pathname === '/api/repo/demo/project') return route.fulfill({ json: { id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false } });
-    if (url.pathname === '/api/repos/demo/project/labels') return route.fulfill({ json: [{ id: 'l1', name: 'bug', color: 'd73a4a', description: null }] });
-    if (url.pathname === '/api/repos/demo/project/milestones') return route.fulfill({ json: [{ id: 'm1', title: 'v1', description: '', status: 'OPEN', openIssues: 0, closedIssues: 0 }] });
+    if (url.pathname === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (url.pathname === '/api/repos/demo/project/labels')
+      return route.fulfill({
+        json: [{ id: 'l1', name: 'bug', color: 'd73a4a', description: null }],
+      });
+    if (url.pathname === '/api/repos/demo/project/milestones')
+      return route.fulfill({
+        json: [
+          {
+            id: 'm1',
+            title: 'v1',
+            description: '',
+            status: 'OPEN',
+            openIssues: 0,
+            closedIssues: 0,
+          },
+        ],
+      });
     if (url.pathname === '/api/repos/demo/project/pulls') {
       queries.push(url.search);
       const filtered = url.searchParams.get('labelId') ? [rows[0]] : rows;
-      return route.fulfill({ json: { content: filtered, number: 0, size: 25, totalElements: filtered.length, totalPages: 1 } });
+      return route.fulfill({
+        json: {
+          content: filtered,
+          number: 0,
+          size: 25,
+          totalElements: filtered.length,
+          totalPages: 1,
+        },
+      });
     }
     return route.fulfill({ status: 404 });
   });

@@ -15,16 +15,36 @@ test('mobile organizations list retries and keeps controls visible', async ({ pa
     if (path === '/api/admin/organizations') {
       calls++;
       if (calls === 2) return route.fulfill({ status: 500 });
-      return route.fulfill({ json: { content: calls === 1 ? [] : [{ name: 'Long organization name',
-        slug: 'a-very-long-organization-name-without-spaces', emailDomains: ['example.org'],
-        ssoEnabled: false, ldapEnabled: false, ldapConfigured: false }], totalPages: 1, totalElements: 1 } });
+      return route.fulfill({
+        json: {
+          content:
+            calls === 1
+              ? []
+              : [
+                  {
+                    name: 'Long organization name',
+                    slug: 'a-very-long-organization-name-without-spaces',
+                    emailDomains: ['example.org'],
+                    ssoEnabled: false,
+                    ldapEnabled: false,
+                    ldapConfigured: false,
+                  },
+                ],
+          totalPages: 1,
+          totalElements: 1,
+        },
+      });
     }
     return route.fulfill({ json: {} });
   });
   await page.goto('/organizations');
   await expect(page.getByText('Organizations could not be loaded.')).toBeVisible();
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.getByRole('link', { name: 'Edit Long organization name' }).first()).toBeVisible();
-  await expect(page.getByRole('checkbox', { name: 'Enable SAML for Long organization name' }).first()).toBeAttached();
+  await expect(
+    page.getByRole('link', { name: 'Edit Long organization name' }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('checkbox', { name: 'Enable SAML for Long organization name' }).first(),
+  ).toBeAttached();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

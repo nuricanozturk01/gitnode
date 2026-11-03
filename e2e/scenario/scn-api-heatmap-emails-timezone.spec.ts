@@ -13,14 +13,28 @@ interface Contributions {
   days: { breakdown: { commits: number } }[];
 }
 
-test('extra e-mail addresses attribute commits and the time zone moves the calendar', async ({ bareApi, intruder }, testInfo) => {
+test('extra e-mail addresses attribute commits and the time zone moves the calendar', async ({
+  bareApi,
+  intruder,
+}, testInfo) => {
   const username = `heatx_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
-  const registered = await bareApi.post('/api/auth/register', { data: { username, email: `${username}@example.org`, password: E2E_PASSWORD } });
+  const registered = await bareApi.post('/api/auth/register', {
+    data: { username, email: `${username}@example.org`, password: E2E_PASSWORD },
+  });
   const login = (await registered.json()) as ScenarioUser;
-  const owner: ScenarioUser = { ...login, username, email: `${username}@example.org`, password: E2E_PASSWORD, authorization: `Bearer ${login.token}` };
+  const owner: ScenarioUser = {
+    ...login,
+    username,
+    email: `${username}@example.org`,
+    password: E2E_PASSWORD,
+    authorization: `Bearer ${login.token}`,
+  };
   const headers = { Authorization: owner.authorization };
   const repo = await createScenarioRepo(bareApi, owner, { isPrivate: false });
-  const read = async () => (await (await bareApi.get(`/api/users/${username}/contributions`, { headers })).json()) as Contributions;
+  const read = async () =>
+    (await (
+      await bareApi.get(`/api/users/${username}/contributions`, { headers })
+    ).json()) as Contributions;
   const commits = (c: Contributions) => c.days.reduce((sum, day) => sum + day.breakdown.commits, 0);
   await expect.poll(async () => commits(await read()), { timeout: 20_000 }).toBe(1);
 
@@ -28,10 +42,20 @@ test('extra e-mail addresses attribute commits and the time zone moves the calen
   const emails = '/api/users/me/emails';
   const extra = `${username}.old@example.net`;
   expect((await bareApi.post(emails, { data: { email: extra } })).status()).toBe(401);
-  expect((await bareApi.post(emails, { headers, data: { email: 'not-an-address' } })).status()).toBe(400);
-  expect((await bareApi.post(emails, { headers, data: { email: owner.email } })).status()).toBe(400);
-  expect((await bareApi.post(emails, { headers, data: { email: intruder.email } })).status()).toBe(400);
-  expect((await bareApi.post(emails, { headers, data: { email: `x@users.noreply.example.org` } })).status()).toBe(400);
+  expect(
+    (await bareApi.post(emails, { headers, data: { email: 'not-an-address' } })).status(),
+  ).toBe(400);
+  expect((await bareApi.post(emails, { headers, data: { email: owner.email } })).status()).toBe(
+    400,
+  );
+  expect((await bareApi.post(emails, { headers, data: { email: intruder.email } })).status()).toBe(
+    400,
+  );
+  expect(
+    (
+      await bareApi.post(emails, { headers, data: { email: `x@users.noreply.example.org` } })
+    ).status(),
+  ).toBe(400);
   const added = await bareApi.post(emails, { headers, data: { email: extra.toUpperCase() } });
   expect(added.status()).toBe(201);
   const created = (await added.json()) as { id: string; email: string };
@@ -44,7 +68,17 @@ test('extra e-mail addresses attribute commits and the time zone moves the calen
     gitClone(httpGitRemoteUrl(username, repo.name, { username, password: E2E_PASSWORD }), workDir);
     fs.writeFileSync(path.join(workDir, 'old.txt'), 'old', 'utf8');
     runGit(['-C', workDir, 'add', '-A']);
-    runGit(['-C', workDir, '-c', 'user.name=Old Me', '-c', `user.email=${extra}`, 'commit', '-m', 'From an old address']);
+    runGit([
+      '-C',
+      workDir,
+      '-c',
+      'user.name=Old Me',
+      '-c',
+      `user.email=${extra}`,
+      'commit',
+      '-m',
+      'From an old address',
+    ]);
     runGit(['-C', workDir, 'push', 'origin', 'main']);
   } finally {
     removeWorkDir(workDir);
@@ -55,14 +89,27 @@ test('extra e-mail addresses attribute commits and the time zone moves the calen
   expect((await bareApi.delete(`${emails}/${created.id}`, { headers })).status()).toBe(404);
 
   // Time zone: unknown zones are refused and a far-east zone is a day ahead of a far-west one.
-  const profile = (timezone: string) => bareApi.patch('/api/users/me/profile', { headers, data: { bio: '', website: '', location: '', profileReadme: '', timezone } });
+  const profile = (timezone: string) =>
+    bareApi.patch('/api/users/me/profile', {
+      headers,
+      data: { bio: '', website: '', location: '', profileReadme: '', timezone },
+    });
   expect((await profile('Mars/Olympus')).status()).toBe(400);
   expect((await profile('Pacific/Kiritimati')).status()).toBe(200);
   const east = (await read()).rangeEnd;
   expect((await profile('Pacific/Pago_Pago')).status()).toBe(200);
   const west = (await read()).rangeEnd;
   expect(east > west).toBe(true);
-  expect(((await (await bareApi.get('/api/users/me', { headers })).json()) as { timezone: string }).timezone).toBe('Pacific/Pago_Pago');
+  expect(
+    ((await (await bareApi.get('/api/users/me', { headers })).json()) as { timezone: string })
+      .timezone,
+  ).toBe('Pacific/Pago_Pago');
   expect((await profile('')).status()).toBe(200);
-  expect(((await (await bareApi.get('/api/users/me', { headers })).json()) as { timezone: string | null }).timezone).toBeNull();
+  expect(
+    (
+      (await (await bareApi.get('/api/users/me', { headers })).json()) as {
+        timezone: string | null;
+      }
+    ).timezone,
+  ).toBeNull();
 });

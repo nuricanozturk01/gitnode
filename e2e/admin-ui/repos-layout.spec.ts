@@ -14,9 +14,22 @@ test('mobile repository list shows errors and wraps long names', async ({ page }
     const path = new URL(route.request().url()).pathname;
     if (path === '/api/admin/repos') {
       if (fail) return route.fulfill({ status: 500 });
-      return route.fulfill({ json: { content: [{ id: '1', fullName: 'owner/a-very-long-repository-name-without-spaces',
-        defaultBranch: 'main', isPrivate: true, isArchived: false, createdAt: '2026-01-01' }],
-        totalPages: 1, totalElements: 1 } });
+      return route.fulfill({
+        json: {
+          content: [
+            {
+              id: '1',
+              fullName: 'owner/a-very-long-repository-name-without-spaces',
+              defaultBranch: 'main',
+              isPrivate: true,
+              isArchived: false,
+              createdAt: '2026-01-01',
+            },
+          ],
+          totalPages: 1,
+          totalElements: 1,
+        },
+      });
     }
     return route.fulfill({ json: {} });
   });
@@ -24,6 +37,8 @@ test('mobile repository list shows errors and wraps long names', async ({ page }
   await expect(page.getByText('Repositories could not be loaded.')).toBeVisible();
   fail = false;
   await page.getByRole('button', { name: 'Try again' }).click();
-  await expect(page.getByText('owner/a-very-long-repository-name-without-spaces').first()).toBeVisible();
+  await expect(
+    page.getByText('owner/a-very-long-repository-name-without-spaces').first(),
+  ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });

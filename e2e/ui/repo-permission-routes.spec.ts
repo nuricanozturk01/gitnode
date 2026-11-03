@@ -8,19 +8,33 @@ test('accepted collaborators can open routes allowed by their permissions', asyn
     localStorage.setItem('refresh_expires_at', String(Date.now() + 60_000));
     localStorage.setItem('username', 'collaborator');
   });
-  const owner = { id: 'owner-id', username: 'demo', name: 'Demo', email: 'demo@example.org', avatarUrl: null };
+  const owner = {
+    id: 'owner-id',
+    username: 'demo',
+    name: 'Demo',
+    email: 'demo@example.org',
+    avatarUrl: null,
+  };
   let permissions = ['PUSH'];
   let status = 'ACCEPTED';
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/users/me') return route.fulfill({ json: { ...owner, username: 'collaborator' } });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (path.endsWith('/collaborators/invitation')) return route.fulfill({ json: { status, permissions } });
-    if (path.endsWith('/branches')) return route.fulfill({ json: [
-      { name: 'main', isDefault: true, lastCommitSha: 'abc' },
-    ] });
+    if (path === '/api/users/me')
+      return route.fulfill({ json: { ...owner, username: 'collaborator' } });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path.endsWith('/collaborators/invitation'))
+      return route.fulfill({ json: { status, permissions } });
+    if (path.endsWith('/branches'))
+      return route.fulfill({ json: [{ name: 'main', isDefault: true, lastCommitSha: 'abc' }] });
     if (path.endsWith('/tags')) return route.fulfill({ json: [] });
     return route.fulfill({ status: 404 });
   });

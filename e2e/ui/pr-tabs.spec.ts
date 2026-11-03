@@ -6,18 +6,45 @@ test('pull request sections support keyboard navigation on mobile', async ({ pag
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/reviewers')) return route.fulfill({ json: [] });
-    if (path.endsWith('/reviews')) return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (path === '/api/repos/demo/project/pulls/1') return route.fulfill({ json: {
-      id: 'pr-id', number: 1, title: 'Improve navigation', status: 'OPEN', author: user,
-      sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null,
-      mergedBy: null, createdAt: null,
-    } });
-    if (path.endsWith('/comments')) return route.fulfill({ json: {
-      content: [], number: 0, totalElements: 0, totalPages: 0,
-    } });
+    if (path.endsWith('/reviews'))
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls/1')
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Improve navigation',
+          status: 'OPEN',
+          author: user,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          mergedBy: null,
+          createdAt: null,
+        },
+      });
+    if (path.endsWith('/comments'))
+      return route.fulfill({
+        json: {
+          content: [],
+          number: 0,
+          totalElements: 0,
+          totalPages: 0,
+        },
+      });
     if (path.endsWith('/commits')) return route.fulfill({ json: [] });
     return route.fulfill({ status: 404 });
   });
@@ -30,7 +57,9 @@ test('pull request sections support keyboard navigation on mobile', async ({ pag
   await page.keyboard.press('Enter');
   await expect(commits).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('tabpanel', { name: 'Commits' })).toBeVisible();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });
 
 test('pull request commits and files can be retried after loading fails', async ({ page }) => {
@@ -40,22 +69,50 @@ test('pull request commits and files can be retried after loading fails', async 
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/reviewers')) return route.fulfill({ json: [] });
-    if (path.endsWith('/reviews')) return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (path === '/api/repos/demo/project/pulls/1') return route.fulfill({ json: {
-      id: 'pr-id', number: 1, title: 'Improve navigation', status: 'OPEN', author: user,
-      sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null,
-      mergedBy: null, createdAt: null,
-    } });
-    if (path.endsWith('/comments')) return route.fulfill({ json: {
-      content: [], number: 0, totalElements: 0, totalPages: 0,
-    } });
+    if (path.endsWith('/reviews'))
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls/1')
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Improve navigation',
+          status: 'OPEN',
+          author: user,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          mergedBy: null,
+          createdAt: null,
+        },
+      });
+    if (path.endsWith('/comments'))
+      return route.fulfill({
+        json: {
+          content: [],
+          number: 0,
+          totalElements: 0,
+          totalPages: 0,
+        },
+      });
     if (path.endsWith('/commits') || path.endsWith('/diff') || path.endsWith('/actions/runs')) {
       // Other parts of the page (the activity timeline) read these too, so failures are switched
       // off explicitly instead of being counted per request.
-      if ([...failing].some((suffix) => path.endsWith(suffix))) return route.fulfill({ status: 500 });
+      if ([...failing].some((suffix) => path.endsWith(suffix)))
+        return route.fulfill({ status: 500 });
       return route.fulfill({ json: path.endsWith('/actions/runs') ? { content: [] } : [] });
     }
     if (path.endsWith('/review')) {
@@ -93,17 +150,37 @@ test('pull request and comment failures can be retried independently', async ({ 
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/reviewers')) return route.fulfill({ json: [] });
-    if (path.endsWith('/reviews')) return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
+    if (path.endsWith('/reviews'))
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
     if (path === '/api/repos/demo/project/pulls/1') {
       if (++prAttempts === 1) return route.fulfill({ status: 500 });
-      return route.fulfill({ json: {
-        id: 'pr-id', number: 1, title: 'Improve navigation', status: 'OPEN', author: user,
-        sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null,
-        mergedBy: null, createdAt: null,
-      } });
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Improve navigation',
+          status: 'OPEN',
+          author: user,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          mergedBy: null,
+          createdAt: null,
+        },
+      });
     }
     if (path.endsWith('/comments')) {
       if (++commentAttempts <= 2) return route.fulfill({ status: 500 });
@@ -126,22 +203,63 @@ test('changed file disclosure is accessible on mobile', async ({ page }) => {
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/reviewers')) return route.fulfill({ json: [] });
-    if (path.endsWith('/reviews')) return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (path === '/api/repos/demo/project/pulls/1') return route.fulfill({ json: {
-      id: 'pr-id', number: 1, title: 'Update file', status: 'OPEN', author: user,
-      sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null,
-      mergedBy: null, createdAt: null,
-    } });
-    if (path.endsWith('/comments')) return route.fulfill({ json: {
-      content: [], number: 0, totalElements: 0, totalPages: 0,
-    } });
-    if (path.endsWith('/diff')) return route.fulfill({ json: [{
-      oldPath: 'example.txt', newPath: 'example.txt', changeType: 'MODIFY', additions: 1, deletions: 0,
-      hunks: [{ header: '@@ -0,0 +1 @@', lines: [{ type: 'ADD', oldLineNumber: 0, newLineNumber: 1, content: 'example' }] }],
-    }] });
+    if (path.endsWith('/reviews'))
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls/1')
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Update file',
+          status: 'OPEN',
+          author: user,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          mergedBy: null,
+          createdAt: null,
+        },
+      });
+    if (path.endsWith('/comments'))
+      return route.fulfill({
+        json: {
+          content: [],
+          number: 0,
+          totalElements: 0,
+          totalPages: 0,
+        },
+      });
+    if (path.endsWith('/diff'))
+      return route.fulfill({
+        json: [
+          {
+            oldPath: 'example.txt',
+            newPath: 'example.txt',
+            changeType: 'MODIFY',
+            additions: 1,
+            deletions: 0,
+            hunks: [
+              {
+                header: '@@ -0,0 +1 @@',
+                lines: [{ type: 'ADD', oldLineNumber: 0, newLineNumber: 1, content: 'example' }],
+              },
+            ],
+          },
+        ],
+      });
     return route.fulfill({ status: 404 });
   });
   await page.goto('/demo/project/pulls/1');
@@ -150,7 +268,9 @@ test('changed file disclosure is accessible on mobile', async ({ page }) => {
   await expect(file).toHaveAttribute('aria-expanded', 'true');
   await file.click();
   await expect(file).toHaveAttribute('aria-expanded', 'false');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });
 
 test('loading more comments reports errors and preserves existing comments', async ({ page }) => {
@@ -159,22 +279,54 @@ test('loading more comments reports errors and preserves existing comments', asy
   await page.route('**/api/**', (route) => {
     const url = new URL(route.request().url());
     if (url.pathname.endsWith('/reviewers')) return route.fulfill({ json: [] });
-    if (url.pathname.endsWith('/reviews')) return route.fulfill({ json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] } });
-    if (url.pathname === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (url.pathname === '/api/repos/demo/project/pulls/1') return route.fulfill({ json: {
-      id: 'pr-id', number: 1, title: 'Update file', status: 'OPEN', author: user,
-      sourceBranch: 'feature', targetBranch: 'main', isDraft: false, description: null,
-      mergedBy: null, createdAt: null,
-    } });
+    if (url.pathname.endsWith('/reviews'))
+      return route.fulfill({
+        json: { headSha: 'a'.repeat(40), targetSha: 'b'.repeat(40), reviews: [] },
+      });
+    if (url.pathname === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (url.pathname === '/api/repos/demo/project/pulls/1')
+      return route.fulfill({
+        json: {
+          id: 'pr-id',
+          number: 1,
+          title: 'Update file',
+          status: 'OPEN',
+          author: user,
+          sourceBranch: 'feature',
+          targetBranch: 'main',
+          isDraft: false,
+          description: null,
+          mergedBy: null,
+          createdAt: null,
+        },
+      });
     if (url.pathname.endsWith('/comments')) {
       const pageNumber = Number(url.searchParams.get('page'));
       if (pageNumber === 1 && ++moreAttempts === 1) return route.fulfill({ status: 500 });
-      return route.fulfill({ json: {
-        content: [{ id: `comment-${pageNumber}`, author: user, body: `Comment ${pageNumber}`, createdAt: null }],
-        number: pageNumber, totalElements: 2, totalPages: 2,
-      } });
+      return route.fulfill({
+        json: {
+          content: [
+            {
+              id: `comment-${pageNumber}`,
+              author: user,
+              body: `Comment ${pageNumber}`,
+              createdAt: null,
+            },
+          ],
+          number: pageNumber,
+          totalElements: 2,
+          totalPages: 2,
+        },
+      });
     }
     return route.fulfill({ status: 404 });
   });

@@ -43,18 +43,21 @@ test('issue assignment can be changed and removed only by an authorized user', a
     data: { addAssigneeUsername: owner.username },
   });
   expect(addOwner.status()).toBe(200);
-  expect((await addOwner.json()).assignees.map((user: { username: string }) => user.username).sort())
-    .toEqual([intruder.username, owner.username].sort());
+  expect(
+    (await addOwner.json()).assignees.map((user: { username: string }) => user.username).sort(),
+  ).toEqual([intruder.username, owner.username].sort());
   const reread = await bareApi.get(path, { headers });
-  expect((await reread.json()).assignees.map((user: { username: string }) => user.username).sort())
-    .toEqual([intruder.username, owner.username].sort());
+  expect(
+    (await reread.json()).assignees.map((user: { username: string }) => user.username).sort(),
+  ).toEqual([intruder.username, owner.username].sort());
   const removeIntruder = await bareApi.patch(path, {
     headers,
     data: { removeAssigneeUsername: intruder.username },
   });
   expect(removeIntruder.status()).toBe(200);
-  expect((await removeIntruder.json()).assignees.map((user: { username: string }) => user.username))
-    .toEqual([owner.username]);
+  expect(
+    (await removeIntruder.json()).assignees.map((user: { username: string }) => user.username),
+  ).toEqual([owner.username]);
   const conflictingUsername = await bareApi.patch(path, {
     headers,
     data: { assigneeId: id, assigneeUsername: intruder.username },
@@ -68,12 +71,19 @@ test('issue assignment can be changed and removed only by an authorized user', a
   const cleared = await bareApi.patch(path, { headers, data: { clearAssignee: true } });
   expect(cleared.status()).toBe(200);
   expect((await cleared.json()).assignee).toBeNull();
-  const concurrent = await Promise.all(Array.from({ length: 8 }, (_, index) => bareApi.patch(path, {
-    headers,
-    data: { addAssigneeUsername: index % 2 === 0 ? owner.username : intruder.username },
-  })));
+  const concurrent = await Promise.all(
+    Array.from({ length: 8 }, (_, index) =>
+      bareApi.patch(path, {
+        headers,
+        data: { addAssigneeUsername: index % 2 === 0 ? owner.username : intruder.username },
+      }),
+    ),
+  );
   expect(concurrent.map((response) => response.status())).toEqual(Array(8).fill(200));
   const afterConcurrent = await bareApi.get(path, { headers });
-  expect((await afterConcurrent.json()).assignees.map((user: { username: string }) => user.username).sort())
-    .toEqual([intruder.username, owner.username].sort());
+  expect(
+    (await afterConcurrent.json()).assignees
+      .map((user: { username: string }) => user.username)
+      .sort(),
+  ).toEqual([intruder.username, owner.username].sort());
 });

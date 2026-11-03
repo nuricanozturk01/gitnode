@@ -24,7 +24,9 @@ test('issue author can assign the issue to themselves and remove the assignee', 
     const url = new URL(route.request().url());
     if (url.pathname === '/api/users/me') return route.fulfill({ json: user });
     if (url.pathname === '/api/users/search') {
-      return route.fulfill({ json: [{ username: 'other', displayName: 'Other', avatarUrl: null }] });
+      return route.fulfill({
+        json: [{ username: 'other', displayName: 'Other', avatarUrl: null }],
+      });
     }
     if (url.pathname === '/api/repo/demo/project') {
       return route.fulfill({
@@ -51,7 +53,10 @@ test('issue author can assign the issue to themselves and remove the assignee', 
           assignees = assignees.filter((entry) => entry.username !== body.removeAssigneeUsername);
           assignee = assignees[0] ?? null;
         }
-        if (body.clearAssignee) { assignee = null; assignees = []; }
+        if (body.clearAssignee) {
+          assignee = null;
+          assignees = [];
+        }
       }
       return route.fulfill({
         json: {

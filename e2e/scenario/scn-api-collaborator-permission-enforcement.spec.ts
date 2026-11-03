@@ -328,9 +328,17 @@ test.describe('SCN-COLLAB-PERM-PR-MERGE — PULL_REQUEST_MERGE enforcement', () 
       expect(prResp.status()).toBe(201);
       const { number: prNumber } = await prResp.json();
 
-      expect((await bareApi.put(`/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/reviewers`, {
-        headers: { Authorization: owner.authorization }, data: { usernames: [owner.username] },
-      })).status()).toBe(200);
+      expect(
+        (
+          await bareApi.put(
+            `/api/repos/${owner.username}/${privateRepo.name}/pulls/${prNumber}/reviewers`,
+            {
+              headers: { Authorization: owner.authorization },
+              data: { usernames: [owner.username] },
+            },
+          )
+        ).status(),
+      ).toBe(200);
 
       await inviteAndAccept(
         bareApi,

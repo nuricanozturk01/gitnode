@@ -9,9 +9,27 @@ test('comments on a file and on a line can be written, edited and deleted', asyn
     localStorage.setItem('refresh_expires_at', String(Date.now() + 60_000));
     localStorage.setItem('username', 'demo');
   });
-  const user = { id: 'user-id', username: 'demo', name: 'Demo', email: 'demo@example.org', avatarUrl: null };
+  const user = {
+    id: 'user-id',
+    username: 'demo',
+    name: 'Demo',
+    email: 'demo@example.org',
+    avatarUrl: null,
+  };
   const author = { name: 'demo', email: 'demo@example.org', username: 'demo', avatarUrl: '' };
-  const old = { id: 'old', path: 'src/notes', line: 1, body: 'Old remark', commitSha: 'a'.repeat(40), outdated: true, author, canEdit: false, canDelete: false, createdAt: new Date().toISOString(), updatedAt: null };
+  const old = {
+    id: 'old',
+    path: 'src/notes',
+    line: 1,
+    body: 'Old remark',
+    commitSha: 'a'.repeat(40),
+    outdated: true,
+    author,
+    canEdit: false,
+    canDelete: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: null,
+  };
   let comments: Record<string, unknown>[] = [old];
   const posted: unknown[] = [];
   await page.route('**/api/**', async (route) => {
@@ -19,24 +37,67 @@ test('comments on a file and on a line can be written, edited and deleted', asyn
     const url = new URL(request.url());
     const path = url.pathname;
     if (path === '/api/users/me') return route.fulfill({ json: user });
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: { id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false } });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
     if (path === '/api/repos/demo/project/blob/main/src/notes') {
-      return route.fulfill({ json: { path: 'src/notes', name: 'notes', sha: '123', size: 12, content: Buffer.from('first\nsecond\nthird').toString('base64'), isBinary: false, language: 'plaintext', lineCount: 3 } });
+      return route.fulfill({
+        json: {
+          path: 'src/notes',
+          name: 'notes',
+          sha: '123',
+          size: 12,
+          content: Buffer.from('first\nsecond\nthird').toString('base64'),
+          isBinary: false,
+          language: 'plaintext',
+          lineCount: 3,
+        },
+      });
     }
-    if (path === '/api/repos/demo/project/file-comments' && request.method() === 'GET') return route.fulfill({ json: { headSha: 'b'.repeat(40), comments } });
+    if (path === '/api/repos/demo/project/file-comments' && request.method() === 'GET')
+      return route.fulfill({ json: { headSha: 'b'.repeat(40), comments } });
     if (path === '/api/repos/demo/project/file-comments' && request.method() === 'POST') {
       const body = request.postDataJSON();
       posted.push(body);
-      const created = { id: `c${posted.length}`, path: body.path, line: body.line ?? null, body: body.body, commitSha: 'b'.repeat(40), outdated: false, author, canEdit: true, canDelete: true, createdAt: new Date().toISOString(), updatedAt: null };
+      const created = {
+        id: `c${posted.length}`,
+        path: body.path,
+        line: body.line ?? null,
+        body: body.body,
+        commitSha: 'b'.repeat(40),
+        outdated: false,
+        author,
+        canEdit: true,
+        canDelete: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: null,
+      };
       comments = [...comments, created];
       return route.fulfill({ status: 201, json: created });
     }
-    if (path.startsWith('/api/repos/demo/project/file-comments/c') && request.method() === 'PATCH') {
-      const updated: Record<string, unknown> = { ...comments.find((c) => c.id === path.split('/').pop()), body: request.postDataJSON().body, updatedAt: new Date().toISOString() };
+    if (
+      path.startsWith('/api/repos/demo/project/file-comments/c') &&
+      request.method() === 'PATCH'
+    ) {
+      const updated: Record<string, unknown> = {
+        ...comments.find((c) => c.id === path.split('/').pop()),
+        body: request.postDataJSON().body,
+        updatedAt: new Date().toISOString(),
+      };
       comments = comments.map((c) => (c.id === updated.id ? updated : c));
       return route.fulfill({ json: updated });
     }
-    if (path.startsWith('/api/repos/demo/project/file-comments/c') && request.method() === 'DELETE') {
+    if (
+      path.startsWith('/api/repos/demo/project/file-comments/c') &&
+      request.method() === 'DELETE'
+    ) {
       comments = comments.filter((c) => c.id !== path.split('/').pop());
       return route.fulfill({ status: 204 });
     }
@@ -72,8 +133,13 @@ test('comments on a file and on a line can be written, edited and deleted', asyn
   await expect(page.getByText('General remark (clarified)')).toBeVisible();
   await expect(page.getByText('(edited)')).toBeVisible();
 
-  await page.locator('.fc-item', { hasText: 'General remark (clarified)' }).getByRole('button', { name: 'Delete' }).click();
+  await page
+    .locator('.fc-item', { hasText: 'General remark (clarified)' })
+    .getByRole('button', { name: 'Delete' })
+    .click();
   await page.locator('.btn-error', { hasText: 'Delete' }).click();
   await expect(page.getByText('General remark (clarified)')).toHaveCount(0);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });

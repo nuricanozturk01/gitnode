@@ -10,7 +10,8 @@ test('dashboard distinguishes unavailable statistics from zero', async ({ page }
   });
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path.startsWith('/api/admin/stats') || path.endsWith('/dlq/summary')) return route.fulfill({ status: 500 });
+    if (path.startsWith('/api/admin/stats') || path.endsWith('/dlq/summary'))
+      return route.fulfill({ status: 500 });
     if (path === '/api/admin/organizations' || path === '/api/admin/audit-logs') {
       return route.fulfill({ json: { content: [], totalPages: 0, totalElements: 0 } });
     }

@@ -18,5 +18,7 @@ test('mobile navigation opens and closes with the keyboard', async ({ page }) =>
   await expect(page.getByRole('link', { name: 'Users', exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(button).toHaveAttribute('aria-expanded', 'false');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
 });

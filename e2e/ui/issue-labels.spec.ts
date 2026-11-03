@@ -9,7 +9,13 @@ test('repository labels can be created, filtered and assigned to an issue', asyn
     localStorage.setItem('refresh_expires_at', String(Date.now() + 60_000));
     localStorage.setItem('username', 'demo');
   });
-  const user = { id: 'user-id', username: 'demo', email: 'demo@example.org', avatarUrl: null, name: 'Demo' };
+  const user = {
+    id: 'user-id',
+    username: 'demo',
+    email: 'demo@example.org',
+    avatarUrl: null,
+    name: 'Demo',
+  };
   let labels: { id: string; name: string; color: string; description: string }[] = [];
   let assigned: typeof labels = [];
   let lastFilter = '';
@@ -17,9 +23,16 @@ test('repository labels can be created, filtered and assigned to an issue', asyn
     const request = route.request();
     const url = new URL(request.url());
     if (url.pathname === '/api/users/me') return route.fulfill({ json: user });
-    if (url.pathname === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner: user, defaultBranch: 'main', isPrivate: false,
-    } });
+    if (url.pathname === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner: user,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
     if (url.pathname === '/api/repos/demo/project/labels') {
       if (request.method() === 'POST') labels = [{ id: 'label-id', ...request.postDataJSON() }];
       return route.fulfill({ json: request.method() === 'POST' ? labels[0] : labels });
@@ -44,10 +57,19 @@ test('repository labels can be created, filtered and assigned to an issue', asyn
         if (body.addLabelId) assigned = labels.filter((label) => label.id === body.addLabelId);
         if (body.removeLabelId) assigned = [];
       }
-      return route.fulfill({ json: {
-        id: 'issue-id', number: 1, title: 'Issue', status: 'OPEN', author: user,
-        assignee: null, assignees: [], labels: assigned, commentCount: 0,
-      } });
+      return route.fulfill({
+        json: {
+          id: 'issue-id',
+          number: 1,
+          title: 'Issue',
+          status: 'OPEN',
+          author: user,
+          assignee: null,
+          assignees: [],
+          labels: assigned,
+          commentCount: 0,
+        },
+      });
     }
     if (url.pathname.endsWith('/comments')) {
       return route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
@@ -56,7 +78,9 @@ test('repository labels can be created, filtered and assigned to an issue', asyn
   });
 
   await page.goto('/demo/project/issues');
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
   await page.getByText('Manage labels').click();
   await page.getByLabel('Name', { exact: true }).fill('bug');
   await page.getByRole('button', { name: 'Create label' }).click();

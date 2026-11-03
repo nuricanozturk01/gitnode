@@ -5,9 +5,16 @@ test('issue list distinguishes loading errors from an empty repository', async (
   const owner = { username: 'demo', name: 'Demo', email: '', avatarUrl: null };
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner, defaultBranch: 'main', isPrivate: false,
-    } });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
     if (path === '/api/repos/demo/project/issues') {
       return fail
         ? route.fulfill({ status: 500 })
@@ -29,12 +36,20 @@ test('pull request list allows retry after an API error', async ({ page }) => {
   const owner = { username: 'demo', name: 'Demo', email: '', avatarUrl: null };
   await page.route('**/api/**', (route) => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/repo/demo/project') return route.fulfill({ json: {
-      id: 'repo-id', name: 'project', owner, defaultBranch: 'main', isPrivate: false,
-    } });
-    if (path === '/api/repos/demo/project/pulls') return fail
-      ? route.fulfill({ status: 500 })
-      : route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
+    if (path === '/api/repo/demo/project')
+      return route.fulfill({
+        json: {
+          id: 'repo-id',
+          name: 'project',
+          owner,
+          defaultBranch: 'main',
+          isPrivate: false,
+        },
+      });
+    if (path === '/api/repos/demo/project/pulls')
+      return fail
+        ? route.fulfill({ status: 500 })
+        : route.fulfill({ json: { content: [], number: 0, totalElements: 0, totalPages: 0 } });
     return route.fulfill({ status: 404 });
   });
   await page.goto('/demo/project/pulls');

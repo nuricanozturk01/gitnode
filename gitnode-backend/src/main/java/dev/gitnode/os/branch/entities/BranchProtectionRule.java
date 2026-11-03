@@ -31,6 +31,9 @@ public class BranchProtectionRule {
   @Column(name = "require_conversation_resolution", nullable = false)
   private boolean requireConversationResolution;
 
+  @Column(name = "require_code_owner_review", nullable = false)
+  private boolean requireCodeOwnerReview;
+
   @Column(name = "required_checks", nullable = false, columnDefinition = "text")
   private String requiredChecks = "";
 

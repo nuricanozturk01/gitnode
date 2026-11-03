@@ -25,12 +25,28 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @NullMarked
 public interface PrRepository extends JpaRepository<PullRequest, UUID> {
+
+  @Query(
+      """
+    SELECT pr.id FROM PullRequest pr
+    WHERE pr.autoMergeStrategy IS NOT NULL AND pr.status = 'OPEN'
+    ORDER BY pr.updatedAt
+    """)
+  List<UUID> findAutoMergeCandidateIds();
+
+  @Transactional
+  @Modifying
+  @Query(
+      "UPDATE PullRequest pr SET pr.autoMergeStrategy = NULL, pr.autoMergeById = NULL WHERE pr.id = :id")
+  int clearAutoMerge(UUID id);
 
   @Query(
       value =

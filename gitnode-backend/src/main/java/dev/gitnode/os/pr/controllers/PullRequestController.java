@@ -135,7 +135,7 @@ public class PullRequestController {
     final var mergedById = this.tokenService.extractUserId(authHeader);
     this.repoService.assertUserHasPermission(
         mergedById, owner, repo, CollaboratorPermission.PULL_REQUEST_MERGE);
-    final var mergedPr = this.prService.merge(owner, repo, number, mergedById, form);
+    final var mergedPr = this.prService.merge(owner, repo, number, mergedById, form, true);
     return ResponseEntity.ok(mergedPr);
   }
 

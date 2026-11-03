@@ -9,6 +9,7 @@ export interface BranchProtection {
   requiredApprovals: number;
   requiredChecks: string[];
   requireConversationResolution: boolean;
+  requireCodeOwnerReview: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +28,7 @@ export class BranchProtectionService {
     requiredApprovals: number,
     requiredChecks: string[] = [],
     requireConversationResolution = false,
+    requireCodeOwnerReview = false,
   ): Promise<BranchProtection> {
     return firstValueFrom(
       this.http.put<BranchProtection>(this.base(owner, repo), {
@@ -34,6 +36,7 @@ export class BranchProtectionService {
         requiredApprovals,
         requiredChecks,
         requireConversationResolution,
+        requireCodeOwnerReview,
       }),
     );
   }

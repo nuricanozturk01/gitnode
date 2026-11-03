@@ -27,7 +27,7 @@ optional Go runner for CI/CD. In-app documentation is served at `/docs`.
 | Area | Highlights |
 |---|---|
 | **Repositories** | Public/private repos, forks, branch protection, tags and releases; Git over HTTP(S) and SSH |
-| **Code review** | Pull requests (merge / squash / rebase), reviewers, approvals, inline comments, required checks |
+| **Code review** | Pull requests (merge / squash / rebase), reviewers, approvals, inline comments, required checks, CODEOWNERS, auto-merge |
 | **Planning** | Issues with labels and milestones; Kanban projects with tasks and branch / PR linking |
 | **CI/CD** | YAML workflows, matrix jobs, encrypted secrets, artifacts, live logs, self-hosted Go runner |
 | **Collaboration** | Collaborator roles and permissions, snippets, signed webhooks with retries, notifications |

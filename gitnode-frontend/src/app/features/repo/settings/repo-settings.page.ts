@@ -113,6 +113,7 @@ export class RepoSettingsPage {
   readonly protectionApprovals = signal(1);
   readonly protectionChecks = signal('');
   readonly protectionConversations = signal(false);
+  readonly protectionCodeOwners = signal(false);
   readonly workflowNames = signal<string[]>([]);
 
   // Collaborators
@@ -229,10 +230,12 @@ export class RepoSettingsPage {
         approvals,
         checks,
         this.protectionConversations(),
+        this.protectionCodeOwners(),
       );
       this.protectionBranch.set('');
       this.protectionChecks.set('');
       this.protectionConversations.set(false);
+      this.protectionCodeOwners.set(false);
       await this.loadProtectionRules();
       this.toast.success('Branch protection saved');
     } catch {

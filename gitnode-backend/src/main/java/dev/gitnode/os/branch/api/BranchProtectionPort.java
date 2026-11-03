@@ -26,7 +26,10 @@ public interface BranchProtectionPort {
 
   /** Immutable view of the protection rule of one branch. */
   record BranchProtectionInfo(
-      int requiredApprovals, boolean requireConversationResolution, List<String> requiredChecks) {}
+      int requiredApprovals,
+      boolean requireConversationResolution,
+      boolean requireCodeOwnerReview,
+      List<String> requiredChecks) {}
 
   Optional<BranchProtectionInfo> findProtection(UUID repoId, String branch);
 

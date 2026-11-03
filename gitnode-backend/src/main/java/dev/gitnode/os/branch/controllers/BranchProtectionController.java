@@ -50,21 +50,24 @@ public class BranchProtectionController {
                   @NotBlank @Size(max = 256)
                   @jakarta.validation.constraints.Pattern(regexp = "[^,]+") String>
               requiredChecks,
-      Boolean requireConversationResolution) {}
+      Boolean requireConversationResolution,
+      Boolean requireCodeOwnerReview) {}
 
   public record ProtectionInfo(
       UUID id,
       String branchName,
       int requiredApprovals,
       List<String> requiredChecks,
-      boolean requireConversationResolution) {
+      boolean requireConversationResolution,
+      boolean requireCodeOwnerReview) {
     static ProtectionInfo from(final BranchProtectionRule rule) {
       return new ProtectionInfo(
           rule.getId(),
           rule.getBranchName(),
           rule.getRequiredApprovals(),
           rule.requiredCheckNames(),
-          rule.isRequireConversationResolution());
+          rule.isRequireConversationResolution(),
+          rule.isRequireCodeOwnerReview());
     }
   }
 
@@ -101,7 +104,8 @@ public class BranchProtectionController {
             form.requiredChecks() == null
                 ? List.of()
                 : form.requiredChecks().stream().map(String::strip).distinct().toList(),
-            Boolean.TRUE.equals(form.requireConversationResolution())));
+            Boolean.TRUE.equals(form.requireConversationResolution()),
+            Boolean.TRUE.equals(form.requireCodeOwnerReview())));
   }
 
   @DeleteMapping("/{ruleId}")

@@ -74,6 +74,7 @@ class PullRequestServiceTest {
   @Mock private PrReviewService reviewService;
   @Mock private BranchProtectionPort branchProtection;
   @Mock private dev.gitnode.os.branch.api.RequiredChecksPort requiredChecks;
+  @Mock private CodeOwnersService codeOwners;
 
   @InjectMocks private PullRequestService pullRequestService;
 
@@ -240,7 +241,8 @@ class PullRequestServiceTest {
     when(prFinder.findTenant(any())).thenReturn(bob(pr.getAuthorId()));
     PrMergeForm form = new PrMergeForm(MergeStrategy.MERGE_COMMIT, null);
 
-    assertThatThrownBy(() -> pullRequestService.merge("alice", "demo", 1, pr.getAuthorId(), form))
+    assertThatThrownBy(
+            () -> pullRequestService.merge("alice", "demo", 1, pr.getAuthorId(), form, true))
         .isInstanceOf(ErrorOccurredException.class)
         .hasMessageContaining("Pull request is not open");
   }
@@ -256,7 +258,8 @@ class PullRequestServiceTest {
     when(prFinder.findTenant(any())).thenReturn(bob(pr.getAuthorId()));
     PrMergeForm form = new PrMergeForm(MergeStrategy.MERGE_COMMIT, null);
 
-    assertThatThrownBy(() -> pullRequestService.merge("alice", "demo", 1, pr.getAuthorId(), form))
+    assertThatThrownBy(
+            () -> pullRequestService.merge("alice", "demo", 1, pr.getAuthorId(), form, true))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("Draft pull request cannot be merged");
 

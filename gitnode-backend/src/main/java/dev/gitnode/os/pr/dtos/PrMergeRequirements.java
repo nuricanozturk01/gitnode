@@ -18,6 +18,7 @@ package dev.gitnode.os.pr.dtos;
 
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 /** What the target branch rule still needs before this pull request can merge. */
 @NullMarked
@@ -30,7 +31,14 @@ public record PrMergeRequirements(
     boolean requireConversationResolution,
     int unresolvedConversations,
     boolean satisfied,
-    boolean canBypass) {
+    boolean canBypass,
+    boolean requireCodeOwnerReview,
+    List<CodeOwner> missingCodeOwners,
+    @Nullable String autoMergeStrategy,
+    @Nullable String autoMergeBy) {
+
+  /** A CODEOWNERS line none of whose owners has approved the current commits yet. */
+  public record CodeOwner(String pattern, List<String> owners) {}
 
   /** {@code state} is the latest run status for the source head, or {@code MISSING}. */
   public record Check(String name, String state) {}

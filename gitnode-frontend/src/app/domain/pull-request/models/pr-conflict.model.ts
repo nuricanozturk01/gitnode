@@ -19,6 +19,8 @@ export interface PrConflictResolveForm {
   message?: string;
 }
 
+export type MergeStrategy = 'MERGE_COMMIT' | 'SQUASH' | 'REBASE';
+
 export interface PrMergeRequirements {
   protectedBranch: boolean;
   requiredApprovals: number;
@@ -29,6 +31,10 @@ export interface PrMergeRequirements {
   unresolvedConversations: number;
   satisfied: boolean;
   canBypass: boolean;
+  requireCodeOwnerReview: boolean;
+  missingCodeOwners: { pattern: string; owners: string[] }[];
+  autoMergeStrategy: MergeStrategy | null;
+  autoMergeBy: string | null;
 }
 
 export interface PrMetadata {

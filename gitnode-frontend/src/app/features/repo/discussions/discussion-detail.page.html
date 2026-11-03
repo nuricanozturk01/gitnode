@@ -1,0 +1,225 @@
+<ng-template #commentTpl let-c let-isReply="isReply">
+  <article class="flex gap-3" [class.discussion-answer]="c.isAnswer">
+    <app-avatar
+      [avatarUrl]="c.author.avatarUrl"
+      [email]="c.author.email"
+      [username]="c.author.username"
+      [fallback]="(c.author.username || '?').charAt(0).toUpperCase()"
+      size="xs"
+    />
+    <div class="min-w-0 flex-1">
+      <header class="text-base-content/65 flex flex-wrap items-center gap-2 text-xs">
+        <strong class="text-base-content/90">{{ c.author.name || c.author.username }}</strong>
+        <span>{{ c.createdAt | relativeTime }}</span>
+        @if (c.isAnswer) {
+        <span class="badge badge-success badge-sm gap-1">
+          <lucide-icon name="checkCircle" class="size-3" aria-hidden="true"></lucide-icon>
+          Answer
+        </span>
+        }
+      </header>
+      @if (editingComment() === c.id) {
+      <textarea
+        class="textarea textarea-bordered mt-2 w-full"
+        rows="3"
+        maxlength="10000"
+        [ngModel]="editBody()"
+        (ngModelChange)="editBody.set($event)"
+        name="editBody"
+      ></textarea>
+      <div class="mt-2 flex gap-2">
+        <button type="button" class="btn btn-primary btn-xs" [disabled]="busy()" (click)="saveComment(c)">Save</button>
+        <button type="button" class="btn btn-ghost btn-xs" (click)="editingComment.set(null)">Cancel</button>
+      </div>
+      } @else {
+      <p class="mt-1 text-sm break-words whitespace-pre-wrap">{{ c.body }}</p>
+      <div class="text-base-content/60 mt-1 flex flex-wrap items-center gap-3 text-xs">
+        @if (!isReply && canPost()) {
+        <button type="button" class="hover:text-base-content" (click)="startReply(c)">Reply</button>
+        } @if (canMarkAnswer()) {
+        <button type="button" class="hover:text-base-content" (click)="markAnswer(c)">
+          {{ c.isAnswer ? 'Unmark as answer' : 'Mark as answer' }}
+        </button>
+        } @if (canModifyComment(c)) {
+        <button type="button" class="hover:text-base-content" (click)="startEditComment(c)">Edit</button>
+        <button type="button" class="hover:text-error" (click)="deleteComment(c)">Delete</button>
+        }
+      </div>
+      } @if (!isReply) { @if (c.replyCount > 0) {
+      <button type="button" class="link link-hover mt-2 text-xs" (click)="toggleReplies(c)">
+        {{ threads()[c.id]?.open ? 'Hide' : 'Show' }} {{ c.replyCount }} {{ c.replyCount === 1 ? 'reply' : 'replies' }}
+      </button>
+      } @if (threads()[c.id]?.open) {
+      <div class="border-base-300 mt-3 flex flex-col gap-4 border-l-2 pl-4">
+        @for (r of threads()[c.id].items; track r.id) {
+        <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: r, isReply: true }"></ng-container>
+        } @if (threads()[c.id].loading) {
+        <span class="loading loading-spinner loading-xs"></span>
+        } @else if (hasMoreReplies(c.id)) {
+        <button type="button" class="link link-hover self-start text-xs" (click)="loadMoreReplies(c.id)">
+          Load more replies
+        </button>
+        }
+      </div>
+      } @if (replyingTo() === c.id) {
+      <div class="mt-3">
+        <textarea
+          class="textarea textarea-bordered w-full"
+          rows="2"
+          maxlength="10000"
+          placeholder="Write a reply…"
+          [ngModel]="replyBody()"
+          (ngModelChange)="replyBody.set($event)"
+          name="replyBody"
+        ></textarea>
+        <div class="mt-2 flex gap-2">
+          <button
+            type="button"
+            class="btn btn-primary btn-xs"
+            [disabled]="busy() || !replyBody().trim()"
+            (click)="postReply(c)"
+          >
+            Reply
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs" (click)="replyingTo.set(null)">Cancel</button>
+        </div>
+      </div>
+      } }
+    </div>
+  </article>
+</ng-template>
+
+<div class="mx-auto max-w-4xl">
+  <a
+    [routerLink]="['/', owner(), repoName(), 'discussions']"
+    class="text-base-content/60 hover:text-base-content mb-4 inline-block text-sm"
+  >
+    ← Back to discussions
+  </a>
+
+  @if (loading()) {
+  <div class="flex justify-center p-8"><span class="loading loading-spinner loading-md"></span></div>
+  } @else if (failed() || !detail()) {
+  <div class="repo-panel p-6 text-center text-sm" role="alert">This discussion could not be loaded.</div>
+  } @else { @let d = detail()!;
+  <section class="repo-panel overflow-hidden">
+    <div class="repo-toolbar px-4 py-4">
+      @if (editing()) {
+      <input
+        class="input input-bordered w-full"
+        name="editTitle"
+        maxlength="255"
+        aria-label="Title"
+        [ngModel]="editTitle()"
+        (ngModelChange)="editTitle.set($event)"
+      />
+      } @else {
+      <h2 class="text-lg font-semibold break-words">
+        {{ d.info.title }} <span class="text-base-content/45 font-normal">#{{ d.info.number }}</span>
+      </h2>
+      }
+      <p class="text-base-content/60 mt-1 flex flex-wrap items-center gap-2 text-sm">
+        <span class="badge badge-outline badge-sm">{{ categoryLabel() }}</span>
+        <span>{{ d.info.author.username }} started {{ d.info.createdAt | relativeTime }}</span>
+        @if (d.info.locked) {
+        <span class="badge badge-warning badge-sm gap-1">
+          <lucide-icon name="lock" class="size-3" aria-hidden="true"></lucide-icon>
+          Locked
+        </span>
+        }
+      </p>
+    </div>
+
+    <div class="flex gap-4 p-4 sm:p-6">
+      <button
+        type="button"
+        class="btn btn-sm flex h-auto shrink-0 flex-col gap-0 py-2"
+        [class.btn-primary]="d.viewerUpvoted"
+        [class.btn-outline]="!d.viewerUpvoted"
+        [disabled]="!isLoggedIn() || busy()"
+        [attr.aria-pressed]="d.viewerUpvoted"
+        aria-label="Upvote"
+        (click)="toggleUpvote()"
+      >
+        <span aria-hidden="true">▲</span>
+        <span>{{ d.info.upvotes }}</span>
+      </button>
+      <div class="min-w-0 flex-1">
+        @if (editing()) {
+        <textarea
+          class="textarea textarea-bordered w-full"
+          rows="8"
+          maxlength="20000"
+          aria-label="Details"
+          [ngModel]="editText()"
+          (ngModelChange)="editText.set($event)"
+          name="editText"
+        ></textarea>
+        <div class="mt-2 flex gap-2">
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="saveEdit()">Save</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="editing.set(false)">Cancel</button>
+        </div>
+        } @else { @if (d.body) {
+        <p class="text-sm break-words whitespace-pre-wrap">{{ d.body }}</p>
+        } @else {
+        <p class="text-base-content/50 text-sm italic">No details provided.</p>
+        } @if (canEditDiscussion()) {
+        <div class="text-base-content/60 mt-4 flex flex-wrap gap-3 text-xs">
+          <button type="button" class="hover:text-base-content" (click)="startEdit()">Edit</button>
+          @if (d.canModerate) {
+          <button type="button" class="hover:text-base-content" (click)="toggleLock()">
+            {{ d.info.locked ? 'Unlock' : 'Lock' }}
+          </button>
+          }
+          <button type="button" class="hover:text-error" (click)="deleteDiscussion()">Delete</button>
+        </div>
+        } }
+      </div>
+    </div>
+  </section>
+
+  @if (d.answer; as answer) {
+  <section class="repo-panel border-success mt-4 border p-4" aria-label="Accepted answer">
+    <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: answer, isReply: true }"></ng-container>
+  </section>
+  }
+
+  <section class="repo-panel mt-4 p-4 sm:p-6">
+    <h3 class="mb-4 text-sm font-semibold">{{ d.info.commentCount }} comments</h3>
+    <div class="flex flex-col gap-6">
+      @for (c of comments(); track c.id) {
+      <ng-container *ngTemplateOutlet="commentTpl; context: { $implicit: c, isReply: false }"></ng-container>
+      }
+    </div>
+    @if (commentsLoading()) {
+    <div class="mt-4 flex justify-center"><span class="loading loading-spinner loading-sm"></span></div>
+    } @else if (hasMoreComments()) {
+    <button type="button" class="btn btn-ghost btn-sm mt-4" (click)="loadComments(commentPage() + 1)">
+      Load more comments
+    </button>
+    } @if (canPost()) {
+    <form class="mt-6" (ngSubmit)="postComment()">
+      <textarea
+        class="textarea textarea-bordered w-full"
+        rows="3"
+        maxlength="10000"
+        placeholder="Add a comment…"
+        aria-label="New comment"
+        [ngModel]="newComment()"
+        (ngModelChange)="newComment.set($event)"
+        name="newComment"
+      ></textarea>
+      <div class="mt-2 flex justify-end">
+        <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy() || !newComment().trim()">
+          Comment
+        </button>
+      </div>
+    </form>
+    } @else if (d.info.locked) {
+    <p class="text-base-content/60 mt-6 text-sm">This discussion is locked.</p>
+    } @else {
+    <p class="text-base-content/60 mt-6 text-sm">Sign in to join the discussion.</p>
+    }
+  </section>
+  }
+</div>

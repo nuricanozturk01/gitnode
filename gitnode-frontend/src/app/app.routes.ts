@@ -187,6 +187,44 @@ export const routes: Routes = [
         loadComponent: () => import('./features/repo/issues/issue-detail.page').then((m) => m.IssueDetailPage),
       },
       {
+        path: 'discussions',
+        loadComponent: () => import('./features/repo/discussions/discussions.page').then((m) => m.DiscussionsPage),
+      },
+      {
+        path: 'discussions/new',
+        loadComponent: () => import('./features/repo/discussions/new-discussion.page').then((m) => m.NewDiscussionPage),
+        canActivate: [authGuard],
+      },
+      {
+        path: 'discussions/:number',
+        loadComponent: () =>
+          import('./features/repo/discussions/discussion-detail.page').then((m) => m.DiscussionDetailPage),
+      },
+      {
+        path: 'wiki',
+        loadComponent: () => import('./features/repo/wiki/wiki.page').then((m) => m.WikiPage),
+      },
+      {
+        path: 'wiki/_new',
+        loadComponent: () => import('./features/repo/wiki/wiki-edit.page').then((m) => m.WikiEditPage),
+        canActivate: [repoPermissionGuard],
+        data: { permission: 'PUSH' },
+      },
+      {
+        path: 'wiki/:slug/edit',
+        loadComponent: () => import('./features/repo/wiki/wiki-edit.page').then((m) => m.WikiEditPage),
+        canActivate: [repoPermissionGuard],
+        data: { permission: 'PUSH' },
+      },
+      {
+        path: 'wiki/:slug/history',
+        loadComponent: () => import('./features/repo/wiki/wiki-history.page').then((m) => m.WikiHistoryPage),
+      },
+      {
+        path: 'wiki/:slug',
+        loadComponent: () => import('./features/repo/wiki/wiki.page').then((m) => m.WikiPage),
+      },
+      {
         path: 'pulls',
         loadComponent: () => import('./features/repo/pull-requests/pull-requests.page').then((m) => m.PullRequestsPage),
       },

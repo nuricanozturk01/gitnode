@@ -1,0 +1,116 @@
+<section class="repo-panel overflow-hidden">
+  <div class="repo-toolbar flex flex-wrap items-center justify-between gap-3 px-3 py-3 sm:px-4">
+    <div class="flex min-w-0 items-center gap-3">
+      <h2 class="text-base-content text-lg font-semibold">Discussions</h2>
+      @if (totalElements() > 0) {
+      <span class="text-base-content/50 text-sm">{{ totalElements() }}</span>
+      }
+    </div>
+    @if (repoContext.isLoggedIn()) {
+    <a [routerLink]="['/', owner(), repoName(), 'discussions', 'new']" class="btn btn-primary btn-sm gap-2">
+      <lucide-icon name="plus" class="size-3.5 shrink-0" [size]="14"></lucide-icon>
+      New discussion
+    </a>
+    }
+  </div>
+
+  <div class="border-base-300 flex flex-wrap items-center gap-2 border-t px-3 py-3 sm:px-4">
+    <button
+      type="button"
+      class="btn btn-xs"
+      [class.btn-primary]="category() === ''"
+      [class.btn-ghost]="category() !== ''"
+      (click)="setCategory('')"
+    >
+      All
+    </button>
+    @for (c of categories; track c.value) {
+    <button
+      type="button"
+      class="btn btn-xs"
+      [class.btn-primary]="category() === c.value"
+      [class.btn-ghost]="category() !== c.value"
+      [attr.title]="c.hint"
+      (click)="setCategory(c.value)"
+    >
+      {{ c.label }}
+    </button>
+    }
+    <span class="grow"></span>
+    <label class="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        class="checkbox checkbox-xs"
+        [ngModel]="unanswered()"
+        (ngModelChange)="setUnanswered($event)"
+        name="unanswered"
+      />
+      Unanswered questions
+    </label>
+    <select
+      class="select select-bordered select-xs"
+      aria-label="Sort discussions"
+      [ngModel]="sort()"
+      (ngModelChange)="setSort($event)"
+      name="sort"
+    >
+      <option value="latest">Newest</option>
+      <option value="updated">Recently active</option>
+    </select>
+  </div>
+
+  @if (loading()) {
+  <div class="flex justify-center p-8"><span class="loading loading-spinner loading-md"></span></div>
+  } @else if (failed()) {
+  <div class="p-6 text-center text-sm" role="alert">
+    Could not load discussions.
+    <button type="button" class="btn btn-ghost btn-xs" (click)="load()">Retry</button>
+  </div>
+  } @else if (items().length === 0) {
+  <div class="text-base-content/60 p-8 text-center text-sm">No discussions here yet.</div>
+  } @else {
+  <ul class="divide-base-300 divide-y">
+    @for (d of items(); track d.number) {
+    <li>
+      <a
+        [routerLink]="['/', owner(), repoName(), 'discussions', d.number]"
+        class="hover:bg-base-200/50 flex items-start gap-3 px-4 py-3 transition-colors"
+      >
+        <div class="text-base-content/60 flex w-10 shrink-0 flex-col items-center text-xs">
+          <span aria-hidden="true">▲</span>
+          <span class="font-semibold">{{ d.upvotes }}</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="flex flex-wrap items-center gap-2">
+            <span class="text-base-content font-medium">{{ d.title }}</span>
+            @if (d.locked) {
+            <lucide-icon name="lock" class="size-3.5 opacity-60" aria-label="Locked"></lucide-icon>
+            } @if (d.answered) {
+            <span class="badge badge-success badge-sm gap-1">
+              <lucide-icon name="checkCircle" class="size-3" aria-hidden="true"></lucide-icon>
+              Answered
+            </span>
+            }
+          </p>
+          <p class="text-base-content/55 mt-0.5 text-xs">
+            {{ categoryLabel(d.category) }} · {{ d.author.username }} · {{ d.createdAt | relativeTime }}
+          </p>
+        </div>
+        <span class="text-base-content/60 flex shrink-0 items-center gap-1 text-xs">
+          <lucide-icon name="messageSquare" class="size-3.5" aria-hidden="true"></lucide-icon>
+          {{ d.commentCount }}
+        </span>
+      </a>
+    </li>
+    }
+  </ul>
+  @if (totalPages() > 1) {
+  <div class="border-base-300 flex items-center justify-between border-t px-4 py-3">
+    <button type="button" class="btn btn-ghost btn-sm" [disabled]="!hasPrev()" (click)="goTo(page() - 1)">
+      Previous
+    </button>
+    <span class="text-base-content/55 text-sm">Page {{ page() + 1 }} of {{ totalPages() }}</span>
+    <button type="button" class="btn btn-ghost btn-sm" [disabled]="!hasNext()" (click)="goTo(page() + 1)">Next</button>
+  </div>
+  } }
+</section>

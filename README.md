@@ -30,7 +30,7 @@ optional Go runner for CI/CD. In-app documentation is served at `/docs`.
 | **Code review** | Pull requests (merge / squash / rebase), reviewers, approvals, inline comments, required checks, CODEOWNERS, auto-merge |
 | **Planning** | Issues with labels and milestones; Kanban projects with tasks and branch / PR linking |
 | **CI/CD** | YAML workflows, matrix jobs, encrypted secrets, artifacts, live logs, self-hosted Go runner |
-| **Collaboration** | Collaborator roles and permissions, snippets, signed webhooks with retries, notifications |
+| **Collaboration** | Collaborator roles and permissions, Git-backed wiki, discussions, snippets, signed webhooks with retries, notifications |
 | **Security** | JWT, OAuth2 (Google, GitHub, GitLab), SAML 2.0, LDAP, two-factor (TOTP), SSH keys, rate limiting, audit log |
 | **AI (opt-in)** | PR review and text suggestions with your own key: OpenAI, Anthropic, Gemini, Ollama |
 | **Operations** | Admin panel, GitHub import, Prometheus / Grafana metrics, health endpoints |

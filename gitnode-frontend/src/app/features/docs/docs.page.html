@@ -135,11 +135,12 @@
               <div>
                 <h2 class="docs-section-title">SSH keys (Git over SSH)</h2>
                 <p class="docs-section-lead">
-                  To push and pull over SSH (port <code class="docs-inline-code">2222</code>), register a public key. If
-                  you only use
+                  To push and pull over SSH (default port <code class="docs-inline-code">2222</code>), register a public
+                  key. If you only use
                   <button type="button" class="docs-inline-link" (click)="scrollToSection('http-git')">
                     HTTP / HTTPS</button
-                  >, you can skip this and use your account password with Git instead.
+                  >, you can skip this and use your account password with Git instead (not available while two-factor
+                  authentication is on for your account).
                 </p>
               </div>
             </header>
@@ -240,7 +241,8 @@
                   Smart Git is served on the same origin as the REST API under
                   <code class="docs-inline-code">/git/&lt;owner&gt;/&lt;repo&gt;</code>. Git sends
                   <strong class="text-base-content/85 font-medium">HTTP Basic</strong> auth: use your GitNode username
-                  and account password when prompted.
+                  and account password when prompted. If you turn on two-factor authentication, password-based HTTP(S)
+                  Git is refused: use SSH keys instead.
                 </p>
               </div>
             </header>
@@ -248,9 +250,9 @@
             <div class="docs-callout mb-6">
               <strong class="text-base-content font-medium">Path tip:</strong>
               <span class="text-base-content/75">
-                Do not add a <code class="docs-inline-code">.git</code> suffix in the URL path — storage resolution
-                appends it on the server. With TLS in front of the app, use
-                <code class="docs-inline-code">https://</code> instead of <code class="docs-inline-code">http://</code>.
+                The <code class="docs-inline-code">.git</code> suffix in the URL path is optional. With TLS in front of
+                the app, use <code class="docs-inline-code">https://</code> instead of
+                <code class="docs-inline-code">http://</code>.
               </span>
             </div>
 
@@ -713,7 +715,7 @@
                       </tr>
                       <tr>
                         <td><code class="docs-table-code">pull_request</code></td>
-                        <td>Pull request opened (creation only)</td>
+                        <td>Pull request opened, or new commits pushed to its source branch</td>
                         <td>
                           <code class="docs-table-code">branches</code>,
                           <code class="docs-table-code">branches-ignore</code>
@@ -984,7 +986,8 @@
                         <td><code class="docs-table-code">ref</code></td>
                         <td><code class="docs-table-code">GITNODE_SHA</code> when set</td>
                         <td>
-                          Ref to checkout (branch, tag, SHA). Falls back to empty when no SHA was recorded for the run.
+                          Commit SHA to check out. Without it (and without a recorded run SHA) the clone is left as
+                          cloned.
                         </td>
                       </tr>
                       <tr>
@@ -1136,6 +1139,31 @@
                 </p>
               </div>
 
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <div class="mb-2">
+                  <code class="docs-inline-code font-semibold">docker/setup-buildx-action@v3</code>
+                </div>
+                <p class="text-base-content/65 text-sm">
+                  Prepares Docker Buildx on the runner. Inputs: <code class="docs-inline-code">driver</code>,
+                  <code class="docs-inline-code">name</code>, <code class="docs-inline-code">use</code>,
+                  <code class="docs-inline-code">install</code>, <code class="docs-inline-code">platforms</code>. A
+                  specific <code class="docs-inline-code">version</code> cannot be installed; the Buildx already on the
+                  runner is used.
+                </p>
+              </div>
+
+              <div class="border-base-200 rounded-xl border p-4 sm:p-5">
+                <div class="mb-2"><code class="docs-inline-code font-semibold">docker/build-push-action@v6</code></div>
+                <p class="text-base-content/65 text-sm">
+                  Builds (and optionally pushes) an image. Inputs include
+                  <code class="docs-inline-code">context</code>, <code class="docs-inline-code">file</code>,
+                  <code class="docs-inline-code">tags</code>, <code class="docs-inline-code">push</code>,
+                  <code class="docs-inline-code">load</code>, <code class="docs-inline-code">platforms</code>,
+                  <code class="docs-inline-code">build-args</code>, <code class="docs-inline-code">target</code>,
+                  <code class="docs-inline-code">cache-from</code> and <code class="docs-inline-code">cache-to</code>.
+                </p>
+              </div>
+
               <div>
                 <h3 class="docs-subheading">Using secrets in steps</h3>
                 <p class="text-base-content/65 mb-3 text-sm leading-relaxed">
@@ -1197,8 +1225,9 @@
                   </li>
                   <li>The runner opens a persistent WebSocket to GitNode and sends heartbeats every 30 s.</li>
                   <li>
-                    When a workflow triggers a job, GitNode picks the first idle runner whose labels match
-                    <code class="docs-inline-code">runs-on:</code> and dispatches the job.
+                    When a workflow triggers a job, GitNode picks the first online runner that belongs to the repository
+                    owner and has every label listed in <code class="docs-inline-code">runs-on:</code>, and dispatches
+                    the job.
                   </li>
                   <li>The runner executes steps in order, streams logs live, and reports completion.</li>
                 </ol>
@@ -1447,10 +1476,10 @@
                     <strong class="text-base-content/80">Invite</strong>.
                   </li>
                   <li>
-                    For pending collaborators, click <strong class="text-base-content/80">Invite Link</strong> to
-                    generate a shareable URL (not created automatically on invite).
+                    The invitee gets an in-app notification and can accept or decline. For pending collaborators you can
+                    also click <strong class="text-base-content/80">Invite Link</strong> to generate a shareable URL.
                   </li>
-                  <li>The recipient opens the link and accepts — no approval from you required.</li>
+                  <li>Once the invitee accepts, access starts — no further approval from you is required.</li>
                 </ol>
               </div>
 
@@ -1584,7 +1613,15 @@
                       </tr>
                       <tr>
                         <td>Assignees</td>
-                        <td>Assign an issue to a specific user</td>
+                        <td>Assign an issue to one or more users</td>
+                      </tr>
+                      <tr>
+                        <td>Labels</td>
+                        <td>Create labels per repository and tag issues with them</td>
+                      </tr>
+                      <tr>
+                        <td>Milestones</td>
+                        <td>Group issues under a milestone</td>
                       </tr>
                       <tr>
                         <td>Status</td>
@@ -1736,7 +1773,10 @@
                     </tr>
                     <tr>
                       <td>Revision history</td>
-                      <td>Every edit creates a new revision — diff between any two revisions</td>
+                      <td>
+                        Every edit creates a new revision with an optional summary; open any earlier revision to see its
+                        content
+                      </td>
                     </tr>
                     <tr>
                       <td>Fork</td>
@@ -1855,7 +1895,10 @@
                     <tbody>
                       <tr>
                         <td>Automatic retries</td>
-                        <td>3 attempts with exponential back-off (1 s, 2 s, 4 s) on non-2xx or connection errors</td>
+                        <td>
+                          Up to 3 attempts with exponential back-off (1 s, then 2 s between attempts) on non-2xx or
+                          connection errors
+                        </td>
                       </tr>
                       <tr>
                         <td>Dead-letter queue</td>

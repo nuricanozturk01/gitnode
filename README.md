@@ -4,11 +4,11 @@
 
 <p><b>A self-hosted Git platform — repositories, code review, CI/CD and project management on your own infrastructure.</b></p>
 
-[![Release](https://img.shields.io/badge/release-v2.0.3-blue?style=flat-square)](https://github.com/nuricanozturk01/gitnode/releases/tag/v2.0.3)
+[![Release](https://img.shields.io/github/v/release/nuricanozturk01/gitnode?style=flat-square)](https://github.com/nuricanozturk01/gitnode/releases/latest)
 [![Java](https://img.shields.io/badge/Java-25-orange?style=flat-square&logo=openjdk)](https://openjdk.org/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.x-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Angular](https://img.shields.io/badge/Angular-21-DD0031?style=flat-square&logo=angular)](https://angular.dev)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE.txt)
 <a href="https://status.gitnode.dev" target="_blank" rel="noopener noreferrer"><img src="https://api.cronbeat.dev/badge/A1HG1-tT7Jvw49lO_2d8tmVU/uptime.svg?range=90d" alt="GitNode uptime"></a>
 
@@ -122,7 +122,7 @@ these rules. Details: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 | Layer | Technology |
 |---|---|
 | Backend | Java 25, Spring Boot 4, Spring Security, JPA, Eclipse JGit, Apache MINA SSHD |
-| Data | PostgreSQL 17 (Flyway), Redis 7 |
+| Data | PostgreSQL 18 (Flyway), Redis 7 |
 | Frontend | Angular 21, Tailwind CSS 4, DaisyUI 5 |
 | Runner | Go 1.24 |
 

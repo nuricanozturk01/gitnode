@@ -167,17 +167,23 @@
                 </svg>
               </button>
             </div>
+            @if (ssoLdap() || ssoSaml()) {
             <div class="auth-providers__enterprise" role="group" aria-label="Organization">
+              @if (ssoLdap()) {
               <a routerLink="/login" [queryParams]="{ mode: 'ldap' }" class="auth-providers__chip">
                 <lucide-icon name="building-2" class="size-3.5"></lucide-icon>
                 LDAP
               </a>
+              } @if (ssoLdap() && ssoSaml()) {
               <span class="auth-providers__dot" aria-hidden="true"></span>
+              } @if (ssoSaml()) {
               <a routerLink="/login" [queryParams]="{ mode: 'saml' }" class="auth-providers__chip">
                 <lucide-icon name="shield-check" class="size-3.5"></lucide-icon>
                 SSO / SAML
               </a>
+              }
             </div>
+            }
           </nav>
 
           <p class="auth-card__footer text-center text-sm">

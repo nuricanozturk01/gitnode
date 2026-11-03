@@ -39,6 +39,8 @@ export class RegisterPage {
 
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
+  readonly ssoLdap = signal(false);
+  readonly ssoSaml = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     username: [
@@ -56,6 +58,21 @@ export class RegisterPage {
       ],
     ],
   });
+
+  constructor() {
+    void this.loadSsoProviders();
+  }
+
+  private async loadSsoProviders(): Promise<void> {
+    try {
+      const providers = await this.authService.ssoProviders();
+      this.ssoLdap.set(providers.ldap);
+      this.ssoSaml.set(providers.saml);
+    } catch {
+      this.ssoLdap.set(false);
+      this.ssoSaml.set(false);
+    }
+  }
 
   async onSubmit(): Promise<void> {
     if (this.form.invalid) return;

@@ -302,3 +302,30 @@ export async function prepareFeatureBranch(
     `scenario: ${branchName}`,
   );
 }
+
+/** Invites {@code collaborator} with merge rights and accepts the invitation on their behalf. */
+export async function addMergeCollaborator(
+  api: APIRequestContext,
+  ownerAuthorization: string,
+  owner: string,
+  repo: string,
+  collaborator: ScenarioUser,
+): Promise<void> {
+  const base = `/api/repos/${owner}/${repo}/collaborators`;
+  const invited = await api.post(base, {
+    headers: { Authorization: ownerAuthorization },
+    data: {
+      username: collaborator.username,
+      permissions: ['READ', 'PULL_REQUEST_REVIEW', 'PULL_REQUEST_MERGE'],
+    },
+  });
+  if (invited.status() !== 201) {
+    throw new Error(`invite collaborator failed: ${invited.status()} ${await invited.text()}`);
+  }
+  const accepted = await api.post(`${base}/invitation/accept`, {
+    headers: { Authorization: collaborator.authorization },
+  });
+  if (accepted.status() !== 200) {
+    throw new Error(`accept invitation failed: ${accepted.status()} ${await accepted.text()}`);
+  }
+}

@@ -1,12 +1,18 @@
 import { expect, test } from './fixtures/scenario';
-import { createPullRequest, prepareFeatureBranch } from './helpers/scenario-api';
+import {
+  addMergeCollaborator,
+  createPullRequest,
+  prepareFeatureBranch,
+} from './helpers/scenario-api';
 
 test('required workflows block merging until they succeed', async ({
   bareApi,
   owner,
+  intruder,
   publicRepo,
 }) => {
   const headers = { Authorization: owner.authorization };
+  const mergerHeaders = { Authorization: intruder.authorization };
   const base = `/api/repos/${owner.username}/${publicRepo.name}`;
   await prepareFeatureBranch(
     bareApi,
@@ -23,9 +29,19 @@ test('required workflows block merging until they succeed', async ({
     { title: 'Needs CI', sourceBranch: 'needs-ci' },
   );
   const path = `${base}/pulls/${pr.number}`;
+  await addMergeCollaborator(
+    bareApi,
+    owner.authorization,
+    owner.username,
+    publicRepo.name,
+    intruder,
+  );
   expect(
     (
-      await bareApi.put(`${path}/reviewers`, { headers, data: { usernames: [owner.username] } })
+      await bareApi.put(`${path}/reviewers`, {
+        headers,
+        data: { usernames: [owner.username, intruder.username] },
+      })
     ).status(),
   ).toBe(200);
 
@@ -44,7 +60,7 @@ test('required workflows block merging until they succeed', async ({
   expect(rule.requiredChecks).toEqual(['ci', 'lint']);
 
   const blocked = await bareApi.post(`${path}/merge`, {
-    headers,
+    headers: mergerHeaders,
     data: { strategy: 'MERGE_COMMIT' },
   });
   expect(blocked.status()).toBe(400);
@@ -76,6 +92,11 @@ test('required workflows block merging until they succeed', async ({
     (await (await bareApi.get(`${path}/merge-requirements`, { headers })).json()).satisfied,
   ).toBe(true);
   expect(
-    (await bareApi.post(`${path}/merge`, { headers, data: { strategy: 'MERGE_COMMIT' } })).status(),
+    (
+      await bareApi.post(`${path}/merge`, {
+        headers: mergerHeaders,
+        data: { strategy: 'MERGE_COMMIT' },
+      })
+    ).status(),
   ).toBe(200);
 });

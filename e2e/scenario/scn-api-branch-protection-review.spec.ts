@@ -1,5 +1,10 @@
 import { expect, test } from './fixtures/scenario';
-import { createPullRequest, prepareFeatureBranch, putBlob } from './helpers/scenario-api';
+import {
+  addMergeCollaborator,
+  createPullRequest,
+  prepareFeatureBranch,
+  putBlob,
+} from './helpers/scenario-api';
 
 test('protected branch requires current approvals and rejects later change requests', async ({
   bareApi,
@@ -25,19 +30,13 @@ test('protected branch requires current approvals and rejects later change reque
     { title: 'Protected', sourceBranch: 'feature' },
   );
   const path = `${base}/pulls/${pr.number}`;
-  expect(
-    (
-      await bareApi.post(`${base}/collaborators`, {
-        headers,
-        data: { username: intruder.username, permissions: ['READ', 'PULL_REQUEST_REVIEW'] },
-      })
-    ).status(),
-  ).toBe(201);
-  expect(
-    (
-      await bareApi.post(`${base}/collaborators/invitation/accept`, { headers: reviewerHeaders })
-    ).status(),
-  ).toBe(200);
+  await addMergeCollaborator(
+    bareApi,
+    owner.authorization,
+    owner.username,
+    publicRepo.name,
+    intruder,
+  );
   expect(
     (
       await bareApi.put(`${path}/reviewers`, {
@@ -63,7 +62,7 @@ test('protected branch requires current approvals and rejects later change reque
     ).status(),
   ).toBe(200);
   const merge = () =>
-    bareApi.post(`${path}/merge`, { headers, data: { strategy: 'MERGE_COMMIT' } });
+    bareApi.post(`${path}/merge`, { headers: reviewerHeaders, data: { strategy: 'MERGE_COMMIT' } });
   const review = async (state: string, body = '') => {
     const { headSha, targetSha } = await (await bareApi.get(`${path}/reviews`, { headers })).json();
     return bareApi.post(`${path}/reviews`, {

@@ -1,12 +1,18 @@
 import { expect, test } from './fixtures/scenario';
-import { createPullRequest, prepareFeatureBranch } from './helpers/scenario-api';
+import {
+  addMergeCollaborator,
+  createPullRequest,
+  prepareFeatureBranch,
+} from './helpers/scenario-api';
 
 test('protected branch can require every review conversation to be resolved before merging', async ({
   bareApi,
   owner,
+  intruder,
   publicRepo,
 }) => {
   const headers = { Authorization: owner.authorization };
+  const mergerHeaders = { Authorization: intruder.authorization };
   const base = `/api/repos/${owner.username}/${publicRepo.name}`;
   await prepareFeatureBranch(
     bareApi,
@@ -23,9 +29,19 @@ test('protected branch can require every review conversation to be resolved befo
     { title: 'Conversations', sourceBranch: 'convo' },
   );
   const path = `${base}/pulls/${pr.number}`;
+  await addMergeCollaborator(
+    bareApi,
+    owner.authorization,
+    owner.username,
+    publicRepo.name,
+    intruder,
+  );
   expect(
     (
-      await bareApi.put(`${path}/reviewers`, { headers, data: { usernames: [owner.username] } })
+      await bareApi.put(`${path}/reviewers`, {
+        headers,
+        data: { usernames: [owner.username, intruder.username] },
+      })
     ).status(),
   ).toBe(200);
 
@@ -59,7 +75,7 @@ test('protected branch can require every review conversation to be resolved befo
     satisfied: false,
   });
   const blocked = await bareApi.post(`${path}/merge`, {
-    headers,
+    headers: mergerHeaders,
     data: { strategy: 'MERGE_COMMIT' },
   });
   expect(blocked.status()).toBe(400);
@@ -75,6 +91,11 @@ test('protected branch can require every review conversation to be resolved befo
   ).toBe(200);
   expect(await requirements()).toMatchObject({ unresolvedConversations: 0, satisfied: true });
   expect(
-    (await bareApi.post(`${path}/merge`, { headers, data: { strategy: 'MERGE_COMMIT' } })).status(),
+    (
+      await bareApi.post(`${path}/merge`, {
+        headers: mergerHeaders,
+        data: { strategy: 'MERGE_COMMIT' },
+      })
+    ).status(),
   ).toBe(200);
 });

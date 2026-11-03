@@ -105,8 +105,31 @@ export function apiErrorMessage(error: unknown, fallback: string, messageMap: Re
   return error.message || error.statusText || fallback;
 }
 
+const SSO_DISABLED_MESSAGES: Partial<Record<AuthErrorContext, string>> = {
+  ldap: 'LDAP sign-in is not enabled on this server. Contact your administrator.',
+  saml: 'SSO sign-in is not enabled on this server. Contact your administrator.',
+};
+
+/**
+ * The backend registers the LDAP/SAML endpoints only when the feature is switched on, so a disabled
+ * server answers with Spring's raw "No static resource ..." 404 instead of a known error code.
+ */
+function ssoDisabledMessage(error: unknown, context: AuthErrorContext): string | null {
+  const message = SSO_DISABLED_MESSAGES[context];
+  if (!message || !(error instanceof HttpErrorResponse)) {
+    return null;
+  }
+
+  const code = parseBackendErrorCode(error.error);
+  if (code?.startsWith('No static resource')) {
+    return message;
+  }
+
+  return error.status === 404 && (!code || !(code in AUTH_ERROR_MAPS[context])) ? message : null;
+}
+
 export function authErrorMessage(error: unknown, context: AuthErrorContext, fallback: string): string {
-  return apiErrorMessage(error, fallback, AUTH_ERROR_MAPS[context]);
+  return ssoDisabledMessage(error, context) ?? apiErrorMessage(error, fallback, AUTH_ERROR_MAPS[context]);
 }
 
 export function authQueryErrorMessage(code: string | null): string | null {

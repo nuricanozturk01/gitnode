@@ -18,7 +18,7 @@ package dev.gitnode.os.ssh.services;
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.shared.audit.annotations.Audited;
-import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.ssh.dtos.AddSshKeyForm;
 import dev.gitnode.os.ssh.dtos.SshKeyInfo;
@@ -59,13 +59,13 @@ public class SshKeyService {
     }
 
     if (this.sshKeyRepository.existsByTenantIdAndTitle(tenantId, form.getTitle())) {
-      throw new ErrorOccurredException("sshKeyTitleAlreadyExists");
+      throw new BadRequestException("sshKeyTitleAlreadyExists");
     }
 
     final var fingerprint = this.resolveFingerprint(form.getPublicKey().trim());
 
     if (this.sshKeyRepository.findByFingerprint(fingerprint).isPresent()) {
-      throw new ErrorOccurredException("sshKeyAlreadyExists");
+      throw new BadRequestException("sshKeyAlreadyExists");
     }
 
     final var sshKey = new SshKey();
@@ -129,17 +129,17 @@ public class SshKeyService {
       final var parts = normalized.split(" ");
 
       if (parts.length < 2) {
-        throw new ErrorOccurredException("Invalid SSH public key format");
+        throw new BadRequestException("Invalid SSH public key format");
       }
 
       final var wireBytes = Base64.getDecoder().decode(parts[1]);
       return fingerprintFromWireBytes(wireBytes);
 
-    } catch (final ErrorOccurredException ex) {
+    } catch (final BadRequestException ex) {
       throw ex;
     } catch (final Exception ex) {
       log.error("Failed to resolve fingerprint", ex);
-      throw new ErrorOccurredException("Invalid SSH public key format");
+      throw new BadRequestException("Invalid SSH public key format");
     }
   }
 

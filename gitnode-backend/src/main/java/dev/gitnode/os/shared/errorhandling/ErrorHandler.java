@@ -78,6 +78,8 @@ public class ErrorHandler {
       log.error(exception.getResponseBodyAsString());
     }
 
+    log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
+
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .contentType(MediaType.APPLICATION_JSON)
         .body(ERR_ERROR_OCCURRED);

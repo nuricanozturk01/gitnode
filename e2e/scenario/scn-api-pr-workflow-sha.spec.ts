@@ -125,7 +125,7 @@ test('pull request workflow is tied to the commit that triggered it', async ({
     execFileSync('ssh-keygen', ['-q', '-t', 'ed25519', '-N', '', '-f', key]);
     const added = await bareApi.post('/api/user/ssh-keys', {
       headers,
-      data: { title: 'CI SSH test', publicKey: readFileSync(`${key}.pub`, 'utf8') },
+      data: { title: `CI SSH test ${Date.now()}`, publicKey: readFileSync(`${key}.pub`, 'utf8') },
     });
     expect(added.status()).toBe(201);
     const env = {

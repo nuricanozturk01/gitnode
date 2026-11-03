@@ -22,6 +22,7 @@ import { environment } from '../../../../environments/environment';
 import { TokenService } from './token.service';
 import { UserService } from '../../user/services/user.service';
 import type { LoginForm } from '../../../domain/auth/models/login-form.model';
+import type { SsoProvidersResponse } from '../../../domain/auth/models/sso-providers.model';
 import type { LdapDiscoverResponse, LdapLoginForm } from '../../../domain/auth/models/ldap-login-form.model';
 import type { RegisterForm } from '../../../domain/auth/models/register-form.model';
 import type { SamlDiscoverResponse } from '../../../domain/auth/models/saml-discover.model';
@@ -108,6 +109,10 @@ export class AuthService {
         params: { email },
       }),
     );
+  }
+
+  async ssoProviders(): Promise<SsoProvidersResponse> {
+    return firstValueFrom(this.http.get<SsoProvidersResponse>(`${this.api}/api/auth/sso/providers`));
   }
 
   async discoverLdap(email: string): Promise<LdapDiscoverResponse> {

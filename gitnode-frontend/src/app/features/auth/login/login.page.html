@@ -175,17 +175,23 @@
                 </svg>
               </button>
             </div>
+            @if (ssoLdap() || ssoSaml()) {
             <div class="auth-providers__enterprise" role="group" aria-label="Organization">
+              @if (ssoLdap()) {
               <button type="button" class="auth-providers__chip" (click)="switchToLdap()">
                 <lucide-icon name="building-2" class="size-3.5"></lucide-icon>
                 LDAP
               </button>
+              } @if (ssoLdap() && ssoSaml()) {
               <span class="auth-providers__dot" aria-hidden="true"></span>
+              } @if (ssoSaml()) {
               <button type="button" class="auth-providers__chip" (click)="switchToSaml()">
                 <lucide-icon name="shield-check" class="size-3.5"></lucide-icon>
                 SSO / SAML
               </button>
+              }
             </div>
+            }
           </nav>
 
           }
@@ -265,6 +271,7 @@
             </button>
           </form>
 
+          @if (ssoSaml()) {
           <div class="auth-divider" role="separator">
             <span>or try</span>
           </div>
@@ -275,8 +282,7 @@
               SSO / SAML instead
             </button>
           </div>
-
-          }
+          } }
 
           <!-- ── SAML LOGIN ── -->
           @if (loginMode() === 'saml') {
@@ -315,6 +321,7 @@
             </button>
           </form>
 
+          @if (ssoLdap()) {
           <div class="auth-divider" role="separator">
             <span>or try</span>
           </div>
@@ -325,8 +332,7 @@
               LDAP instead
             </button>
           </div>
-
-          }
+          } }
 
           <p class="auth-card__footer text-center text-sm">
             New to GitNode?

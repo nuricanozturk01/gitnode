@@ -45,6 +45,9 @@ export class LoginPage implements OnInit {
   readonly error = signal<string | null>(null);
   readonly loginMode = signal<LoginMode>('standard');
   readonly needsOtp = signal(false);
+  /** Hidden until the server says they are on; shown if the server cannot tell (older backends). */
+  readonly ssoLdap = signal(false);
+  readonly ssoSaml = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     usernameOrEmail: ['', [Validators.required]],
@@ -63,6 +66,8 @@ export class LoginPage implements OnInit {
   });
 
   ngOnInit() {
+    void this.loadSsoProviders();
+
     const mode = this.route.snapshot.queryParamMap.get('mode');
     if (mode === 'ldap' || mode === 'saml') {
       this.loginMode.set(mode);
@@ -114,6 +119,17 @@ export class LoginPage implements OnInit {
       this.toast.error(msg);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  private async loadSsoProviders(): Promise<void> {
+    try {
+      const providers = await this.authService.ssoProviders();
+      this.ssoLdap.set(providers.ldap);
+      this.ssoSaml.set(providers.saml);
+    } catch {
+      this.ssoLdap.set(true);
+      this.ssoSaml.set(true);
     }
   }
 

@@ -23,7 +23,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.identity.api.TenantQueryPort;
-import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.ssh.dtos.AddSshKeyForm;
 import dev.gitnode.os.ssh.entities.SshKey;
@@ -66,7 +66,7 @@ class SshKeyServiceTest {
   }
 
   @Test
-  @DisplayName("addKey throws ErrorOccurredException when title already exists")
+  @DisplayName("addKey throws BadRequestException when title already exists")
   void addKey_throws_whenTitleExists() {
     UUID tenantId = UUID.randomUUID();
     var tenant = ref(tenantId, "user");
@@ -75,12 +75,12 @@ class SshKeyServiceTest {
 
     assertThatThrownBy(
             () -> sshKeyService.addKey(tenantId, new AddSshKeyForm("mytitle", "ssh-rsa AAAA")))
-        .isInstanceOf(ErrorOccurredException.class)
+        .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("sshKeyTitleAlreadyExists");
   }
 
   @Test
-  @DisplayName("addKey throws ErrorOccurredException when public key format invalid")
+  @DisplayName("addKey throws BadRequestException when public key format invalid")
   void addKey_throws_whenInvalidKeyFormat() {
     UUID tenantId = UUID.randomUUID();
     var tenant = ref(tenantId, "user");
@@ -91,7 +91,7 @@ class SshKeyServiceTest {
             () ->
                 sshKeyService.addKey(
                     tenantId, new AddSshKeyForm("t", "not-valid-key-only-one-part")))
-        .isInstanceOf(ErrorOccurredException.class);
+        .isInstanceOf(BadRequestException.class);
   }
 
   @Test

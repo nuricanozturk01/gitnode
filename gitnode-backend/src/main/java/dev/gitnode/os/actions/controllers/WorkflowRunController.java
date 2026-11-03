@@ -15,19 +15,11 @@
  */
 package dev.gitnode.os.actions.controllers;
 
-import dev.gitnode.os.actions.ActionsEnumNames;
 import dev.gitnode.os.actions.dtos.request.WorkflowDispatchRequest;
-import dev.gitnode.os.actions.dtos.response.WorkflowJobResponse;
 import dev.gitnode.os.actions.dtos.response.WorkflowRunResponse;
-import dev.gitnode.os.actions.dtos.response.WorkflowStepResponse;
-import dev.gitnode.os.actions.entities.WorkflowJob;
-import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.entities.WorkflowRunStatus;
-import dev.gitnode.os.actions.entities.WorkflowStep;
-import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
-import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
-import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
+import dev.gitnode.os.actions.services.WorkflowRunQueryService;
 import dev.gitnode.os.actions.services.WorkflowTriggerService;
 import dev.gitnode.os.actions.websocket.RunStatusSseRegistry;
 import dev.gitnode.os.identity.services.JwtUtils;
@@ -65,9 +57,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @NullMarked
 public class WorkflowRunController {
 
-  private final WorkflowRunRepository runRepository;
-  private final WorkflowJobRepository jobRepository;
-  private final WorkflowStepRepository stepRepository;
+  private final WorkflowRunQueryService runQueries;
   private final RepoLookupPort repoLookup;
   private final RepoAccessPort repoService;
   private final WorkflowTriggerService triggerService;
@@ -91,15 +81,11 @@ public class WorkflowRunController {
     this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     final var repoId = this.requireRepoId(owner, repo);
 
-    final var page =
-        (triggerEvent != null && triggerRef != null)
-            ? this.runRepository.findAllByRepoIdAndTriggerEventAndTriggerRefOrderByCreatedAtDesc(
-                repoId, triggerEvent, triggerRef, pageable)
-            : this.runRepository.findAllByRepoIdOrderByCreatedAtDesc(repoId, pageable);
+    final var page = this.runQueries.listRuns(repoId, triggerEvent, triggerRef, pageable);
 
     return ResponseEntity.ok(
         new PageResponse<>(
-            page.getContent().stream().map(run -> this.toResponse(run, List.of())).toList(),
+            page.getContent(),
             page.getTotalElements(),
             page.getTotalPages(),
             page.getNumber(),
@@ -118,71 +104,7 @@ public class WorkflowRunController {
     this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     this.requireRepoId(owner, repo);
 
-    final var run =
-        this.runRepository
-            .findById(runId)
-            .orElseThrow(() -> new ItemNotFoundException("Workflow run not found: " + runId));
-
-    final var jobs =
-        this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId).stream()
-            .map(job -> this.toJobResponse(job, true))
-            .toList();
-
-    return ResponseEntity.ok(this.toResponse(run, jobs));
-  }
-
-  private WorkflowRunResponse toResponse(
-      final WorkflowRun run, final List<WorkflowJobResponse> jobs) {
-
-    return new WorkflowRunResponse(
-        run.getId(),
-        run.getRunNumber(),
-        run.getWorkflowName(),
-        ActionsEnumNames.lowerCase(run.getStatus()),
-        run.getConclusion(),
-        run.getTriggerEvent(),
-        run.getTriggerRef(),
-        run.getTriggerSha(),
-        run.getStartedAt(),
-        run.getCompletedAt(),
-        run.getCreatedAt(),
-        jobs);
-  }
-
-  private WorkflowJobResponse toJobResponse(final WorkflowJob job, final boolean includeSteps) {
-
-    final var steps =
-        includeSteps
-            ? this.stepRepository.findAllByJobIdOrderByStepNumberAsc(job.getId()).stream()
-                .map(this::toStepResponse)
-                .toList()
-            : List.<WorkflowStepResponse>of();
-
-    return new WorkflowJobResponse(
-        job.getId(),
-        job.getName(),
-        ActionsEnumNames.lowerCase(job.getStatus()),
-        job.getConclusion(),
-        job.getRunnerLabels(),
-        job.getNeeds(),
-        job.getMatrixValues(),
-        job.getStartedAt(),
-        job.getCompletedAt(),
-        job.getCreatedAt(),
-        steps);
-  }
-
-  private WorkflowStepResponse toStepResponse(final WorkflowStep step) {
-
-    return new WorkflowStepResponse(
-        step.getId(),
-        step.getStepNumber(),
-        step.getName(),
-        step.getUses(),
-        step.getStatus(),
-        step.getConclusion(),
-        step.getStartedAt(),
-        step.getCompletedAt());
+    return ResponseEntity.ok(this.runQueries.getRun(runId));
   }
 
   @GetMapping(value = "/runs/{runId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -197,14 +119,10 @@ public class WorkflowRunController {
     this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     this.requireRepoId(owner, repo);
 
-    final var run =
-        this.runRepository
-            .findById(runId)
-            .orElseThrow(() -> new ItemNotFoundException("Workflow run not found: " + runId));
+    final var status = this.runQueries.runStatus(runId);
 
     final var emitter = this.runStatusSseRegistry.subscribe(runId);
 
-    final var status = run.getStatus();
     if (status == WorkflowRunStatus.SUCCESS
         || status == WorkflowRunStatus.FAILURE
         || status == WorkflowRunStatus.CANCELLED

@@ -12,106 +12,165 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE.txt)
 <a href="https://status.gitnode.dev" target="_blank" rel="noopener noreferrer"><img src="https://api.cronbeat.dev/badge/A1HG1-tT7Jvw49lO_2d8tmVU/uptime.svg?range=90d" alt="GitNode uptime"></a>
 
-[Overview](#overview) · [Features](#features) · [Quick start](#quick-start) · [Configuration](#configuration) · [Architecture](#architecture) · [Contributing](#contributing)
+[Features](#features) · [Architecture](#architecture) · [Quick start](#quick-start) · [Production](#production) · [Configuration](#configuration) · [Contributing](#contributing)
 
 </div>
 
 ---
 
-## Overview
-
-GitNode is an open-source, GitHub-style Git platform that runs entirely on infrastructure you control: no subscription,
-no data leaving your servers, no vendor lock-in. It suits an individual developer on a small VPS as well as a team
-deploying on private infrastructure.
-
-A single backend (Spring Boot modular monolith), an Angular web app, an optional admin panel and an optional Go runner
-agent for CI/CD. In-app documentation is served at **`/docs`**.
+GitNode is an open-source, self-hosted alternative to GitHub: repositories, code review, issues, CI/CD and project
+management on infrastructure you control. One Spring Boot backend, an Angular web app, an optional admin panel and an
+optional Go runner for CI/CD. In-app documentation is served at `/docs`.
 
 ## Features
 
 | Area | Highlights |
 |---|---|
-| **Repositories** | Public/private repos, topics, forks, archive-style settings, branch protection, tags and releases with assets; Git over smart HTTP(S) and SSH |
-| **Code review** | Pull requests (merge / squash / rebase), drafts, reviewers, approvals and change requests, inline and file comments, conflict resolution, required checks |
-| **Planning** | Issues with labels, milestones and assignees; Kanban projects with boards, tasks, subtasks and branch / PR linking |
-| **CI/CD (Actions)** | YAML workflows in `.gitnode/workflows`, matrix jobs, secrets vault (AES-256-GCM), artifacts and cache, live logs, self-hosted Go runner (shell and Docker executors) |
-| **Collaboration** | Collaborator roles with fine-grained permissions and invite links, code snippets with revisions, signed webhooks with retries, dead-letter queue and circuit breaker, in-app notifications |
-| **Identity & security** | JWT, OAuth2 (Google, GitHub, GitLab), SAML 2.0 and LDAP per organization, SSH keys, two-factor authentication (TOTP) with recovery codes, rate limiting, audit log |
-| **AI (opt-in, bring your own key)** | PR code review, commit-message and PR-description suggestions, codebase analysis; OpenAI, Anthropic, Gemini, Ollama |
-| **Operations** | Admin panel, GitHub migration, Prometheus / Grafana metrics, health and circuit-breaker endpoints, multi-instance ready |
+| **Repositories** | Public/private repos, forks, branch protection, tags and releases; Git over HTTP(S) and SSH |
+| **Code review** | Pull requests (merge / squash / rebase), reviewers, approvals, inline comments, required checks |
+| **Planning** | Issues with labels and milestones; Kanban projects with tasks and branch / PR linking |
+| **CI/CD** | YAML workflows, matrix jobs, encrypted secrets, artifacts, live logs, self-hosted Go runner |
+| **Collaboration** | Collaborator roles and permissions, snippets, signed webhooks with retries, notifications |
+| **Security** | JWT, OAuth2 (Google, GitHub, GitLab), SAML 2.0, LDAP, two-factor (TOTP), SSH keys, rate limiting, audit log |
+| **AI (opt-in)** | PR review and text suggestions with your own key: OpenAI, Anthropic, Gemini, Ollama |
+| **Operations** | Admin panel, GitHub import, Prometheus / Grafana metrics, health endpoints |
 
-### Go runner
+## Architecture
 
-A single static binary, no JRE required.
+```mermaid
+flowchart TD
 
-```bash
-cd gitnode-runner && make build
-./dist/gitnode-runner start --server-url http://gitnode.example.com --token ghrt_xxxx \
-  --name my-runner --labels self-hosted,linux,docker --executor docker
+subgraph group_clients["User interfaces"]
+  node_web["Web app<br/>[app.routes.ts]"]
+  node_adminui["Admin panel<br/>[app.routes.ts]"]
+end
+
+subgraph group_core["Git platform"]
+  node_backend["Backend API"]
+  node_identity["Identity and access<br/>[AuthService.java]"]
+  node_repositories["Repositories"]
+  node_review["Pull request review"]
+  node_planning["Issues and projects<br/>[IssueService.java]"]
+  node_collaboration["Collaboration"]
+  node_gitstore[("Git repository files")]
+end
+
+subgraph group_delivery["CI and AI"]
+  node_actions["Actions workflows"]
+  node_runner["Go runner agent<br/>[main.go]"]
+  node_ai["AI assistance"]
+end
+
+subgraph group_operations["Administration"]
+  node_admin["Admin services"]
+  node_database[("PostgreSQL")]
+end
+
+node_user(("Platform user"))
+node_ai_provider["AI providers"]
+node_ldap["LDAP and SSO"]
+
+node_user -->|"uses"| node_web
+node_user -->|"administers"| node_adminui
+node_web -->|"uses API"| node_backend
+node_adminui -.->|"uses API"| node_backend
+node_web -->|"authenticates"| node_identity
+node_identity -->|"supports login"| node_ldap
+node_backend -->|"serves"| node_repositories
+node_repositories -->|"stores Git data"| node_gitstore
+node_backend -->|"serves"| node_review
+node_backend -->|"serves"| node_planning
+node_backend -->|"serves"| node_collaboration
+node_backend -->|"runs workflows"| node_actions
+node_actions -->|"dispatches jobs"| node_runner
+node_backend -->|"offers assistance"| node_ai
+node_ai -->|"requests completion"| node_ai_provider
+node_adminui -->|"manages platform"| node_admin
+
+click node_web "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-frontend/src/app/app.routes.ts"
+click node_adminui "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-admin-panel/src/app/app.routes.ts"
+click node_backend "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/GitNodeApplication.java"
+click node_identity "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/auth/services/AuthService.java"
+click node_repositories "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/repo/services/RepoStorageService.java"
+click node_review "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/pr/services/PrReviewService.java"
+click node_planning "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/issue/services/IssueService.java"
+click node_collaboration "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/collaborator/services/CollaboratorService.java"
+click node_actions "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/actions/services/WorkflowExecutionService.java"
+click node_runner "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-runner/cmd/runner/main.go"
+click node_ai "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/ai/services/AiCodeReviewService.java"
+click node_admin "https://github.com/nuricanozturk01/gitnode/blob/main/gitnode-backend/src/main/java/dev/gitnode/os/admin/controllers/AdminStatsController.java"
+
+classDef toneNeutral fill:#f8fafc,stroke:#334155,stroke-width:1.5px,color:#0f172a
+classDef toneBlue fill:#dbeafe,stroke:#2563eb,stroke-width:1.5px,color:#172554
+classDef toneAmber fill:#fef3c7,stroke:#d97706,stroke-width:1.5px,color:#78350f
+classDef toneMint fill:#dcfce7,stroke:#16a34a,stroke-width:1.5px,color:#14532d
+classDef toneRose fill:#ffe4e6,stroke:#e11d48,stroke-width:1.5px,color:#881337
+classDef toneIndigo fill:#e0e7ff,stroke:#4f46e5,stroke-width:1.5px,color:#312e81
+classDef toneTeal fill:#ccfbf1,stroke:#0f766e,stroke-width:1.5px,color:#134e4a
+class node_web,node_adminui,node_user toneBlue
+class node_backend,node_identity,node_repositories,node_review,node_planning,node_collaboration,node_gitstore toneAmber
+class node_actions,node_runner,node_ai toneMint
+class node_admin,node_database toneRose
+class node_ai_provider,node_ldap toneIndigo
 ```
+
+GitNode is a **Spring Modulith modular monolith**. Each bounded context (repositories, pull requests, issues, tasks,
+actions, identity, ...) is a module with a public API. Modules react to each other through **domain events** and ask
+each other questions through **ports**; persistence stays inside the owning module. `GitNodeArchitectureTest` enforces
+these rules. Details: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+
+| Layer | Technology |
+|---|---|
+| Backend | Java 25, Spring Boot 4, Spring Security, JPA, Eclipse JGit, Apache MINA SSHD |
+| Data | PostgreSQL 17 (Flyway), Redis 7 |
+| Frontend | Angular 21, Tailwind CSS 4, DaisyUI 5 |
+| Runner | Go 1.24 |
 
 ## Quick start
 
-**Requirements:** Docker, and `make` for the shortcuts below.
+Requires Docker and `make`.
 
 ```bash
-make up                        # Postgres + Redis + GitNode → http://localhost:8080
-make monitoring                # optional: Prometheus (9090) and Grafana (3000)
+make up                # Postgres + Redis + GitNode, http://localhost:8080
+make monitoring        # optional: Prometheus (9090) and Grafana (3000)
 ```
 
-| Service | URL |
-|---|---|
-| Web app and API | http://localhost:8080 |
-| Git over SSH | `localhost:2222` |
-| Admin panel (dev) | http://localhost:4300 — `cd gitnode-admin-panel && pnpm start` |
+Web app and API: http://localhost:8080 · Git over SSH: `localhost:2222`. Development setup and all Make targets:
+**[CONTRIBUTING.md](CONTRIBUTING.md)**.
 
-<details>
-<summary><b>Plain <code>docker run</code> instead of Make</b></summary>
+**Go runner** (single static binary): `cd gitnode-runner && make build`, then
+`./dist/gitnode-runner start --server-url <url> --token <runner-token> --executor docker`.
 
-```bash
-SECRET=$(openssl rand -base64 64 | tr -d '\n')
-ACTIONS_KEY=$(openssl rand -base64 32 | tr -d '\n')
-AI_KEY=$(openssl rand -base64 32 | tr -d '\n')
+## Production
 
-docker network create gitnode
-docker run -d --name gitnode-postgres --network gitnode \
-  -e POSTGRES_DB=gitnode -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=change-me \
-  postgres:17-alpine
-docker run -d --name gitnode-redis --network gitnode \
-  redis:7-alpine redis-server --save "" --maxmemory 512mb --maxmemory-policy volatile-lru
-docker run -d --name gitnode --network gitnode -p 8080:8080 -p 2222:2222 \
-  -e SPRING_PROFILES_ACTIVE=os \
-  -e "GITNODE_JWT_SECRET=$SECRET" \
-  -e SPRING_DATASOURCE_URL=jdbc:postgresql://gitnode-postgres:5432/gitnode \
-  -e SPRING_DATASOURCE_USERNAME=admin -e SPRING_DATASOURCE_PASSWORD=change-me \
-  -e SPRING_DATA_REDIS_HOST=gitnode-redis \
-  -e GITNODE_GIT_REPO__ROOT=/data/repos \
-  -e GITNODE_BOOTSTRAP_ADMIN_PASSWORD='choose-a-strong-password' \
-  -e "ACTIONS_ENCRYPTION_KEY=$ACTIONS_KEY" -e "GITNODE_AI_ENCRYPTION_KEY=$AI_KEY" \
-  -e GITNODE_FRONTEND_BASE_URL=http://localhost:8080 \
-  -e GITNODE_CORS_ALLOWED_ORIGINS=http://localhost:8080 \
-  -v gitnode-repos:/data/repos \
-  repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
-```
+`make up` uses throwaway development credentials. For a real deployment:
 
-</details>
+1. **Set your own secrets**: `GITNODE_JWT_SECRET` (32+ characters), `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`, the database
+   password, and the two encryption keys (`make actions-encryption-key`, `make ai-encryption-key`). Keep them stable:
+   changing an encryption key makes stored secrets unreadable.
+2. **Put HTTPS in front** (reverse proxy such as Caddy or nginx) and set `GITNODE_FRONTEND_BASE_URL` and
+   `GITNODE_CORS_ALLOWED_ORIGINS` to the public URLs. Expose port `2222` for Git over SSH if you use it.
+3. **Persist and back up** PostgreSQL and the repository volume (`GITNODE_GIT_REPO__ROOT`). Back both up together.
+4. **Enable only what you use**: SAML and LDAP are off until `GITNODE_SSO_SAML_ENABLED` / `GITNODE_SSO_LDAP_ENABLED` are
+   `true`. Health: `/actuator/health`; metrics: `/actuator/prometheus`.
 
-Development setup, run profiles and all Make targets are in **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+**Scaling:** app instances are stateless (JWT sessions; cache, rate limits and runtime state in Redis). With more than
+one instance, share the repository path and `gitnode.actions.artifacts.local-path` over a network filesystem (NFS, EFS,
+or a `ReadWriteMany` volume).
 
 ## Configuration
 
-Everything is configured through environment variables. The ones you will almost always set:
+Everything is an environment variable. The ones you will almost always set:
 
 | Variable | Description |
 |---|---|
-| `GITNODE_JWT_SECRET` | **Required.** Secret for signing JWTs (at least 32 characters) |
-| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Password of the first platform admin (required in production) |
-| `GITNODE_GIT_REPO__ROOT` | Storage path for Git repositories — mount a volume |
+| `GITNODE_JWT_SECRET` | **Required.** Secret for signing JWTs |
+| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Password of the first platform admin |
+| `GITNODE_GIT_REPO__ROOT` | Storage path for Git repositories (mount a volume) |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | PostgreSQL connection |
-| `SPRING_DATA_REDIS_HOST` / `_PORT` | Redis connection (cache, rate limiting) |
-| `ACTIONS_ENCRYPTION_KEY` | Base64 AES-256 key for the Actions secrets vault (`make actions-encryption-key`) |
-| `GITNODE_AI_ENCRYPTION_KEY` | Base64 AES-256 key for stored AI API keys (`make ai-encryption-key`) |
-| `GITNODE_FRONTEND_BASE_URL`, `GITNODE_CORS_ALLOWED_ORIGINS` | Public URLs used for OAuth/SAML redirects and CORS |
+| `SPRING_DATA_REDIS_HOST` / `_PORT` | Redis connection |
+| `ACTIONS_ENCRYPTION_KEY`, `GITNODE_AI_ENCRYPTION_KEY` | Base64 AES-256 keys for the secrets vault and stored AI keys |
+| `GITNODE_FRONTEND_BASE_URL`, `GITNODE_CORS_ALLOWED_ORIGINS` | Public URLs for OAuth/SAML redirects and CORS |
 
 <details>
 <summary><b>Full variable reference</b></summary>
@@ -152,42 +211,11 @@ Everything is configured through environment variables. The ones you will almost
 
 </details>
 
-## Architecture
-
-GitNode is a **Spring Modulith modular monolith**: each bounded context (repositories, pull requests, issues, tasks,
-actions, identity, …) is a module with an explicit public API. Modules communicate through **domain events** for
-reactions and through **ports** (hexagonal) for synchronous queries; persistence stays inside the owning module. The
-rules are enforced by tests (`GitNodeArchitectureTest`).
-
-See **[ARCHITECTURE.md](ARCHITECTURE.md)** for the module map, allowed dependencies and conventions.
-
-| Layer | Technology |
-|---|---|
-| Backend | Java 25, Spring Boot 4, Spring Security, Spring Data JPA, Eclipse JGit, Apache MINA SSHD |
-| Data | PostgreSQL 17 (Flyway, pgAudit), Redis 7 |
-| Frontend | Angular 21, TypeScript, Tailwind CSS 4, DaisyUI 5 |
-| CI/CD runner | Go 1.24 |
-| Observability | Micrometer, Prometheus, Grafana, Resilience4j |
-
-## Scaling and high availability
-
-App instances are stateless and can run behind a load balancer: sessions are JWT-based, caches, rate-limit counters and
-Actions runtime state live in Redis, webhook retry state lives in PostgreSQL. Two paths need **shared storage** when you
-run more than one instance:
-
-| Data | Setting |
-|---|---|
-| Git repositories | `GITNODE_GIT_REPO__ROOT` |
-| CI/CD artifacts and cache | `gitnode.actions.artifacts.local-path` |
-
-Mount a network filesystem (NFS, EFS, Filestore, Azure Files) or a `ReadWriteMany` PVC at both paths.
-
 ## Contributing
 
-Contributions are welcome. Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the development workflow, run profiles and
-test commands (`make test` for unit tests and lint, end-to-end tests under `e2e/`), and
-**[ARCHITECTURE.md](ARCHITECTURE.md)** before adding or changing modules.
+Read **[CONTRIBUTING.md](CONTRIBUTING.md)** for the workflow and run profiles (`make test` runs unit tests and lint;
+end-to-end tests live in `e2e/`), and **[ARCHITECTURE.md](ARCHITECTURE.md)** before adding or changing modules.
 
 ## License
 
-Distributed under the [MIT License](LICENSE.txt).
+[MIT](LICENSE.txt)

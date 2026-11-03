@@ -1,4 +1,3 @@
 #
 #Tue Nov 03 17:42:00 GMT+03:00 2026
-no\ classes\ that\ reside\ in\ a\ package\ '..controllers..'\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ '..repositories..'=b2b01cf9-d85b-4ddd-8648-1d4c4d459167
 no\ classes\ that\ reside\ outside\ of\ packages\ ['..repo..',\ '..identity..',\ '..githttp..',\ '..ssh..',\ '..auth..',\ '..profile..',\ '..admin..']\ and\ reside\ in\ any\ package\ ['dev.gitnode.os.(*)..']\ should\ depend\ on\ classes\ that\ reside\ in\ any\ package\ ['dev.gitnode.os.repo.repositories..',\ 'dev.gitnode.os.identity.repositories..']=d790ad15-861d-4244-bfb6-74ade1abf9a7

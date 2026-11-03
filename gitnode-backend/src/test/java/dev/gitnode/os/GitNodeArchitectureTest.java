@@ -46,19 +46,15 @@ public class GitNodeArchitectureTest {
         .writeIndividualModulesAsPlantUml();
   }
 
-  /**
-   * R1: web adapters talk to services, never straight to persistence. Existing violations are
-   * frozen in {@code archunit_store}; new ones fail the build (see architecture plan, task 8).
-   */
+  /** R1: web adapters talk to services, never straight to persistence. */
   @ArchTest
   static final ArchRule controllersDoNotUseRepositories =
-      FreezingArchRule.freeze(
-          noClasses()
-              .that()
-              .resideInAPackage("..controllers..")
-              .should()
-              .dependOnClassesThat()
-              .resideInAPackage("..repositories.."));
+      noClasses()
+          .that()
+          .resideInAPackage("..controllers..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("..repositories..");
 
   /** R2: a module's published api must not leak JPA entities. */
   @ArchTest

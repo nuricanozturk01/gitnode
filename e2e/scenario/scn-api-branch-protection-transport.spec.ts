@@ -78,7 +78,10 @@ test('protected branch blocks API, HTTP and SSH writes', async ({
       (
         await bareApi.post('/api/user/ssh-keys', {
           headers,
-          data: { title: 'Protection test', publicKey: readFileSync(`${key}.pub`, 'utf8') },
+          data: {
+            title: `Protection test ${Date.now()}`,
+            publicKey: readFileSync(`${key}.pub`, 'utf8'),
+          },
         })
       ).status(),
     ).toBe(201);

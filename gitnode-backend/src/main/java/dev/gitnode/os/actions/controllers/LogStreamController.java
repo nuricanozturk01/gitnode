@@ -16,10 +16,9 @@
 package dev.gitnode.os.actions.controllers;
 
 import dev.gitnode.os.actions.dtos.request.StepLogRequest;
-import dev.gitnode.os.actions.repositories.WorkflowLogRepository;
-import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.services.RunnerTokenService;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
+import dev.gitnode.os.actions.services.WorkflowRunQueryService;
 import dev.gitnode.os.actions.websocket.SseEmitterRegistry;
 import dev.gitnode.os.identity.services.JwtUtils;
 import jakarta.validation.Valid;
@@ -46,8 +45,7 @@ public class LogStreamController {
 
   private static final String BEARER = "Bearer ";
   private final WorkflowExecutionService executionService;
-  private final WorkflowLogRepository logRepository;
-  private final WorkflowStepRepository stepRepository;
+  private final WorkflowRunQueryService runQueries;
   private final SseEmitterRegistry sseEmitterRegistry;
   private final RunnerTokenService runnerTokenService;
   private final JwtUtils jwtUtils;
@@ -77,27 +75,17 @@ public class LogStreamController {
     final var emitter = this.sseEmitterRegistry.subscribe(stepId);
 
     // Replay existing logs so the client catches up regardless of subscribe timing.
-    final var existing = this.logRepository.findAllByStepIdOrderByLineNumberAsc(stepId);
-    for (final var log : existing) {
+    for (final var line : this.runQueries.logLines(stepId)) {
       try {
-        emitter.send(
-            SseEmitter.event()
-                .data(
-                    new WorkflowExecutionService.LogLine(
-                        log.getLineNumber(), log.getContent(), log.getLevel())));
+        emitter.send(SseEmitter.event().data(line));
       } catch (final Exception ignored) {
         break;
       }
     }
 
-    this.stepRepository
-        .findById(stepId)
-        .ifPresent(
-            step -> {
-              if ("completed".equals(step.getStatus())) {
-                emitter.complete();
-              }
-            });
+    if (this.runQueries.isStepCompleted(stepId)) {
+      emitter.complete();
+    }
 
     return emitter;
   }

@@ -28,6 +28,7 @@ export interface PrMergeRequirements {
   requireConversationResolution: boolean;
   unresolvedConversations: number;
   satisfied: boolean;
+  canBypass: boolean;
 }
 
 export interface PrMetadata {

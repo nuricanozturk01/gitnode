@@ -29,7 +29,8 @@ public record PrMergeRequirements(
     List<Check> checks,
     boolean requireConversationResolution,
     int unresolvedConversations,
-    boolean satisfied) {
+    boolean satisfied,
+    boolean canBypass) {
 
   /** {@code state} is the latest run status for the source head, or {@code MISSING}. */
   public record Check(String name, String state) {}

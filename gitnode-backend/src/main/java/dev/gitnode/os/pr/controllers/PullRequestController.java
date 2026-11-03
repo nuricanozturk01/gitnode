@@ -150,7 +150,7 @@ public class PullRequestController {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    return ResponseEntity.ok(this.prService.mergeRequirements(owner, repo, number));
+    return ResponseEntity.ok(this.prService.mergeRequirements(owner, repo, number, requesterId));
   }
 
   @GetMapping("/{number}/conflicts")

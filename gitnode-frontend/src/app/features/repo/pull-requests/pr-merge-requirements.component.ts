@@ -78,7 +78,7 @@ export class PrMergeRequirementsComponent {
       const value = await this.prService.getMergeRequirements(this.owner(), this.repoName(), this.number());
       if (id !== this.requestId) return;
       this.data.set(value);
-      this.blocked.emit(!value.satisfied);
+      this.blocked.emit(!value.satisfied && !value.canBypass);
     } catch {
       if (id !== this.requestId) return;
       this.data.set(null);

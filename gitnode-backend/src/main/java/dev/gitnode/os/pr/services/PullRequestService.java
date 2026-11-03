@@ -284,12 +284,13 @@ public class PullRequestService {
   }
 
   public PrMergeRequirements mergeRequirements(
-      final String owner, final String repoName, final int number) throws IOException {
+      final String owner, final String repoName, final int number, final @Nullable UUID requesterId)
+      throws IOException {
     final var repo = this.prFinder.findRepo(owner, repoName);
     final var pr = this.prFinder.findPr(repo.id(), number);
     final var rule = this.branchProtection.findProtection(repo.id(), pr.getTargetBranch());
     if (rule.isEmpty()) {
-      return new PrMergeRequirements(false, 0, 0, List.of(), List.of(), false, 0, true);
+      return new PrMergeRequirements(false, 0, 0, List.of(), List.of(), false, 0, true, false);
     }
     final var heads = this.reviewService.branchHeads(owner, repoName, pr);
     final var summary = this.reviewService.summarize(repo, pr, heads);
@@ -304,7 +305,7 @@ public class PullRequestService {
     final var unresolved =
         conversations ? (int) this.commentRepository.countUnresolvedConversations(pr.getId()) : 0;
     final var satisfied =
-        (required == 0 || (summary.current() >= required && summary.changesRequestedBy().isEmpty()))
+        approvalsSatisfied(required, summary)
             && checks.stream().allMatch(check -> "SUCCESS".equals(check.state()))
             && unresolved == 0;
     return new PrMergeRequirements(
@@ -315,7 +316,14 @@ public class PullRequestService {
         checks,
         conversations,
         unresolved,
-        satisfied);
+        satisfied,
+        repo.ownerId().equals(requesterId));
+  }
+
+  private static boolean approvalsSatisfied(
+      final int required, final PrReviewService.ApprovalSummary summary) {
+    return required == 0
+        || (summary.current() >= required && summary.changesRequestedBy().isEmpty());
   }
 
   private PrReviewService.@Nullable BranchHeads checkProtection(
@@ -372,7 +380,9 @@ public class PullRequestService {
 
     this.reviewerService.assertEligibleReviewer(repo, pr);
 
-    final var checkedHeads = this.checkProtection(owner, repoName, repo, pr);
+    // Repository owner may bypass branch protection, like an admin bypass on GitHub.
+    final var checkedHeads =
+        mergedById.equals(repo.ownerId()) ? null : this.checkProtection(owner, repoName, repo, pr);
 
     final var mergeSha =
         switch (form.getStrategy()) {

@@ -14,10 +14,18 @@
             {{
               d.satisfied
                 ? 'All requirements for ' + targetBranch() + ' are met'
-                : 'Merging into ' + targetBranch() + ' is blocked'
+                : d.canBypass
+                  ? 'Requirements for ' + targetBranch() + ' are not met (bypass available)'
+                  : 'Merging into ' + targetBranch() + ' is blocked'
             }}
           </h3>
-          <p class="mreq-sub">Branch protection rules apply to this pull request.</p>
+          <p class="mreq-sub">
+            @if (!d.satisfied && d.canBypass) {
+              As repository owner you can bypass these rules and merge anyway.
+            } @else {
+              Branch protection rules apply to this pull request.
+            }
+          </p>
         </div>
       </div>
       <ul class="mreq-list">

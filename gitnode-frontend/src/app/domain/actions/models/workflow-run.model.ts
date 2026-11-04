@@ -12,6 +12,11 @@ export interface WorkflowRun {
   startedAt: string | null;
   completedAt: string | null;
   createdAt: string;
+  headCommitMessage: string | null;
+  actorName: string | null;
+  actorAvatarUrl: string | null;
+  runAttempt: number;
+  workflowPath: string | null;
   jobs: WorkflowJob[];
 }
 

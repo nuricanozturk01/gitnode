@@ -3,6 +3,14 @@ import { environment } from '../../../../environments/environment';
 import { TokenService } from '../../auth/services/token.service';
 import type { WorkflowLogLine } from '../../../domain/actions/models/workflow-step.model';
 
+/** The log endpoint answered with an error; `status` tells the UI what to say about it. */
+export class LogStreamError extends Error {
+  constructor(readonly status: number) {
+    super(`Log stream failed: ${status}`);
+    this.name = 'LogStreamError';
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class LogStreamService {
   private readonly tokenService = inject(TokenService);
@@ -19,7 +27,7 @@ export class LogStreamService {
       signal,
     }).then(async (response) => {
       if (!response.ok || !response.body) {
-        throw new Error(`Log stream failed: ${response.status}`);
+        throw new LogStreamError(response.status);
       }
 
       const reader = response.body.getReader();
@@ -50,5 +58,18 @@ export class LogStreamService {
         }
       }
     });
+  }
+
+  /** Reads every stored line of a finished step; rejects when the stream fails or takes too long. */
+  async fetchStepLogs(stepId: string, timeoutMs = 15000): Promise<WorkflowLogLine[]> {
+    const lines = new Map<number, WorkflowLogLine>();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      await this.streamStepLogs(stepId, (line) => lines.set(line.lineNumber, line), controller.signal);
+    } finally {
+      clearTimeout(timer);
+    }
+    return [...lines.values()].sort((a, b) => a.lineNumber - b.lineNumber);
   }
 }

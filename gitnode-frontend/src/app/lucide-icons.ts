@@ -105,6 +105,9 @@ import {
   BellOff,
   AlertCircle,
   CheckCheck,
+  RotateCcw,
+  GitCommitHorizontal,
+  Ellipsis,
   Trash,
 } from 'lucide-angular';
 
@@ -199,5 +202,8 @@ export const LUCIDE_ICONS = {
   BellOff,
   AlertCircle,
   CheckCheck,
+  RotateCcw,
+  GitCommitHorizontal,
+  Ellipsis,
   Trash,
 };

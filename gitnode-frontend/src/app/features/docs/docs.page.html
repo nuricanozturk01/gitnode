@@ -484,7 +484,10 @@
                       <tr>
                         <td>Action marketplace</td>
                         <td>Any action from marketplace</td>
-                        <td>Built-in actions (any version, e.g. checkout@v5) plus actions fetched from GitHub or <code class="docs-table-code">./local/path</code>: composite, Node.js and Docker</td>
+                        <td>
+                          Built-in actions (any version, e.g. checkout@v5) plus actions fetched from GitHub or
+                          <code class="docs-table-code">./local/path</code>: composite, Node.js and Docker
+                        </td>
                       </tr>
                       <tr>
                         <td>Runners</td>
@@ -494,7 +497,11 @@
                       <tr>
                         <td>Composite actions / reusable workflows</td>
                         <td>Supported</td>
-                        <td>Composite actions supported; reusable workflows (<code class="docs-table-code">workflow_call</code>) not yet</td>
+                        <td>
+                          Composite actions supported; reusable workflows (<code class="docs-table-code"
+                            >workflow_call</code
+                          >) not yet
+                        </td>
                       </tr>
                       <tr>
                         <td>Built-in context (<code class="docs-table-code">github.*</code>)</td>
@@ -732,7 +739,9 @@
                           Cron time reached, on the default branch (UTC, five-field cron; an optional
                           <code class="docs-table-code">timezone</code> is supported)
                         </td>
-                        <td><code class="docs-table-code">cron</code>, <code class="docs-table-code">timezone</code></td>
+                        <td>
+                          <code class="docs-table-code">cron</code>, <code class="docs-table-code">timezone</code>
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -817,7 +826,12 @@
                       </tr>
                       <tr>
                         <td><code class="docs-table-code">if</code></td>
-                        <td>Evaluated before the step runs with GitHub's expression syntax; the default is <code class="docs-table-code">success()</code>, so after a failure only steps with <code class="docs-table-code">always()</code> or <code class="docs-table-code">failure()</code> run</td>
+                        <td>
+                          Evaluated before the step runs with GitHub's expression syntax; the default is
+                          <code class="docs-table-code">success()</code>, so after a failure only steps with
+                          <code class="docs-table-code">always()</code> or
+                          <code class="docs-table-code">failure()</code> run
+                        </td>
                       </tr>
                       <tr>
                         <td><code class="docs-table-code">with</code></td>
@@ -826,8 +840,9 @@
                       <tr>
                         <td><code class="docs-table-code">env</code></td>
                         <td>
-                          Applied to that step only, including <code class="docs-table-code">${{'${{ }}'}}</code> expressions;
-                          workflow-level and job-level <code class="docs-table-code">env</code> apply to every step
+                          Applied to that step only, including
+                          <code class="docs-table-code">${{'${{ }}'}}</code> expressions; workflow-level and job-level
+                          <code class="docs-table-code">env</code> apply to every step
                         </td>
                       </tr>
                     </tbody>

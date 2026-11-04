@@ -167,7 +167,7 @@ export class PrTimelineComponent {
     const [commits, reviews, runs] = await Promise.allSettled([
       this.prService.getPrCommits(owner, repo, number),
       this.prService.getReviews(owner, repo, number),
-      this.runService.listRuns(owner, repo, 0, 30, 'pull_request', sourceRef),
+      this.runService.listRuns(owner, repo, 0, 30, { event: 'pull_request', triggerRef: sourceRef }),
     ]);
     if (id !== this.requestId) return;
     this.commits.set(

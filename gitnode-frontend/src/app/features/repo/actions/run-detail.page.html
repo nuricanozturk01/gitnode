@@ -10,8 +10,8 @@
 </div>
 } @else {
 <div class="space-y-4">
-  <div class="repo-panel overflow-hidden">
-    <div class="repo-toolbar px-3 py-3 sm:px-4">
+  <div class="repo-panel">
+    <div class="repo-toolbar rounded-[inherit] border-b-0 px-3 py-3 sm:px-4">
       <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div class="min-w-0">
           <a
@@ -21,25 +21,38 @@
             <lucide-icon name="arrowLeft" class="size-3"></lucide-icon>
             Actions
           </a>
-          <div class="flex flex-wrap items-center gap-2">
-            <lucide-icon
-              [name]="statusIconName(run()!.status, run()!.conclusion)"
-              class="size-5 shrink-0"
-              [class]="statusIconClass(displayStatus(run()!))"
-              [class.animate-spin]="statusIconSpinning(run()!.status, run()!.conclusion)"
-            ></lucide-icon>
-            <h2 class="text-base-content text-lg font-semibold">{{ run()!.workflowName }}</h2>
-            <span class="text-base-content/50 text-sm">#{{ run()!.runNumber }}</span>
-            <span [class]="statusBadgeClass(displayStatus(run()!))"> {{ statusLabel(displayStatus(run()!)) }} </span>
-          </div>
-          <p class="text-base-content/50 mt-1 text-sm">
-            Triggered by {{ run()!.triggerEvent }} @if (run()!.triggerRef) { on
-            <span class="font-mono text-xs">{{ run()!.triggerRef }}</span>
-            } · {{ run()!.createdAt | relativeTime }}
+          <h2 class="text-base-content truncate text-lg font-semibold">
+            {{ runTitle(run()!) }}
+            <span class="text-base-content/50 font-normal">#{{ run()!.runNumber }}</span>
+          </h2>
+          <p class="text-base-content/60 mt-1 text-sm">
+            {{ run()!.workflowName }} @if (run()!.runAttempt > 1) { · Attempt #{{ run()!.runAttempt }} }
           </p>
         </div>
-        @if (repoContext.canWriteActions() && isLive()) {
-        <div class="flex shrink-0 items-center gap-2 self-start">
+        <div class="flex shrink-0 flex-wrap items-center gap-2 self-start">
+          @if (repoContext.canWriteActions()) { @if (canRerun()) {
+          <div class="dropdown dropdown-end">
+            <button type="button" tabindex="0" class="btn btn-outline btn-sm gap-1.5" [disabled]="rerunning()">
+              @if (rerunning()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              } @else {
+              <lucide-icon name="rotateCcw" class="size-3.5"></lucide-icon>
+              } Re-run jobs
+              <lucide-icon name="chevronDown" class="size-3.5"></lucide-icon>
+            </button>
+            <ul
+              tabindex="0"
+              class="dropdown-content menu bg-base-100 border-base-300 z-10 w-52 rounded-lg border p-1 shadow-lg"
+            >
+              <li>
+                <button type="button" [disabled]="!hasFailedJobs()" (click)="rerun({ failedOnly: true })">
+                  Re-run failed jobs
+                </button>
+              </li>
+              <li><button type="button" (click)="rerun({})">Re-run all jobs</button></li>
+            </ul>
+          </div>
+          } @if (isLive()) {
           <button
             type="button"
             class="btn btn-outline btn-error btn-sm gap-1.5"
@@ -50,51 +63,188 @@
             <span class="loading loading-spinner loading-xs"></span>
             } @else {
             <lucide-icon name="x" class="size-3.5"></lucide-icon>
-            } Cancel run
+            } Cancel workflow
           </button>
+          } }
         </div>
-        }
       </div>
     </div>
-
-    @if (run()!.jobs.length > 1) {
-    <div class="border-base-300 border-t">
-      <app-job-graph
-        [jobs]="run()!.jobs"
-        [selectedJobId]="selectedJobId()"
-        (jobSelected)="selectJob($event)"
-      ></app-job-graph>
-    </div>
-    }
   </div>
 
   <div class="grid grid-cols-1 gap-4 lg:grid-cols-12">
-    <section class="repo-panel overflow-hidden lg:col-span-4">
-      <div class="repo-toolbar px-3 py-2.5 sm:px-4">
-        <h3 class="text-base-content text-sm font-semibold">Jobs</h3>
+    <aside class="repo-panel overflow-hidden lg:col-span-3">
+      <div class="p-2 pb-0">
+        <button
+          type="button"
+          class="hover:bg-base-200/60 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm"
+          [class.bg-base-200]="!selectedJob()"
+          [class.font-semibold]="!selectedJob()"
+          (click)="selectJob(null)"
+        >
+          <lucide-icon name="home" class="size-4 shrink-0"></lucide-icon>
+          Summary
+        </button>
       </div>
+      <div class="text-base-content/50 px-5 pt-3 text-xs font-semibold tracking-wide uppercase">Jobs</div>
       <app-job-panel
         [jobs]="run()!.jobs"
         [selectedJobId]="selectedJobId()"
-        [expandedJobIds]="expandedJobIds()"
         (jobSelected)="selectJob($event)"
-        (stepSelected)="selectStep($event)"
       ></app-job-panel>
-    </section>
+    </aside>
 
-    <section class="repo-panel overflow-hidden lg:col-span-8">
-      <div class="repo-toolbar px-3 py-2.5 sm:px-4">
-        <h3 class="text-base-content text-sm font-semibold">
-          @if (selectedStep(); as step) { {{ stepName(step) }} } @else { Logs }
-        </h3>
+    <section class="repo-panel overflow-hidden lg:col-span-9">
+      @if (selectedJob(); as job) {
+      <div class="repo-toolbar px-3 py-3 sm:px-4">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="flex min-w-0 items-center gap-2">
+            <lucide-icon
+              [name]="statusIconName(job.status, job.conclusion)"
+              class="size-5 shrink-0"
+              [class]="statusIconClass(displayStatus({ status: job.status, conclusion: job.conclusion }))"
+              [class.animate-spin]="statusIconSpinning(job.status, job.conclusion)"
+            ></lucide-icon>
+            <h3 class="text-base-content truncate text-base font-semibold">{{ job.name }}</h3>
+            @if (jobDuration(job)) {
+            <span class="text-base-content/50 text-xs">
+              {{ job.completedAt ? 'in' : 'for' }} {{ jobDuration(job) }}
+            </span>
+            }
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <label class="input input-sm flex items-center gap-2">
+              <lucide-icon name="search" class="size-3.5 opacity-60"></lucide-icon>
+              <input
+                type="search"
+                class="grow"
+                placeholder="Search logs"
+                aria-label="Search logs"
+                [value]="logSearch()"
+                (input)="onLogSearch($event)"
+              />
+            </label>
+            <button
+              type="button"
+              class="btn btn-outline btn-sm gap-1.5"
+              [disabled]="downloading() || !job.completedAt"
+              [title]="job.completedAt ? 'Download log archive' : 'Available when the job has finished'"
+              (click)="downloadLogs(job)"
+            >
+              @if (downloading()) {
+              <span class="loading loading-spinner loading-xs"></span>
+              } @else {
+              <lucide-icon name="download" class="size-3.5"></lucide-icon>
+              } Download logs
+            </button>
+            @if (repoContext.canWriteActions() && canRerun()) {
+            <button
+              type="button"
+              class="btn btn-outline btn-sm gap-1.5"
+              [disabled]="rerunning()"
+              (click)="rerun({ jobId: job.id })"
+            >
+              <lucide-icon name="rotateCcw" class="size-3.5"></lucide-icon>
+              Re-run job
+            </button>
+            }
+          </div>
+        </div>
       </div>
-      <div class="p-3 sm:p-4">
-        @if (selectedStep(); as step) {
-        <app-log-viewer [stepId]="step.id" [stepName]="stepName(step)" [live]="isStepLive()"></app-log-viewer>
-        } @else {
-        <div class="text-base-content/50 py-12 text-center text-sm">Select a job step to view logs.</div>
+
+      <div class="divide-base-300 divide-y">
+        @for (step of job.steps; track step.id) {
+        <div>
+          <button
+            type="button"
+            class="hover:bg-base-200/40 flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm sm:px-4"
+            [attr.aria-expanded]="isStepOpen(step)"
+            (click)="toggleStep(step)"
+          >
+            <lucide-icon
+              name="chevronRight"
+              class="size-3.5 shrink-0 transition-transform"
+              [class.rotate-90]="isStepOpen(step)"
+            ></lucide-icon>
+            <lucide-icon
+              [name]="statusIconName(step.status, step.conclusion)"
+              class="size-4 shrink-0"
+              [class]="statusIconClass(displayStatus({ status: step.status, conclusion: step.conclusion }))"
+              [class.animate-spin]="statusIconSpinning(step.status, step.conclusion)"
+            ></lucide-icon>
+            <span class="min-w-0 flex-1 truncate">{{ stepName(step) }}</span>
+            @if (stepDuration(step)) {
+            <span class="text-base-content/50 shrink-0 text-xs">{{ stepDuration(step) }}</span>
+            }
+          </button>
+          @if (isStepOpen(step)) {
+          <div class="px-3 pb-3 sm:px-4">
+            <app-log-viewer
+              [stepId]="step.id"
+              [stepName]="stepName(step)"
+              [live]="isStepLive(step)"
+              [compact]="true"
+              [filter]="logSearch()"
+            ></app-log-viewer>
+          </div>
+          }
+        </div>
+        } @empty {
+        <div class="text-base-content/50 py-12 text-center text-sm">
+          {{ job.status === 'queued' || job.status === 'waiting' ? 'Waiting for a runner…' : 'No steps to show.' }}
+        </div>
         }
       </div>
+      } @else {
+      <div class="repo-toolbar px-3 py-3 sm:px-4">
+        <h3 class="text-base-content text-base font-semibold">Summary</h3>
+      </div>
+      <div class="grid grid-cols-2 gap-4 p-4 md:grid-cols-4">
+        <div>
+          <div class="text-base-content/50 text-xs">Triggered via {{ run()!.triggerEvent }}</div>
+          <div class="mt-1 text-sm">{{ run()!.createdAt | relativeTime }}</div>
+        </div>
+        <div>
+          <div class="text-base-content/50 text-xs">Actor</div>
+          <div class="mt-1 text-sm">{{ run()!.actorName ?? '—' }}</div>
+        </div>
+        <div>
+          <div class="text-base-content/50 text-xs">Status</div>
+          <div class="mt-1 flex items-center gap-1.5 text-sm capitalize">
+            <lucide-icon
+              [name]="statusIconName(run()!.status, run()!.conclusion)"
+              class="size-4"
+              [class]="statusIconClass(displayStatus(run()!))"
+              [class.animate-spin]="statusIconSpinning(run()!.status, run()!.conclusion)"
+            ></lucide-icon>
+            {{ statusLabel(displayStatus(run()!)) }}
+          </div>
+        </div>
+        <div>
+          <div class="text-base-content/50 text-xs">Total duration</div>
+          <div class="mt-1 text-sm">{{ runDuration(run()!) || '—' }}</div>
+        </div>
+        @if (run()!.triggerRef) {
+        <div>
+          <div class="text-base-content/50 text-xs">Branch</div>
+          <div class="mt-1 font-mono text-sm">{{ shortRef(run()!.triggerRef) }}</div>
+        </div>
+        } @if (run()!.triggerSha) {
+        <div>
+          <div class="text-base-content/50 text-xs">Commit</div>
+          <div class="mt-1 font-mono text-sm">{{ run()!.triggerSha!.slice(0, 7) }}</div>
+        </div>
+        } @if (run()!.workflowPath) {
+        <div class="col-span-2">
+          <div class="text-base-content/50 text-xs">Workflow file</div>
+          <div class="mt-1 truncate font-mono text-sm">{{ run()!.workflowPath }}</div>
+        </div>
+        }
+      </div>
+      @if (run()!.jobs.length > 0) {
+      <div class="border-base-300 border-t">
+        <app-job-graph [jobs]="run()!.jobs" [selectedJobId]="null" (jobSelected)="selectJob($event)"></app-job-graph>
+      </div>
+      } }
     </section>
   </div>
 </div>

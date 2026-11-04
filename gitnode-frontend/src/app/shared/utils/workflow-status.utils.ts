@@ -161,3 +161,47 @@ export function runnerStatusLabel(status: string | null | undefined): string {
   if (!status) return 'Unknown';
   return RUNNER_STATUS_LABELS[normalizeStatusKey(status)] ?? status;
 }
+
+/** "1m 5s", "12s", "1h 2m" — GitHub style; empty when the start is unknown. */
+export function formatDuration(
+  start: string | null | undefined,
+  end?: string | null,
+  now: number = Date.now(),
+): string {
+  if (!start) return '';
+  const from = Date.parse(start);
+  if (Number.isNaN(from)) return '';
+  const toParsed = end ? Date.parse(end) : now;
+  const to = Number.isNaN(toParsed) ? now : toParsed;
+  const total = Math.max(0, Math.round((to - from) / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+/** First line of a commit message, or the fallback when there is none. */
+export function commitTitle(message: string | null | undefined, fallback: string): string {
+  const first = (message ?? '').split('\n', 1)[0]?.trim();
+  return first ? first : fallback;
+}
+
+/** "refs/heads/main" → "main", "refs/tags/v1" → "v1". */
+export function shortRef(ref: string | null | undefined): string {
+  return (ref ?? '').replace(/^refs\/(heads|tags)\//, '');
+}
+
+/**
+ * The title of a run, as GitHub shows it: the commit message for pushes and pull requests, the
+ * workflow name for everything else (manual dispatches, schedules, ...).
+ */
+export function runTitle(run: {
+  triggerEvent: string;
+  headCommitMessage: string | null;
+  workflowName: string;
+}): string {
+  const usesCommit = run.triggerEvent === 'push' || run.triggerEvent === 'pull_request';
+  return usesCommit ? commitTitle(run.headCommitMessage, run.workflowName) : run.workflowName;
+}

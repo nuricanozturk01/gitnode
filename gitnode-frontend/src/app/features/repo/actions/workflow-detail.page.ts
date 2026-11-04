@@ -8,6 +8,7 @@ import { parentParamMapSignal } from '../../../core/repo/utils/route-param-signa
 import { WorkflowService } from '../../../core/actions/services/workflow.service';
 import { WorkflowRunService } from '../../../core/actions/services/workflow-run.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
+import { ConfirmModalService } from '../../../core/confirm-modal/confirm-modal.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import type { WorkflowDetail } from '../../../domain/actions/models/workflow-detail.model';
 import type { WorkflowRun } from '../../../domain/actions/models/workflow-run.model';
@@ -43,6 +44,7 @@ export class WorkflowDetailPage {
   private readonly workflowService = inject(WorkflowService);
   private readonly runService = inject(WorkflowRunService);
   private readonly toast = inject(ToastService);
+  private readonly confirmModal = inject(ConfirmModalService);
   readonly repoContext = inject(RepoContextService);
 
   readonly workflow = signal<WorkflowDetail | null>(null);
@@ -143,6 +145,12 @@ export class WorkflowDetailPage {
     event.preventDefault();
     event.stopPropagation();
     if (this.deletingRunId()) return;
+    const confirmed = await this.confirmModal.confirm(
+      'Delete workflow run?',
+      'The run and its logs will be permanently deleted. This cannot be undone.',
+      { confirmLabel: 'Delete workflow run', variant: 'danger' },
+    );
+    if (!confirmed) return;
     this.deletingRunId.set(runId);
     try {
       await this.runService.deleteRun(this.owner(), this.repoName(), runId);

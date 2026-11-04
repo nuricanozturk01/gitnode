@@ -1,17 +1,23 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { RelativeTimePipe } from '../../../shared/pipes/relative-time.pipe';
 import { paramMapSignal, parentParamMapSignal } from '../../../core/repo/utils/route-param-signals';
 import { WorkflowRunService } from '../../../core/actions/services/workflow-run.service';
+import { LogStreamService } from '../../../core/actions/services/log-stream.service';
 import { RunEventStreamService } from '../../../core/actions/services/run-event-stream.service';
 import { RepoContextService } from '../../../core/repo/services/repo-context.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import type { WorkflowRun } from '../../../domain/actions/models/workflow-run.model';
 import type { WorkflowJob } from '../../../domain/actions/models/workflow-job.model';
+import type { WorkflowStep } from '../../../domain/actions/models/workflow-step.model';
 import {
+  commitTitle,
+  formatDuration,
+  runTitle,
   isRunActive,
+  shortRef,
   resolveWorkflowDisplayStatus,
   workflowStatusBadgeClass,
   workflowStatusIconClass,
@@ -43,14 +49,21 @@ export class RunDetailPage {
   private readonly eventStreamService = inject(RunEventStreamService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
+  private readonly logService = inject(LogStreamService);
   readonly repoContext = inject(RepoContextService);
 
   readonly run = signal<WorkflowRun | null>(null);
   readonly loading = signal(true);
   readonly cancelling = signal(false);
+  /** Ticks every second while the run is active so durations count up between server updates. */
+  readonly now = signal(Date.now());
+  readonly rerunning = signal(false);
+  readonly downloading = signal(false);
   readonly selectedJobId = signal<string | null>(null);
-  readonly selectedStepId = signal<string | null>(null);
-  readonly expandedJobIds = signal<Set<string>>(new Set());
+  readonly logSearch = signal('');
+  /** Steps the user opened or closed by hand; everything else follows the step's state. */
+  readonly stepOverrides = signal<Record<string, boolean>>({});
 
   // owner/repo come from the PARENT route (/:owner/:repo)
   private readonly parentParams = parentParamMapSignal(this.route);
@@ -66,31 +79,33 @@ export class RunDetailPage {
     return this.run()?.jobs.find((j) => j.id === id) ?? null;
   });
 
-  readonly selectedStep = computed(() => {
-    const stepId = this.selectedStepId();
-    const job = this.selectedJob();
-    if (!stepId || !job) return null;
-    return job.steps.find((s) => s.id === stepId) ?? null;
-  });
-
   readonly isLive = computed(() => {
     const run = this.run();
     return run != null && isRunActive(run.status);
   });
 
-  readonly isStepLive = computed(() => {
-    const step = this.selectedStep();
-    if (!step) return false;
-    if (!this.isLive()) return false;
-    return !step.status || step.status === 'running';
+  readonly canRerun = computed(() => {
+    const run = this.run();
+    return run != null && !isRunActive(run.status);
   });
+
+  readonly hasFailedJobs = computed(
+    () =>
+      this.run()?.jobs.some((j) => ['failure', 'cancelled'].includes((j.conclusion ?? j.status).toLowerCase())) ??
+      false,
+  );
 
   statusBadgeClass = workflowStatusBadgeClass;
   statusLabel = workflowStatusLabel;
   statusIconClass = workflowStatusIconClass;
   statusIconName = workflowStatusIconName;
   statusIconSpinning = workflowStatusIconSpinning;
+  commitTitle = commitTitle;
+  runTitle = runTitle;
+  shortRef = shortRef;
+  formatDuration = formatDuration;
 
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
   private sseAbortController: AbortController | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -98,15 +113,20 @@ export class RunDetailPage {
 
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe(() => void this.loadRun());
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.selectedJobId.set(params.get('job'));
+      this.logSearch.set('');
+    });
     this.destroyRef.onDestroy(() => {
       this.stopStreaming();
       this.stopPolling();
+      this.stopClock();
       this.cancelRefreshDebounce();
     });
   }
 
-  displayStatus(run: WorkflowRun): string {
-    return resolveWorkflowDisplayStatus(run.status, run.conclusion);
+  displayStatus(item: { status: string; conclusion: string | null }): string {
+    return resolveWorkflowDisplayStatus(item.status, item.conclusion);
   }
 
   async cancelRun(): Promise<void> {
@@ -124,28 +144,88 @@ export class RunDetailPage {
     }
   }
 
-  selectJob(jobId: string): void {
-    this.expandedJobIds.update((ids) => {
-      const next = new Set(ids);
-      if (next.has(jobId)) {
-        next.delete(jobId);
-      } else {
-        next.add(jobId);
-      }
-      return next;
+  /** Opens a job (or the summary when null) by writing it into the URL. */
+  selectJob(jobId: string | null): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { job: jobId },
+      queryParamsHandling: 'merge',
     });
-    this.selectedJobId.set(jobId);
-    const job = this.run()?.jobs.find((j) => j.id === jobId);
-    const firstStep = job?.steps[0];
-    this.selectedStepId.set(firstStep?.id ?? null);
-  }
-
-  selectStep(stepId: string): void {
-    this.selectedStepId.set(stepId);
   }
 
   stepName(step: { name: string | null; uses: string | null; stepNumber: number }): string {
     return step.name ?? step.uses ?? `Step ${step.stepNumber}`;
+  }
+
+  isStepLive(step: WorkflowStep): boolean {
+    return this.isLive() && step.status === 'running';
+  }
+
+  isStepOpen(step: WorkflowStep): boolean {
+    const override = this.stepOverrides()[step.id];
+    if (override !== undefined) return override;
+    return step.status === 'running' || step.conclusion === 'failure';
+  }
+
+  toggleStep(step: WorkflowStep): void {
+    const open = !this.isStepOpen(step);
+    this.stepOverrides.update((current) => ({ ...current, [step.id]: open }));
+  }
+
+  stepDuration(step: WorkflowStep): string {
+    return step.startedAt ? formatDuration(step.startedAt, step.completedAt, this.now()) : '';
+  }
+
+  jobDuration(job: WorkflowJob): string {
+    return job.startedAt ? formatDuration(job.startedAt, job.completedAt, this.now()) : '';
+  }
+
+  onLogSearch(event: Event): void {
+    this.logSearch.set((event.target as HTMLInputElement).value);
+  }
+
+  runDuration(run: WorkflowRun): string {
+    return run.startedAt ? formatDuration(run.startedAt, run.completedAt, this.now()) : '';
+  }
+
+  async rerun(options: { failedOnly?: boolean; jobId?: string }): Promise<void> {
+    const run = this.run();
+    if (!run || !this.canRerun()) return;
+    this.rerunning.set(true);
+    try {
+      await this.runService.rerun(this.owner(), this.repoName(), run.id, options);
+      this.toast.success(options.jobId ? 'Re-running job' : 'Re-running jobs');
+      this.stepOverrides.set({});
+      await this.refreshRun();
+      this.syncStreaming(this.run() ?? run);
+    } catch {
+      this.toast.error('Could not re-run');
+    } finally {
+      this.rerunning.set(false);
+    }
+  }
+
+  /** Saves the job's step logs as one text file (finished jobs only). */
+  async downloadLogs(job: WorkflowJob): Promise<void> {
+    this.downloading.set(true);
+    try {
+      const parts: string[] = [];
+      for (const step of job.steps) {
+        const lines = await this.logService.fetchStepLogs(step.id);
+        parts.push(`##[group]${this.stepName(step)}`, ...lines.map((l) => l.content), '##[endgroup]');
+      }
+      const blob = new Blob([parts.join('\n') + '\n'], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${job.name.replace(/[^\w.-]+/g, '_')}.txt`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      this.toast.error('Could not download logs');
+    } finally {
+      this.downloading.set(false);
+    }
   }
 
   private async loadRun(): Promise<void> {
@@ -158,7 +238,6 @@ export class RunDetailPage {
     try {
       const run = await this.runService.getRun(owner, repo, runId);
       this.run.set(run);
-      this.ensureSelection(run.jobs);
       this.stopStreaming();
       this.syncStreaming(run);
     } catch {
@@ -168,27 +247,24 @@ export class RunDetailPage {
     }
   }
 
-  private ensureSelection(jobs: WorkflowJob[]): void {
-    if (jobs.length === 0) {
-      this.selectedJobId.set(null);
-      this.selectedStepId.set(null);
-      return;
+  private syncClock(active: boolean): void {
+    if (active) {
+      this.clockTimer ??= setInterval(() => this.now.set(Date.now()), 1000);
+    } else {
+      this.stopClock();
+      this.now.set(Date.now());
     }
+  }
 
-    const currentJob = this.selectedJobId();
-    if (!currentJob || !jobs.some((j) => j.id === currentJob)) {
-      const firstJob = jobs[0];
-      this.selectedJobId.set(firstJob.id);
-      this.selectedStepId.set(firstJob.steps[0]?.id ?? null);
-      this.expandedJobIds.update((ids) => {
-        const next = new Set(ids);
-        next.add(firstJob.id);
-        return next;
-      });
+  private stopClock(): void {
+    if (this.clockTimer) {
+      clearInterval(this.clockTimer);
+      this.clockTimer = null;
     }
   }
 
   private syncStreaming(run: WorkflowRun): void {
+    this.syncClock(isRunActive(run.status));
     if (isRunActive(run.status)) {
       this.startStreaming();
     } else {
@@ -258,7 +334,7 @@ export class RunDetailPage {
       const run = await this.runService.getRun(owner, repo, runId);
       if (ctrl.signal.aborted) return;
       this.run.set(run);
-      this.ensureSelectionIfNeeded(run.jobs);
+      this.syncClock(isRunActive(run.status));
       if (!isRunActive(run.status)) {
         this.stopStreaming();
         this.stopPolling();
@@ -283,17 +359,5 @@ export class RunDetailPage {
     }
     this.refreshAbortController?.abort();
     this.refreshAbortController = null;
-  }
-
-  private ensureSelectionIfNeeded(jobs: WorkflowJob[]): void {
-    const currentStepId = this.selectedStepId();
-    if (!currentStepId) {
-      this.ensureSelection(jobs);
-      return;
-    }
-    const stepExists = jobs.some((j) => j.steps.some((s) => s.id === currentStepId));
-    if (!stepExists) {
-      this.ensureSelection(jobs);
-    }
   }
 }

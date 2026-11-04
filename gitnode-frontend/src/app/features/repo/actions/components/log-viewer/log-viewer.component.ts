@@ -1,6 +1,7 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  computed,
   ElementRef,
   OnDestroy,
   effect,
@@ -10,7 +11,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { LucideAngularModule } from 'lucide-angular';
-import { LogStreamService } from '../../../../../core/actions/services/log-stream.service';
+import { LogStreamError, LogStreamService } from '../../../../../core/actions/services/log-stream.service';
 import { ansiToHtml } from '../../../../../shared/utils/ansi.utils';
 import type { WorkflowLogLine } from '../../../../../domain/actions/models/workflow-step.model';
 
@@ -28,10 +29,22 @@ export class LogViewerComponent implements OnDestroy {
   readonly stepId = input.required<string>();
   readonly stepName = input<string>('Logs');
   readonly live = input<boolean>(false);
+  /** Hides the toolbar when the surrounding page already shows the step header. */
+  readonly compact = input<boolean>(false);
+  /** Only lines containing this text (case-insensitive) are shown. */
+  readonly filter = input<string>('');
 
   readonly lines = signal<WorkflowLogLine[]>([]);
   readonly streaming = signal(false);
   readonly autoScroll = signal(true);
+  /** HTTP status of a failed log request, so the viewer can say why there is nothing to show. */
+  readonly errorStatus = signal<number | null>(null);
+
+  readonly visibleLines = computed(() => {
+    const term = this.filter().trim().toLocaleLowerCase('en-US');
+    const all = this.lines();
+    return term ? all.filter((l) => l.content.toLocaleLowerCase('en-US').includes(term)) : all;
+  });
 
   private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   private abortController: AbortController | null = null;
@@ -42,13 +55,14 @@ export class LogViewerComponent implements OnDestroy {
       const isLive = this.live();
       this.stopStream();
       this.lines.set([]);
+      this.errorStatus.set(null);
       if (id) {
         void this.startStream(id, isLive);
       }
     });
 
     effect(() => {
-      this.lines();
+      this.visibleLines();
       if (this.autoScroll()) {
         queueMicrotask(() => this.scrollToEnd());
       }
@@ -73,6 +87,22 @@ export class LogViewerComponent implements OnDestroy {
     }
   }
 
+  /** What to show when there are no lines: why the request failed, or that the step is silent. */
+  emptyMessage(): string {
+    switch (this.errorStatus()) {
+      case null:
+        return this.filter().trim() ? 'No lines match your search.' : 'No log output for this step.';
+      case 401:
+        return 'Sign in to view the logs of this step.';
+      case 403:
+        return 'You do not have permission to view these logs.';
+      case 404:
+        return 'The logs of this step are no longer available.';
+      default:
+        return 'The logs could not be loaded. Try again later.';
+    }
+  }
+
   lineHtml(content: string): string {
     return ansiToHtml(content);
   }
@@ -86,6 +116,7 @@ export class LogViewerComponent implements OnDestroy {
     this.abortController = new AbortController();
 
     let shouldRetry = false;
+    let failed = false;
     try {
       await this.logStreamService.streamStepLogs(
         stepId,
@@ -99,10 +130,14 @@ export class LogViewerComponent implements OnDestroy {
         },
         this.abortController.signal,
       );
-    } catch {
-      // stream closed or aborted
+    } catch (error) {
+      // An aborted stream is normal; a failed request is shown instead of an empty log.
+      if (error instanceof LogStreamError && !this.abortController?.signal.aborted) {
+        this.errorStatus.set(error.status);
+        failed = true;
+      }
     } finally {
-      if (live && !this.abortController?.signal.aborted) {
+      if (live && !failed && !this.abortController?.signal.aborted) {
         shouldRetry = true;
       } else {
         this.streaming.set(false);

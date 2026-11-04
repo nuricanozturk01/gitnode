@@ -199,7 +199,7 @@ export class RepoSettingsPage {
       const rules = await this.branchProtectionService.list(owner, repo);
       if (owner === this.owner() && repo === this.repoName()) this.protectionRules.set(rules);
       void this.workflowService
-        .list(owner, repo)
+        .listAll(owner, repo)
         .then((list) => {
           if (owner === this.owner() && repo === this.repoName()) this.workflowNames.set(list.map((w) => w.name));
         })

@@ -125,6 +125,14 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+
+  /* Spinners are status indicators, not decoration: keep them turning so a running job still
+     looks alive. */
+  .animate-spin,
+  .loading {
+    animation-duration: 1s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* Light theme: checkboxes need an explicit visible border (base-300 blends into near-white backgrounds) */

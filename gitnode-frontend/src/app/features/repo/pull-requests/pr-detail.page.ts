@@ -747,7 +747,7 @@ export class PrDetailPage {
     this.runsError.set(false);
     try {
       const triggerRef = `refs/heads/${pr.sourceBranch}`;
-      const page = await this.runService.listRuns(owner, repo, 0, 30, 'pull_request', triggerRef);
+      const page = await this.runService.listRuns(owner, repo, 0, 30, { event: 'pull_request', triggerRef });
       if (request !== this.dataRequest) return;
       this.runs.set(page.content);
       this.runsLoaded.set(true);

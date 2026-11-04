@@ -2,8 +2,11 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
-import type { WorkflowSummary } from '../../../domain/actions/models/workflow-summary.model';
+import type { WorkflowSummary, WorkflowSummaryPage } from '../../../domain/actions/models/workflow-summary.model';
 import type { WorkflowDetail } from '../../../domain/actions/models/workflow-detail.model';
+
+/** Safety stop for listAll: 50 pages of 100 is far beyond any real repository. */
+const MAX_PAGES = 50;
 
 @Injectable({ providedIn: 'root' })
 export class WorkflowService {
@@ -13,8 +16,22 @@ export class WorkflowService {
     return `${environment.apiUrl}/api/repos/${owner}/${repo}/actions`;
   }
 
-  list(owner: string, repo: string): Promise<WorkflowSummary[]> {
-    return firstValueFrom(this.http.get<WorkflowSummary[]>(`${this.base(owner, repo)}/workflows`));
+  /** One page of the repository's workflows, ordered by name; `query` filters by name or path. */
+  list(owner: string, repo: string, page = 0, size = 20, query?: string): Promise<WorkflowSummaryPage> {
+    let params = new HttpParams().set('page', String(page)).set('size', String(size));
+    if (query?.trim()) params = params.set('q', query.trim());
+    return firstValueFrom(this.http.get<WorkflowSummaryPage>(`${this.base(owner, repo)}/workflows`, { params }));
+  }
+
+  /** Every workflow of the repository, fetched page by page (for pickers that need them all). */
+  async listAll(owner: string, repo: string): Promise<WorkflowSummary[]> {
+    const all: WorkflowSummary[] = [];
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const result = await this.list(owner, repo, page, 100);
+      all.push(...result.content);
+      if (page + 1 >= result.totalPages) break;
+    }
+    return all;
   }
 
   getDetail(owner: string, repo: string, filePath: string): Promise<WorkflowDetail> {

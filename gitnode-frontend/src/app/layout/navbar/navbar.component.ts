@@ -32,6 +32,7 @@ import { AuthService } from '../../core/auth/services/auth.service';
 import { TokenService } from '../../core/auth/services/token.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { UserService } from '../../core/user/services/user.service';
+import { TeamService } from '../../core/team/team.service';
 import { NotificationService } from '../../core/notification/notification.service';
 import type { User } from '../../domain/auth/models/user.model';
 
@@ -49,6 +50,7 @@ export class NavbarComponent {
   private readonly userService = inject(UserService);
   private readonly notificationService = inject(NotificationService);
   private readonly destroyRef = inject(DestroyRef);
+  readonly teamService = inject(TeamService);
   readonly theme = inject(ThemeService);
 
   /** 0 at page top, 1 after ~72px scroll — drives glass + compact sizing. */
@@ -78,6 +80,7 @@ export class NavbarComponent {
       if (this.tokenService.isLoggedIn()) {
         this.loadUser();
         void this.notificationService.loadUnreadCount();
+        void this.teamService.loadMe();
         this.notificationService.connectSse();
         this.destroyRef.onDestroy(() => this.notificationService.disconnectSse());
       } else {

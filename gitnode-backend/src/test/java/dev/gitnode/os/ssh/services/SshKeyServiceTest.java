@@ -200,6 +200,21 @@ class SshKeyServiceTest {
   }
 
   @Test
+  @DisplayName("findTenantByFingerprint rejects a disabled account")
+  void findTenantByFingerprint_throws_whenTenantDisabled() {
+    var tenantId = UUID.randomUUID();
+    var disabled = new TenantQueryPort.TenantRef(tenantId, "alice", "a@x.io", null, null, false);
+    SshKey sshKey = new SshKey();
+    sshKey.setTenantId(tenantId);
+    when(sshKeyRepository.findByFingerprint("fp")).thenReturn(Optional.of(sshKey));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(disabled));
+
+    assertThatThrownBy(() -> sshKeyService.findTenantByFingerprint("fp"))
+        .isInstanceOf(ItemNotFoundException.class);
+    verify(sshKeyRepository, org.mockito.Mockito.never()).save(any(SshKey.class));
+  }
+
+  @Test
   @DisplayName("fingerprintFromWireBytes returns SHA256 prefix and base64 without padding")
   void fingerprintFromWireBytes_returnsSha256Base64Format() throws NoSuchAlgorithmException {
     byte[] input = new byte[] {1, 2, 3};

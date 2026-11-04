@@ -119,6 +119,17 @@ public class NotificationService {
   }
 
   @Transactional
+  public void deleteByEntity(
+      final NotificationType type, final UUID recipientId, final UUID entityId) {
+    this.repository.deleteByTypeAndRecipientIdAndEntityId(type, recipientId, entityId);
+  }
+
+  @Transactional
+  public void deleteByActor(final NotificationType type, final UUID actorId) {
+    this.repository.deleteByTypeAndActorId(type, actorId);
+  }
+
+  @Transactional
   public void deleteAll(final UUID recipientId) {
     this.repository.deleteAllByRecipientId(recipientId);
   }

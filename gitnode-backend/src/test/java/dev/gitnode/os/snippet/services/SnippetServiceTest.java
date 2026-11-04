@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -74,6 +75,7 @@ class SnippetServiceTest {
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private SnippetCacheInvalidator snippetCacheInvalidator;
   @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoAccessPort repoAccess;
 
   private final java.util.Map<UUID, TenantRef> accounts = new java.util.HashMap<>();
 
@@ -705,5 +707,83 @@ class SnippetServiceTest {
       assertThat(captor.getValue().getSummary()).isNull();
       assertThat(captor.getValue().getTitle()).isEqualTo("s");
     }
+  }
+
+  @Test
+  @DisplayName("listByRepo denies a stranger on a private repo")
+  void listByRepo_deniesStranger() {
+    UUID stranger = UUID.randomUUID();
+    stubRepo(true);
+    org.mockito.Mockito.doThrow(
+            new dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException(
+                "repoAccessDenied"))
+        .when(repoAccess)
+        .assertUserCanAccessRepo(stranger, "alice", "demo");
+
+    assertThatThrownBy(() -> snippetService.listByRepo("alice", "demo", stranger, 0, 10))
+        .hasMessageContaining("repoAccessDenied");
+    verify(snippetRepository, never()).findPublicByRepoId(any(), any());
+  }
+
+  @Test
+  @DisplayName("listByRepo denies anonymous on a private repo")
+  void listByRepo_deniesAnonymous() {
+    stubRepo(true);
+    org.mockito.Mockito.doThrow(
+            new dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException(
+                "repoAccessDenied"))
+        .when(repoAccess)
+        .assertUserCanAccessRepo(null, "alice", "demo");
+
+    assertThatThrownBy(() -> snippetService.listByRepo("alice", "demo", null, 0, 10))
+        .hasMessageContaining("repoAccessDenied");
+  }
+
+  @Test
+  @DisplayName("listByRepo lists public snippets for a collaborator or team member")
+  void listByRepo_allowsReader() {
+    UUID member = UUID.randomUUID();
+    var ref = stubRepo(true);
+    when(snippetRepository.findPublicByRepoId(any(), any()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+    snippetService.listByRepo("alice", "demo", member, 0, 10);
+
+    verify(repoAccess).assertUserCanAccessRepo(member, "alice", "demo");
+    verify(snippetRepository).findPublicByRepoId(eq(ref.id()), any());
+    verify(snippetRepository, never()).findAllByRepoId(any(), any());
+  }
+
+  @Test
+  @DisplayName("listByRepo lists everything for the owner without the access port")
+  void listByRepo_owner() {
+    var ref = stubRepo(true);
+    when(snippetRepository.findAllByRepoId(any(), any()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+    snippetService.listByRepo("alice", "demo", ref.ownerId(), 0, 10);
+
+    verify(repoAccess, never()).assertUserCanAccessRepo(any(), any(), any());
+    verify(snippetRepository).findAllByRepoId(eq(ref.id()), any());
+  }
+
+  @Test
+  @DisplayName("listByRepo on a public repo is unchanged")
+  void listByRepo_public() {
+    stubRepo(false);
+    when(snippetRepository.findPublicByRepoId(any(), any()))
+        .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of()));
+
+    snippetService.listByRepo("alice", "demo", null, 0, 10);
+
+    verify(repoAccess, never()).assertUserCanAccessRepo(any(), any(), any());
+  }
+
+  private RepoLookupPort.RepoRef stubRepo(boolean isPrivate) {
+    var ref =
+        new RepoLookupPort.RepoRef(
+            UUID.randomUUID(), UUID.randomUUID(), "alice", "demo", isPrivate);
+    when(repoRepository.find("alice", "demo")).thenReturn(Optional.of(ref));
+    return ref;
   }
 }

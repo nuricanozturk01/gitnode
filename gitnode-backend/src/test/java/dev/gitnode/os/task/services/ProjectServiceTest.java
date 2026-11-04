@@ -18,6 +18,7 @@ package dev.gitnode.os.task.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,6 +27,7 @@ import dev.gitnode.os.events.project.ProjectCreatedEvent;
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.pr.api.PrQueryPort;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -38,6 +40,7 @@ import dev.gitnode.os.task.mappers.ProjectMapper;
 import dev.gitnode.os.task.repositories.ProjectRepository;
 import dev.gitnode.os.task.repositories.TaskRepository;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +50,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageImpl;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ProjectService unit tests")
@@ -54,6 +58,7 @@ class ProjectServiceTest {
 
   @Mock private ProjectRepository projectRepository;
   @Mock private RepoLookupPort repoRepository;
+  @Mock private RepoAccessPort repoAccess;
   @Mock private TenantQueryPort tenants;
   @Mock private PrQueryPort prQueryPort;
   @Mock private ProjectMapper projectMapper;
@@ -160,19 +165,67 @@ class ProjectServiceTest {
   }
 
   @Test
-  @DisplayName("getLinkedProjects throws AccessNotAllowedException for private repo non-owner")
-  void getLinkedProjects_throws_whenPrivateRepoAndNotOwner() {
+  @DisplayName("getLinkedProjects denies a stranger on a private repo")
+  void getLinkedProjects_throws_whenPrivateRepoAndNotAllowed() {
     UUID repoId = UUID.randomUUID();
     Tenant owner = tenant("alice");
     RepoRef repo = new RepoRef(repoId, owner.getId(), "alice", "demo", true);
     when(repoRepository.findById(repoId)).thenReturn(Optional.of(repo));
     Tenant viewer = tenant("bob");
+    doThrow(new AccessNotAllowedException("repoAccessDenied"))
+        .when(repoAccess)
+        .assertUserCanAccessRepo(viewer.getId(), "alice", "demo");
 
     assertThatThrownBy(() -> projectService.getLinkedProjects(repoId, viewer, 0, 10))
         .isInstanceOf(AccessNotAllowedException.class)
         .hasMessageContaining("repoAccessDenied");
 
     verify(projectRepository, never()).findVisibleByRepoId(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("getLinkedProjects denies anonymous on a private repo")
+  void getLinkedProjects_throws_whenPrivateRepoAnonymous() {
+    UUID repoId = UUID.randomUUID();
+    RepoRef repo = new RepoRef(repoId, UUID.randomUUID(), "alice", "demo", true);
+    when(repoRepository.findById(repoId)).thenReturn(Optional.of(repo));
+    doThrow(new AccessNotAllowedException("repoAccessDenied"))
+        .when(repoAccess)
+        .assertUserCanAccessRepo(null, "alice", "demo");
+
+    assertThatThrownBy(() -> projectService.getLinkedProjects(repoId, null, 0, 10))
+        .isInstanceOf(AccessNotAllowedException.class);
+
+    verify(projectRepository, never()).findPublicByRepoId(any(), any());
+  }
+
+  @Test
+  @DisplayName("getLinkedProjects lists for an allowed reader of a private repo")
+  void getLinkedProjects_listsForAllowedReader() {
+    UUID repoId = UUID.randomUUID();
+    RepoRef repo = new RepoRef(repoId, UUID.randomUUID(), "alice", "demo", true);
+    when(repoRepository.findById(repoId)).thenReturn(Optional.of(repo));
+    Tenant viewer = tenant("member");
+    when(projectRepository.findVisibleByRepoId(any(), any(), any()))
+        .thenReturn(new PageImpl<>(List.of()));
+
+    projectService.getLinkedProjects(repoId, viewer, 0, 10);
+
+    verify(repoAccess).assertUserCanAccessRepo(viewer.getId(), "alice", "demo");
+    verify(projectRepository).findVisibleByRepoId(any(), any(), any());
+  }
+
+  @Test
+  @DisplayName("getLinkedProjects on a public repo does not consult the access port")
+  void getLinkedProjects_publicRepoUnchanged() {
+    UUID repoId = UUID.randomUUID();
+    RepoRef repo = new RepoRef(repoId, UUID.randomUUID(), "alice", "demo", false);
+    when(repoRepository.findById(repoId)).thenReturn(Optional.of(repo));
+    when(projectRepository.findPublicByRepoId(any(), any())).thenReturn(new PageImpl<>(List.of()));
+
+    projectService.getLinkedProjects(repoId, null, 0, 10);
+
+    verify(repoAccess, never()).assertUserCanAccessRepo(any(), any(), any());
   }
 
   /** Stubs the user-name lookup and the project query the service runs for "owner/code". */

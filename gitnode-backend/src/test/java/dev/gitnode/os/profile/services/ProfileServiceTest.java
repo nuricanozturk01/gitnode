@@ -274,8 +274,12 @@ class ProfileServiceTest {
 
     profileService.deleteAccount(tenantId);
 
-    verify(tenantRepository).delete(tenant);
-    verify(eventPublisher).publishEvent(any(TenantDeletedEvent.class));
+    var order = org.mockito.Mockito.inOrder(eventPublisher, tenantRepository);
+    order
+        .verify(eventPublisher)
+        .publishEvent(any(dev.gitnode.os.events.profile.TenantDeletingEvent.class));
+    order.verify(tenantRepository).delete(tenant);
+    order.verify(eventPublisher).publishEvent(any(TenantDeletedEvent.class));
   }
 
   @Test

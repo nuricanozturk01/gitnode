@@ -18,6 +18,8 @@ package dev.gitnode.os.githttp;
 import dev.gitnode.os.branch.api.ProtectedBranchReceiveHook;
 import dev.gitnode.os.githttp.api.RunnerTokenPort;
 import dev.gitnode.os.identity.api.GitCredentialPort;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.repo.api.GitAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.events.GitPushEventPublisher;
 import java.io.IOException;
@@ -69,11 +71,13 @@ public class HttpGitConfiguration {
   @Bean
   public FilterRegistrationBean<HttpGitAuthenticationFilter> httpGitAuthenticationFilter(
       final GitCredentialPort credentials,
-      final RepoLookupPort repoLookup,
+      final GitAccessPort gitAccess,
+      final TenantQueryPort tenants,
       final Optional<RunnerTokenPort> runnerTokenPort) {
 
     final var filter =
-        new HttpGitAuthenticationFilter(credentials, repoLookup, runnerTokenPort.orElse(null));
+        new HttpGitAuthenticationFilter(
+            credentials, gitAccess, tenants, runnerTokenPort.orElse(null));
     final var registration = new FilterRegistrationBean<>(filter);
 
     registration.addUrlPatterns("/git/*");
@@ -85,7 +89,7 @@ public class HttpGitConfiguration {
   private Repository setRepositoryResolver(final RepoLookupPort repoLookup, final String name)
       throws RepositoryNotFoundException {
 
-    final var cleanName = name.replace(".git", "");
+    final var cleanName = name.endsWith(".git") ? name.substring(0, name.length() - 4) : name;
     final var parts = cleanName.split("/");
 
     if (parts.length < 2) {

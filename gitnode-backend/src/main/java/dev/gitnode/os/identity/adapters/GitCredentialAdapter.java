@@ -49,6 +49,11 @@ public class GitCredentialAdapter implements GitCredentialPort {
       throw new IllegalArgumentException("User password not configured");
     }
 
+    if (!tenant.isEnabled()) {
+      this.passwordHasher.spendTime(password);
+      throw new IllegalArgumentException("Invalid password");
+    }
+
     if (!this.passwordHasher.matches(password, tenant)) {
       throw new IllegalArgumentException("Invalid password");
     }

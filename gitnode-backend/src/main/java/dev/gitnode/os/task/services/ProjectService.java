@@ -21,6 +21,7 @@ import dev.gitnode.os.events.project.ProjectUpdatedEvent;
 import dev.gitnode.os.identity.api.AuthenticatedUser;
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.pr.api.PrQueryPort;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
@@ -53,6 +54,7 @@ public class ProjectService {
 
   private final ProjectRepository projectRepository;
   private final RepoLookupPort repoLookup;
+  private final RepoAccessPort repoAccess;
   private final TenantQueryPort tenants;
   private final PrQueryPort prQueryPort;
   private final ProjectMapper projectMapper;
@@ -276,10 +278,9 @@ public class ProjectService {
             .findById(repoId)
             .orElseThrow(() -> new ItemNotFoundException("repoNotFound"));
 
-    final boolean isRepoOwner = viewer != null && viewer.getId().equals(repo.ownerId());
-
-    if (repo.isPrivate() && !isRepoOwner) {
-      throw new AccessNotAllowedException("repoAccessDenied");
+    if (repo.isPrivate()) {
+      this.repoAccess.assertUserCanAccessRepo(
+          viewer != null ? viewer.getId() : null, repo.ownerUsername(), repo.name());
     }
 
     final var pageable = PageRequest.of(page, size);

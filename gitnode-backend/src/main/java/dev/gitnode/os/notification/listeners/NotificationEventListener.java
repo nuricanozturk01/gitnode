@@ -24,11 +24,15 @@ import dev.gitnode.os.events.pr.PullRequestCommentedEvent;
 import dev.gitnode.os.events.pr.PullRequestMetadataChangedEvent;
 import dev.gitnode.os.events.pr.PullRequestReviewEvent;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
+import dev.gitnode.os.events.profile.TenantDeletingEvent;
+import dev.gitnode.os.events.team.TeamInvitationClosedEvent;
+import dev.gitnode.os.events.team.TeamInvitedEvent;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.services.NotificationService;
 import dev.gitnode.os.notification.services.NotificationSseRegistry;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.context.event.EventListener;
 import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
@@ -240,6 +244,32 @@ public class NotificationEventListener {
         "Click to accept or reject the collaboration invite.",
         "/accept-invite/" + event.inviteToken(),
         event.repoId());
+  }
+
+  @ApplicationModuleListener
+  public void onTeamInvited(final TeamInvitedEvent event) {
+
+    this.notificationService.send(
+        event.memberId(),
+        event.ownerId(),
+        NotificationType.TEAM_INVITED,
+        "You were invited to a team",
+        "Role: " + event.role() + ". Open Team to accept or decline.",
+        "/team",
+        event.invitationId());
+  }
+
+  @ApplicationModuleListener
+  public void onTeamInvitationClosed(final TeamInvitationClosedEvent event) {
+
+    this.notificationService.deleteByEntity(
+        NotificationType.TEAM_INVITED, event.memberId(), event.invitationId());
+  }
+
+  @EventListener
+  public void onTenantDeleting(final TenantDeletingEvent event) {
+
+    this.notificationService.deleteByActor(NotificationType.TEAM_INVITED, event.tenantId());
   }
 
   private static String truncate(final String text, final int max) {

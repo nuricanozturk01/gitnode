@@ -22,6 +22,7 @@
       "events :: issue",
       "events :: pr",
       "events :: profile",
+      "events :: team",
       "identity :: api",
       "identity :: security",
       "repo :: dtos",

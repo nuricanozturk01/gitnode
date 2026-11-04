@@ -109,6 +109,10 @@ public class SshKeyService {
             .findById(sshKey.getTenantId())
             .orElseThrow(() -> new ItemNotFoundException("SSH key not found"));
 
+    if (!tenant.enabled()) {
+      throw new ItemNotFoundException("SSH key not found");
+    }
+
     sshKey.setLastUsedAt(Instant.now());
     this.sshKeyRepository.save(sshKey);
 

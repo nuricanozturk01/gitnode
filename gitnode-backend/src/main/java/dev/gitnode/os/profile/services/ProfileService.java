@@ -16,6 +16,7 @@
 package dev.gitnode.os.profile.services;
 
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
+import dev.gitnode.os.events.profile.TenantDeletingEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
 import dev.gitnode.os.identity.dtos.TenantInfo;
 import dev.gitnode.os.identity.mappers.TenantMapper;
@@ -127,6 +128,8 @@ public class ProfileService {
     }
 
     final var tenant = tenantOpt.get();
+
+    this.eventPublisher.publishEvent(new TenantDeletingEvent(tenantId));
 
     this.tenantRepository.delete(tenant);
 

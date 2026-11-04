@@ -260,6 +260,8 @@ export class NotificationsPage implements OnInit {
         return 'alert-circle';
       case 'COLLABORATOR_INVITED':
         return 'user-plus';
+      case 'TEAM_INVITED':
+        return 'users';
       default:
         return 'bell';
     }
@@ -276,6 +278,7 @@ export class NotificationsPage implements OnInit {
       case 'PR_CLOSED':
         return 'text-error';
       case 'COLLABORATOR_INVITED':
+      case 'TEAM_INVITED':
         return 'text-primary';
       default:
         return 'text-base-content/50';

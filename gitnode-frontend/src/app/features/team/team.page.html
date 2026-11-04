@@ -1,0 +1,221 @@
+<ng-template #pager let-index="index" let-pages="pages" let-load="load">
+  @if (pages > 1) {
+  <div class="mt-3 flex items-center justify-center gap-3">
+    <button type="button" class="btn btn-ghost btn-sm" [disabled]="index === 0" (click)="load(index - 1)">
+      <lucide-icon name="chevronLeft" class="size-4"></lucide-icon>
+      Prev
+    </button>
+    <span class="text-base-content/55 text-sm">Page {{ index + 1 }} of {{ pages }}</span>
+    <button type="button" class="btn btn-ghost btn-sm" [disabled]="index >= pages - 1" (click)="load(index + 1)">
+      Next
+      <lucide-icon name="chevronRight" class="size-4"></lucide-icon>
+    </button>
+  </div>
+  }
+</ng-template>
+
+<div class="mx-auto flex max-w-4xl flex-col gap-8 px-4 py-8">
+  <h1 class="text-2xl font-semibold">Team</h1>
+
+  @if (!loading()) {
+  <section aria-labelledby="team-members-title">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 id="team-members-title" class="text-lg font-medium">My team</h2>
+      <div class="join">
+        <button
+          type="button"
+          class="btn btn-sm join-item"
+          [class.btn-active]="statusFilter() === 'ACCEPTED'"
+          (click)="setStatusFilter('ACCEPTED')"
+        >
+          Active
+        </button>
+        <button
+          type="button"
+          class="btn btn-sm join-item"
+          [class.btn-active]="statusFilter() === 'PENDING'"
+          (click)="setStatusFilter('PENDING')"
+        >
+          Pending
+        </button>
+      </div>
+    </div>
+    <p class="text-base-content/60 mb-3 text-sm">Members get their role's permissions on all of your repositories.</p>
+    <form class="mb-4 flex flex-wrap gap-2" (ngSubmit)="invite()">
+      <div class="relative w-full max-w-xs">
+        <input
+          type="text"
+          name="username"
+          class="input input-bordered w-full"
+          placeholder="Search username (3+ chars)"
+          [ngModel]="inviteUsername()"
+          (ngModelChange)="onInviteUsernameInput($event)"
+          (blur)="hideSuggestions()"
+          autocomplete="off"
+        />
+        @if (showSuggestions() && userSuggestions().length > 0) {
+        <ul
+          class="border-base-300 bg-base-100 absolute top-full z-50 mt-1 w-full overflow-hidden rounded-lg border shadow-lg"
+        >
+          @for (u of userSuggestions(); track u.username) {
+          <li>
+            <button
+              type="button"
+              class="hover:bg-base-200 flex w-full items-center gap-2 px-3 py-2 text-left text-sm"
+              (mousedown)="selectSuggestion(u.username)"
+            >
+              <img [src]="u.avatarUrl" [alt]="u.username" class="size-6 rounded-full" />
+              <span class="font-medium">{{ u.username }}</span>
+              @if (u.displayName) {
+              <span class="text-base-content/50 text-xs">{{ u.displayName }}</span>
+              }
+            </button>
+          </li>
+          }
+        </ul>
+        }
+      </div>
+      <select
+        name="role"
+        class="select select-bordered"
+        aria-label="Role"
+        [ngModel]="inviteRole()"
+        (ngModelChange)="inviteRole.set($event)"
+      >
+        @for (r of roles; track r) {
+        <option [value]="r">{{ r }}</option>
+        }
+      </select>
+      <button type="submit" class="btn btn-primary" [disabled]="inviting() || !inviteUsername().trim()">
+        Send invitation
+      </button>
+    </form>
+    @if (members().length === 0) {
+    <p class="text-base-content/60 text-sm">
+      No {{ statusFilter() === 'PENDING' ? 'pending invitations' : 'members' }}.
+    </p>
+    } @else {
+    <table class="table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Role</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (m of members(); track m.id) {
+        <tr>
+          <td>
+            <div class="flex items-center gap-2">
+              @if (m.member.avatarUrl) {
+              <img [src]="m.member.avatarUrl" [alt]="m.member.username" class="size-8 rounded-full" />
+              }
+              <div>
+                <div class="text-sm font-medium">{{ m.member.username }}</div>
+                @if (m.member.displayName) {
+                <div class="text-base-content/50 text-xs">{{ m.member.displayName }}</div>
+                }
+              </div>
+            </div>
+          </td>
+          <td>
+            @if (m.status === 'ACCEPTED') {
+            <select
+              class="select select-bordered select-sm"
+              [attr.aria-label]="'Role of ' + m.member.username"
+              [value]="m.role"
+              (change)="changeRole(m.id, $any($event.target).value)"
+            >
+              @for (r of roles; track r) {
+              <option [value]="r" [selected]="r === m.role">{{ r }}</option>
+              }
+            </select>
+            } @else {
+            <span class="badge-pill badge-pill--neutral">{{ m.role }}</span>
+            }
+          </td>
+          <td class="text-right">
+            @if (m.status === 'ACCEPTED') {
+            <button type="button" class="btn btn-ghost btn-xs text-error" (click)="remove(m.id, m.member.username)">
+              Remove
+            </button>
+            } @else {
+            <button
+              type="button"
+              class="btn btn-ghost btn-xs text-error"
+              (click)="cancelInvitation(m.id, m.member.username)"
+            >
+              Cancel
+            </button>
+            }
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+    <ng-container
+      [ngTemplateOutlet]="pager"
+      [ngTemplateOutletContext]="{ index: memberIndex(), pages: memberPages(), load: loadMembers.bind(this) }"
+    ></ng-container>
+    }
+  </section>
+
+  <section aria-labelledby="team-memberships-title">
+    <h2 id="team-memberships-title" class="mb-3 text-lg font-medium">Teams I'm in</h2>
+    @if (memberships().length === 0) {
+    <p class="text-base-content/60 text-sm">You are not a member of any team.</p>
+    } @else {
+    <ul class="divide-base-300 border-base-300 divide-y rounded-lg border">
+      @for (m of memberships(); track m.id) {
+      <li class="flex items-center justify-between gap-3 p-3">
+        <div class="text-sm">
+          Team of <span class="font-medium">{{ m.owner.username }}</span> as
+          <span class="badge-pill badge-pill--neutral">{{ m.role }}</span>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="leave(m.id, m.owner.username)">Leave</button>
+      </li>
+      }
+    </ul>
+    <ng-container
+      [ngTemplateOutlet]="pager"
+      [ngTemplateOutletContext]="{
+        index: membershipIndex(),
+        pages: membershipPages(),
+        load: loadMemberships.bind(this)
+      }"
+    ></ng-container>
+    }
+  </section>
+
+  <section aria-labelledby="team-invitations-title">
+    <h2 id="team-invitations-title" class="mb-3 text-lg font-medium">Invitations</h2>
+    @if (invitations().length === 0) {
+    <p class="text-base-content/60 text-sm">No pending invitations.</p>
+    } @else {
+    <ul class="divide-base-300 border-base-300 divide-y rounded-lg border">
+      @for (inv of invitations(); track inv.id) {
+      <li class="flex items-center justify-between gap-3 p-3">
+        <div class="text-sm">
+          Invited by <span class="font-medium">{{ inv.owner.username }}</span> as
+          <span class="badge-pill badge-pill--neutral">{{ inv.role }}</span>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" class="btn btn-primary btn-sm" (click)="accept(inv.id)">Accept</button>
+          <button type="button" class="btn btn-ghost btn-sm" (click)="decline(inv.id)">Decline</button>
+        </div>
+      </li>
+      }
+    </ul>
+    <ng-container
+      [ngTemplateOutlet]="pager"
+      [ngTemplateOutletContext]="{
+        index: invitationIndex(),
+        pages: invitationPages(),
+        load: loadInvitations.bind(this)
+      }"
+    ></ng-container>
+    }
+  </section>
+  }
+</div>

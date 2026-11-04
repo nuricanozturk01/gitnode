@@ -20,6 +20,7 @@ import dev.gitnode.os.events.snippet.SnippetDeletedEvent;
 import dev.gitnode.os.events.snippet.SnippetUpdatedEvent;
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.cache.CacheNames;
@@ -67,6 +68,7 @@ public class SnippetService {
   private final SnippetRevisionRepository revisionRepository;
   private final TenantQueryPort tenants;
   private final RepoLookupPort repoLookup;
+  private final RepoAccessPort repoAccess;
   private final SnippetMapper snippetMapper;
   private final SnippetFileStorageService fileStorage;
   private final ApplicationEventPublisher eventPublisher;
@@ -410,7 +412,7 @@ public class SnippetService {
     final boolean isOwner = callerId != null && callerId.equals(repo.ownerId());
 
     if (repo.isPrivate() && !isOwner) {
-      throw new AccessNotAllowedException("repoAccessDenied");
+      this.repoAccess.assertUserCanAccessRepo(callerId, repo.ownerUsername(), repo.name());
     }
 
     final var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());

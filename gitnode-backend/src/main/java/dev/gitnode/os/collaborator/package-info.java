@@ -21,7 +21,8 @@
       "identity :: security",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *"
+      "shared :: *",
+      "team :: api"
     })
 package dev.gitnode.os.collaborator;
 

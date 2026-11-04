@@ -18,6 +18,7 @@ package dev.gitnode.os.repo.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -361,6 +362,49 @@ class RepoServiceTest {
   }
 
   @Test
+  @DisplayName("findAllByOwner returns private repos paged for a team member")
+  void findAllByOwner_teamMemberSeesPrivateReposPaged() {
+    UUID memberId = UUID.randomUUID();
+    Repo r1 = new Repo();
+    r1.setId(UUID.randomUUID());
+    r1.setName("private-repo");
+    r1.setPrivate(true);
+    RepoInfo i1 = createRepoInfo(r1.getId(), "private-repo");
+    PageRequest pageable = PageRequest.of(0, 10);
+    Tenant ownerTenant = new Tenant();
+    ownerTenant.setId(UUID.randomUUID());
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(collaboratorAccessPort.hasTeamAccess(memberId, ownerTenant.getId())).thenReturn(true);
+    when(repoRepository.findAllByOwnerUsername("owner", pageable))
+        .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
+    when(repoMapper.toDto(r1)).thenReturn(i1);
+
+    Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, memberId);
+
+    assertThat(result.getContent()).singleElement().isSameAs(i1);
+    verify(collaboratorAccessPort, never()).findAcceptedRepoIds(any(), any());
+  }
+
+  @Test
+  @DisplayName("findAllByOwner keeps public-only listing for a non-member")
+  void findAllByOwner_nonMemberUnchanged() {
+    UUID strangerId = UUID.randomUUID();
+    PageRequest pageable = PageRequest.of(0, 10);
+    Tenant ownerTenant = new Tenant();
+    ownerTenant.setId(UUID.randomUUID());
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(collaboratorAccessPort.hasTeamAccess(strangerId, ownerTenant.getId())).thenReturn(false);
+    when(collaboratorAccessPort.findAcceptedRepoIds(strangerId, "owner")).thenReturn(Set.of());
+    when(repoRepository.findAllByOwnerUsernameAndIsPrivateFalse("owner", pageable))
+        .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+
+    Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, strangerId);
+
+    assertThat(result.getContent()).isEmpty();
+    verify(repoRepository, never()).findAllByOwnerUsername(any(), any());
+  }
+
+  @Test
   @DisplayName("findByOwnerAndName throws when repo not found")
   void findByOwnerAndName_throws_whenNotFound() {
     when(repoRepository.findByOwnerUsernameAndName("owner", "missing"))
@@ -450,6 +494,83 @@ class RepoServiceTest {
 
     assertThat(repo.getName()).isEqualTo("oldName");
     verify(repoRepository).save(repo);
+  }
+
+  @Test
+  @DisplayName("fork denies a stranger on a private repo")
+  void fork_deniesStranger() {
+    UUID forkerId = UUID.randomUUID();
+    Repo source = privateSource();
+    stubFork(forkerId, source);
+    when(collaboratorAccessPort.isActiveCollaborator(source.getId(), forkerId)).thenReturn(false);
+
+    assertThatThrownBy(() -> repoService.fork(forkerId, "owner", "src"))
+        .isInstanceOf(AccessNotAllowedException.class)
+        .hasMessageContaining("repoAccessDenied");
+    verify(repoRepository, never()).save(any());
+  }
+
+  @Test
+  @DisplayName("fork lets a collaborator or team member fork a private repo")
+  void fork_allowsActiveCollaborator() {
+    UUID forkerId = UUID.randomUUID();
+    Repo source = privateSource();
+    stubFork(forkerId, source);
+    when(collaboratorAccessPort.isActiveCollaborator(source.getId(), forkerId)).thenReturn(true);
+    when(repoRepository.existsByForkedFromIdAndOwnerId(source.getId(), forkerId)).thenReturn(false);
+    when(repoRepository.save(any(Repo.class))).thenAnswer(i -> i.getArgument(0));
+
+    repoService.fork(forkerId, "owner", "src");
+
+    ArgumentCaptor<Repo> saved = ArgumentCaptor.forClass(Repo.class);
+    verify(repoRepository).save(saved.capture());
+    assertThat(saved.getValue().isPrivate()).isTrue();
+    assertThat(saved.getValue().getOwner().getId()).isEqualTo(forkerId);
+  }
+
+  @Test
+  @DisplayName("fork of a public repo does not consult collaborators")
+  void fork_publicUnchanged() {
+    UUID forkerId = UUID.randomUUID();
+    Repo source = privateSource();
+    source.setPrivate(false);
+    stubFork(forkerId, source);
+    when(repoRepository.existsByForkedFromIdAndOwnerId(source.getId(), forkerId)).thenReturn(false);
+    when(repoRepository.save(any(Repo.class))).thenAnswer(i -> i.getArgument(0));
+
+    repoService.fork(forkerId, "owner", "src");
+
+    verify(collaboratorAccessPort, never()).isActiveCollaborator(any(), any());
+  }
+
+  @Test
+  @DisplayName("fork of an own private repo is still rejected")
+  void fork_ownRepoRejected() {
+    Repo source = privateSource();
+    stubFork(source.getOwner().getId(), source);
+
+    assertThatThrownBy(() -> repoService.fork(source.getOwner().getId(), "owner", "src"))
+        .hasMessageContaining("cannotForkOwnRepo");
+  }
+
+  private Repo privateSource() {
+    Tenant owner = new Tenant();
+    owner.setId(UUID.randomUUID());
+    owner.setUsername("owner");
+    Repo source = new Repo();
+    source.setId(UUID.randomUUID());
+    source.setName("src");
+    source.setOwner(owner);
+    source.setPrivate(true);
+    return source;
+  }
+
+  private void stubFork(UUID forkerId, Repo source) {
+    Tenant forker = new Tenant();
+    forker.setId(forkerId);
+    forker.setUsername("forker");
+    when(tenantRepository.findById(forkerId)).thenReturn(Optional.of(forker));
+    when(repoRepository.findByOwnerUsernameAndName("owner", "src")).thenReturn(Optional.of(source));
   }
 
   private static RepoInfo createRepoInfo(UUID id, String name) {

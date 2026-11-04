@@ -28,7 +28,8 @@ export type NotificationType =
   | 'AI_CODE_REVIEW_FAILED'
   | 'AI_ANALYSIS_COMPLETED'
   | 'AI_ANALYSIS_FAILED'
-  | 'COLLABORATOR_INVITED';
+  | 'COLLABORATOR_INVITED'
+  | 'TEAM_INVITED';
 
 export interface NotificationDto {
   id: string;
@@ -70,4 +71,5 @@ export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
   AI_ANALYSIS_COMPLETED: 'AI codebase analysis completed',
   AI_ANALYSIS_FAILED: 'AI codebase analysis failed',
   COLLABORATOR_INVITED: 'Collaboration invitations',
+  TEAM_INVITED: 'Team invitations',
 };

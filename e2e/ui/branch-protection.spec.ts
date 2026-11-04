@@ -42,16 +42,24 @@ test('repository settings manage branch protection on mobile', async ({ page }) 
     }
     if (path === '/api/repos/demo/project/workflows')
       return route.fulfill({
-        json: [
-          {
-            id: 'w1',
-            name: 'ci',
-            filePath: '.gitnode/workflows/ci.yml',
-            enabled: true,
-            dispatchable: false,
-            lastRunStatus: null,
-          },
-        ],
+        json: {
+          content: [
+            {
+              id: 'w1',
+              name: 'ci',
+              filePath: '.gitnode/workflows/ci.yml',
+              enabled: true,
+              dispatchable: false,
+              lastRunStatus: null,
+              createdAt: null,
+              updatedAt: null,
+            },
+          ],
+          totalElements: 1,
+          totalPages: 1,
+          page: 0,
+          size: 100,
+        },
       });
     return route.fulfill({ status: 404 });
   });

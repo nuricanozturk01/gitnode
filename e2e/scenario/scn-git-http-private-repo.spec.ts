@@ -10,7 +10,7 @@ import { E2E_PASSWORD } from '@helpers/test-user';
 
 import { expect, test } from './fixtures/scenario';
 import { adminLogin, deleteSelfUser, setUserEnabled } from './helpers/admin-api';
-import { getAdminCredentials } from './helpers/env';
+import { getAdminCredentials, hasAdminCredentials } from './helpers/env';
 import {
   gitClone,
   gitCommitAll,
@@ -156,6 +156,10 @@ test.describe('SCN-PRIV-GIT — private repo HTTP Git', () => {
 
   // SCN-PRIV-GIT-05 — A disabled account is refused over HTTP Git until re-enabled.
   test('disabled account cannot clone until re-enabled', async ({ bareApi }, testInfo) => {
+    test.skip(
+      !hasAdminCredentials(),
+      'Needs a platform admin: set E2E_ADMIN_USERNAME and E2E_ADMIN_PASSWORD for a deployed API',
+    );
     const username = `gitdis_${Date.now().toString(36)}${Math.floor(Math.random() * 1000)}`;
     const register = await bareApi.post('/api/auth/register', {
       data: { username, email: `${username}@example.org`, password: E2E_PASSWORD },
@@ -194,24 +198,32 @@ test.describe('SCN-PRIV-GIT — private repo HTTP Git', () => {
       expect(tryClone('disabled')).toBe(false);
       await setUserEnabled(bareApi, adminSession, username, true);
       expect(tryClone('reenabled')).toBe(true);
-
-      const dotted = await bareApi.post(repoApi, {
-        headers: { Authorization: user.authorization },
-        data: { name: `${username}.github.io`, description: 'dotted', isPrivate: true },
-      });
-      expect(dotted.status()).toBeLessThan(300);
-      const dottedDir = scenarioWorkDir(`${testInfo.testId}-dotted`);
-      try {
-        gitClone(
-          httpGitRemoteUrl(username, `${username}.github.io`, { username, password: E2E_PASSWORD }),
-          dottedDir,
-        );
-      } finally {
-        removeWorkDir(dottedDir);
-      }
     } finally {
       await setUserEnabled(bareApi, adminSession, username, true);
       await deleteSelfUser(bareApi, user.authorization);
+    }
+  });
+
+  // SCN-PRIV-GIT-06 — A repository whose name contains dots (user.github.io) clones over HTTP Git.
+  test('repository name with dots can be cloned', async ({ owner, bareApi }, testInfo) => {
+    const name = `${owner.username}.github.io`;
+    const created = await bareApi.post(repoApi, {
+      headers: { Authorization: owner.authorization },
+      data: { name, description: 'dotted', isPrivate: true },
+    });
+    expect(created.status()).toBeLessThan(300);
+
+    const dir = scenarioWorkDir(`${testInfo.testId}-dotted`);
+    try {
+      gitClone(
+        httpGitRemoteUrl(owner.username, name, {
+          username: owner.username,
+          password: E2E_PASSWORD,
+        }),
+        dir,
+      );
+    } finally {
+      removeWorkDir(dir);
     }
   });
 });

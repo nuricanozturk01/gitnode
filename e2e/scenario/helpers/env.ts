@@ -58,9 +58,26 @@ export interface AdminCredentials {
 
 export function getAdminCredentials(): AdminCredentials {
   return {
-    username: process.env.E2E_ADMIN_USERNAME ?? 'admin',
-    password: process.env.E2E_ADMIN_PASSWORD ?? 'Admin123',
+    username: nonEmpty(process.env.E2E_ADMIN_USERNAME, 'admin'),
+    password: nonEmpty(process.env.E2E_ADMIN_PASSWORD, 'Admin123'),
   };
+}
+
+/** CI passes unset secrets as empty strings, which `??` would keep. */
+function nonEmpty(value: string | undefined, fallback: string): string {
+  return value !== undefined && value !== '' ? value : fallback;
+}
+
+/**
+ * Admin scenarios need a platform admin. The documented default (`admin` / `Admin123`) only exists
+ * on a local dev server; against a deployed API the password must be supplied explicitly.
+ */
+export function hasAdminCredentials(): boolean {
+  if (nonEmpty(process.env.E2E_ADMIN_PASSWORD, '') !== '') {
+    return true;
+  }
+  const api = getApiBaseUrl();
+  return api.includes('localhost') || api.includes('127.0.0.1');
 }
 
 export const SAMLTEST_DEV_API = 'https://www.samltest.dev/api/apps';

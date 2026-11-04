@@ -30,6 +30,14 @@ const secretsApi = (owner: string, repo: string) => `${actionsBase(owner, repo)}
 const secretApi = (owner: string, repo: string, name: string) =>
   `${secretsApi(owner, repo)}/${name}`;
 
+interface WorkflowPage {
+  content: { filePath: string; name: string }[];
+  totalElements: number;
+  totalPages: number;
+  page: number;
+  size: number;
+}
+
 const DISPATCH_WORKFLOW_FILE = '.gitnode/workflows/e2e-dispatch.yaml';
 const DISPATCH_WORKFLOW_YAML = `name: E2E Dispatch Test
 on:
@@ -121,10 +129,30 @@ test.describe('Runner', () => {
 // ─── Workflows ────────────────────────────────────────────────────────────────
 
 test.describe('Workflows', () => {
-  test('GET workflows — returns array', async ({ authedRequest, api }) => {
+  test('GET workflows — returns a page', async ({ authedRequest, api }) => {
     const response = await authedRequest.get(workflowsApi(api.owner, api.repo));
     expect(response.status()).toBe(200);
-    expect(Array.isArray(await response.json())).toBe(true);
+    const body = (await response.json()) as WorkflowPage;
+    expect(Array.isArray(body.content)).toBe(true);
+    expect(body.page).toBe(0);
+    expect(body.totalElements).toBeGreaterThanOrEqual(body.content.length);
+  });
+
+  test('GET workflows — size is capped and q filters by name or path', async ({
+    authedRequest,
+    api,
+  }) => {
+    const capped = await authedRequest.get(workflowsApi(api.owner, api.repo), {
+      params: { size: 1000 },
+    });
+    expect(capped.status()).toBe(200);
+    expect(((await capped.json()) as WorkflowPage).size).toBeLessThanOrEqual(100);
+
+    const none = await authedRequest.get(workflowsApi(api.owner, api.repo), {
+      params: { q: 'no-such-workflow-xyz' },
+    });
+    expect(none.status()).toBe(200);
+    expect(((await none.json()) as WorkflowPage).content).toEqual([]);
   });
 
   test.describe.serial('enable / disable / dispatch', () => {
@@ -138,8 +166,8 @@ test.describe('Workflows', () => {
     }) => {
       const response = await authedRequest.get(workflowsApi(api.owner, api.repo));
       expect(response.status()).toBe(200);
-      const list = (await response.json()) as { filePath: string }[];
-      expect(list.some((w) => w.filePath === DISPATCH_WORKFLOW_FILE)).toBe(true);
+      const page = (await response.json()) as WorkflowPage;
+      expect(page.content.some((w) => w.filePath === DISPATCH_WORKFLOW_FILE)).toBe(true);
     });
 
     test('PUT workflows/disable — disables workflow', async ({ authedRequest, api }) => {

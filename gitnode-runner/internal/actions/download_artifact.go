@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
@@ -37,9 +38,13 @@ func (a *DownloadArtifactAction) Execute(
 	if name == "" {
 		return nil, fmt.Errorf("actions/download-artifact: 'name' input is required")
 	}
-	destPath := inputs["path"]
-	if destPath == "" {
-		destPath = filepath.Join(workDir, name)
+	// Like GitHub: the artifact is extracted straight into `path` (the workspace by default).
+	destPath := strings.TrimSpace(inputs["path"])
+	switch {
+	case destPath == "":
+		destPath = workDir
+	case !filepath.IsAbs(destPath):
+		destPath = filepath.Join(workDir, destPath)
 	}
 
 	env := jctx.Env()

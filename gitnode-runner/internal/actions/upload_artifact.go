@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
@@ -58,16 +59,25 @@ func (a *UploadArtifactAction) Execute(
 	runID := env["GITNODE_RUN_ID"]
 	jobID := env["GITNODE_JOB_ID"]
 
-	streamer.Emit(fmt.Sprintf("Uploading artifact %q from %s", name, artifactPath), "info")
+	streamer.Emit(fmt.Sprintf("Uploading artifact %q from %s", name, strings.ReplaceAll(artifactPath, "\n", ", ")), "info")
 
-	// Archive the path into a tar.gz buffer
-	var buf bytes.Buffer
-	if err := tarGz(artifactPath, &buf); err != nil {
-		if ifNoFiles == "error" {
-			return nil, fmt.Errorf("upload-artifact: failed to archive %s: %w", artifactPath, err)
+	files, err := collectArtifactFiles(workDir, artifactPath, strings.EqualFold(inputs["include-hidden-files"], "true"))
+	if err != nil {
+		switch ifNoFiles {
+		case "error":
+			return nil, fmt.Errorf("upload-artifact: %w at %s", err, artifactPath)
+		case "ignore":
+			return map[string]string{}, nil
+		default:
+			streamer.Emit(fmt.Sprintf("No files were found with the provided path: %s. No artifacts will be uploaded.", artifactPath), "warn")
+			return map[string]string{}, nil
 		}
-		streamer.Emit(fmt.Sprintf("No files found at %s: %v", artifactPath, err), ifNoFiles)
-		return map[string]string{}, nil
+	}
+	streamer.Emit(fmt.Sprintf("With the provided path, there will be %d file(s) uploaded", len(files)), "info")
+
+	var buf bytes.Buffer
+	if err := tarGzFiles(files, &buf); err != nil {
+		return nil, fmt.Errorf("upload-artifact: failed to archive: %w", err)
 	}
 
 	if err := a.upload(ctx, runID, jobID, name, retentionDays, &buf, streamer); err != nil {

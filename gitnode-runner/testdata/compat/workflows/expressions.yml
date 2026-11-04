@@ -1,0 +1,62 @@
+name: expressions
+on: workflow_dispatch
+env:
+  WORKFLOW_LEVEL: wf
+defaults:
+  run:
+    shell: bash
+    working-directory: /tmp
+jobs:
+  funcs:
+    runs-on: [self-hosted, linux]
+    env:
+      JOB_LEVEL: job
+    steps:
+      - name: defaults apply
+        run: test "$(pwd)" = "/tmp"
+      - name: env layers
+        env:
+          STEP_LEVEL: step
+        run: test "$WORKFLOW_LEVEL-$JOB_LEVEL-$STEP_LEVEL" = "wf-job-step"
+      - name: functions
+        run: |
+          test "${{ format('{0}-{1}', 'a', 'b') }}" = "a-b"
+          test "${{ contains('Hello World', 'world') }}" = "true"
+          test "${{ startsWith('refs/heads/main', 'refs/heads') }}" = "true"
+          test "${{ endsWith('file.txt', '.txt') }}" = "true"
+          test "${{ join(fromJSON('["a","b","c"]'), '+') }}" = "a+b+c"
+          test '${{ toJSON('x') }}' = '"x"'
+          test "${{ github.event_name == 'workflow_dispatch' && 'yes' || 'no' }}" = "yes"
+      - id: soft
+        continue-on-error: true
+        run: exit 3
+      - name: outcome vs conclusion
+        run: |
+          test "${{ steps.soft.outcome }}" = "failure"
+          test "${{ steps.soft.conclusion }}" = "success"
+      - name: python shell
+        shell: python
+        run: |
+          import os
+          assert os.environ["JOB_LEVEL"] == "job"
+          print("python ok")
+      - name: sh shell
+        shell: sh
+        run: test -n "$GITHUB_WORKSPACE"
+      - name: create the file hashFiles will read
+        working-directory: ${{ github.workspace }}
+        run: echo "a" > a.txt
+      - name: hashFiles (expressions are evaluated before the step runs, so the file must exist already)
+        working-directory: ${{ github.workspace }}
+        run: test -n "${{ hashFiles('a.txt') }}"
+  soft-fail:
+    runs-on: [self-hosted, linux]
+    continue-on-error: true
+    steps:
+      - run: exit 1
+  after-soft:
+    needs: soft-fail
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: soft failure of the needed job counts as success
+        run: test "${{ needs.soft-fail.result }}" = "success"

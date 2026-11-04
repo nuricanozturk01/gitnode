@@ -109,7 +109,7 @@ func startCmd() *cobra.Command {
 				},
 				cfg.Executor,
 				log,
-			)
+			).WithServerURL(cfg.ServerURL)
 
 			wsClient = connection.New(
 				cfg.ServerURL,

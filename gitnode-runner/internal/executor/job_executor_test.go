@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -224,8 +225,8 @@ func TestJob_workingDirectory(t *testing.T) {
 	o := runJob(t, protocol.JobPayload{Steps: []protocol.StepPayload{mk, in, esc}})
 	assert.Equal(t, "success", o.steps["in"].conclusion, o.log("in"))
 	assert.Contains(t, o.log("in"), "hi")
-	assert.Equal(t, "failure", o.steps["esc"].conclusion, "must not escape the workspace")
-	assert.Contains(t, o.log("esc"), "outside the workspace")
+	assert.Equal(t, "failure", o.steps["esc"].conclusion, "a missing directory fails the step")
+	assert.Contains(t, o.log("esc"), "does not exist")
 }
 
 func TestJob_secretsMaskedAndExpressionContexts(t *testing.T) {
@@ -278,8 +279,13 @@ func TestResolveSubDir(t *testing.T) {
 	d, err = resolveSubDir(root, "a/b")
 	require.NoError(t, err)
 	assert.Equal(t, "a/b", d)
-	_, err = resolveSubDir(root, "../x")
+	// Like GitHub: outside the workspace is fine when the directory exists, an error when not.
+	outside := t.TempDir()
+	d, err = resolveSubDir(root, outside)
+	require.NoError(t, err)
+	assert.Equal(t, outside, d)
+	_, err = resolveSubDir(root, filepath.Join(outside, "missing"))
 	assert.Error(t, err)
-	_, err = resolveSubDir(root, "/etc")
+	_, err = resolveSubDir(root, "../missing-sibling")
 	assert.Error(t, err)
 }

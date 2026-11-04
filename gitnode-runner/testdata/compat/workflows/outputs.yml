@@ -1,0 +1,58 @@
+name: outputs
+on: workflow_dispatch
+jobs:
+  produce:
+    runs-on: [self-hosted, linux]
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      multi: ${{ steps.ml.outputs.text }}
+    steps:
+      - id: ver
+        run: echo "version=1.2.3" >> "$GITHUB_OUTPUT"
+      - id: ml
+        run: |
+          {
+            echo "text<<EOF"
+            echo "line one"
+            echo "line two"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: env file
+        run: echo "FROM_ENV_FILE=hello" >> "$GITHUB_ENV"
+      - name: sees env file
+        run: test "$FROM_ENV_FILE" = "hello"
+      - name: path file
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\necho from-path\n' > "$RUNNER_TEMP/bin/mytool"
+          chmod +x "$RUNNER_TEMP/bin/mytool"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: sees path
+        run: test "$(mytool)" = "from-path"
+  consume:
+    needs: produce
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: use outputs
+        run: |
+          test "${{ needs.produce.outputs.version }}" = "1.2.3"
+          echo "${{ needs.produce.outputs.multi }}" | grep -q "line two"
+      - name: needs result
+        run: test "${{ needs.produce.result }}" = "success"
+  after-failure:
+    needs: consume
+    if: always()
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: continue on error
+        continue-on-error: true
+        run: exit 1
+      - name: runs after soft failure
+        if: success()
+        run: echo ok
+      - name: failure() is false here
+        if: failure()
+        run: exit 1
+      - name: always runs
+        if: always()
+        run: echo always

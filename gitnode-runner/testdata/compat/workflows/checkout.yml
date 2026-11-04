@@ -1,0 +1,30 @@
+name: checkout
+on: workflow_dispatch
+jobs:
+  build:
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - name: files are there
+        run: |
+          ls -la
+          test -f README.md
+          git log --oneline | head -3
+      - name: make artifact
+        run: echo "built" > out.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: out
+          path: out.txt
+      - name: local composite action
+        uses: ./.gitnode/actions/hello
+        with:
+          who: world
+  verify:
+    needs: build
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: out
+      - run: test "$(cat out.txt)" = "built"

@@ -11,6 +11,7 @@ type JobContext struct {
 	env     map[string]string // workflow-level + job-level env vars
 	secrets map[string]string // decrypted secrets (never logged)
 	outputs map[string]string // step outputs keyed by "stepId.outputName"
+	masks   []string          // values registered with ::add-mask:: (hidden in later logs)
 }
 
 // New creates a JobContext pre-populated with env and secrets.
@@ -80,11 +81,22 @@ func (c *JobContext) GetOutput(stepID, name string) string {
 	return c.outputs[stepID+"."+name]
 }
 
-// SecretValues returns only the secret values (for log masking).
+// AddMask registers a value to hide in the logs of the steps that follow (::add-mask::).
+func (c *JobContext) AddMask(value string) {
+	if value == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.masks = append(c.masks, value)
+}
+
+// SecretValues returns the secret values plus the ::add-mask:: values (for log masking).
 func (c *JobContext) SecretValues() []string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	vals := make([]string, 0, len(c.secrets))
+	vals := make([]string, 0, len(c.secrets)+len(c.masks))
+	vals = append(vals, c.masks...)
 	for _, v := range c.secrets {
 		if v != "" {
 			vals = append(vals, v)

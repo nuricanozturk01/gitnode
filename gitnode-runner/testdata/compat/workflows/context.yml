@@ -1,0 +1,41 @@
+name: context
+on: workflow_dispatch
+jobs:
+  ctx:
+    runs-on: [self-hosted, linux]
+    env:
+      JOB_LEVEL: job
+    steps:
+      - name: github context
+        run: |
+          echo "actor=$GITHUB_ACTOR event=$GITHUB_EVENT_NAME attempt=$GITHUB_RUN_ATTEMPT"
+          echo "repo=$GITHUB_REPOSITORY owner=$GITHUB_REPOSITORY_OWNER"
+          echo "ref=$GITHUB_REF name=$GITHUB_REF_NAME type=$GITHUB_REF_TYPE sha=$GITHUB_SHA"
+          echo "run_id=$GITHUB_RUN_ID number=$GITHUB_RUN_NUMBER job=$GITHUB_JOB workflow=$GITHUB_WORKFLOW"
+          echo "server=$GITHUB_SERVER_URL api=$GITHUB_API_URL"
+          echo "runner os=$RUNNER_OS arch=$RUNNER_ARCH name=$RUNNER_NAME temp=$RUNNER_TEMP cache=$RUNNER_TOOL_CACHE"
+          echo "action=$GITHUB_ACTION ci=$CI actions=$GITHUB_ACTIONS"
+          test -n "$GITHUB_ACTOR"
+          test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          test -f "$GITHUB_EVENT_PATH"
+          cat "$GITHUB_EVENT_PATH"
+      - name: expression contexts
+        run: |
+          test "${{ github.actor }}" = "$GITHUB_ACTOR"
+          test "${{ github.event_name }}" = "workflow_dispatch"
+          test "${{ github.event.repository.name }}" != ""
+          test "${{ github.run_attempt }}" != ""
+          test "${{ env.JOB_LEVEL }}" = "job"
+          test "${{ runner.os }}" = "Linux"
+          test "${{ job.status }}" = "success"
+      - name: step summary
+        run: |
+          echo "## Summary title" >> "$GITHUB_STEP_SUMMARY"
+          echo "- item one" >> "$GITHUB_STEP_SUMMARY"
+      - name: defaults and working-directory
+        working-directory: /tmp
+        shell: bash
+        run: test "$(pwd)" = "/tmp"
+      - name: timeout step
+        timeout-minutes: 1
+        run: echo fast

@@ -1,0 +1,18 @@
+name: hello
+description: composite test action
+inputs:
+  who:
+    description: who to greet
+    default: nobody
+outputs:
+  greeting:
+    description: the greeting
+    value: ${{ steps.make.outputs.greeting }}
+runs:
+  using: composite
+  steps:
+    - id: make
+      shell: bash
+      run: echo "greeting=hello ${{ inputs.who }}" >> "$GITHUB_OUTPUT"
+    - shell: bash
+      run: echo "composite says ${{ steps.make.outputs.greeting }}"

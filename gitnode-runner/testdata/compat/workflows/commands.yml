@@ -1,0 +1,36 @@
+name: commands
+on: workflow_dispatch
+jobs:
+  cmds:
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: group and annotations
+        run: |
+          echo "::group::My group"
+          echo "inside group"
+          echo "::endgroup::"
+          echo "::error file=app.js,line=10,col=5,title=Bad::something broke"
+          echo "::warning::be careful"
+          echo "::notice::just so you know"
+      - name: stderr command
+        run: |
+          echo "::error::from stderr" >&2
+      - name: mask
+        run: |
+          echo "::add-mask::supersecret123"
+          echo "token is supersecret123 done"
+      - name: stop commands
+        run: |
+          echo "::stop-commands::pause-token"
+          echo "::error::must stay literal"
+          echo "::pause-token::"
+          echo "::warning::resumed"
+      - name: deprecated set-output
+        id: dep
+        run: echo "::set-output name=answer::42"
+      - name: read it
+        run: test "${{ steps.dep.outputs.answer }}" = "42"
+      - name: long line
+        run: |
+          python3 -c "print('x' * 20000)" | wc -c
+          printf 'no trailing newline'

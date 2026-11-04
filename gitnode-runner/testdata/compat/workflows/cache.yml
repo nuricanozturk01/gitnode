@@ -1,0 +1,34 @@
+name: cache
+on: workflow_dispatch
+jobs:
+  first:
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .cache-dir
+          key: compat-cache-${{ github.run_id }}
+          restore-keys: |
+            compat-cache-
+      - name: fill cache on a miss
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .cache-dir
+          echo "warm" > .cache-dir/file.txt
+  second:
+    needs: first
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/checkout@v4
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: .cache-dir
+          key: compat-cache-${{ github.run_id }}
+      - name: cache must have been restored
+        run: |
+          test "${{ steps.cache.outputs.cache-hit }}" = "true"
+          test "$(cat .cache-dir/file.txt)" = "warm"

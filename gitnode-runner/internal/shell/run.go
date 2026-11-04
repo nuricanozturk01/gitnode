@@ -2,11 +2,10 @@ package shell
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
-	"strings"
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
@@ -32,40 +31,16 @@ func Run(
 	}
 	cmd.Env = cmdEnv
 
-	pr, pw := io.Pipe()
-	cmd.Stdout = pw
-	cmd.Stderr = pw
+	cmd.Stdout = streamer
+	cmd.Stderr = streamer
+	defer streamer.Flush()
 
-	if err := cmd.Start(); err != nil {
-		return "failure", fmt.Errorf("shell: start: %w", err)
-	}
-
-	go func() {
-		defer func() { _ = pr.Close() }()
-		buf := make([]byte, DefaultBytes)
-		for {
-			n, err := pr.Read(buf)
-			if n > 0 {
-				lines := strings.Split(strings.TrimRight(string(buf[:n]), "\n"), "\n")
-				for _, line := range lines {
-					if line != "" {
-						streamer.Emit(line, "info")
-					}
-				}
-			}
-			if err != nil {
-				return
-			}
+	if err := cmd.Run(); err != nil {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) || ctx.Err() != nil {
+			return "failure", nil
 		}
-	}()
-
-	runErr := cmd.Wait()
-	if closeErr := pw.Close(); closeErr != nil && runErr == nil {
-		return "failure", fmt.Errorf("shell: close pipe: %w", closeErr)
-	}
-
-	if runErr != nil {
-		return "failure", nil
+		return "failure", fmt.Errorf("shell: run: %w", err)
 	}
 
 	return "success", nil

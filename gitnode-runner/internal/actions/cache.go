@@ -2,11 +2,13 @@ package actions
 
 import (
 	"archive/tar"
+	"bytes"
 	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,19 +19,54 @@ import (
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
 )
 
-// CacheAction implements actions/cache@v1.
-// Restores a tar.gz cache from the server before the job steps run,
-// and uploads a new cache archive after they finish.
+// absPrefix marks archive entries that live outside the workspace (for example ~/.npm); the rest of
+// the name is the absolute path they are restored to.
+const absPrefix = "__abs__"
+
+// matchedKeyHeader is how the server tells which key a cache hit was stored under.
+const matchedKeyHeader = "X-Cache-Matched-Key"
+
+type cacheMode int
+
+const (
+	cacheRestoreAndSave cacheMode = iota // actions/cache
+	cacheRestoreOnly                     // actions/cache/restore
+	cacheSaveOnly                        // actions/cache/save
+)
+
+// CacheAction implements actions/cache, actions/cache/restore and actions/cache/save.
+//
+// actions/cache restores an archive for the key (or the newest one whose key starts with a
+// restore-key) before the following steps run and, when there was no exact hit, saves the paths as
+// a new archive when the job ends successfully.
 type CacheAction struct {
 	serverURL   string
 	runnerToken string
+	mode        cacheMode
 }
 
 func NewCacheAction(serverURL, runnerToken string) *CacheAction {
-	return &CacheAction{serverURL: serverURL, runnerToken: runnerToken}
+	return &CacheAction{serverURL: serverURL, runnerToken: runnerToken, mode: cacheRestoreAndSave}
 }
 
-func (a *CacheAction) Name() string       { return "actions/cache" }
+func NewCacheRestoreAction(serverURL, runnerToken string) *CacheAction {
+	return &CacheAction{serverURL: serverURL, runnerToken: runnerToken, mode: cacheRestoreOnly}
+}
+
+func NewCacheSaveAction(serverURL, runnerToken string) *CacheAction {
+	return &CacheAction{serverURL: serverURL, runnerToken: runnerToken, mode: cacheSaveOnly}
+}
+
+func (a *CacheAction) Name() string {
+	switch a.mode {
+	case cacheRestoreOnly:
+		return "actions/cache/restore"
+	case cacheSaveOnly:
+		return "actions/cache/save"
+	}
+	return "actions/cache"
+}
+
 func (a *CacheAction) Versions() []string { return []string{"v1", "v2", "v3", "v4"} }
 
 func (a *CacheAction) Execute(
@@ -40,184 +77,250 @@ func (a *CacheAction) Execute(
 	workDir string,
 ) (map[string]string, error) {
 
-	key := inputs["key"]
+	key := strings.TrimSpace(inputs["key"])
 	if key == "" {
-		return nil, fmt.Errorf("actions/cache: 'key' input is required")
+		return nil, fmt.Errorf("%s: 'key' input is required", a.Name())
 	}
-	cachePath := inputs["path"]
-	if cachePath == "" {
-		return nil, fmt.Errorf("actions/cache: 'path' input is required")
+	if strings.TrimSpace(inputs["path"]) == "" {
+		return nil, fmt.Errorf("%s: 'path' input is required", a.Name())
 	}
-	restoreKeys := parseRestoreKeys(inputs["restore-keys"])
 	repoID := jctx.Env()["GITNODE_REPO_ID"]
-
-	streamer.Emit(fmt.Sprintf("Restoring cache for key: %s", key), "info")
-
-	hit, err := a.restore(ctx, repoID, key, restoreKeys, cachePath, workDir)
-	if err != nil {
-		streamer.Emit(fmt.Sprintf("Cache restore warning: %v", err), "warn")
+	if repoID == "" {
+		streamer.Emit("The server did not say which repository this job belongs to; the cache is skipped", "warn")
+		return map[string]string{"cache-hit": "false", "cache-primary-key": key, "cache-matched-key": ""}, nil
 	}
 
-	outputs := map[string]string{"cache-hit": boolStr(hit)}
-	if hit {
-		streamer.Emit("Cache restored successfully", "info")
-	} else {
-		streamer.Emit("Cache miss — will upload after job", "info")
-		// Store metadata so post-job steps can upload
-		jctx.SetEnv("GITNODE_CACHE_KEY", key)
-		jctx.SetEnv("GITNODE_CACHE_PATH", cachePath)
-		jctx.SetEnv("GITNODE_CACHE_REPO_ID", repoID)
+	if a.mode == cacheSaveOnly {
+		if err := a.save(ctx, repoID, key, inputs, workDir, streamer); err != nil {
+			return nil, err
+		}
+		return map[string]string{}, nil
+	}
+	return a.restoreStep(ctx, repoID, key, inputs, workDir, streamer)
+}
+
+func (a *CacheAction) restoreStep(
+	ctx context.Context,
+	repoID, key string,
+	inputs map[string]string,
+	workDir string,
+	streamer *runnerlog.Streamer,
+) (map[string]string, error) {
+
+	streamer.Emit(fmt.Sprintf("Cache restore for key: %s", key), "info")
+	matched, err := a.restore(ctx, repoID, key, parseRestoreKeys(inputs["restore-keys"]), workDir,
+		strings.EqualFold(inputs["lookup-only"], "true"))
+	if err != nil {
+		streamer.Emit(fmt.Sprintf("Cache restore failed: %v", err), "warn")
+	}
+
+	outputs := map[string]string{
+		"cache-hit":         boolStr(matched == key),
+		"cache-primary-key": key,
+		"cache-matched-key": matched,
+	}
+	switch matched {
+	case "":
+		if strings.EqualFold(inputs["fail-on-cache-miss"], "true") {
+			return outputs, fmt.Errorf("cache not found for key: %s", key)
+		}
+		streamer.Emit("Cache not found for the input keys", "info")
+	case key:
+		streamer.Emit(fmt.Sprintf("Cache restored from key: %s", matched), "info")
+	default:
+		streamer.Emit(fmt.Sprintf("Cache restored from restore key: %s", matched), "info")
 	}
 	return outputs, nil
 }
 
-// Upload tarballs cachePath and posts it to the server.
-func (a *CacheAction) Upload(
+// PostHook saves the cache when the job ends, unless the exact key was restored.
+func (a *CacheAction) PostHook(
+	inputs, outputs map[string]string,
+	jctx *jobctx.JobContext,
+	workDir string,
+) func(ctx context.Context, streamer *runnerlog.Streamer) error {
+
+	repoID := jctx.Env()["GITNODE_REPO_ID"]
+	if a.mode != cacheRestoreAndSave || repoID == "" || outputs["cache-hit"] == "true" ||
+		strings.EqualFold(inputs["lookup-only"], "true") {
+		return nil
+	}
+	key := strings.TrimSpace(inputs["key"])
+	return func(ctx context.Context, streamer *runnerlog.Streamer) error {
+		return a.save(ctx, repoID, key, inputs, workDir, streamer)
+	}
+}
+
+// save archives the paths and uploads them under key. Nothing to archive is not an error.
+func (a *CacheAction) save(
 	ctx context.Context,
-	repoID, key, cachePath string,
+	repoID, key string,
+	inputs map[string]string,
+	workDir string,
 	streamer *runnerlog.Streamer,
 ) error {
 
-	streamer.Emit(fmt.Sprintf("Uploading cache for key: %s", key), "info")
+	files, _, err := expandPatterns(workDir, inputs["path"])
+	if err != nil {
+		streamer.Emit("Path validation: the paths for caching do not exist, so no cache is saved", "warn")
+		return nil
+	}
+	entries := make([]artifactFile, 0, len(files))
+	for _, file := range files {
+		info, statErr := os.Stat(filepath.FromSlash(file))
+		if statErr != nil || !info.Mode().IsRegular() {
+			continue
+		}
+		entries = append(entries, artifactFile{
+			abs: filepath.FromSlash(file), rel: cacheEntryName(workDir, file),
+			mode: info.Mode().Perm(), size: info.Size(),
+		})
+	}
+	if len(entries) == 0 {
+		streamer.Emit("No files to cache", "warn")
+		return nil
+	}
 
-	pr, pw := io.Pipe()
-	go func() {
-		pw.CloseWithError(tarGz(cachePath, pw))
-	}()
+	var archive bytes.Buffer
+	if err := tarGzFiles(entries, &archive); err != nil {
+		return fmt.Errorf("cache save: archive: %w", err)
+	}
+	streamer.Emit(fmt.Sprintf("Saving cache for key: %s (%d files)", key, len(entries)), "info")
+	return a.upload(ctx, repoID, key, parseRestoreKeys(inputs["restore-keys"]), &archive, streamer)
+}
+
+// cacheEntryName is the name of a file inside the archive: relative to the workspace when it is
+// inside it, otherwise absPrefix plus its absolute path.
+func cacheEntryName(workDir, file string) string {
+	root := filepath.ToSlash(filepath.Clean(workDir))
+	if rel, ok := strings.CutPrefix(file, root+"/"); ok {
+		return rel
+	}
+	return absPrefix + file
+}
+
+func (a *CacheAction) upload(
+	ctx context.Context,
+	repoID, key string,
+	restoreKeys []string,
+	archive io.Reader,
+	streamer *runnerlog.Streamer,
+) error {
+
+	var body bytes.Buffer
+	mw := multipart.NewWriter(&body)
+	part, err := mw.CreateFormFile("file", "cache.tar.gz")
+	if err != nil {
+		return err
+	}
+	if _, copyErr := io.Copy(part, archive); copyErr != nil {
+		return copyErr
+	}
+	if closeErr := mw.Close(); closeErr != nil {
+		return closeErr
+	}
 
 	endpoint, err := url.JoinPath(a.serverURL, "/api/actions/cache")
 	if err != nil {
-		return fmt.Errorf("cache upload: build URL: %w", err)
+		return fmt.Errorf("cache save: build URL: %w", err)
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		endpoint+"?repoId="+repoID+"&key="+url.QueryEscape(key), pr)
+	params := url.Values{"repoId": {repoID}, "key": {key}}
+	for _, rk := range restoreKeys {
+		params.Add("restoreKeys", rk)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint+"?"+params.Encode(), &body)
 	if err != nil {
-		return fmt.Errorf("cache upload: build request: %w", err)
+		return fmt.Errorf("cache save: build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+a.runnerToken)
-	req.Header.Set("Content-Type", "application/gzip")
+	req.Header.Set("Content-Type", mw.FormDataContentType())
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("cache upload: %w", err)
+		return fmt.Errorf("cache save: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
-
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("cache upload: server returned %d", resp.StatusCode)
+		return fmt.Errorf("cache save: server returned %d", resp.StatusCode)
 	}
-	streamer.Emit("Cache uploaded", "info")
+	streamer.Emit(fmt.Sprintf("Cache saved with key: %s", key), "info")
 	return nil
 }
 
-// ── restore ───────────────────────────────────────────────────────────────────
-
+// restore downloads the archive for key (or the newest one a restore key matches) and extracts
+// it. It returns the key the archive was stored under, or "" on a miss.
 func (a *CacheAction) restore(
 	ctx context.Context,
 	repoID, key string,
 	restoreKeys []string,
-	cachePath, workDir string,
-) (bool, error) {
+	workDir string,
+	lookupOnly bool,
+) (string, error) {
 
 	endpoint, err := url.JoinPath(a.serverURL, "/api/actions/cache")
 	if err != nil {
-		return false, fmt.Errorf("build cache URL: %w", err)
+		return "", fmt.Errorf("build cache URL: %w", err)
 	}
-
-	params := url.Values{}
-	params.Set("repoId", repoID)
-	params.Set("key", key)
+	params := url.Values{"repoId": {repoID}, "key": {key}}
 	for _, rk := range restoreKeys {
 		params.Add("restoreKeys", rk)
 	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		endpoint+"?"+params.Encode(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+params.Encode(), nil)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+a.runnerToken)
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode == http.StatusNotFound {
-		return false, nil
+		return "", nil
 	}
 	if resp.StatusCode >= 300 {
-		return false, fmt.Errorf("server returned %d", resp.StatusCode)
+		return "", fmt.Errorf("server returned %d", resp.StatusCode)
 	}
 
-	target := filepath.Join(workDir, cachePath)
-	if err := os.MkdirAll(target, 0o750); err != nil {
-		return false, err
+	matched := key
+	if header := resp.Header.Get(matchedKeyHeader); header != "" {
+		if decoded, decErr := url.QueryUnescape(header); decErr == nil {
+			matched = decoded
+		}
 	}
-	if err := unTarGz(resp.Body, target); err != nil {
-		return false, err
+	if lookupOnly {
+		return matched, nil
 	}
-	return true, nil
+	if err := extractTarGz(resp.Body, func(name string) (string, error) {
+		return cacheExtractPath(workDir, name)
+	}); err != nil {
+		return "", err
+	}
+	return matched, nil
 }
 
-// ── tar helpers ───────────────────────────────────────────────────────────────
-
-func tarGz(src string, w io.Writer) error {
-	root, err := os.OpenRoot(src)
-	if err != nil {
-		return err
+// cacheExtractPath says where an archive entry is restored to.
+func cacheExtractPath(workDir, name string) (string, error) {
+	if rest, ok := strings.CutPrefix(name, absPrefix); ok {
+		clean := filepath.Clean(filepath.FromSlash(rest))
+		if !filepath.IsAbs(clean) {
+			return "", fmt.Errorf("archive entry %q is not an absolute path", name)
+		}
+		return clean, nil
 	}
-	defer root.Close() //nolint:errcheck
-
-	gw := gzip.NewWriter(w)
-	tw := tar.NewWriter(gw)
-
-	err = filepath.WalkDir(src, func(path string, info os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		fi, statErr := info.Info()
-		if statErr != nil {
-			return statErr
-		}
-		hdr, headerErr := tar.FileInfoHeader(fi, "")
-		if headerErr != nil {
-			return headerErr
-		}
-		rel, relErr := filepath.Rel(src, path)
-		if relErr != nil {
-			return relErr
-		}
-		hdr.Name = rel
-		if writeErr := tw.WriteHeader(hdr); writeErr != nil {
-			return writeErr
-		}
-		if fi.IsDir() {
-			return nil
-		}
-		f, openErr := root.Open(rel)
-		if openErr != nil {
-			return openErr
-		}
-		_, copyErr := io.Copy(tw, f)
-		closeErr := f.Close()
-		if copyErr != nil {
-			return copyErr
-		}
-		return closeErr
-	})
-	if err != nil {
-		return err
-	}
-	if err := tw.Close(); err != nil {
-		return err
-	}
-	return gw.Close()
+	return safeExtractPath(workDir, name)
 }
 
+// unTarGz extracts a tar.gz below dest.
 func unTarGz(r io.Reader, dest string) error {
+	return extractTarGz(r, func(name string) (string, error) { return safeExtractPath(dest, name) })
+}
+
+// extractTarGz unpacks a tar.gz; resolve decides where each entry goes (and may refuse it).
+// Only regular files and directories are restored, with their permissions.
+func extractTarGz(r io.Reader, resolve func(name string) (string, error)) error {
 	gr, err := gzip.NewReader(r)
 	if err != nil {
 		return err
@@ -232,26 +335,54 @@ func unTarGz(r io.Reader, dest string) error {
 		if err != nil {
 			return err
 		}
-		target := filepath.Join(dest, hdr.Name) //nolint:gosec
-		if hdr.Typeflag == tar.TypeDir {
+		target, resolveErr := resolve(hdr.Name)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		switch hdr.Typeflag {
+		case tar.TypeDir:
 			if mkdirErr := os.MkdirAll(target, 0o750); mkdirErr != nil {
 				return mkdirErr
 			}
-			continue
-		}
-		f, err := os.Create(target) //nolint:gosec
-		if err != nil {
-			return err
-		}
-		_, copyErr := io.Copy(f, tr) //nolint:gosec
-		closeErr := f.Close()
-		if copyErr != nil {
-			return copyErr
-		}
-		if closeErr != nil {
-			return closeErr
+		case tar.TypeReg:
+			if writeErr := writeEntry(target, tr, hdr.FileInfo().Mode().Perm()); writeErr != nil {
+				return writeErr
+			}
 		}
 	}
+}
+
+func writeEntry(target string, content io.Reader, perm os.FileMode) error {
+	if perm == 0 {
+		perm = 0o644
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+		return err
+	}
+	f, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm) //nolint:gosec
+	if err != nil {
+		return err
+	}
+	_, copyErr := io.Copy(f, content) //nolint:gosec
+	closeErr := f.Close()
+	if copyErr != nil {
+		return copyErr
+	}
+	if closeErr != nil {
+		return closeErr
+	}
+	return os.Chmod(target, perm)
+}
+
+// safeExtractPath joins an archive entry name to dest and refuses names that climb out of it.
+func safeExtractPath(dest, name string) (string, error) {
+	target := filepath.Join(dest, filepath.FromSlash(name))
+	rel, err := filepath.Rel(dest, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) ||
+		filepath.IsAbs(name) {
+		return "", fmt.Errorf("archive entry %q escapes the destination", name)
+	}
+	return target, nil
 }
 
 func parseRestoreKeys(raw string) []string {

@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -53,9 +52,11 @@ func (e *ShellExecutor) Run(
 	}
 	cmd.Env = env
 
-	// Pipe stdout+stderr through the streamer.
+	// stdout and stderr share the streamer (it is safe for concurrent use and splits lines), so a
+	// workflow command printed on either stream is recognised, as on GitHub.
 	cmd.Stdout = streamer
-	cmd.Stderr = &prefixWriter{prefix: "[stderr] ", w: streamer}
+	cmd.Stderr = streamer
+	defer streamer.Flush()
 
 	streamer.Emit(fmt.Sprintf("$ %s", strings.TrimSpace(command)), "info")
 
@@ -87,20 +88,4 @@ func shellArgs(shell, command string) ([]string, error) {
 		return []string{"pwsh", "-NoProfile", "-Command", command}, nil
 	}
 	return nil, fmt.Errorf("unsupported shell %q (supported: bash, sh, python, pwsh)", shell)
-}
-
-// prefixWriter prepends a string to every line written to the underlying writer.
-type prefixWriter struct {
-	prefix string
-	w      io.Writer
-}
-
-func (p *prefixWriter) Write(b []byte) (int, error) {
-	lines := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
-	for _, line := range lines {
-		if _, err := fmt.Fprintf(p.w, "%s%s\n", p.prefix, line); err != nil {
-			return 0, err
-		}
-	}
-	return len(b), nil
 }

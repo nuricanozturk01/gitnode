@@ -490,6 +490,16 @@ func (p *parser) call(name string, a []any) (any, error) {
 		if err := need(2); err != nil {
 			return nil, err
 		}
+		if items, ok := jsonArray(ToString(a[0])); ok {
+			// contains(array, item): membership, as on GitHub (case-insensitive for strings).
+			want := strings.ToLower(ToString(a[1]))
+			for _, item := range items {
+				if strings.ToLower(item) == want {
+					return true, nil
+				}
+			}
+			return false, nil
+		}
 		return strings.Contains(strings.ToLower(ToString(a[0])), strings.ToLower(ToString(a[1]))), nil
 	case "startswith":
 		if err := need(2); err != nil {
@@ -514,7 +524,10 @@ func (p *parser) call(name string, a []any) (any, error) {
 		if len(a) > 1 {
 			sep = ToString(a[1])
 		}
-		// Arrays are not first-class here; a comma/newline separated string is joined.
+		if items, ok := jsonArray(ToString(a[0])); ok {
+			return strings.Join(items, sep), nil
+		}
+		// Not an array: a comma/newline separated string is joined.
 		parts := strings.FieldsFunc(ToString(a[0]), func(r rune) bool { return r == ',' || r == '\n' })
 		for i := range parts {
 			parts[i] = strings.TrimSpace(parts[i])
@@ -754,4 +767,32 @@ func globToRegexp(glob string) *regexp.Regexp {
 	}
 	b.WriteString("$")
 	return regexp.MustCompile(b.String())
+}
+
+// jsonArray reads text that holds a JSON array (what fromJSON gives for one: arrays travel as
+// their JSON text here) into its elements as strings; objects and nested arrays keep their JSON.
+func jsonArray(text string) ([]string, bool) {
+	trimmed := strings.TrimSpace(text)
+	if !strings.HasPrefix(trimmed, "[") {
+		return nil, false
+	}
+	var raw []json.RawMessage
+	if err := json.Unmarshal([]byte(trimmed), &raw); err != nil {
+		return nil, false
+	}
+	items := make([]string, 0, len(raw))
+	for _, element := range raw {
+		var str string
+		if err := json.Unmarshal(element, &str); err == nil {
+			items = append(items, str)
+			continue
+		}
+		var number float64
+		if err := json.Unmarshal(element, &number); err == nil {
+			items = append(items, ToString(number))
+			continue
+		}
+		items = append(items, string(element))
+	}
+	return items, true
 }

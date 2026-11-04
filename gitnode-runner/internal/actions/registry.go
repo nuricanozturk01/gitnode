@@ -25,6 +25,16 @@ type ActionHandler interface {
 	) (outputs map[string]string, err error)
 }
 
+// PostHooker is implemented by built-in actions that have work to do when the job ends, such as
+// actions/cache saving its archive. PostHook returns nil when there is nothing to do.
+type PostHooker interface {
+	PostHook(
+		inputs, outputs map[string]string,
+		jctx *jobctx.JobContext,
+		workDir string,
+	) func(ctx context.Context, streamer *runnerlog.Streamer) error
+}
+
 // Registry maps "name@version" strings to ActionHandler implementations.
 type Registry struct {
 	handlers map[string]ActionHandler
@@ -46,6 +56,8 @@ func NewRegistry(serverURL, runnerToken string) *Registry {
 	r.register(NewSetupBuildxAction())
 	r.register(NewDockerBuildPushAction())
 	r.register(NewCacheAction(serverURL, runnerToken))
+	r.register(NewCacheRestoreAction(serverURL, runnerToken))
+	r.register(NewCacheSaveAction(serverURL, runnerToken))
 	r.register(NewUploadArtifactAction(serverURL, runnerToken))
 	r.register(NewDownloadArtifactAction(serverURL, runnerToken))
 	return r

@@ -1,0 +1,19 @@
+name: slow
+on: workflow_dispatch
+jobs:
+  first:
+    runs-on: [self-hosted, linux]
+    steps:
+      - name: ticks
+        run: |
+          for i in 1 2 3 4 5; do echo "tick $i"; sleep 2; done
+      - name: after ticks
+        run: echo done
+  second:
+    needs: first
+    runs-on: [self-hosted, linux]
+    steps:
+      - run: |
+          echo "second job start"
+          sleep 5
+          echo "second job end"

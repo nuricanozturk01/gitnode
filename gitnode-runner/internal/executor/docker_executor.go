@@ -3,7 +3,6 @@ package executor
 import (
 	"context"
 	"fmt"
-	"io"
 	"path"
 	"path/filepath"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"go.uber.org/zap"
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
@@ -137,7 +137,9 @@ func (e *DockerExecutor) Run(
 	}
 	defer logReader.Close() //nolint:errcheck
 
-	if _, err := io.Copy(streamer, logReader); err != nil && ctx.Err() == nil {
+	defer streamer.Flush()
+	// The container has no TTY, so the log stream is multiplexed (stdout/stderr frames).
+	if _, err := stdcopy.StdCopy(streamer, streamer, logReader); err != nil && ctx.Err() == nil {
 		e.log.Warn("log copy interrupted", zap.Error(err))
 	}
 

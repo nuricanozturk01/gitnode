@@ -1,0 +1,40 @@
+name: matrix
+on: workflow_dispatch
+jobs:
+  static:
+    runs-on: [self-hosted, linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18, 20]
+        flavor: [a, b]
+        include:
+          - node: 22
+            flavor: c
+            experimental: true
+        exclude:
+          - node: 18
+            flavor: b
+    steps:
+      - run: echo "node=${{ matrix.node }} flavor=${{ matrix.flavor }} exp=${{ matrix.experimental }}"
+  plan:
+    runs-on: [self-hosted, linux]
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - id: set
+        run: echo 'matrix={"include":[{"name":"one","n":1},{"name":"two","n":2}]}' >> "$GITHUB_OUTPUT"
+  dynamic:
+    needs: plan
+    runs-on: [self-hosted, linux]
+    strategy:
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - run: echo "name=${{ matrix.name }} n=${{ matrix.n }}"
+  labels:
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        runner: [self-hosted]
+    steps:
+      - run: echo "runs-on from matrix"

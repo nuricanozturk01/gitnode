@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"go.uber.org/zap"
+
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -30,6 +32,10 @@ type postHook struct {
 	state    map[string]string
 	streamer *runnerlog.Streamer
 	name     string
+	// run is set for built-in actions (such as actions/cache saving at the end of the job); the
+	// hook then has no loaded action. successOnly skips it when the job did not succeed.
+	run         func(ctx context.Context, streamer *runnerlog.Streamer) error
+	successOnly bool
 }
 
 // runRemoteAction runs an action that is not built in: `owner/repo@ref` (fetched from GitHub)
@@ -167,6 +173,7 @@ func runProcess(
 	cmd.Env = env
 	cmd.Stdout = streamer
 	cmd.Stderr = streamer
+	defer streamer.Flush()
 	if err := cmd.Run(); err != nil {
 		if ctx.Err() != nil {
 			return statusCancelled, nil
@@ -310,6 +317,9 @@ func (e *JobExecutor) runNodeAction(
 		for k, v := range parseKeyValues(drain(stateFile.Name())) {
 			state[k] = v
 		}
+		for k, v := range streamer.State() {
+			state[k] = v
+		}
 		return concl, runErr
 	}
 
@@ -365,14 +375,18 @@ func (e *JobExecutor) runPostHooks(
 		defer cancel()
 		pctx = c
 	}
-	node, err := exec.LookPath("node")
-	if err != nil {
-		e.log.Warn("skipping post hooks: node not found")
-		return
-	}
+	node, nodeErr := exec.LookPath("node")
 	hooks := *sc.posts
 	for i := len(hooks) - 1; i >= 0; i-- {
 		h := hooks[i]
+		if h.run != nil {
+			e.runBuiltinPostHook(pctx, h, status)
+			continue
+		}
+		if nodeErr != nil {
+			e.log.Warn("skipping post hook: node not found", zap.String("action", h.name))
+			continue
+		}
 		env := buildExprEnv(sc.job, jctx, status, sc.results, workDir, rt)
 		ok, condErr := expr.EvalCondition(condOrDefault(h.la.Manifest.Runs.PostIf, "always()"), env)
 		if condErr != nil || !ok {
@@ -389,6 +403,19 @@ func (e *JobExecutor) runPostHooks(
 			h.streamer.Emit(fmt.Sprintf("post step error: %v", runErr), "error")
 		}
 	}
+}
+
+// runBuiltinPostHook runs the end-of-job work of a built-in action. A failure is only a warning,
+// as on GitHub where a post step that cannot save a cache does not fail the job.
+func (e *JobExecutor) runBuiltinPostHook(ctx context.Context, h postHook, status string) {
+	if h.successOnly && status != statusSuccess {
+		return
+	}
+	h.streamer.Emit("Post "+h.name, "info")
+	if err := h.run(ctx, h.streamer); err != nil {
+		h.streamer.Emit(fmt.Sprintf("post step warning: %v", err), "warn")
+	}
+	h.streamer.Flush()
 }
 
 // ── docker ───────────────────────────────────────────────────────────────────

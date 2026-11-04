@@ -1,0 +1,14 @@
+name: remote-action
+on: workflow_dispatch
+jobs:
+  js:
+    runs-on: [self-hosted, linux]
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - id: hello
+        uses: actions/hello-world-javascript-action@main
+        with:
+          who-to-greet: GitNode
+      - run: test -n "${{ steps.hello.outputs.time }}"

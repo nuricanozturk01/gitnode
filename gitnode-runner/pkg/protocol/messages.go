@@ -65,6 +65,9 @@ type StepCompletedPayload struct {
 type JobCompletedPayload struct {
 	JobID      string `json:"jobId"`
 	Conclusion string `json:"conclusion"`
+	// Outputs are the job's `outputs:` evaluated at the end of the job; later jobs read them as
+	// needs.<job>.outputs.<name>.
+	Outputs map[string]string `json:"outputs,omitempty"`
 }
 
 type ArtifactUploadedPayload struct {
@@ -98,6 +101,11 @@ type JobPayload struct {
 	// (github.*, inputs.*, matrix.*, needs.<job>.result, ...). The runner adds env.*,
 	// secrets.*, steps.*, job.* and runner.* itself.
 	Context map[string]string `json:"context"`
+	// Event is the webhook-style payload of the triggering event (github.event). The runner
+	// writes it to $GITHUB_EVENT_PATH and exposes its fields as github.event.* in expressions.
+	Event json.RawMessage `json:"event,omitempty"`
+	// Outputs are the job's `outputs:` expressions, evaluated by the runner when the job ends.
+	Outputs map[string]string `json:"outputs"`
 }
 
 type StepPayload struct {

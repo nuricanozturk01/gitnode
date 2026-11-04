@@ -262,3 +262,24 @@ func TestToString(t *testing.T) {
 	assert.Equal(t, "3.5", ToString(3.5))
 	assert.Equal(t, "x", ToString("x"))
 }
+
+func TestEval_arrayFunctions(t *testing.T) {
+	e := env("success", "needs.plan.outputs.list", `["a","B",3,{"k":1}]`)
+	cases := map[string]any{
+		`join(fromJSON('["a","b","c"]'), '+')`:           "a+b+c",
+		`join(fromJSON('["a","b"]'))`:                    "a,b",
+		`join(fromJSON(needs.plan.outputs.list), ' | ')`: `a | B | 3 | {"k":1}`,
+		`join('x,y')`: "x,y",
+		`contains(fromJSON('["alpha","beta"]'), 'BETA')`: true,
+		`contains(fromJSON('["alpha","beta"]'), 'bet')`:  false, // membership, not substring
+		`contains(fromJSON(needs.plan.outputs.list), 3)`: true,
+		`contains('Hello World', 'world')`:               true,
+		`contains(fromJSON('["a"]'), 'b')`:               false,
+		`contains('[not json', 'json')`:                  true,
+	}
+	for src, want := range cases {
+		got, err := Eval(src, e)
+		require.NoError(t, err, src)
+		assert.Equal(t, want, got, src)
+	}
+}

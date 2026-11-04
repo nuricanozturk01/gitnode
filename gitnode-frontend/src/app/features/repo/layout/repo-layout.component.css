@@ -2,10 +2,32 @@
   display: block;
 }
 
+/* Mobile: swipe-scroll without a visible scrollbar */
+.repo-tab-scroll {
+  scrollbar-width: none;
+}
+
+.repo-tab-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 .repo-tab-scroll .repo-tabs.tabs {
   flex-wrap: nowrap;
   width: max-content;
   max-width: none;
+}
+
+/* Tablet/desktop: wrap tabs instead of scrolling horizontally */
+@media (min-width: 640px) {
+  .repo-tab-scroll {
+    overflow-x: visible;
+  }
+
+  .repo-tab-scroll .repo-tabs.tabs {
+    flex-wrap: wrap;
+    width: auto;
+    max-width: 100%;
+  }
 }
 
 /* Compact repo nav: default .tab min-height is tall for touch targets */

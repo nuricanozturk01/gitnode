@@ -18,8 +18,10 @@ package dev.gitnode.os.actions.services;
 import dev.gitnode.os.actions.entities.WorkflowDefinition;
 import dev.gitnode.os.actions.entities.WorkflowJob;
 import dev.gitnode.os.actions.entities.WorkflowJobStatus;
+import dev.gitnode.os.actions.entities.WorkflowLog;
 import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.entities.WorkflowRunStatus;
+import dev.gitnode.os.actions.entities.WorkflowStep;
 import dev.gitnode.os.actions.model.JobModel;
 import dev.gitnode.os.actions.model.MatrixStrategy;
 import dev.gitnode.os.actions.model.OnTriggerModel;
@@ -29,9 +31,12 @@ import dev.gitnode.os.actions.model.WorkflowModel;
 import dev.gitnode.os.actions.model.WorkflowRunTriggerModel;
 import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
+import dev.gitnode.os.actions.repositories.WorkflowLogRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
+import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.services.WorkflowParserService.ParsedWorkflow;
 import dev.gitnode.os.events.actions.WorkflowJobQueuedEvent;
+import dev.gitnode.os.events.actions.WorkflowRunCompletedEvent;
 import dev.gitnode.os.events.actions.WorkflowRunQueuedEvent;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
@@ -43,6 +48,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -70,6 +76,8 @@ public class WorkflowTriggerService {
   private final MatrixExpander matrixExpander;
   private final ExpressionEvaluator expressionEvaluator;
   private final JobAdvancer jobAdvancer;
+  private final WorkflowStepRepository stepRepository;
+  private final WorkflowLogRepository logRepository;
 
   @Transactional
   public void triggerOnPush(
@@ -496,21 +504,114 @@ public class WorkflowTriggerService {
 
     final var created = new ArrayList<WorkflowJob>();
     for (final Map.Entry<String, JobModel> entry : model.jobs().entrySet()) {
-      final var jobKey = entry.getKey();
-      final var jobDef = entry.getValue();
-      final var baseName = jobDef.name() != null ? jobDef.name() : jobKey;
-      if (isDynamicMatrix(jobDef)) {
-        created.addAll(this.createDynamicMatrixJobs(run, jobDef, jobKey, baseName, created, model));
-        continue;
-      }
-      final var combinations = this.matrixExpander.expand(jobDef);
-
-      for (final var matrixValues : combinations) {
-        created.add(this.createSingleJob(run, jobDef, jobKey, baseName, matrixValues, created));
-      }
+      created.addAll(this.createJobsOf(run, entry.getKey(), entry.getValue(), created, model));
     }
 
     this.settleWaitingJobs(run, created, model);
+    this.completeRunIfFinished(run, created);
+  }
+
+  /**
+   * The jobs one entry of {@code jobs:} stands for: one, one per matrix combination, or a
+   * placeholder.
+   */
+  private List<WorkflowJob> createJobsOf(
+      final WorkflowRun run,
+      final String jobKey,
+      final JobModel jobDef,
+      final List<WorkflowJob> createdSoFar,
+      final WorkflowModel model) {
+
+    final var baseName = jobDef.name() != null ? jobDef.name() : jobKey;
+    if (isReusableWorkflowCall(jobDef)) {
+      return List.of(this.createUnsupportedCallJob(run, jobKey, baseName, jobDef));
+    }
+    if (isDynamicMatrix(jobDef)) {
+      return this.createDynamicMatrixJobs(run, jobDef, jobKey, baseName, createdSoFar, model);
+    }
+    final var jobs = new ArrayList<WorkflowJob>();
+    for (final var matrixValues : this.matrixExpander.expand(jobDef)) {
+      jobs.add(
+          this.createSingleJob(
+              run,
+              jobDef,
+              jobKey,
+              baseName,
+              matrixValues,
+              Stream.concat(createdSoFar.stream(), jobs.stream()).toList()));
+    }
+    return jobs;
+  }
+
+  /** {@code jobs.<id>.uses: ./.gitnode/workflows/x.yml}: a call of a reusable workflow. */
+  private static boolean isReusableWorkflowCall(final JobModel jobDef) {
+    return jobDef.uses() != null && !jobDef.uses().isBlank();
+  }
+
+  /**
+   * Reusable workflows are not run yet. Rather than a job without steps that turns green and does
+   * nothing, the job fails with the reason in its log, and the jobs that need it are skipped.
+   */
+  private WorkflowJob createUnsupportedCallJob(
+      final WorkflowRun run, final String jobKey, final String baseName, final JobModel jobDef) {
+
+    final var job = new WorkflowJob();
+    job.setRunId(run.getId());
+    job.setJobKey(jobKey);
+    job.setName(baseName);
+    job.setRunnerLabels(RunnerLabels.forJob(null));
+    job.setNeeds(jobDef.needs());
+    job.setStatus(WorkflowJobStatus.FAILURE);
+    job.setConclusion("failure");
+    job.setCompletedAt(java.time.Instant.now());
+    final var saved = this.jobRepository.save(job);
+
+    final var step = new WorkflowStep();
+    step.setJobId(saved.getId());
+    step.setStepNumber(1);
+    step.setName("Reusable workflow is not supported");
+    step.setStatus("completed");
+    step.setConclusion("failure");
+    step.setStartedAt(saved.getCompletedAt());
+    step.setCompletedAt(saved.getCompletedAt());
+    final var savedStep = this.stepRepository.save(step);
+
+    final var line = new WorkflowLog();
+    line.setStepId(savedStep.getId());
+    line.setLineNumber(1);
+    line.setLevel("error");
+    line.setContent(
+        "##[error]Reusable workflows are not supported yet: jobs."
+            + jobKey
+            + ".uses is '"
+            + jobDef.uses()
+            + "'. This job did not run.");
+    this.logRepository.save(line);
+    log.warn(
+        "Run {}: job '{}' calls reusable workflow '{}', which is not supported",
+        run.getId(),
+        jobKey,
+        jobDef.uses());
+    return saved;
+  }
+
+  /**
+   * A run whose jobs all finished while it was being created (every job skipped or failed at once)
+   * would never get a job-completed event, so it is closed here.
+   */
+  private void completeRunIfFinished(final WorkflowRun run, final List<WorkflowJob> created) {
+    if (created.isEmpty() || !created.stream().allMatch(JobNeeds::isTerminal)) {
+      return;
+    }
+    final boolean failed =
+        created.stream().anyMatch(j -> j.getStatus() == WorkflowJobStatus.FAILURE);
+    run.setStatus(failed ? WorkflowRunStatus.FAILURE : WorkflowRunStatus.SUCCESS);
+    run.setConclusion(failed ? "failure" : "success");
+    run.setCompletedAt(java.time.Instant.now());
+    this.runRepository.save(run);
+    this.eventPublisher.publishEvent(
+        new WorkflowRunCompletedEvent(
+            run.getId(), run.getRepoId(), run.getWorkflowName(), run.getConclusion()));
   }
 
   private static boolean isDynamicMatrix(final JobModel jobDef) {

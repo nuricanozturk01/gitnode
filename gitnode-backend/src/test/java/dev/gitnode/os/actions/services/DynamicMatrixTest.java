@@ -87,6 +87,8 @@ class DynamicMatrixTest {
   @Mock private WorkflowDefinitionRepository definitionRepository;
   @Mock private WorkflowRunRepository runRepository;
   @Mock private WorkflowJobRepository jobRepository;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowStepRepository stepRepository;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowLogRepository logRepository;
   @Mock private RepoLookupPort repoLookup;
   @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -108,7 +110,9 @@ class DynamicMatrixTest {
             new MatrixExpander(),
             this.evaluator,
             new JobAdvancer(
-                this.definitionRepository, this.parserService, this.evaluator, this.repoLookup));
+                this.definitionRepository, this.parserService, this.evaluator, this.repoLookup),
+            this.stepRepository,
+            this.logRepository);
     this.model = new WorkflowParserService().parseFromContent(WORKFLOW);
     this.run.setId(UUID.randomUUID());
     this.run.setRepoId(UUID.randomUUID());

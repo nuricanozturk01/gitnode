@@ -66,6 +66,8 @@ class WorkflowTriggerServiceTest {
   @Mock private WorkflowDefinitionRepository definitionRepository;
   @Mock private WorkflowRunRepository runRepository;
   @Mock private WorkflowJobRepository jobRepository;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowStepRepository stepRepository;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowLogRepository logRepository;
   @Mock private RepoLookupPort repoRepository;
   @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -90,7 +92,9 @@ class WorkflowTriggerServiceTest {
                 this.definitionRepository,
                 this.parserService,
                 this.expressionEvaluator,
-                this.repoRepository));
+                this.repoRepository),
+            this.stepRepository,
+            this.logRepository);
   }
 
   private static final UUID REPO_ID = UUID.randomUUID();

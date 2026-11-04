@@ -70,6 +70,8 @@ class WorkflowRunTriggerTest {
   @Mock private WorkflowDefinitionRepository definitionRepository;
   @Mock private WorkflowRunRepository runRepository;
   @Mock private WorkflowJobRepository jobRepository;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowStepRepository stepRepository;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowLogRepository logRepository;
   @Mock private RepoLookupPort repoLookup;
   @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -89,7 +91,9 @@ class WorkflowRunTriggerTest {
             new MatrixExpander(),
             this.evaluator,
             new JobAdvancer(
-                this.definitionRepository, this.parserService, this.evaluator, this.repoLookup));
+                this.definitionRepository, this.parserService, this.evaluator, this.repoLookup),
+            this.stepRepository,
+            this.logRepository);
     lenient()
         .when(this.repoLookup.findById(REPO_ID))
         .thenReturn(

@@ -122,6 +122,10 @@
   cursor: pointer;
 }
 
+.log-viewer__group .log-viewer__line-num {
+  font-weight: 400;
+}
+
 .log-viewer__group:hover {
   background: rgba(110, 118, 129, 0.1);
 }

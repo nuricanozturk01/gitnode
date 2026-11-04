@@ -32,6 +32,7 @@
               [attr.aria-expanded]="!row.collapsed"
               (click)="toggleGroup(row)"
             >
+              <span class="log-viewer__line-num">{{ row.line.lineNumber }}</span>
               <lucide-icon
                 name="chevronRight"
                 class="log-viewer__group-icon size-3"

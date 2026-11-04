@@ -126,6 +126,16 @@
             <button
               type="button"
               class="btn btn-outline btn-sm gap-1.5"
+              [class.btn-active]="showTimestamps()"
+              [attr.aria-pressed]="showTimestamps()"
+              (click)="toggleTimestamps()"
+            >
+              <lucide-icon name="clock" class="size-3.5"></lucide-icon>
+              Timestamps
+            </button>
+            <button
+              type="button"
+              class="btn btn-outline btn-sm gap-1.5"
               [disabled]="downloading() || !job.completedAt"
               [title]="job.completedAt ? 'Download log archive' : 'Available when the job has finished'"
               (click)="downloadLogs(job)"
@@ -184,6 +194,7 @@
               [live]="isStepLive(step)"
               [compact]="true"
               [filter]="logSearch()"
+              [showTimestamps]="showTimestamps()"
             ></app-log-viewer>
           </div>
           }

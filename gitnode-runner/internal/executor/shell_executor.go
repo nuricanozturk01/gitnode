@@ -13,13 +13,22 @@ import (
 
 // ShellExecutor runs step commands directly in the host shell.
 type ShellExecutor struct {
-	workDir string
-	shell   string
+	workDir   string
+	shell     string
+	container *jobContainers // when set, commands run inside the job container
 }
 
 // NewShellExecutor returns a ShellExecutor rooted at workDir.
 func NewShellExecutor(workDir string) *ShellExecutor {
 	return &ShellExecutor{workDir: workDir}
+}
+
+// WithContainer makes the executor run commands inside the job's container (docker exec).
+func (e *ShellExecutor) WithContainer(c *jobContainers) *ShellExecutor {
+	if c != nil && c.jobName != "" { // a job with only services still runs its steps on the host
+		e.container = c
+	}
+	return e
 }
 
 // WithShell selects the interpreter (bash, sh, python, pwsh); empty means GitHub's default.
@@ -42,15 +51,23 @@ func (e *ShellExecutor) Run(
 	if argsErr != nil {
 		return "failure", argsErr
 	}
-	cmd := exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
-	cmd.Dir = e.workDir
+	var cmd *exec.Cmd
+	if e.container != nil {
+		args = containerShellArgs(args, e.container.hasBash)
+		cmd = exec.CommandContext(ctx, e.container.docker, //nolint:gosec
+			e.container.execArgs(e.workDir, jctx.Env(), args)...)
+		cmd.Env = os.Environ()
+	} else {
+		cmd = exec.CommandContext(ctx, args[0], args[1:]...) //nolint:gosec
+		cmd.Dir = e.workDir
 
-	// Inject env vars from job context on top of the inherited OS env.
-	env := os.Environ()
-	for k, v := range jctx.Env() {
-		env = append(env, k+"="+v)
+		// Inject env vars from job context on top of the inherited OS env.
+		env := os.Environ()
+		for k, v := range jctx.Env() {
+			env = append(env, k+"="+v)
+		}
+		cmd.Env = env
 	}
-	cmd.Env = env
 
 	// stdout and stderr share the streamer (it is safe for concurrent use and splits lines), so a
 	// workflow command printed on either stream is recognised, as on GitHub.
@@ -88,4 +105,24 @@ func shellArgs(shell, command string) ([]string, error) {
 		return []string{"pwsh", "-NoProfile", "-Command", command}, nil
 	}
 	return nil, fmt.Errorf("unsupported shell %q (supported: bash, sh, python, pwsh)", shell)
+}
+
+// containerShellArgs adapts the shell command line to a container: images without bash (alpine)
+// get sh, which GitHub does too, keeping the same -e behavior.
+func containerShellArgs(args []string, hasBash bool) []string {
+	if hasBash || args[0] != "bash" {
+		return args
+	}
+	rest := []string{}
+	for _, a := range args[1:] {
+		switch a {
+		case "--noprofile", "--norc":
+		case "-eo":
+			rest = append(rest, "-e")
+		case "pipefail":
+		default:
+			rest = append(rest, a)
+		}
+	}
+	return append([]string{"sh"}, rest...)
 }

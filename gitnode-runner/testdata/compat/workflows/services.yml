@@ -1,0 +1,45 @@
+name: services
+on: workflow_dispatch
+jobs:
+  host-steps:
+    runs-on: [self-hosted, linux]
+    services:
+      cache:
+        image: redis:7-alpine
+        ports:
+          - '6379'
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 1s
+          --health-timeout 3s
+          --health-retries 30
+    steps:
+      - name: reach the service through its published port
+        shell: bash
+        run: |
+          exec 3<>/dev/tcp/127.0.0.1/${{ job.services.cache.ports['6379'] }}
+          printf 'PING\r\n' >&3
+          read -r reply <&3
+          test "${reply%$'\r'}" = "+PONG"
+  container-job:
+    runs-on: [self-hosted, linux]
+    container: redis:7-alpine
+    env:
+      FROM_JOB: job-env
+    services:
+      cache:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 1s
+          --health-retries 30
+    steps:
+      - name: steps run inside the job container
+        run: cat /etc/alpine-release
+      - name: services are reachable by their name
+        run: redis-cli -h cache ping | grep -q PONG
+      - name: the env file and job env reach the container
+        run: echo "FROM_FILE=yes" >> "$GITHUB_ENV"
+      - run: test "$FROM_FILE" = "yes" && test "$FROM_JOB" = "job-env"
+      - name: files written in the container are the runner's to clean up
+        run: echo data > made-in-container.txt

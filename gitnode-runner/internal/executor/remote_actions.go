@@ -223,10 +223,11 @@ func (e *JobExecutor) runComposite(
 	rt *runtimeFiles,
 ) (string, map[string]string, error) {
 	local := &stepScope{
-		job:     scopedJob(sc.job, inputs, la.Dir),
-		results: map[string]*stepResult{},
-		depth:   sc.depth + 1,
-		posts:   sc.posts,
+		job:        scopedJob(sc.job, inputs, la.Dir),
+		results:    map[string]*stepResult{},
+		depth:      sc.depth + 1,
+		posts:      sc.posts,
+		containers: sc.containers,
 	}
 	restore := overlayEnv(jctx, map[string]string{"GITHUB_ACTION_PATH": la.Dir})
 	defer restore()

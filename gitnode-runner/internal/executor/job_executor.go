@@ -83,6 +83,8 @@ type stepScope struct {
 	results map[string]*stepResult
 	depth   int
 	posts   *[]postHook
+	// containers is the job's Docker side (services, job container); nil when it has none.
+	containers *jobContainers
 }
 
 func (e *JobExecutor) run(ctx context.Context, job protocol.JobPayload) {
@@ -122,10 +124,19 @@ func (e *JobExecutor) run(ctx context.Context, job protocol.JobPayload) {
 
 	e.sendJobClaimed(job.ID)
 
+	containers, setupErr := e.setupContainers(jobCtx, &job, jctx, workDir, rt)
+	if setupErr != nil {
+		e.failSetup(job, jctx, setupErr)
+		return
+	}
+	// Containers go before the job is reported finished (so a new job never meets the old one's
+	// leftovers); the deferred call covers the early returns.
+	defer containers.release(workDir, rt.dir)
+
 	status := statusSuccess
 	results := map[string]*stepResult{}
 	var posts []postHook
-	sc := &stepScope{job: job, results: results, posts: &posts}
+	sc := &stepScope{job: job, results: results, posts: &posts, containers: containers}
 
 	for _, step := range job.Steps {
 		if jobCtx.Err() != nil {
@@ -161,6 +172,7 @@ func (e *JobExecutor) run(ctx context.Context, job protocol.JobPayload) {
 
 	e.runPostHooks(ctx, sc, jctx, workDir, rt, status)
 	outputs := evalJobOutputs(job, jctx, status, results, workDir, rt)
+	containers.release(workDir, rt.dir)
 	e.sendJobCompleted(job.ID, status, outputs)
 }
 
@@ -255,11 +267,86 @@ func (e *JobExecutor) runStep(
 		return statusSuccess, outputs, nil
 	}
 	if step.Run != "" {
-		conclusion, err := e.runShellCommand(ctx, step, jctx, streamer, workDir, rt)
+		conclusion, err := e.runShellCommand(ctx, sc, step, jctx, streamer, workDir, rt)
 		return conclusion, nil, err
 	}
 	streamer.Emit("step has neither 'uses' nor 'run'", "warn")
 	return statusSkipped, nil, nil
+}
+
+// setupContainers starts the job's services and job container when it has any. It adds the
+// published service ports to the job's expression context (job.services.<name>.ports.<port>).
+// With the docker executor each step already runs in its own image, so a job container is not used.
+func (e *JobExecutor) setupContainers(
+	ctx context.Context,
+	job *protocol.JobPayload,
+	jctx *jobctx.JobContext,
+	workDir string,
+	rt *runtimeFiles,
+) (*jobContainers, error) {
+
+	if e.executorType == "docker" {
+		job.Container = nil
+	}
+	if !needsContainers(*job) {
+		return nil, nil
+	}
+	var streamer *runnerlog.Streamer
+	if len(job.Steps) > 0 {
+		streamer = runnerlog.New(job.Steps[0].ID, jctx.SecretValues(), e.send, e.log)
+	}
+	emit := func(line string) {
+		if streamer != nil {
+			streamer.Emit(line, "info")
+		}
+	}
+	env := buildExprEnv(*job, jctx, statusSuccess, nil, workDir, rt)
+	interpolate := func(text string) string {
+		out, err := expr.Interpolate(text, env)
+		if err != nil {
+			return text
+		}
+		return out
+	}
+
+	containers, err := startJobContainers(ctx, *job, workDir, rt.dir, interpolate, emit, e.log)
+	if err != nil {
+		return nil, err
+	}
+	ports := map[string]string{}
+	for service, byPort := range containers.ports {
+		for containerPort, hostPort := range byPort {
+			ports["job.services."+service+".ports."+containerPort] = hostPort
+		}
+	}
+	job.Context = withEntries(job.Context, ports)
+	return containers, nil
+}
+
+// failSetup ends a job whose containers could not be started: the first step carries the reason.
+func (e *JobExecutor) failSetup(job protocol.JobPayload, jctx *jobctx.JobContext, cause error) {
+	e.log.Error("could not start the job's containers", zap.String("job", job.ID), zap.Error(cause))
+	if len(job.Steps) > 0 {
+		first := job.Steps[0]
+		streamer := runnerlog.New(first.ID, jctx.SecretValues(), e.send, e.log)
+		e.sendStepStarted(first.ID, job.ID)
+		streamer.Emit(fmt.Sprintf("Initialize containers failed: %v", cause), "error")
+		streamer.Flush()
+		e.sendStepCompleted(first.ID, job.ID, statusFailure, nil)
+	}
+	e.sendJobCompleted(job.ID, statusFailure, nil)
+}
+
+// withEntries returns the context with extra entries added.
+func withEntries(ctx, extra map[string]string) map[string]string {
+	out := make(map[string]string, len(ctx)+len(extra))
+	for k, v := range ctx {
+		out[k] = v
+	}
+	for k, v := range extra {
+		out[k] = v
+	}
+	return out
 }
 
 // registerBuiltinPostHook lets a built-in action (actions/cache) do work when the job ends.
@@ -288,6 +375,7 @@ func (e *JobExecutor) registerBuiltinPostHook(
 
 func (e *JobExecutor) runShellCommand(
 	ctx context.Context,
+	sc *stepScope,
 	step protocol.StepPayload,
 	jctx *jobctx.JobContext,
 	streamer *runnerlog.Streamer,
@@ -313,7 +401,7 @@ func (e *JobExecutor) runShellCommand(
 	if !filepath.IsAbs(dir) {
 		dir = filepath.Join(workDir, subDir)
 	}
-	exec := NewShellExecutor(dir).WithShell(step.Shell)
+	exec := NewShellExecutor(dir).WithShell(step.Shell).WithContainer(sc.containers)
 	return exec.Run(ctx, step.Run, jctx, streamer)
 }
 

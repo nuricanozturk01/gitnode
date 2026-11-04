@@ -104,6 +104,8 @@ type JobPayload struct {
 	// Event is the webhook-style payload of the triggering event (github.event). The runner
 	// writes it to $GITHUB_EVENT_PATH and exposes its fields as github.event.* in expressions.
 	Event json.RawMessage `json:"event,omitempty"`
+	// Container is the job's `container:`; its run steps execute inside it.
+	Container *ContainerPayload `json:"container,omitempty"`
 	// Outputs are the job's `outputs:` expressions, evaluated by the runner when the job ends.
 	Outputs map[string]string `json:"outputs"`
 }
@@ -131,8 +133,20 @@ type StepPayload struct {
 }
 
 type ServicePayload struct {
-	Name  string            `json:"name"`
-	Image string            `json:"image"`
-	Env   map[string]string `json:"env"`
-	Ports []string          `json:"ports"`
+	Name    string            `json:"name"`
+	Image   string            `json:"image"`
+	Env     map[string]string `json:"env"`
+	Ports   []string          `json:"ports"`
+	Volumes []string          `json:"volumes"`
+	// Options are extra `docker run` flags (--health-cmd, --cpus, ...), as written in the workflow.
+	Options string `json:"options"`
+}
+
+// ContainerPayload is a job's `container:`.
+type ContainerPayload struct {
+	Image   string            `json:"image"`
+	Env     map[string]string `json:"env"`
+	Ports   []string          `json:"ports"`
+	Volumes []string          `json:"volumes"`
+	Options string            `json:"options"`
 }

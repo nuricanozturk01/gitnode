@@ -108,11 +108,68 @@ public class WorkflowTriggerService {
     }
 
     for (final var parsed : workflows) {
+      if (hasSchedule(parsed.model())) {
+        this.upsertDefinition(
+            repoId, parsed); // lets the scheduler find workflows without a push trigger
+      }
       if (!this.hasPushTrigger(parsed.model(), branchName)) {
         continue;
       }
 
       this.createRun(repoId, parsed, branchRef, commitSha, actorId, "push", null);
+    }
+  }
+
+  /**
+   * Starts a run for a schedule that is due. The workflow is parsed fresh from the default branch,
+   * as on GitHub, and must still contain that cron entry.
+   */
+  @Transactional
+  public void triggerOnSchedule(
+      final UUID repoId, final String workflowFilePath, final String cron) {
+
+    final var repo = this.repoLookup.findById(repoId).orElse(null);
+    if (repo == null || repo.defaultBranch() == null) {
+      return;
+    }
+    final var ref = "refs/heads/" + repo.defaultBranch();
+
+    for (final var parsed :
+        this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), ref)) {
+      if (parsed.filePath().equals(workflowFilePath) && hasSchedule(parsed.model(), cron)) {
+        this.createRun(repoId, parsed, ref, null, null, "schedule", null);
+      }
+    }
+  }
+
+  static boolean hasSchedule(final WorkflowModel model) {
+    return model.on() != null && model.on().schedule() != null && !model.on().schedule().isEmpty();
+  }
+
+  static boolean hasSchedule(final WorkflowModel model, final String cron) {
+    return hasSchedule(model)
+        && model.on().schedule().stream().anyMatch(s -> cron.equals(s.cron()));
+  }
+
+  /** A tag was pushed: runs workflows whose push trigger lists matching {@code tags}. */
+  @Transactional
+  public void triggerOnTag(
+      final UUID repoId,
+      final String tagName,
+      final String pusherUsername,
+      final @Nullable String commitSha) {
+
+    final var repo = this.repoLookup.findById(repoId).orElse(null);
+    if (repo == null || commitSha == null) {
+      return;
+    }
+    final var ref = "refs/tags/" + tagName;
+
+    for (final var parsed :
+        this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), commitSha)) {
+      if (this.hasTagTrigger(parsed.model(), tagName)) {
+        this.createRun(repoId, parsed, ref, commitSha, null, "push", null);
+      }
     }
   }
 
@@ -282,7 +339,7 @@ public class WorkflowTriggerService {
     job.setRunId(run.getId());
     job.setJobKey(jobKey);
     job.setName(jobName);
-    job.setRunnerLabels(this.resolveLabels(jobDef));
+    job.setRunnerLabels(this.resolveLabels(jobDef, matrixCtx));
     job.setNeeds(jobDef.needs());
     job.setMatrixValues(matrixValues.isEmpty() ? null : matrixValues);
 
@@ -424,10 +481,13 @@ public class WorkflowTriggerService {
             });
   }
 
-  private List<String> resolveLabels(final JobModel job) {
+  /** runs-on labels, with ${{ matrix.* }} resolved (runs-on: ${{ matrix.os }} is very common). */
+  private List<String> resolveLabels(final JobModel job, final Map<String, String> matrixCtx) {
 
     if (job.runsOn() != null && !job.runsOn().isEmpty()) {
-      return job.runsOn();
+      return job.runsOn().stream()
+          .map(label -> this.expressionEvaluator.evaluate(label, matrixCtx))
+          .toList();
     }
 
     return List.of("self-hosted");
@@ -456,10 +516,49 @@ public class WorkflowTriggerService {
     }
 
     if (trigger.branches() == null || trigger.branches().isEmpty()) {
-      return true;
+      // GitHub: a push trigger that only filters tags does not fire for branches.
+      return !hasTagFilter(trigger);
     }
 
     return trigger.branches().stream().anyMatch(p -> matchesGlob(branchName, p));
+  }
+
+  /**
+   * Whether a pushed tag triggers the workflow: it needs a push trigger that either has no filters
+   * at all or whose {@code tags} match (patterns starting with {@code !} exclude) and whose {@code
+   * tags-ignore} do not.
+   */
+  boolean hasTagTrigger(final WorkflowModel model, final String tagName) {
+
+    final var trigger = this.getPushTrigger(model);
+    if (trigger == null) {
+      return false;
+    }
+    if (matchesAny(tagName, trigger.tagsIgnore())) {
+      return false;
+    }
+    if (trigger.tags() == null || trigger.tags().isEmpty()) {
+      // GitHub: a push trigger that only filters branches does not fire for tags.
+      return !hasBranchFilter(trigger) && trigger.tagsIgnore() == null;
+    }
+    final var includes = trigger.tags().stream().filter(p -> !p.startsWith("!")).toList();
+    final var excludes =
+        trigger.tags().stream().filter(p -> p.startsWith("!")).map(p -> p.substring(1)).toList();
+    return matchesAny(tagName, includes) && !matchesAny(tagName, excludes);
+  }
+
+  private static boolean hasTagFilter(final PushTriggerModel trigger) {
+    return (trigger.tags() != null && !trigger.tags().isEmpty())
+        || (trigger.tagsIgnore() != null && !trigger.tagsIgnore().isEmpty());
+  }
+
+  private static boolean hasBranchFilter(final PushTriggerModel trigger) {
+    return (trigger.branches() != null && !trigger.branches().isEmpty())
+        || (trigger.branchesIgnore() != null && !trigger.branchesIgnore().isEmpty());
+  }
+
+  private static boolean matchesAny(final String value, final @Nullable List<String> patterns) {
+    return patterns != null && patterns.stream().anyMatch(p -> matchesGlob(value, p));
   }
 
   boolean hasPullRequestTrigger(final WorkflowModel model, final String branchName) {

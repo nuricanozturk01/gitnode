@@ -112,6 +112,63 @@ class MatrixExpanderTest {
     assertThat(result).extracting(m -> m.get("os")).containsExactlyInAnyOrder("ubuntu", "macos");
   }
 
+  @Test
+  @DisplayName("include with matching original values adds keys to that combination (GitHub)")
+  void include_extendsMatchingCombination() {
+    final var matrix =
+        new MatrixStrategy(
+            Map.of("os", List.of("ubuntu", "windows"), "node", List.of("18", "20")),
+            List.of(Map.of("os", "ubuntu", "node", "20", "experimental", "true")),
+            null);
+
+    final var result = this.expander.expand(job(matrix));
+
+    assertThat(result).hasSize(4);
+    assertThat(result)
+        .filteredOn(m -> "true".equals(m.get("experimental")))
+        .containsExactly(Map.of("os", "ubuntu", "node", "20", "experimental", "true"));
+  }
+
+  @Test
+  @DisplayName("include with only new keys is added to every combination")
+  void include_newKeysApplyToAll() {
+    final var matrix =
+        new MatrixStrategy(
+            Map.of("os", List.of("ubuntu", "windows")), List.of(Map.of("coverage", "true")), null);
+
+    final var result = this.expander.expand(job(matrix));
+
+    assertThat(result).hasSize(2);
+    assertThat(result).allSatisfy(m -> assertThat(m).containsEntry("coverage", "true"));
+  }
+
+  @Test
+  @DisplayName("include never overwrites original matrix values")
+  void include_doesNotOverwriteOriginal() {
+    final var matrix =
+        new MatrixStrategy(
+            Map.of("os", List.of("ubuntu")), List.of(Map.of("os", "windows", "extra", "x")), null);
+
+    final var result = this.expander.expand(job(matrix));
+
+    assertThat(result).hasSize(2);
+    assertThat(result).contains(Map.of("os", "ubuntu"), Map.of("os", "windows", "extra", "x"));
+  }
+
+  @Test
+  @DisplayName("a later include may overwrite a value added by an earlier include")
+  void include_laterOverwritesEarlierAddition() {
+    final var matrix =
+        new MatrixStrategy(
+            Map.of("os", List.of("ubuntu")),
+            List.of(Map.of("os", "ubuntu", "tag", "a"), Map.of("os", "ubuntu", "tag", "b")),
+            null);
+
+    final var result = this.expander.expand(job(matrix));
+
+    assertThat(result).containsExactly(Map.of("os", "ubuntu", "tag", "b"));
+  }
+
   private static JobModel job(final @Nullable MatrixStrategy matrix) {
     final var strategy = matrix == null ? null : new StrategyModel(matrix, null, null);
     return new JobModel(

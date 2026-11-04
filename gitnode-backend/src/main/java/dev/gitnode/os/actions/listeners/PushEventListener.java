@@ -18,6 +18,7 @@ package dev.gitnode.os.actions.listeners;
 import dev.gitnode.os.actions.services.WorkflowTriggerService;
 import dev.gitnode.os.branch.api.OpenPullRequestQueryPort;
 import dev.gitnode.os.events.repo.RepoPushedEvent;
+import dev.gitnode.os.events.repo.RepoTagPushedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -34,6 +35,15 @@ public class PushEventListener {
 
   private final WorkflowTriggerService workflowTriggerService;
   private final OpenPullRequestQueryPort pullRequests;
+
+  @ApplicationModuleListener
+  void onRepoTagPushed(final RepoTagPushedEvent event) {
+
+    log.debug("Handling tag push for repoId={} tag={}", event.repoId(), event.tagName());
+
+    this.workflowTriggerService.triggerOnTag(
+        event.repoId(), event.tagName(), event.pusherUsername(), event.commitSha());
+  }
 
   @ApplicationModuleListener
   void onRepoPushed(final RepoPushedEvent event) {

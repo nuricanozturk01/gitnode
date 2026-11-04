@@ -235,6 +235,22 @@ class JobDispatcherTest {
 
   // ── helpers ───────────────────────────────────────────────────────────────
 
+  @Test
+  @DisplayName("a queued job with no ONLINE runner is reported and left queued")
+  void dispatch_leavesJobQueued_whenNoOnlineRunner() {
+    final var job = buildJob(List.of("self-hosted"));
+    when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
+    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of());
+    when(this.runnerRepository.findAll())
+        .thenReturn(List.of(buildRunner(List.of("self-hosted"), RunnerStatus.OFFLINE, TENANT_ID)));
+
+    this.dispatcher.dispatch();
+
+    assertThat(job.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    verify(this.runnerRepository, never()).save(any());
+  }
+
   private static final String WORKFLOW_YAML =
       """
       on: push

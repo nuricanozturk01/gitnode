@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -42,7 +43,7 @@ public class MatrixExpander {
 
     var combinations = this.cartesianProduct(matrix.dimensions());
     combinations = this.applyExclude(combinations, matrix.exclude());
-    combinations = this.applyInclude(combinations, matrix.include());
+    combinations = this.applyInclude(combinations, matrix.include(), matrix.dimensions().keySet());
 
     return combinations.isEmpty() ? List.of(EMPTY_COMBINATION) : combinations;
   }
@@ -95,19 +96,60 @@ public class MatrixExpander {
     return result;
   }
 
+  /**
+   * GitHub's include semantics: an include entry adds its extra keys to every combination whose
+   * original matrix values it does not contradict; if it fits no combination it becomes a
+   * combination of its own. Original values are never overwritten.
+   */
   private List<Map<String, String>> applyInclude(
       final List<Map<String, String>> combinations,
-      final @Nullable List<Map<String, String>> include) {
+      final @Nullable List<Map<String, String>> include,
+      final Set<String> originalKeys) {
 
     if (include == null || include.isEmpty()) {
       return combinations;
     }
+    final var result = new ArrayList<Map<String, String>>();
+    combinations.forEach(c -> result.add(new LinkedHashMap<>(c)));
+    final var standalone = new ArrayList<Map<String, String>>();
 
-    final var result = new ArrayList<>(combinations);
     for (final var extra : include) {
-      result.add(new LinkedHashMap<>(extra));
+      if (!this.mergeIntoMatching(extra, result, originalKeys)) {
+        standalone.add(new LinkedHashMap<>(extra));
+      }
     }
+    result.addAll(standalone);
     return result;
+  }
+
+  /** Adds the entry's new keys to every combination it fits; false when it fits none. */
+  private boolean mergeIntoMatching(
+      final Map<String, String> extra,
+      final List<Map<String, String>> combinations,
+      final Set<String> originalKeys) {
+
+    boolean merged = false;
+    for (final var combination : combinations) {
+      if (this.fitsOriginalValues(extra, combination, originalKeys)) {
+        extra.forEach(
+            (key, value) -> {
+              if (!originalKeys.contains(key)) {
+                combination.put(key, value);
+              }
+            });
+        merged = true;
+      }
+    }
+    return merged;
+  }
+
+  private boolean fitsOriginalValues(
+      final Map<String, String> extra,
+      final Map<String, String> combination,
+      final Set<String> originalKeys) {
+    return extra.entrySet().stream()
+        .filter(e -> originalKeys.contains(e.getKey()))
+        .allMatch(e -> e.getValue().equals(combination.get(e.getKey())));
   }
 
   private boolean isSubset(final Map<String, String> subset, final Map<String, String> full) {

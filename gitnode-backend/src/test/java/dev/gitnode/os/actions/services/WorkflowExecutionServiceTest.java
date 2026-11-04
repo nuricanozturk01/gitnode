@@ -559,6 +559,78 @@ class WorkflowExecutionServiceTest {
     assertThat(deploy.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
   }
 
+  private static final String MATRIX_YAML =
+      """
+      on: push
+      jobs:
+        build:
+          runs-on: x
+          strategy:
+            matrix:
+              os: [a, b, c]
+          steps: []
+      """;
+
+  private static WorkflowJob matrixJob(final String os, final WorkflowJobStatus status) {
+    final var job = namedJob("build", status, null);
+    job.setName("build (" + os + ")");
+    job.setMatrixValues(java.util.Map.of("os", os));
+    return job;
+  }
+
+  @Test
+  @DisplayName("fail-fast: one failed matrix job cancels the ones that have not started")
+  void failFast_cancelsUnstartedSiblings() throws Exception {
+    final var run = this.runWithWorkflow(MATRIX_YAML);
+    final var failing = matrixJob("a", WorkflowJobStatus.IN_PROGRESS);
+    final var queued = matrixJob("b", WorkflowJobStatus.QUEUED);
+    final var running = matrixJob("c", WorkflowJobStatus.IN_PROGRESS);
+
+    this.complete(run, failing, List.of(failing, queued, running), "failure");
+
+    assertThat(queued.getStatus()).isEqualTo(WorkflowJobStatus.CANCELLED);
+    assertThat(running.getStatus())
+        .as("jobs that already run are left to finish")
+        .isEqualTo(WorkflowJobStatus.IN_PROGRESS);
+  }
+
+  @Test
+  @DisplayName("fail-fast: false keeps the other matrix jobs")
+  void failFastFalse_keepsSiblings() throws Exception {
+    final var run =
+        this.runWithWorkflow(MATRIX_YAML.replace("matrix:", "fail-fast: false\n    matrix:"));
+    final var failing = matrixJob("a", WorkflowJobStatus.IN_PROGRESS);
+    final var queued = matrixJob("b", WorkflowJobStatus.QUEUED);
+
+    this.complete(run, failing, List.of(failing, queued), "failure");
+
+    assertThat(queued.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
+  @Test
+  @DisplayName("a successful matrix job cancels nothing")
+  void success_cancelsNothing() throws Exception {
+    final var run = this.runWithWorkflow(MATRIX_YAML);
+    final var ok = matrixJob("a", WorkflowJobStatus.IN_PROGRESS);
+    final var queued = matrixJob("b", WorkflowJobStatus.QUEUED);
+
+    this.complete(run, ok, List.of(ok, queued), "success");
+
+    assertThat(queued.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
+  @Test
+  @DisplayName("fail-fast does not touch other jobs of the run")
+  void failFast_onlyAffectsSameMatrix() throws Exception {
+    final var run = this.runWithWorkflow(MATRIX_YAML);
+    final var failing = matrixJob("a", WorkflowJobStatus.IN_PROGRESS);
+    final var other = namedJob("lint", WorkflowJobStatus.QUEUED, null);
+
+    this.complete(run, failing, List.of(failing, other), "failure");
+
+    assertThat(other.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
   private static WorkflowJob buildJob(final WorkflowJobStatus status) {
     final var job = new WorkflowJob();
     job.setId(JOB_ID);

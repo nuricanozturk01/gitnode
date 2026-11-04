@@ -313,6 +313,34 @@ class WorkflowTriggerServiceTest {
     }
 
     @Test
+    @DisplayName("runs-on: ${{ matrix.os }} is resolved per matrix job")
+    void runsOnMatrixResolved() throws Exception {
+      final var model =
+          WorkflowParserService.YAML_MAPPER.readValue(
+              """
+              on: push
+              jobs:
+                build:
+                  runs-on: ${{ matrix.os }}
+                  strategy:
+                    matrix:
+                      os: [linux, macos]
+                  steps: []
+              """,
+              WorkflowModel.class);
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/main"))
+          .thenReturn(List.of(parsed(model)));
+
+      triggerService.triggerOnPush(REPO_ID, "main", OWNER, null);
+
+      final var captor = ArgumentCaptor.forClass(WorkflowJob.class);
+      verify(jobRepository, org.mockito.Mockito.times(2)).save(captor.capture());
+      assertThat(captor.getAllValues())
+          .extracting(j -> j.getRunnerLabels().getFirst())
+          .containsExactlyInAnyOrder("linux", "macos");
+    }
+
+    @Test
     @DisplayName("if: condition false → job created as SKIPPED, no queued event")
     void ifConditionFalse_jobSkipped() {
       final var job = matrixJob(null, "github.ref == 'refs/heads/main'");
@@ -421,6 +449,205 @@ class WorkflowTriggerServiceTest {
 
       assertThat(statuses.get("build")).isEqualTo(WorkflowJobStatus.QUEUED);
       assertThat(statuses.get("deploy")).isEqualTo(WorkflowJobStatus.WAITING);
+    }
+  }
+
+  // ── schedule ─────────────────────────────────────────────────────────────
+
+  @Nested
+  @DisplayName("ScheduleTests")
+  class ScheduleTests {
+
+    private static final String YAML =
+        """
+        on:
+          schedule:
+            - cron: "30 13 * * *"
+        jobs:
+          nightly:
+            runs-on: x
+            steps: []
+        """;
+
+    private void stubCommon(final String defaultBranch) {
+      final var repo =
+          new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false, defaultBranch);
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
+    }
+
+    private void stubRun() {
+      when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
+          .thenReturn(Optional.empty());
+      stubDefinitionSave();
+      stubRunSave();
+      stubJobSave();
+      when(runRepository.nextRunNumber(REPO_ID)).thenReturn(1);
+    }
+
+    @Test
+    @DisplayName("a due schedule creates a run on the default branch with event 'schedule'")
+    void firesOnDefaultBranch() throws Exception {
+      this.stubCommon("main");
+      this.stubRun();
+      final var model = WorkflowParserService.YAML_MAPPER.readValue(YAML, WorkflowModel.class);
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/main"))
+          .thenReturn(List.of(parsed(model)));
+
+      triggerService.triggerOnSchedule(REPO_ID, ".gitnode/workflows/ci.yml", "30 13 * * *");
+
+      final var run = ArgumentCaptor.forClass(WorkflowRun.class);
+      verify(runRepository).save(run.capture());
+      assertThat(run.getValue().getTriggerEvent()).isEqualTo("schedule");
+      assertThat(run.getValue().getTriggerRef()).isEqualTo("refs/heads/main");
+      assertThat(run.getValue().getTriggerSha()).isNull();
+      assertThat(run.getValue().getTriggerActor()).isNull();
+    }
+
+    @Test
+    @DisplayName("a cron that is no longer in the workflow does not run")
+    void removedCronDoesNotRun() throws Exception {
+      this.stubCommon("main");
+      final var model = WorkflowParserService.YAML_MAPPER.readValue(YAML, WorkflowModel.class);
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/main"))
+          .thenReturn(List.of(parsed(model)));
+
+      triggerService.triggerOnSchedule(REPO_ID, ".gitnode/workflows/ci.yml", "0 0 * * *");
+
+      verify(runRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("a repo without a default branch is skipped")
+    void noDefaultBranch() {
+      this.stubCommon(null);
+
+      triggerService.triggerOnSchedule(REPO_ID, ".gitnode/workflows/ci.yml", "30 13 * * *");
+
+      verify(runRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("a push indexes workflows that have a schedule even without a push trigger")
+    void pushIndexesScheduledWorkflow() throws Exception {
+      this.stubCommon("main");
+      when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
+          .thenReturn(Optional.empty());
+      stubDefinitionSave();
+      final var model = WorkflowParserService.YAML_MAPPER.readValue(YAML, WorkflowModel.class);
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/main"))
+          .thenReturn(List.of(parsed(model)));
+
+      triggerService.triggerOnPush(REPO_ID, "main", OWNER, null);
+
+      verify(definitionRepository).save(any(WorkflowDefinition.class));
+      verify(runRepository, never()).save(any());
+    }
+  }
+
+  // ── tag pushes ───────────────────────────────────────────────────────────
+
+  @Nested
+  @DisplayName("TagTriggerTests")
+  class TagTriggerTests {
+
+    private WorkflowModel model(final String pushBlock) throws Exception {
+      return WorkflowParserService.YAML_MAPPER.readValue(
+          "on:\n  push:\n" + pushBlock + "\njobs: {}\n", WorkflowModel.class);
+    }
+
+    @Test
+    @DisplayName("a push trigger without filters fires for branches and tags")
+    void unfiltered_firesForBoth() throws Exception {
+      final var m =
+          WorkflowParserService.YAML_MAPPER.readValue("on: push\njobs: {}\n", WorkflowModel.class);
+      assertThat(triggerService.hasPushTrigger(m, "main")).isTrue();
+      assertThat(triggerService.hasTagTrigger(m, "v1.0")).isTrue();
+    }
+
+    @Test
+    @DisplayName("only tags: fires for matching tags, never for branches")
+    void tagsOnly() throws Exception {
+      final var m = this.model("    tags: ['v*']");
+      assertThat(triggerService.hasTagTrigger(m, "v1.2.3")).isTrue();
+      assertThat(triggerService.hasTagTrigger(m, "release-1")).isFalse();
+      assertThat(triggerService.hasPushTrigger(m, "main")).isFalse();
+    }
+
+    @Test
+    @DisplayName("only branches: fires for matching branches, never for tags")
+    void branchesOnly() throws Exception {
+      final var m = this.model("    branches: [main]");
+      assertThat(triggerService.hasPushTrigger(m, "main")).isTrue();
+      assertThat(triggerService.hasTagTrigger(m, "v1")).isFalse();
+    }
+
+    @Test
+    @DisplayName("branches and tags together: each filter applies to its own kind")
+    void branchesAndTags() throws Exception {
+      final var m = this.model("    branches: [main]\n    tags: ['v*']");
+      assertThat(triggerService.hasPushTrigger(m, "main")).isTrue();
+      assertThat(triggerService.hasPushTrigger(m, "dev")).isFalse();
+      assertThat(triggerService.hasTagTrigger(m, "v2")).isTrue();
+      assertThat(triggerService.hasTagTrigger(m, "x2")).isFalse();
+    }
+
+    @Test
+    @DisplayName("tags-ignore and ! patterns exclude tags")
+    void tagExclusions() throws Exception {
+      final var ignore = this.model("    tags-ignore: ['*-rc*']");
+      assertThat(triggerService.hasTagTrigger(ignore, "v1.0")).isFalse();
+      assertThat(triggerService.hasTagTrigger(ignore, "v1.0-rc1")).isFalse();
+
+      final var negated = this.model("    tags: ['v*', '!v*-rc*']");
+      assertThat(triggerService.hasTagTrigger(negated, "v1.0")).isTrue();
+      assertThat(triggerService.hasTagTrigger(negated, "v1.0-rc1")).isFalse();
+    }
+
+    @Test
+    @DisplayName("a workflow without a push trigger never fires for tags")
+    void noPushTrigger() throws Exception {
+      final var m =
+          WorkflowParserService.YAML_MAPPER.readValue(
+              "on: workflow_dispatch\njobs: {}\n", WorkflowModel.class);
+      assertThat(triggerService.hasTagTrigger(m, "v1")).isFalse();
+    }
+
+    @Test
+    @DisplayName("triggerOnTag creates a run on refs/tags/<tag> at the tagged commit")
+    void triggerOnTag_createsRun() throws Exception {
+      final var repo = new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false);
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
+      when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
+          .thenReturn(Optional.empty());
+      stubDefinitionSave();
+      stubRunSave();
+      stubJobSave();
+      when(runRepository.nextRunNumber(REPO_ID)).thenReturn(1);
+      final var sha = "b".repeat(40);
+      final var m =
+          WorkflowParserService.YAML_MAPPER.readValue(
+              "on:\n  push:\n    tags: ['v*']\njobs:\n  r:\n    runs-on: x\n    steps: []\n",
+              WorkflowModel.class);
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, sha)).thenReturn(List.of(parsed(m)));
+
+      triggerService.triggerOnTag(REPO_ID, "v1.0", "alice", sha);
+
+      final var run = ArgumentCaptor.forClass(WorkflowRun.class);
+      verify(runRepository).save(run.capture());
+      assertThat(run.getValue().getTriggerRef()).isEqualTo("refs/tags/v1.0");
+      assertThat(run.getValue().getTriggerSha()).isEqualTo(sha);
+      assertThat(run.getValue().getTriggerEvent()).isEqualTo("push");
+    }
+
+    @Test
+    @DisplayName("triggerOnTag without a commit does nothing")
+    void triggerOnTag_noCommit() {
+      final var repo = new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false);
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
+
+      triggerService.triggerOnTag(REPO_ID, "v1", "alice", null);
+
+      verify(runRepository, never()).save(any());
     }
   }
 

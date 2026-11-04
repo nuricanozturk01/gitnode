@@ -21,6 +21,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -30,4 +31,8 @@ public interface WorkflowDefinitionRepository extends JpaRepository<WorkflowDefi
   List<WorkflowDefinition> findAllByRepoIdOrderByFilePathAsc(UUID repoId);
 
   Optional<WorkflowDefinition> findByRepoIdAndFilePath(UUID repoId, String filePath);
+
+  /** Candidate definitions for the scheduler; the workflow is re-parsed before it fires. */
+  @Query("SELECT d FROM WorkflowDefinition d WHERE d.content LIKE '%schedule:%'")
+  List<WorkflowDefinition> findAllWithSchedule();
 }

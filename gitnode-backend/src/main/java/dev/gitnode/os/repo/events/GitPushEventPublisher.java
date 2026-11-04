@@ -104,14 +104,35 @@ public class GitPushEventPublisher implements PostReceiveHook {
                                     : command.getNewId().name()));
                       });
 
-              final var hasTagPush =
+              final var tagCommands =
                   okCommands.stream()
-                      .anyMatch(cmd -> cmd.getRefName().startsWith(Constants.R_TAGS));
-              if (hasTagPush) {
+                      .filter(cmd -> cmd.getRefName().startsWith(Constants.R_TAGS))
+                      .toList();
+              if (!tagCommands.isEmpty()) {
                 log.debug("Tag push detected: {}/{} — evicting TAGS cache", owner, repoName);
                 this.cacheInvalidator.evictTags(owner, repoName);
+                this.publishTagEvents(repo.getId(), tagCommands, pusherName);
               }
             });
+  }
+
+  /** Tag deletions are ignored; created or moved tags can trigger workflows. */
+  private void publishTagEvents(
+      final java.util.UUID repoId,
+      final java.util.List<ReceiveCommand> tagCommands,
+      final String pusherName) {
+
+    for (final var command : tagCommands) {
+      if (command.getNewId().equals(org.eclipse.jgit.lib.ObjectId.zeroId())) {
+        continue;
+      }
+      this.eventPublisher.publishEvent(
+          new dev.gitnode.os.events.repo.RepoTagPushedEvent(
+              repoId,
+              command.getRefName().substring(Constants.R_TAGS.length()),
+              pusherName,
+              command.getNewId().name()));
+    }
   }
 
   private String @Nullable [] resolveOwnerAndRepo(final java.io.File gitDir) {

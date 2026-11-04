@@ -88,6 +88,7 @@ public class JobDispatcher {
   private static final int DEFAULT_JOB_TIMEOUT_MINUTES = 30;
 
   private final ConcurrentHashMap<UUID, CachedWorkflow> yamlCache = new ConcurrentHashMap<>();
+  private final DispatchDiagnostics diagnostics = new DispatchDiagnostics();
 
   @Scheduled(fixedDelay = 300_000)
   public void evictExpiredYamlCache() {
@@ -105,12 +106,14 @@ public class JobDispatcher {
     this.markStaleRunnersOffline();
 
     final var queuedJobs = this.jobRepository.findQueuedForClaim(DISPATCH_BATCH_SIZE);
+    this.diagnostics.retainOnly(queuedJobs.stream().map(WorkflowJob::getId).toList());
     if (queuedJobs.isEmpty()) {
       return;
     }
 
     final var onlineRunners = this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE);
     if (onlineRunners.isEmpty()) {
+      this.reportNoOnlineRunner(queuedJobs);
       return;
     }
 
@@ -125,6 +128,16 @@ public class JobDispatcher {
     this.assignJobs(queuedJobs, onlineRunners, repoIdByRunId, tenantIdByRepoId);
   }
 
+  private void reportNoOnlineRunner(final List<WorkflowJob> queuedJobs) {
+
+    final var reason =
+        "no runner is ONLINE ("
+            + DispatchDiagnostics.describeRunners(
+                this.runnerRepository.findAll(), List.of(), UUID.randomUUID())
+            + ")";
+    queuedJobs.forEach(job -> this.diagnostics.warn(job, reason));
+  }
+
   private void assignJobs(
       final List<WorkflowJob> queuedJobs,
       final List<Runner> onlineRunners,
@@ -134,16 +147,23 @@ public class JobDispatcher {
     for (final var job : queuedJobs) {
       final var repoId = repoIdByRunId.get(job.getRunId());
       if (repoId == null) {
+        this.diagnostics.warn(job, "its workflow run no longer exists");
         continue;
       }
 
       final var tenantId = tenantIdByRepoId.get(repoId);
       if (tenantId == null) {
+        this.diagnostics.warn(job, "the owner of its repository could not be found");
         continue;
       }
 
       final var runner = this.findMatchingRunner(job, onlineRunners, tenantId);
       if (runner == null) {
+        this.diagnostics.warn(
+            job,
+            "no runner can take it: "
+                + DispatchDiagnostics.describeRunners(
+                    onlineRunners, job.getRunnerLabels(), tenantId));
         continue;
       }
 

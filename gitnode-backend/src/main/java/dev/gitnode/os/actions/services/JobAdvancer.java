@@ -71,7 +71,7 @@ public class JobAdvancer {
   public List<WorkflowJob> advance(
       final WorkflowRun run, final List<WorkflowJob> allJobs, final @Nullable WorkflowModel model) {
 
-    final var changed = new ArrayList<WorkflowJob>();
+    final var changed = new ArrayList<WorkflowJob>(this.failFast(allJobs, model));
     boolean progress;
     do {
       progress = false;
@@ -93,6 +93,56 @@ public class JobAdvancer {
       }
     } while (progress);
     return changed;
+  }
+
+  /**
+   * strategy.fail-fast (default true): when one job of a matrix fails, the matrix jobs that have
+   * not started yet are cancelled. Jobs that already run are left to finish.
+   */
+  private List<WorkflowJob> failFast(
+      final List<WorkflowJob> allJobs, final @Nullable WorkflowModel model) {
+
+    final var cancelled = new ArrayList<WorkflowJob>();
+    for (final var failed : allJobs) {
+      if (this.triggersFailFast(failed, model)) {
+        cancelled.addAll(this.cancelNotStartedSiblings(failed, allJobs));
+      }
+    }
+    return cancelled;
+  }
+
+  private boolean triggersFailFast(final WorkflowJob job, final @Nullable WorkflowModel model) {
+    return job.getStatus() == WorkflowJobStatus.FAILURE
+        && job.getMatrixValues() != null
+        && job.getJobKey() != null
+        && this.failsFast(model, job);
+  }
+
+  private List<WorkflowJob> cancelNotStartedSiblings(
+      final WorkflowJob failed, final List<WorkflowJob> allJobs) {
+
+    final var cancelled = new ArrayList<WorkflowJob>();
+    for (final var sibling : allJobs) {
+      if (failed.getJobKey().equals(sibling.getJobKey()) && this.notStarted(sibling)) {
+        sibling.setStatus(WorkflowJobStatus.CANCELLED);
+        sibling.setConclusion("cancelled");
+        sibling.setCompletedAt(Instant.now());
+        cancelled.add(sibling);
+      }
+    }
+    return cancelled;
+  }
+
+  private boolean failsFast(final @Nullable WorkflowModel model, final WorkflowJob job) {
+    final var def = this.jobDefinition(model, job);
+    return def == null
+        || def.strategy() == null
+        || !Boolean.FALSE.equals(def.strategy().failFast());
+  }
+
+  private boolean notStarted(final WorkflowJob job) {
+    return job.getStatus() == WorkflowJobStatus.QUEUED
+        || job.getStatus() == WorkflowJobStatus.WAITING;
   }
 
   /** True when the job's condition (or the default success()) lets it run. */

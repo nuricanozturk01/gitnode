@@ -284,8 +284,7 @@ public class WorkflowExecutionService {
                 job.getId(), run.getId(), run.getRepoId(), job.getName(), job.getRunnerLabels()));
         log.info("Job advanced to QUEUED after needs resolved: jobId={}", job.getId());
       } else {
-        log.info(
-            "Job skipped because its needs or condition did not allow it: jobId={}", job.getId());
+        log.info("Job ended without running (status={}): jobId={}", job.getStatus(), job.getId());
       }
     }
   }

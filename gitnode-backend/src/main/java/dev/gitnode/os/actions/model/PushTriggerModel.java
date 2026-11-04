@@ -26,4 +26,15 @@ public record PushTriggerModel(
     @JsonProperty("branches-ignore") @Nullable List<String> branchesIgnore,
     @Nullable List<String> tags,
     @Nullable List<String> paths,
-    @JsonProperty("paths-ignore") @Nullable List<String> pathsIgnore) {}
+    @JsonProperty("paths-ignore") @Nullable List<String> pathsIgnore,
+    @JsonProperty("tags-ignore") @Nullable List<String> tagsIgnore) {
+
+  public PushTriggerModel(
+      final @Nullable List<String> branches,
+      final @Nullable List<String> branchesIgnore,
+      final @Nullable List<String> tags,
+      final @Nullable List<String> paths,
+      final @Nullable List<String> pathsIgnore) {
+    this(branches, branchesIgnore, tags, paths, pathsIgnore, null);
+  }
+}

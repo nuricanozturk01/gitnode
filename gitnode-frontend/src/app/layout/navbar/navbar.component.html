@@ -3,15 +3,15 @@
     <!-- Mobile: hamburger (left) + brand icon + GitNode (right) -->
     <div class="flex min-w-0 flex-1 items-center justify-between gap-2 md:hidden">
       <div class="dropdown dropdown-start shrink-0">
-        <button
-          type="button"
+        <div
+          role="button"
           tabindex="0"
           class="btn btn-ghost btn-square btn-sm"
           aria-label="Open navigation menu"
           aria-haspopup="menu"
         >
           <lucide-icon name="menu" class="size-6" aria-hidden="true"></lucide-icon>
-        </button>
+        </div>
         <ul
           tabindex="0"
           class="menu menu-sm dropdown-content border-base-300 bg-base-100 rounded-box z-[100] mt-2 w-64 max-w-[min(100vw-2rem,20rem)] border p-2 shadow-lg"
@@ -186,8 +186,9 @@
       </select>
       @if (isLoggedIn()) {
         <div class="dropdown dropdown-end hidden md:block">
-          <button
-            type="button"
+          <div
+            role="button"
+            tabindex="0"
             [attr.aria-label]="'Account menu, ' + (user()?.displayName ?? user()?.username ?? 'User')"
             class="hover:bg-base-200 flex cursor-pointer items-center gap-2 rounded-lg p-1"
           >
@@ -201,7 +202,7 @@
             <span class="text-base-content/70 max-w-32 truncate text-sm sm:max-w-none">{{
               user()?.displayName ?? user()?.username ?? 'User'
             }}</span>
-          </button>
+          </div>
           <ul
             tabindex="0"
             class="menu menu-sm dropdown-content border-base-300 bg-base-100 rounded-box z-[100] mt-3 w-56 border p-2 shadow-lg"

@@ -187,7 +187,11 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
       return;
     }
     final var conclusion = data.path("conclusion").asText("success");
-    this.executionService.handleJobCompleted(jobId, conclusion);
+    final var outputs = new java.util.LinkedHashMap<String, String>();
+    data.path("outputs")
+        .fields()
+        .forEachRemaining(entry -> outputs.put(entry.getKey(), entry.getValue().asText("")));
+    this.executionService.handleJobCompleted(jobId, conclusion, outputs);
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

@@ -29,7 +29,9 @@ import dev.gitnode.os.actions.services.WorkflowParserService.ParsedWorkflow;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -39,6 +41,10 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,7 +57,6 @@ public class WorkflowDefinitionService {
   private final WorkflowDefinitionRepository definitionRepository;
   private final WorkflowRunRepository runRepository;
   private final RepoLookupPort repoLookup;
-  private final JobDispatcher jobDispatcher;
 
   public List<WorkflowSummaryResponse> listForRepo(final UUID repoId) {
 
@@ -79,6 +84,40 @@ public class WorkflowDefinitionService {
     return parsed.stream()
         .map(pw -> this.toSummaryResponse(pw, dbByPath.get(pw.filePath()), latestRunByDefId))
         .toList();
+  }
+
+  /** Upper bound of one page, so a client cannot ask for the whole list in a single request. */
+  public static final int MAX_PAGE_SIZE = 100;
+
+  /**
+   * One page of the repository's workflows, ordered by name. {@code query} keeps the workflows
+   * whose name or file path contains it (case-insensitive).
+   */
+  public Page<WorkflowSummaryResponse> pageForRepo(
+      final UUID repoId, final @Nullable String query, final Pageable pageable) {
+
+    final var needle =
+        query == null || query.isBlank() ? null : query.strip().toLowerCase(Locale.ROOT);
+    final var matching =
+        this.listForRepo(repoId).stream()
+            .filter(
+                w ->
+                    needle == null
+                        || w.name().toLowerCase(Locale.ROOT).contains(needle)
+                        || w.filePath().toLowerCase(Locale.ROOT).contains(needle))
+            .sorted(
+                Comparator.comparing(
+                        (WorkflowSummaryResponse w) -> w.name().toLowerCase(Locale.ROOT))
+                    .thenComparing(WorkflowSummaryResponse::filePath))
+            .toList();
+
+    final int size = Math.max(1, Math.min(pageable.getPageSize(), MAX_PAGE_SIZE));
+    final int from = (int) Math.min((long) pageable.getPageNumber() * size, matching.size());
+    final int to = Math.min(from + size, matching.size());
+    return new PageImpl<>(
+        matching.subList(from, to),
+        PageRequest.of(pageable.getPageNumber(), size),
+        matching.size());
   }
 
   private static String resolveWorkflowName(final ParsedWorkflow pw) {
@@ -217,7 +256,6 @@ public class WorkflowDefinitionService {
 
     def.setEnabled(enabled);
     this.definitionRepository.save(def);
-    this.jobDispatcher.invalidateYamlCache(def.getId());
   }
 
   private static @Nullable String resolveLastRunStatusFromRun(final @Nullable WorkflowRun run) {

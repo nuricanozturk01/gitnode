@@ -16,9 +16,11 @@
 package dev.gitnode.os.actions.services;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,8 +42,10 @@ import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.websocket.RunStatusSseRegistry;
 import dev.gitnode.os.actions.websocket.SseEmitterRegistry;
+import dev.gitnode.os.events.actions.WorkflowJobQueuedEvent;
 import dev.gitnode.os.events.actions.WorkflowJobStartedEvent;
 import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -69,6 +73,7 @@ class WorkflowExecutionServiceTest {
   @Mock private WorkflowDefinitionRepository definitionRepository;
   @Mock private WorkflowParserService parserService;
   @Mock private RepoLookupPort repoLookup;
+  @Mock private WorkflowTriggerService triggerService;
 
   private WorkflowExecutionService service;
 
@@ -88,7 +93,8 @@ class WorkflowExecutionServiceTest {
                 this.definitionRepository,
                 this.parserService,
                 new ExpressionEvaluator(),
-                this.repoLookup));
+                this.repoLookup),
+            this.triggerService);
   }
 
   private static final UUID RUNNER_ID = UUID.randomUUID();
@@ -639,6 +645,88 @@ class WorkflowExecutionServiceTest {
     job.setRunnerLabels(List.of("self-hosted"));
     job.setStatus(status);
     return job;
+  }
+
+  // ── rerun ─────────────────────────────────────────────────────────────────
+
+  private static WorkflowJob rerunJob(
+      final String key, final WorkflowJobStatus status, final List<String> needs) {
+    final var job = new WorkflowJob();
+    job.setId(UUID.randomUUID());
+    job.setRunId(RUN_ID);
+    job.setJobKey(key);
+    job.setName(key);
+    job.setRunnerLabels(List.of("self-hosted"));
+    job.setStatus(status);
+    job.setNeeds(needs);
+    job.setConclusion(status == WorkflowJobStatus.SUCCESS ? "success" : "failure");
+    return job;
+  }
+
+  @Test
+  @DisplayName("rerun failed only resets the failed job, keeps the green one and bumps the attempt")
+  void rerun_failedOnly_resetsFailedJobs() {
+    final var build = rerunJob("build", WorkflowJobStatus.SUCCESS, null);
+    final var test = rerunJob("test", WorkflowJobStatus.FAILURE, List.of("build"));
+    final var run = buildRun(WorkflowRunStatus.FAILURE);
+    run.setConclusion("failure");
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID))
+        .thenReturn(List.of(build, test));
+
+    this.service.rerun(RUN_ID, true, null);
+
+    assertThat(build.getStatus()).isEqualTo(WorkflowJobStatus.SUCCESS);
+    assertThat(test.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    assertThat(test.getConclusion()).isNull();
+    assertThat(run.getRunAttempt()).isEqualTo(2);
+    assertThat(run.getStatus()).isEqualTo(WorkflowRunStatus.QUEUED);
+    assertThat(run.getConclusion()).isNull();
+    verify(this.stepRepository).deleteAllByJobIds(List.of(test.getId()));
+    verify(this.eventPublisher).publishEvent(any(WorkflowJobQueuedEvent.class));
+  }
+
+  @Test
+  @DisplayName("rerun of one job also resets the jobs that need it")
+  void rerun_singleJob_resetsDependents() {
+    final var build = rerunJob("build", WorkflowJobStatus.SUCCESS, null);
+    final var test = rerunJob("test", WorkflowJobStatus.SUCCESS, List.of("build"));
+    final var deploy = rerunJob("deploy", WorkflowJobStatus.SUCCESS, List.of("test"));
+    final var run = buildRun(WorkflowRunStatus.SUCCESS);
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID))
+        .thenReturn(List.of(build, test, deploy));
+
+    this.service.rerun(RUN_ID, false, test.getId());
+
+    assertThat(build.getStatus()).isEqualTo(WorkflowJobStatus.SUCCESS);
+    assertThat(test.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    assertThat(deploy.getStatus()).isEqualTo(WorkflowJobStatus.WAITING);
+    verify(this.stepRepository).deleteAllByJobIds(List.of(test.getId(), deploy.getId()));
+  }
+
+  @Test
+  @DisplayName("rerun is refused while the run is still going")
+  void rerun_rejectsActiveRun() {
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+
+    assertThatThrownBy(() -> this.service.rerun(RUN_ID, false, null))
+        .isInstanceOf(BadRequestException.class);
+
+    verify(this.stepRepository, never()).deleteAllByJobIds(any());
+  }
+
+  @Test
+  @DisplayName("rerun failed only with nothing failed is refused")
+  void rerun_failedOnly_withoutFailures() {
+    final var build = rerunJob("build", WorkflowJobStatus.SUCCESS, null);
+    final var run = buildRun(WorkflowRunStatus.SUCCESS);
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(List.of(build));
+
+    assertThatThrownBy(() -> this.service.rerun(RUN_ID, true, null))
+        .isInstanceOf(BadRequestException.class);
   }
 
   private static WorkflowRun buildRun(final WorkflowRunStatus status) {

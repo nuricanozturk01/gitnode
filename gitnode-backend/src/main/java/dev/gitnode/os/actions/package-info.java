@@ -20,6 +20,7 @@
       "events :: pr",
       "events :: repo",
       "githttp :: api",
+      "identity :: api",
       "identity :: security",
       "repo :: api",
       "shared :: *"

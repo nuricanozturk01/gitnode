@@ -35,7 +35,47 @@ public record JobModel(
     @Nullable StrategyModel strategy,
     @Nullable Map<String, ServiceModel> services,
     @Nullable List<StepModel> steps,
-    @Nullable DefaultsModel defaults) {
+    @Nullable DefaultsModel defaults,
+    @Nullable Map<String, String> outputs,
+    @JsonProperty("continue-on-error") @Nullable String continueOnError,
+    @Nullable ContainerModel container,
+    @Nullable Object environment,
+    @Nullable Object permissions,
+    @Nullable String uses,
+    @Nullable Map<String, String> with,
+    @Nullable Object secrets) {
+
+  public JobModel(
+      final @Nullable String name,
+      final @Nullable List<String> runsOn,
+      final @Nullable Integer timeoutMinutes,
+      final @Nullable List<String> needs,
+      final @Nullable String condition,
+      final @Nullable Map<String, String> env,
+      final @Nullable StrategyModel strategy,
+      final @Nullable Map<String, ServiceModel> services,
+      final @Nullable List<StepModel> steps,
+      final @Nullable DefaultsModel defaults) {
+    this(
+        name,
+        runsOn,
+        timeoutMinutes,
+        needs,
+        condition,
+        env,
+        strategy,
+        services,
+        steps,
+        defaults,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
 
   public JobModel(
       final @Nullable String name,
@@ -48,5 +88,28 @@ public record JobModel(
       final @Nullable Map<String, ServiceModel> services,
       final @Nullable List<StepModel> steps) {
     this(name, runsOn, timeoutMinutes, needs, condition, env, strategy, services, steps, null);
+  }
+
+  /** This job with another {@code strategy}, e.g. the matrix an expression evaluated to. */
+  public JobModel withStrategy(final @Nullable StrategyModel newStrategy) {
+    return new JobModel(
+        this.name,
+        this.runsOn,
+        this.timeoutMinutes,
+        this.needs,
+        this.condition,
+        this.env,
+        newStrategy,
+        this.services,
+        this.steps,
+        this.defaults,
+        this.outputs,
+        this.continueOnError,
+        this.container,
+        this.environment,
+        this.permissions,
+        this.uses,
+        this.with,
+        this.secrets);
   }
 }

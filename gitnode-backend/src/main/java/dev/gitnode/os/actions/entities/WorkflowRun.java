@@ -91,6 +91,26 @@ public class WorkflowRun {
   @Nullable
   private Map<String, String> inputs;
 
+  /**
+   * The workflow file as it was when the run was queued. Runs execute (and re-run) this, not the
+   * definition's latest content, so editing a workflow never changes a run that already exists.
+   */
+  @Column(name = "workflow_content", columnDefinition = "text")
+  @Nullable
+  private String workflowContent;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "event_payload", columnDefinition = "jsonb")
+  @Nullable
+  private Map<String, Object> eventPayload;
+
+  @Column(name = "head_commit_message", columnDefinition = "text")
+  @Nullable
+  private String headCommitMessage;
+
+  @Column(name = "run_attempt", nullable = false)
+  private int runAttempt = 1;
+
   @Column(name = "started_at")
   @Nullable
   private Instant startedAt;

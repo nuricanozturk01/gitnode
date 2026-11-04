@@ -21,8 +21,10 @@ import dev.gitnode.os.actions.entities.WorkflowJobStatus;
 import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.entities.WorkflowRunStatus;
 import dev.gitnode.os.actions.model.JobModel;
+import dev.gitnode.os.actions.model.MatrixStrategy;
 import dev.gitnode.os.actions.model.OnTriggerModel;
 import dev.gitnode.os.actions.model.PushTriggerModel;
+import dev.gitnode.os.actions.model.StrategyModel;
 import dev.gitnode.os.actions.model.WorkflowModel;
 import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
@@ -32,6 +34,7 @@ import dev.gitnode.os.events.actions.WorkflowJobQueuedEvent;
 import dev.gitnode.os.events.actions.WorkflowRunQueuedEvent;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -53,6 +56,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @NullMarked
 public class WorkflowTriggerService {
+
+  private static final String EXPR_OPEN = "${{";
+  private static final String EXPR_CLOSE = "}}";
 
   private final WorkflowParserService parserService;
   private final WorkflowDefinitionRepository definitionRepository;
@@ -158,6 +164,16 @@ public class WorkflowTriggerService {
       final String tagName,
       final String pusherUsername,
       final @Nullable String commitSha) {
+    this.triggerOnTag(repoId, tagName, pusherUsername, null, commitSha);
+  }
+
+  @Transactional
+  public void triggerOnTag(
+      final UUID repoId,
+      final String tagName,
+      final String pusherUsername,
+      final @Nullable UUID actorId,
+      final @Nullable String commitSha) {
 
     final var repo = this.repoLookup.findById(repoId).orElse(null);
     if (repo == null || commitSha == null) {
@@ -168,7 +184,7 @@ public class WorkflowTriggerService {
     for (final var parsed :
         this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), commitSha)) {
       if (this.hasTagTrigger(parsed.model(), tagName)) {
-        this.createRun(repoId, parsed, ref, commitSha, null, "push", null);
+        this.createRun(repoId, parsed, ref, commitSha, actorId, "push", null);
       }
     }
   }
@@ -205,7 +221,8 @@ public class WorkflowTriggerService {
         continue;
       }
 
-      this.createRun(repoId, parsed, branchRef, sourceSha, actorId, "pull_request", null);
+      this.createRun(
+          repoId, parsed, branchRef, sourceSha, actorId, "pull_request", null, targetBranch);
     }
   }
 
@@ -231,6 +248,7 @@ public class WorkflowTriggerService {
 
     final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, ref);
 
+    boolean started = false;
     for (final var parsed : workflows) {
       if (!workflowFilePath.isBlank() && !parsed.filePath().endsWith(workflowFilePath)) {
         continue;
@@ -241,8 +259,29 @@ public class WorkflowTriggerService {
         continue;
       }
       this.createRun(repoId, parsed, ref, null, actorId, "workflow_dispatch", inputs);
+      started = true;
       log.info("Manual dispatch queued: repo={} workflow={} ref={}", repoId, workflowFilePath, ref);
     }
+    if (!started) {
+      this.explainWhyNothingStarted(ownerUsername, repoName, ref, workflowFilePath);
+    }
+  }
+
+  /** A workflow that is not valid YAML is the usual reason a dispatch starts nothing; say so. */
+  private void explainWhyNothingStarted(
+      final String ownerUsername,
+      final String repoName,
+      final String ref,
+      final String workflowFilePath) {
+
+    this.parserService.findParseFailures(ownerUsername, repoName, ref).stream()
+        .filter(f -> workflowFilePath.isBlank() || f.filePath().endsWith(workflowFilePath))
+        .findFirst()
+        .ifPresent(
+            f -> {
+              throw new BadRequestException(
+                  "Invalid workflow file " + f.filePath() + ": " + f.reason());
+            });
   }
 
   private void createRun(
@@ -253,6 +292,18 @@ public class WorkflowTriggerService {
       final @Nullable UUID actorId,
       final String triggerEvent,
       final @Nullable Map<String, String> inputs) {
+    this.createRun(repoId, parsed, triggerRef, triggerSha, actorId, triggerEvent, inputs, null);
+  }
+
+  private void createRun(
+      final UUID repoId,
+      final ParsedWorkflow parsed,
+      final String triggerRef,
+      final @Nullable String triggerSha,
+      final @Nullable UUID actorId,
+      final String triggerEvent,
+      final @Nullable Map<String, String> inputs,
+      final @Nullable String baseBranch) {
 
     final var defId = this.upsertDefinition(repoId, parsed);
     final var runNumber = this.runRepository.nextRunNumber(repoId);
@@ -266,6 +317,26 @@ public class WorkflowTriggerService {
     run.setTriggerRef(triggerRef);
     run.setTriggerSha(triggerSha);
     run.setTriggerActor(actorId);
+    run.setWorkflowContent(parsed.rawContent());
+    this.repoLookup
+        .findById(repoId)
+        .ifPresent(
+            repo -> {
+              run.setHeadCommitMessage(
+                  this.parserService.readCommitMessage(
+                      repo.ownerUsername(),
+                      repo.name(),
+                      triggerSha != null ? triggerSha : triggerRef));
+              run.setEventPayload(
+                  EventPayloads.build(
+                      triggerEvent,
+                      repo,
+                      triggerRef,
+                      triggerSha,
+                      run.getHeadCommitMessage(),
+                      baseBranch,
+                      inputs));
+            });
     run.setStatus(WorkflowRunStatus.QUEUED);
     run.setInputs(inputs);
 
@@ -297,6 +368,10 @@ public class WorkflowTriggerService {
       final var jobKey = entry.getKey();
       final var jobDef = entry.getValue();
       final var baseName = jobDef.name() != null ? jobDef.name() : jobKey;
+      if (isDynamicMatrix(jobDef)) {
+        created.addAll(this.createDynamicMatrixJobs(run, jobDef, jobKey, baseName, created, model));
+        continue;
+      }
       final var combinations = this.matrixExpander.expand(jobDef);
 
       for (final var matrixValues : combinations) {
@@ -305,6 +380,121 @@ public class WorkflowTriggerService {
     }
 
     this.settleWaitingJobs(run, created, model);
+  }
+
+  private static boolean isDynamicMatrix(final JobModel jobDef) {
+    return jobDef.strategy() != null
+        && jobDef.strategy().matrix() != null
+        && jobDef.strategy().matrix().isDynamic();
+  }
+
+  /**
+   * A matrix given as an expression can only be evaluated once the jobs it needs have finished, so
+   * the job starts as one WAITING placeholder that {@link #expandDynamicMatrix} replaces. Without
+   * needs everything the expression can see is already known and the jobs are created right away.
+   */
+  private List<WorkflowJob> createDynamicMatrixJobs(
+      final WorkflowRun run,
+      final JobModel jobDef,
+      final String jobKey,
+      final String baseName,
+      final List<WorkflowJob> createdSoFar,
+      final WorkflowModel model) {
+
+    final var placeholder = new WorkflowJob();
+    placeholder.setRunId(run.getId());
+    placeholder.setJobKey(jobKey);
+    placeholder.setName(baseName);
+    placeholder.setRunnerLabels(this.resolveLabels(jobDef, Map.of()));
+    placeholder.setNeeds(jobDef.needs());
+    placeholder.setMatrixExpression(jobDef.strategy().matrix().expression());
+    placeholder.setStatus(WorkflowJobStatus.WAITING);
+    final var saved = this.jobRepository.save(placeholder);
+    if (hasUnmetNeeds(jobDef)) {
+      return List.of(saved);
+    }
+    final var all = new ArrayList<>(createdSoFar);
+    all.add(saved);
+    return this.expandDynamicMatrix(run, saved, all, model);
+  }
+
+  /**
+   * Replaces a dynamic-matrix placeholder by the jobs its expression evaluates to. A matrix that
+   * cannot be evaluated fails the placeholder (with the reason in the server log) instead of
+   * silently dropping the job. Returns the jobs that now stand in for the placeholder.
+   */
+  @Transactional
+  public List<WorkflowJob> expandDynamicMatrix(
+      final WorkflowRun run,
+      final WorkflowJob placeholder,
+      final List<WorkflowJob> allJobs,
+      final @Nullable WorkflowModel model) {
+
+    final var jobDef = this.jobAdvancer.jobDefinition(model, placeholder);
+    if (jobDef == null || placeholder.getMatrixExpression() == null) {
+      return this.failPlaceholder(placeholder, "workflow definition is not available");
+    }
+    final List<Map<String, String>> combinations;
+    try {
+      combinations = this.evaluateMatrix(run, placeholder, allJobs, jobDef);
+    } catch (final RuntimeException e) {
+      return this.failPlaceholder(placeholder, e.getMessage());
+    }
+
+    this.jobRepository.delete(placeholder);
+    final var created = new ArrayList<WorkflowJob>();
+    final var baseName = jobDef.name() != null ? jobDef.name() : placeholder.getJobKey();
+    for (final var values : combinations) {
+      created.add(
+          this.createSingleJob(run, jobDef, placeholder.getJobKey(), baseName, values, allJobs));
+    }
+    return created;
+  }
+
+  /**
+   * The combinations the placeholder's matrix expression evaluates to; throws when it is invalid.
+   */
+  private List<Map<String, String>> evaluateMatrix(
+      final WorkflowRun run,
+      final WorkflowJob placeholder,
+      final List<WorkflowJob> allJobs,
+      final JobModel jobDef) {
+
+    final var context = this.jobAdvancer.needsContext(run, placeholder, allJobs);
+    // The full expression language is needed here (fromJSON, needs.*.outputs), not just the
+    // simple substitution evaluate() does. fromJSON hands an object back as its JSON text.
+    final var json =
+        ExpressionEngine.asString(
+            ExpressionEngine.evaluate(
+                unwrapExpression(placeholder.getMatrixExpression()), context, "success"));
+    final var strategy = jobDef.strategy();
+    final var evaluated =
+        new StrategyModel(
+            MatrixStrategy.fromJson(json),
+            strategy == null ? null : strategy.failFast(),
+            strategy == null ? null : strategy.maxParallel());
+    return this.matrixExpander.expand(jobDef.withStrategy(evaluated));
+  }
+
+  private List<WorkflowJob> failPlaceholder(final WorkflowJob placeholder, final String reason) {
+    log.warn(
+        "Dynamic matrix of job '{}' (run {}) failed: {}",
+        placeholder.getJobKey(),
+        placeholder.getRunId(),
+        reason);
+    placeholder.setStatus(WorkflowJobStatus.FAILURE);
+    placeholder.setConclusion("failure");
+    placeholder.setMatrixExpression(null);
+    placeholder.setCompletedAt(java.time.Instant.now());
+    return List.of(this.jobRepository.save(placeholder));
+  }
+
+  private static String unwrapExpression(final String expression) {
+    final var text = expression.strip();
+    if (text.startsWith(EXPR_OPEN) && text.endsWith(EXPR_CLOSE)) {
+      return text.substring(EXPR_OPEN.length(), text.length() - EXPR_CLOSE.length()).strip();
+    }
+    return text;
   }
 
   /** A job skipped by its own condition may be what other jobs are waiting for. */
@@ -484,13 +674,13 @@ public class WorkflowTriggerService {
   /** runs-on labels, with ${{ matrix.* }} resolved (runs-on: ${{ matrix.os }} is very common). */
   private List<String> resolveLabels(final JobModel job, final Map<String, String> matrixCtx) {
 
-    if (job.runsOn() != null && !job.runsOn().isEmpty()) {
-      return job.runsOn().stream()
-          .map(label -> this.expressionEvaluator.evaluate(label, matrixCtx))
-          .toList();
+    if (job.runsOn() == null || job.runsOn().isEmpty()) {
+      return RunnerLabels.forJob(null);
     }
-
-    return List.of("self-hosted");
+    return RunnerLabels.forJob(
+        job.runsOn().stream()
+            .map(label -> this.expressionEvaluator.evaluate(label, matrixCtx))
+            .toList());
   }
 
   private String resolveWorkflowName(final WorkflowModel model, final String filePath) {

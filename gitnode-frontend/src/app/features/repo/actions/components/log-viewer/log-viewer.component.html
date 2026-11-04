@@ -20,17 +20,51 @@
   }
 
   <div #scrollContainer class="log-viewer__scroll">
-    @if (visibleLines().length === 0 && !streaming()) {
-      <div class="log-viewer__empty">
-        {{ filter().trim() ? 'No lines match your search.' : 'No log output for this step.' }}
-      </div>
+    @if (rows().length === 0 && !streaming()) {
+      <div class="log-viewer__empty" [attr.role]="errorStatus() ? 'alert' : null">{{ emptyMessage() }}</div>
     } @else {
       <div class="log-viewer__content">
-        @for (line of visibleLines(); track line.lineNumber) {
-          <div class="log-viewer__line" [class.log-viewer__line--error]="isErrorLine(line)">
-            <span class="log-viewer__line-num">{{ line.lineNumber }}</span>
-            <span class="log-viewer__line-text" [innerHTML]="lineHtml(line.content)"></span>
-          </div>
+        @for (row of rows(); track row.line.lineNumber) {
+          @if (row.kind === 'group') {
+            <button
+              type="button"
+              class="log-viewer__group"
+              [attr.aria-expanded]="!row.collapsed"
+              (click)="toggleGroup(row)"
+            >
+              <lucide-icon
+                name="chevronRight"
+                class="log-viewer__group-icon size-3"
+                [class.log-viewer__group-icon--open]="!row.collapsed"
+              ></lucide-icon>
+              @if (showTimestamps() && time(row)) {
+                <span class="log-viewer__time">{{ time(row) }}</span>
+              }
+              <span class="log-viewer__group-title">{{ row.text }}</span>
+              <span class="log-viewer__group-count">{{ row.groupSize }} line{{ row.groupSize === 1 ? '' : 's' }}</span>
+            </button>
+          } @else {
+            <div
+              class="log-viewer__line"
+              [class.log-viewer__line--nested]="row.nested"
+              [class.log-viewer__line--error]="row.badge === 'error' || (!row.badge && isErrorLine(row.line))"
+              [class.log-viewer__line--warning]="row.badge === 'warning'"
+              [class.log-viewer__line--notice]="row.badge === 'notice'"
+              [class.log-viewer__line--debug]="row.badge === 'debug'"
+            >
+              <span class="log-viewer__line-num">{{ row.line.lineNumber }}</span>
+              @if (showTimestamps() && time(row)) {
+                <span class="log-viewer__time">{{ time(row) }}</span>
+              }
+              @if (row.badge && row.badge !== 'debug') {
+                <lucide-icon
+                  [name]="row.badge === 'notice' ? 'info' : row.badge === 'warning' ? 'alertTriangle' : 'xCircle'"
+                  class="log-viewer__badge size-3.5"
+                ></lucide-icon>
+              }
+              <span class="log-viewer__line-text" [innerHTML]="lineHtml(row.text)"></span>
+            </div>
+          }
         }
       </div>
     }

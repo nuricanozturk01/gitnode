@@ -68,6 +68,89 @@
   min-width: 0;
 }
 
+.log-viewer__time {
+  flex-shrink: 0;
+  color: #6e7681;
+  user-select: none;
+}
+
+.log-viewer__line--nested {
+  padding-left: 2.25rem;
+}
+
+.log-viewer__line--warning {
+  background: rgba(210, 153, 34, 0.12);
+}
+
+.log-viewer__line--notice {
+  background: rgba(56, 139, 253, 0.12);
+}
+
+.log-viewer__line--debug {
+  color: #8b949e;
+}
+
+.log-viewer__badge {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.log-viewer__line--error .log-viewer__badge {
+  color: #ff7b72;
+}
+
+.log-viewer__line--warning .log-viewer__badge {
+  color: #d29922;
+}
+
+.log-viewer__line--notice .log-viewer__badge {
+  color: #58a6ff;
+}
+
+.log-viewer__group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.125rem 0.75rem;
+  text-align: left;
+  color: #e6edf3;
+  font: inherit;
+  font-weight: 600;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.log-viewer__group:hover {
+  background: rgba(110, 118, 129, 0.1);
+}
+
+.log-viewer__group:focus-visible {
+  outline: 2px solid #58a6ff;
+  outline-offset: -2px;
+}
+
+.log-viewer__group-icon {
+  flex-shrink: 0;
+  transition: transform 0.12s ease;
+}
+
+.log-viewer__group-icon--open {
+  transform: rotate(90deg);
+}
+
+.log-viewer__group-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.log-viewer__group-count {
+  flex-shrink: 0;
+  font-weight: 400;
+  color: #6e7681;
+}
+
 .log-viewer__empty {
   padding: 2rem 1rem;
   text-align: center;

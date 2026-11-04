@@ -13,6 +13,7 @@ import {
 import { LucideAngularModule } from 'lucide-angular';
 import { LogStreamError, LogStreamService } from '../../../../../core/actions/services/log-stream.service';
 import { ansiToHtml } from '../../../../../shared/utils/ansi.utils';
+import { buildLogRows, formatLogTime, type LogRow } from '../../../../../shared/utils/log-rows.utils';
 import type { WorkflowLogLine } from '../../../../../domain/actions/models/workflow-step.model';
 
 @Component({
@@ -33,12 +34,17 @@ export class LogViewerComponent implements OnDestroy {
   readonly compact = input<boolean>(false);
   /** Only lines containing this text (case-insensitive) are shown. */
   readonly filter = input<string>('');
+  /** Shows when the server stored each line. */
+  readonly showTimestamps = input<boolean>(false);
 
   readonly lines = signal<WorkflowLogLine[]>([]);
   readonly streaming = signal(false);
   readonly autoScroll = signal(true);
   /** HTTP status of a failed log request, so the viewer can say why there is nothing to show. */
   readonly errorStatus = signal<number | null>(null);
+
+  /** Groups the user opened (by the line number of their header); all others start folded. */
+  readonly expandedGroups = signal<ReadonlySet<number>>(new Set());
 
   readonly visibleLines = computed(() => {
     const term = this.filter().trim().toLocaleLowerCase('en-US');
@@ -49,6 +55,9 @@ export class LogViewerComponent implements OnDestroy {
   private readonly scrollContainer = viewChild<ElementRef<HTMLElement>>('scrollContainer');
   private abortController: AbortController | null = null;
 
+  /** What is shown: lines, annotations and folded groups. A search shows every match unfolded. */
+  readonly rows = computed(() => buildLogRows(this.visibleLines(), this.expandedGroups(), this.filter().trim() !== ''));
+
   constructor() {
     effect(() => {
       const id = this.stepId();
@@ -56,13 +65,14 @@ export class LogViewerComponent implements OnDestroy {
       this.stopStream();
       this.lines.set([]);
       this.errorStatus.set(null);
+      this.expandedGroups.set(new Set());
       if (id) {
         void this.startStream(id, isLive);
       }
     });
 
     effect(() => {
-      this.visibleLines();
+      this.rows();
       if (this.autoScroll()) {
         queueMicrotask(() => this.scrollToEnd());
       }
@@ -105,6 +115,23 @@ export class LogViewerComponent implements OnDestroy {
 
   lineHtml(content: string): string {
     return ansiToHtml(content);
+  }
+
+  toggleGroup(row: LogRow): void {
+    const key = row.line.lineNumber;
+    this.expandedGroups.update((current) => {
+      const next = new Set(current);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  }
+
+  time(row: LogRow): string {
+    return formatLogTime(row.line.timestamp);
   }
 
   isErrorLine(line: WorkflowLogLine): boolean {

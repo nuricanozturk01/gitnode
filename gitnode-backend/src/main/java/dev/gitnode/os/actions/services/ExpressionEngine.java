@@ -432,6 +432,11 @@ public final class ExpressionEngine {
         }
         case "contains" -> {
           require(name, args, 2);
+          final var items = jsonArray(asString(args.get(0)));
+          if (items != null) { // contains(array, item): membership, as on GitHub
+            final var wanted = lower(args.get(1));
+            return items.stream().anyMatch(item -> item.toLowerCase(Locale.ROOT).equals(wanted));
+          }
           return lower(args.get(0)).contains(lower(args.get(1)));
         }
         case "startswith" -> {
@@ -476,7 +481,31 @@ public final class ExpressionEngine {
     return asString(value).toLowerCase(Locale.ROOT);
   }
 
+  /** The elements of text that holds a JSON array (how fromJSON hands one back), else null. */
+  private static @Nullable List<String> jsonArray(final String text) {
+    final var trimmed = text.strip();
+    if (!trimmed.startsWith("[")) {
+      return null;
+    }
+    try {
+      final var node = JSON.readTree(trimmed);
+      if (!node.isArray()) {
+        return null;
+      }
+      final var items = new ArrayList<String>();
+      node.forEach(
+          element -> items.add(element.isValueNode() ? element.asText() : element.toString()));
+      return items;
+    } catch (final com.fasterxml.jackson.core.JsonProcessingException ex) {
+      return null;
+    }
+  }
+
   private static String join(final String list, final String separator) {
+    final var array = jsonArray(list);
+    if (array != null) {
+      return String.join(separator, array);
+    }
     final var parts = new ArrayList<String>();
     for (final String part : list.split("[,\\n]")) {
       parts.add(part.strip());

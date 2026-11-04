@@ -22,6 +22,7 @@ import dev.gitnode.os.actions.entities.WorkflowLog;
 import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.entities.WorkflowRunStatus;
 import dev.gitnode.os.actions.entities.WorkflowStep;
+import dev.gitnode.os.actions.model.WorkflowModel;
 import dev.gitnode.os.actions.repositories.RunnerRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
 import dev.gitnode.os.actions.repositories.WorkflowLogRepository;
@@ -34,13 +35,19 @@ import dev.gitnode.os.events.actions.WorkflowJobQueuedEvent;
 import dev.gitnode.os.events.actions.WorkflowJobStartedEvent;
 import dev.gitnode.os.events.actions.WorkflowRunCompletedEvent;
 import dev.gitnode.os.shared.audit.annotations.Audited;
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +57,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @NullMarked
 public class WorkflowExecutionService {
+
+  /** Length of the log level column. */
+  private static final int MAX_LEVEL_LENGTH = 8;
 
   private static final Set<WorkflowJobStatus> TERMINAL_STATUSES =
       Set.of(
@@ -67,6 +77,7 @@ public class WorkflowExecutionService {
   private final SseEmitterRegistry sseEmitterRegistry;
   private final RunStatusSseRegistry runStatusSseRegistry;
   private final JobAdvancer jobAdvancer;
+  private final WorkflowTriggerService triggerService;
 
   @Transactional
   public void handleJobClaimed(final UUID jobId, final UUID runnerId) {
@@ -125,12 +136,21 @@ public class WorkflowExecutionService {
 
   @Transactional
   public void handleJobCompleted(final UUID jobId, final String conclusion) {
+    this.handleJobCompleted(jobId, conclusion, java.util.Map.of());
+  }
+
+  @Transactional
+  public void handleJobCompleted(
+      final UUID jobId, final String conclusion, final java.util.Map<String, String> outputs) {
 
     final var job = this.requireJob(jobId);
-    final var status = conclusionToStatus(conclusion);
+    final var run0 = this.requireRun(job.getRunId());
+    final var effective = this.applyContinueOnError(run0, job, conclusion);
+    final var status = conclusionToStatus(effective);
 
     job.setStatus(status);
-    job.setConclusion(conclusion);
+    job.setConclusion(effective);
+    job.setOutputs(outputs.isEmpty() ? null : new java.util.LinkedHashMap<>(outputs));
     job.setCompletedAt(Instant.now());
     this.jobRepository.save(job);
 
@@ -138,18 +158,18 @@ public class WorkflowExecutionService {
       this.markRunnerOnlineIfIdle(job.getRunnerId());
     }
 
-    final var run = this.requireRun(job.getRunId());
+    final var run = run0;
 
     this.eventPublisher.publishEvent(
         new WorkflowJobCompletedEvent(
-            jobId, job.getRunId(), run.getRepoId(), job.getName(), conclusion));
+            jobId, job.getRunId(), run.getRepoId(), job.getName(), effective));
 
     this.runStatusSseRegistry.notify(job.getRunId());
     final var allJobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
-    this.advanceWaitingJobs(run, allJobs);
-    this.maybeCompleteRun(run, allJobs);
+    final var current = this.advanceWaitingJobs(run, allJobs);
+    this.maybeCompleteRun(run, current);
 
-    log.info("Job completed: jobId={}, conclusion={}", jobId, conclusion);
+    log.info("Job completed: jobId={}, conclusion={}", jobId, effective);
   }
 
   @Audited(
@@ -215,6 +235,147 @@ public class WorkflowExecutionService {
     log.info("Run deleted: runId={}", runId);
   }
 
+  /**
+   * A job with {@code continue-on-error: true} that fails counts as a success for the run and for
+   * the jobs that need it, as on GitHub. Anything else keeps the reported conclusion.
+   */
+  private String applyContinueOnError(
+      final WorkflowRun run, final WorkflowJob job, final String conclusion) {
+
+    if (!"failure".equalsIgnoreCase(conclusion)) {
+      return conclusion;
+    }
+    final var model = this.jobAdvancer.loadModel(run);
+    final var def = this.jobAdvancer.jobDefinition(model, job);
+    if (def == null || def.continueOnError() == null) {
+      return conclusion;
+    }
+    return "true".equalsIgnoreCase(def.continueOnError().strip()) ? "success" : conclusion;
+  }
+
+  /**
+   * Runs a finished run again as a new attempt, like GitHub's "Re-run jobs". With {@code jobId}
+   * only that job and the jobs that need it are reset; with {@code failedOnly} only the jobs that
+   * did not succeed; otherwise every job. Jobs that keep their result are left as they are.
+   */
+  @Audited(
+      action = "ACTIONS_RUN_RERUN",
+      entityType = "WORKFLOW_RUN",
+      entityIdSpEL = "#runId.toString()",
+      detailsSpEL = "'runId=' + #runId")
+  @Transactional
+  public void rerun(final UUID runId, final boolean failedOnly, final @Nullable UUID jobId) {
+
+    final var run = this.requireRun(runId);
+    assertFinished(run);
+
+    final var allJobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId);
+    final var reset = this.selectJobsToRerun(allJobs, failedOnly, jobId);
+    if (reset.isEmpty()) {
+      throw new BadRequestException("There is no job to re-run");
+    }
+
+    this.stepRepository.deleteAllByJobIds(reset.stream().map(WorkflowJob::getId).toList());
+    reset.forEach(WorkflowExecutionService::resetJob);
+
+    run.setRunAttempt(run.getRunAttempt() + 1);
+    run.setStatus(WorkflowRunStatus.QUEUED);
+    run.setConclusion(null);
+    run.setCompletedAt(null);
+    this.runRepository.save(run);
+
+    final var changed = this.jobAdvancer.advance(run, allJobs, this.jobAdvancer.loadModel(run));
+    this.jobRepository.saveAll(reset);
+    this.jobRepository.saveAll(changed);
+    this.announceQueued(run, reset, changed);
+    this.runStatusSseRegistry.notify(run.getId());
+
+    log.info("Run re-run: runId={}, attempt={}, jobs={}", runId, run.getRunAttempt(), reset.size());
+  }
+
+  private static void assertFinished(final WorkflowRun run) {
+    if (run.getStatus() == WorkflowRunStatus.QUEUED
+        || run.getStatus() == WorkflowRunStatus.IN_PROGRESS) {
+      throw new BadRequestException("The run is still in progress");
+    }
+  }
+
+  /** Back to the state of a freshly created job: waiting on its needs, or ready to be queued. */
+  private static void resetJob(final WorkflowJob job) {
+    job.setRunnerId(null);
+    job.setConclusion(null);
+    job.setStartedAt(null);
+    job.setCompletedAt(null);
+    final boolean waits = job.getNeeds() != null && !job.getNeeds().isEmpty();
+    job.setStatus(waits ? WorkflowJobStatus.WAITING : WorkflowJobStatus.QUEUED);
+  }
+
+  private void announceQueued(
+      final WorkflowRun run, final List<WorkflowJob> reset, final List<WorkflowJob> changed) {
+
+    final var toAnnounce = new LinkedHashSet<WorkflowJob>();
+    reset.stream().filter(j -> j.getStatus() == WorkflowJobStatus.QUEUED).forEach(toAnnounce::add);
+    changed.stream()
+        .filter(j -> j.getStatus() == WorkflowJobStatus.QUEUED)
+        .forEach(toAnnounce::add);
+    for (final var job : toAnnounce) {
+      this.eventPublisher.publishEvent(
+          new WorkflowJobQueuedEvent(
+              job.getId(), run.getId(), run.getRepoId(), job.getName(), job.getRunnerLabels()));
+    }
+  }
+
+  private List<WorkflowJob> selectJobsToRerun(
+      final List<WorkflowJob> allJobs, final boolean failedOnly, final @Nullable UUID jobId) {
+
+    final var selected = new HashSet<>(initialSelection(allJobs, failedOnly, jobId));
+    addDependents(allJobs, selected);
+    return allJobs.stream().filter(selected::contains).toList();
+  }
+
+  private static List<WorkflowJob> initialSelection(
+      final List<WorkflowJob> allJobs, final boolean failedOnly, final @Nullable UUID jobId) {
+
+    if (jobId != null) {
+      final var single = allJobs.stream().filter(j -> j.getId().equals(jobId)).toList();
+      if (single.isEmpty()) {
+        throw new ItemNotFoundException("Workflow job not found: " + jobId);
+      }
+      return single;
+    }
+    return failedOnly
+        ? allJobs.stream().filter(WorkflowExecutionService::didNotSucceed).toList()
+        : allJobs;
+  }
+
+  private static boolean didNotSucceed(final WorkflowJob job) {
+    return job.getStatus() == WorkflowJobStatus.FAILURE
+        || job.getStatus() == WorkflowJobStatus.CANCELLED
+        || job.getStatus() == WorkflowJobStatus.SKIPPED;
+  }
+
+  /** Grows the selection with every job that (transitively) needs a selected job. */
+  private static void addDependents(
+      final List<WorkflowJob> allJobs, final Set<WorkflowJob> selected) {
+    boolean grew = true;
+    while (grew) {
+      final var dependents =
+          allJobs.stream()
+              .filter(job -> !selected.contains(job) && dependsOnAny(job, selected, allJobs))
+              .toList();
+      selected.addAll(dependents);
+      grew = !dependents.isEmpty();
+    }
+  }
+
+  private static boolean dependsOnAny(
+      final WorkflowJob job, final Set<WorkflowJob> selected, final List<WorkflowJob> allJobs) {
+    return job.getNeeds() != null
+        && job.getNeeds().stream()
+            .anyMatch(
+                need -> JobNeeds.jobsFor(allJobs, need).stream().anyMatch(selected::contains));
+  }
+
   @Transactional
   public void handleRunnerDisconnected(final UUID runnerId) {
 
@@ -252,9 +413,11 @@ public class WorkflowExecutionService {
   public void ingestLog(
       final UUID stepId, final int lineNumber, final String content, final String level) {
 
+    final var now = Instant.now();
+    final var storedLevel = normalizeLevel(level);
     if (!this.stepRepository.existsById(stepId)) {
       log.warn("LOG for unknown stepId={}, dropping DB write but broadcasting SSE", stepId);
-      this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, level));
+      this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, storedLevel, now));
       return;
     }
 
@@ -262,20 +425,30 @@ public class WorkflowExecutionService {
     logRecord.setStepId(stepId);
     logRecord.setLineNumber(lineNumber);
     logRecord.setContent(content);
-    logRecord.setLevel(level != null && !level.isBlank() ? level : "info");
+    logRecord.setLevel(storedLevel);
     this.logRepository.save(logRecord);
 
-    this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, level));
+    this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, storedLevel, now));
+  }
+
+  /** The log level as stored: "info" when missing, cut to the column's length. */
+  private static String normalizeLevel(final @Nullable String level) {
+    if (level == null || level.isBlank()) {
+      return "info";
+    }
+    return level.length() > MAX_LEVEL_LENGTH ? level.substring(0, MAX_LEVEL_LENGTH) : level;
   }
 
   /**
    * Starts (or skips) the WAITING jobs whose needs have finished. See {@link JobAdvancer} for the
    * rules; the changed jobs are persisted here and the started ones announced.
    */
-  private void advanceWaitingJobs(
+  private List<WorkflowJob> advanceWaitingJobs(
       final WorkflowRun run, final java.util.List<WorkflowJob> allJobs) {
 
-    final var changed = this.jobAdvancer.advance(run, allJobs, this.jobAdvancer.loadModel(run));
+    final var model = this.jobAdvancer.loadModel(run);
+    final var jobs = this.expandReadyMatrices(run, allJobs, model);
+    final var changed = this.jobAdvancer.advance(run, jobs, model);
     for (final var job : changed) {
       this.jobRepository.save(job);
       if (job.getStatus() == WorkflowJobStatus.QUEUED) {
@@ -287,6 +460,34 @@ public class WorkflowExecutionService {
         log.info("Job ended without running (status={}): jobId={}", job.getStatus(), job.getId());
       }
     }
+    return jobs;
+  }
+
+  /**
+   * Turns dynamic-matrix placeholders whose needs have finished into the jobs of their matrix. A
+   * placeholder that must not run (a need failed) is left for the advancer to skip.
+   */
+  private List<WorkflowJob> expandReadyMatrices(
+      final WorkflowRun run, final List<WorkflowJob> allJobs, final @Nullable WorkflowModel model) {
+
+    var jobs = allJobs;
+    for (final var placeholder : allJobs) {
+      final var ready =
+          placeholder.getMatrixExpression() != null
+              && placeholder.getStatus() == WorkflowJobStatus.WAITING
+              && this.jobAdvancer.needsFinished(placeholder, jobs)
+              && this.jobAdvancer.shouldRun(
+                  run, placeholder, this.jobAdvancer.jobDefinition(model, placeholder), jobs);
+      if (!ready) {
+        continue;
+      }
+      final var expanded = this.triggerService.expandDynamicMatrix(run, placeholder, jobs, model);
+      final var next = new ArrayList<>(jobs);
+      next.remove(placeholder);
+      next.addAll(expanded);
+      jobs = next;
+    }
+    return jobs;
   }
 
   private void maybeCompleteRun(final WorkflowRun run, final java.util.List<WorkflowJob> jobs) {
@@ -357,5 +558,6 @@ public class WorkflowExecutionService {
     };
   }
 
-  public record LogLine(int lineNumber, String content, String level) {}
+  public record LogLine(
+      int lineNumber, String content, String level, @Nullable Instant timestamp) {}
 }

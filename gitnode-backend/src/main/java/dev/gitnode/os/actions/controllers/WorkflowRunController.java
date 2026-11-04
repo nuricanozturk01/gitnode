@@ -16,6 +16,8 @@
 package dev.gitnode.os.actions.controllers;
 
 import dev.gitnode.os.actions.dtos.request.WorkflowDispatchRequest;
+import dev.gitnode.os.actions.dtos.response.AnnotationResponse;
+import dev.gitnode.os.actions.dtos.response.JobSummaryResponse;
 import dev.gitnode.os.actions.dtos.response.WorkflowRunResponse;
 import dev.gitnode.os.actions.entities.WorkflowRunStatus;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
@@ -42,12 +44,12 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -67,21 +69,39 @@ public class WorkflowRunController {
 
   record PageResponse<T>(List<T> content, long totalElements, int totalPages, int page, int size) {}
 
+  /** Query parameters of the run list; every field is optional. */
+  record RunListQuery(
+      @Nullable String triggerEvent,
+      @Nullable String triggerRef,
+      @Nullable String workflow,
+      @Nullable String branch,
+      @Nullable String status,
+      @Nullable String actor,
+      @Nullable String q) {}
+
   @GetMapping("/runs")
   public ResponseEntity<PageResponse<WorkflowRunResponse>> listRuns(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
       @PathVariable final String owner,
       @PathVariable final String repo,
-      @RequestParam(required = false) final @Nullable String triggerEvent,
-      @RequestParam(required = false) final @Nullable String triggerRef,
+      @ModelAttribute final RunListQuery query,
       @PageableDefault(size = 20) final Pageable pageable) {
 
     final var userId = this.jwtUtils.tryExtractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     final var repoId = this.requireRepoId(owner, repo);
 
-    final var page = this.runQueries.listRuns(repoId, triggerEvent, triggerRef, pageable);
+    final var filter =
+        new WorkflowRunQueryService.RunFilter(
+            query.workflow(),
+            query.triggerEvent(),
+            query.triggerRef(),
+            query.branch(),
+            query.status(),
+            query.actor(),
+            query.q());
+    final var page = this.runQueries.listRuns(repoId, filter, pageable);
 
     return ResponseEntity.ok(
         new PageResponse<>(
@@ -105,6 +125,37 @@ public class WorkflowRunController {
     this.requireRepoId(owner, repo);
 
     return ResponseEntity.ok(this.runQueries.getRun(runId));
+  }
+
+  @GetMapping("/runs/{runId}/annotations")
+  public ResponseEntity<List<AnnotationResponse>> annotations(
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID runId) {
+
+    this.assertCanRead(authHeader, owner, repo);
+    return ResponseEntity.ok(this.runQueries.annotations(runId));
+  }
+
+  @GetMapping("/runs/{runId}/summary")
+  public ResponseEntity<List<JobSummaryResponse>> summary(
+      @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
+          final @Nullable String authHeader,
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID runId) {
+
+    this.assertCanRead(authHeader, owner, repo);
+    return ResponseEntity.ok(this.runQueries.summaries(runId));
+  }
+
+  private void assertCanRead(
+      final @Nullable String authHeader, final String owner, final String repo) {
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    this.repoService.assertUserCanAccessRepo(userId, owner, repo);
+    this.requireRepoId(owner, repo);
   }
 
   @GetMapping(value = "/runs/{runId}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -148,6 +199,25 @@ public class WorkflowRunController {
     this.repoService.assertUserHasPermission(
         userId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
     this.executionService.cancelRun(runId);
+    return ResponseEntity.noContent().build();
+  }
+
+  record RerunRequest(boolean failedOnly, @Nullable UUID jobId) {}
+
+  @PostMapping("/runs/{runId}/rerun")
+  public ResponseEntity<Void> rerun(
+      @RequestHeader(HttpHeaders.AUTHORIZATION) final String authHeader,
+      @PathVariable final String owner,
+      @PathVariable final String repo,
+      @PathVariable final UUID runId,
+      @RequestBody(required = false) final @Nullable RerunRequest body) {
+
+    final var userId = this.jwtUtils.extractUserId(authHeader);
+    this.repoService.assertUserHasPermission(
+        userId, owner, repo, CollaboratorPermission.ACTIONS_WRITE);
+    this.requireRepoId(owner, repo);
+    this.executionService.rerun(
+        runId, body != null && body.failedOnly(), body == null ? null : body.jobId());
     return ResponseEntity.noContent().build();
   }
 

@@ -50,8 +50,14 @@ public class JobAdvancer {
   private final ExpressionEvaluator expressionEvaluator;
   private final RepoLookupPort repoLookup;
 
-  /** The parsed workflow a run was created from, or null when it is unavailable. */
+  /**
+   * The parsed workflow a run was created from, or null when it is unavailable. The copy stored
+   * with the run wins over the definition, which may have been edited since.
+   */
   public @Nullable WorkflowModel loadModel(final WorkflowRun run) {
+    if (run.getWorkflowContent() != null) {
+      return this.parserService.parseFromContent(run.getWorkflowContent());
+    }
     final var defId = run.getWorkflowDefId();
     if (defId == null) {
       return null;
@@ -159,6 +165,8 @@ public class JobAdvancer {
       final var result = JobNeeds.aggregate(JobNeeds.jobsFor(allJobs, need));
       results.add(result);
       context.put("needs." + need + ".result", result);
+      JobNeeds.outputsOf(JobNeeds.jobsFor(allJobs, need))
+          .forEach((name, value) -> context.put("needs." + need + ".outputs." + name, value));
     }
     final String status = needs.isEmpty() ? JobNeeds.SUCCESS : JobNeeds.statusFor(results);
 
@@ -169,7 +177,26 @@ public class JobAdvancer {
     return this.expressionEvaluator.evaluateCondition(condition, context, status);
   }
 
-  private boolean needsFinished(final WorkflowJob job, final List<WorkflowJob> allJobs) {
+  /**
+   * The expression context for a job whose needs have finished: github.*, inputs.*, matrix.* and
+   * needs.&lt;job&gt;.result / needs.&lt;job&gt;.outputs.&lt;name&gt;.
+   */
+  public Map<String, String> needsContext(
+      final WorkflowRun run, final WorkflowJob job, final List<WorkflowJob> allJobs) {
+
+    final var context = this.baseContext(run, job);
+    final var needs = job.getNeeds() == null ? List.<String>of() : job.getNeeds();
+    for (final String need : needs) {
+      final var needed = JobNeeds.jobsFor(allJobs, need);
+      context.put("needs." + need + ".result", JobNeeds.aggregate(needed));
+      JobNeeds.outputsOf(needed)
+          .forEach((name, value) -> context.put("needs." + need + ".outputs." + name, value));
+    }
+    return context;
+  }
+
+  /** True when every job this one needs has finished (a job without needs never "waits"). */
+  public boolean needsFinished(final WorkflowJob job, final List<WorkflowJob> allJobs) {
     final var needs = job.getNeeds();
     if (needs == null || needs.isEmpty()) {
       return false; // not a job that waits on others
@@ -179,7 +206,8 @@ public class JobAdvancer {
         .allMatch(need -> JobNeeds.jobsFor(allJobs, need).stream().allMatch(JobNeeds::isTerminal));
   }
 
-  private @Nullable JobModel jobDefinition(
+  /** The definition of {@code job} in the parsed workflow, or null when it cannot be found. */
+  public @Nullable JobModel jobDefinition(
       final @Nullable WorkflowModel model, final WorkflowJob job) {
     if (model == null || model.jobs() == null) {
       return null;

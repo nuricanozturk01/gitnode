@@ -138,7 +138,7 @@ class RunnerRegistryServiceTest {
 
     assertThat(result.runnerId()).isEqualTo(RUNNER_ID);
     assertThat(result.token()).isEqualTo("runner.jwt.token");
-    assertThat(result.labels()).containsExactly("self-hosted", "linux");
+    assertThat(result.labels()).containsExactly("self-hosted", "linux", "x64");
     verify(registrationTokenRepository).save(any());
     verify(runnerRepository)
         .save(

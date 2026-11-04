@@ -108,6 +108,7 @@ import {
   RotateCcw,
   GitCommitHorizontal,
   Ellipsis,
+  Info,
   Trash,
 } from 'lucide-angular';
 
@@ -205,5 +206,6 @@ export const LUCIDE_ICONS = {
   RotateCcw,
   GitCommitHorizontal,
   Ellipsis,
+  Info,
   Trash,
 };

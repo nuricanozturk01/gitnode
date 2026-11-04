@@ -244,6 +244,42 @@
       <div class="border-base-300 border-t">
         <app-job-graph [jobs]="run()!.jobs" [selectedJobId]="null" (jobSelected)="selectJob($event)"></app-job-graph>
       </div>
+      } } @if (annotations().length > 0 && !selectedJob()) {
+      <div class="border-base-300 border-t">
+        <h4 class="text-base-content px-4 pt-3 text-sm font-semibold">Annotations</h4>
+        <ul class="divide-base-300 divide-y px-1 py-1" aria-label="Annotations">
+          @for (annotation of annotations(); track $index) {
+          <li>
+            <button
+              type="button"
+              class="hover:bg-base-200/60 flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm"
+              (click)="selectJob(annotation.jobId)"
+            >
+              <lucide-icon
+                [name]="
+                  annotation.level === 'notice' ? 'info' : annotation.level === 'warning' ? 'alertTriangle' : 'xCircle'
+                "
+                class="mt-0.5 size-4 shrink-0"
+                [class.text-error]="annotation.level === 'error'"
+                [class.text-warning]="annotation.level === 'warning'"
+                [class.text-info]="annotation.level === 'notice'"
+              ></lucide-icon>
+              <span class="min-w-0 flex-1">
+                <span class="block break-words">{{ annotation.message }}</span>
+                <span class="text-base-content/50 block text-xs">
+                  {{ annotation.jobName }} · step {{ annotation.stepNumber }}
+                </span>
+              </span>
+            </button>
+          </li>
+          }
+        </ul>
+      </div>
+      } @if (summaries().length > 0 && !selectedJob()) { @for (summary of summaries(); track summary.jobId) {
+      <div class="border-base-300 border-t">
+        <h4 class="text-base-content px-4 pt-3 text-sm font-semibold">{{ summary.jobName }} summary</h4>
+        <div class="readme-content px-4 py-3" [innerHTML]="summary.html"></div>
+      </div>
       } }
     </section>
   </div>

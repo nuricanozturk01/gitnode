@@ -52,6 +52,22 @@ public class WorkflowParserService {
 
   public List<ParsedWorkflow> parseWorkflows(
       final String ownerUsername, final String repoName, final String branchRef) {
+    return this.scan(ownerUsername, repoName, branchRef, new ArrayList<>());
+  }
+
+  /** Workflow files at {@code branchRef} that exist but cannot be parsed, with the reason. */
+  public List<ParseFailure> findParseFailures(
+      final String ownerUsername, final String repoName, final String branchRef) {
+    final var failures = new ArrayList<ParseFailure>();
+    this.scan(ownerUsername, repoName, branchRef, failures);
+    return List.copyOf(failures);
+  }
+
+  private List<ParsedWorkflow> scan(
+      final String ownerUsername,
+      final String repoName,
+      final String branchRef,
+      final List<ParseFailure> failures) {
 
     final var repoPath = Path.of(this.repoRoot, ownerUsername, repoName + ".git");
     final var result = new ArrayList<ParsedWorkflow>();
@@ -75,21 +91,7 @@ public class WorkflowParserService {
           treeWalk.setFilter(PathFilter.create(WORKFLOW_DIR));
 
           while (treeWalk.next()) {
-            final var path = treeWalk.getPathString();
-
-            if (!path.endsWith(".yml") && !path.endsWith(".yaml")) {
-              continue;
-            }
-
-            final var objectId = treeWalk.getObjectId(0);
-            final var content = this.readBlob(gitRepo, objectId);
-
-            if (content == null) {
-              continue;
-            }
-
-            this.parseYaml(path, content)
-                .ifPresent(model -> result.add(new ParsedWorkflow(path, content, model)));
+            this.parseEntry(gitRepo, treeWalk, result, failures);
           }
         }
       }
@@ -100,10 +102,60 @@ public class WorkflowParserService {
     return List.copyOf(result);
   }
 
+  /** Parses one file of the workflows directory into {@code result}, or records why it failed. */
+  private void parseEntry(
+      final Repository gitRepo,
+      final TreeWalk treeWalk,
+      final List<ParsedWorkflow> result,
+      final List<ParseFailure> failures)
+      throws IOException {
+
+    final var path = treeWalk.getPathString();
+    if (!path.endsWith(".yml") && !path.endsWith(".yaml")) {
+      return;
+    }
+    final var content = this.readBlob(gitRepo, treeWalk.getObjectId(0));
+    if (content == null) {
+      return;
+    }
+    try {
+      result.add(new ParsedWorkflow(path, content, this.readModel(content)));
+    } catch (final IOException e) {
+      log.warn("Failed to parse workflow YAML at {}: {}", path, e.getMessage());
+      failures.add(new ParseFailure(path, firstLine(e.getMessage())));
+    }
+  }
+
+  /** The commit message of {@code rev} (a sha or ref), or null when it cannot be read. */
+  public @Nullable String readCommitMessage(
+      final String ownerUsername, final String repoName, final @Nullable String rev) {
+
+    if (rev == null || rev.isBlank()) {
+      return null;
+    }
+    final var repoPath = Path.of(this.repoRoot, ownerUsername, repoName + ".git");
+    try (Repository gitRepo = new FileRepositoryBuilder().setGitDir(repoPath.toFile()).build();
+        RevWalk revWalk = new RevWalk(gitRepo)) {
+      final var id = gitRepo.resolve(rev);
+      return id == null ? null : revWalk.parseCommit(id).getFullMessage().strip();
+    } catch (final IOException | RuntimeException e) {
+      log.debug("Cannot read commit message of {} in {}/{}", rev, ownerUsername, repoName);
+      return null;
+    }
+  }
+
+  private WorkflowModel readModel(final String content) throws IOException {
+    return YAML_MAPPER.readValue(content, WorkflowModel.class);
+  }
+
+  private static String firstLine(final @Nullable String message) {
+    return message == null ? "invalid YAML" : message.lines().findFirst().orElse("invalid YAML");
+  }
+
   private Optional<WorkflowModel> parseYaml(final String path, final String content) {
 
     try {
-      return java.util.Optional.of(YAML_MAPPER.readValue(content, WorkflowModel.class));
+      return java.util.Optional.of(this.readModel(content));
     } catch (final IOException e) {
       log.warn("Failed to parse workflow YAML at {}: {}", path, e.getMessage());
       return java.util.Optional.empty();
@@ -122,6 +174,9 @@ public class WorkflowParserService {
 
     return this.parseYaml("<stored>", yamlContent).orElse(null);
   }
+
+  /** A workflow file that could not be parsed. */
+  public record ParseFailure(String filePath, String reason) {}
 
   public record ParsedWorkflow(String filePath, String rawContent, WorkflowModel model) {}
 }

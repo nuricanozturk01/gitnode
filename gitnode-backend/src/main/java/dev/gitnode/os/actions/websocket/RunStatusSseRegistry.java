@@ -55,7 +55,8 @@ public class RunStatusSseRegistry {
     for (final var emitter : list) {
       try {
         emitter.send(SseEmitter.event().name("run_updated").data(runId.toString()));
-      } catch (final IOException ex) {
+      } catch (final IOException | IllegalStateException ex) {
+        // IllegalStateException: the client left and the stream completed in the meantime.
         log.debug("SSE send failed for run {}, removing emitter", runId);
         this.remove(runId, emitter);
       }
@@ -70,9 +71,14 @@ public class RunStatusSseRegistry {
     for (final var emitter : list) {
       try {
         emitter.send(SseEmitter.event().name("run_completed").data(runId.toString()));
-      } catch (final IOException ignored) {
+      } catch (final IOException | IllegalStateException alreadyGone) {
+        log.debug("SSE stream of run {} was already closed", runId);
       }
-      emitter.complete();
+      try {
+        emitter.complete();
+      } catch (final IllegalStateException alreadyCompleted) {
+        log.debug("SSE stream of run {} was already completed", runId);
+      }
     }
   }
 
@@ -84,7 +90,7 @@ public class RunStatusSseRegistry {
                 emitter -> {
                   try {
                     emitter.send(SseEmitter.event().comment("keep-alive"));
-                  } catch (final IOException ex) {
+                  } catch (final IOException | IllegalStateException ex) {
                     this.remove(runId, emitter);
                   }
                 }));

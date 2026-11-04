@@ -163,4 +163,22 @@ class ExpressionEngineTest {
     assertThat(ExpressionEngine.asString(3.5)).isEqualTo("3.5");
     assertThat(ExpressionEngine.asString("x")).isEqualTo("x");
   }
+
+  @org.junit.jupiter.api.Test
+  @org.junit.jupiter.api.DisplayName("join and contains understand the arrays fromJSON hands back")
+  void arrayFunctions() {
+    org.assertj.core.api.Assertions.assertThat(eval("join(fromJSON('[\"a\",\"b\",\"c\"]'), '+')"))
+        .isEqualTo("a+b+c");
+    org.assertj.core.api.Assertions.assertThat(eval("join(fromJSON('[\"a\",\"b\"]'))"))
+        .isEqualTo("a,b");
+    org.assertj.core.api.Assertions.assertThat(eval("join('x,y')")).isEqualTo("x,y");
+    org.assertj.core.api.Assertions.assertThat(
+            eval("contains(fromJSON('[\"alpha\",\"beta\"]'), 'BETA')"))
+        .isEqualTo(true);
+    org.assertj.core.api.Assertions.assertThat(
+            eval("contains(fromJSON('[\"alpha\",\"beta\"]'), 'bet')"))
+        .isEqualTo(false);
+    org.assertj.core.api.Assertions.assertThat(eval("contains('Hello World', 'world')"))
+        .isEqualTo(true);
+  }
 }

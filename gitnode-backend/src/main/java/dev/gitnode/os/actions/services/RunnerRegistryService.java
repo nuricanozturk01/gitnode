@@ -202,7 +202,7 @@ public class RunnerRegistryService {
 
   private void applyRequest(final Runner runner, final RunnerRegistrationRequest request) {
 
-    runner.setLabels(request.labels());
+    runner.setLabels(RunnerLabels.forRunner(request.labels(), request.os(), request.arch()));
     runner.setOs(request.os());
     runner.setArch(request.arch());
     runner.setVersion(request.version());

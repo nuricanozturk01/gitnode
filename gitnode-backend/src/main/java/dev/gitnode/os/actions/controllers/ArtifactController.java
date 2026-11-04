@@ -17,11 +17,11 @@ package dev.gitnode.os.actions.controllers;
 
 import dev.gitnode.os.actions.dtos.response.ArtifactResponse;
 import dev.gitnode.os.actions.entities.WorkflowArtifact;
+import dev.gitnode.os.actions.services.ActionsStorageAccess;
 import dev.gitnode.os.actions.services.ArtifactStoreService;
 import dev.gitnode.os.actions.services.CacheStoreService;
 import dev.gitnode.os.identity.services.JwtUtils;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -52,6 +52,10 @@ public class ArtifactController {
   private final ArtifactStoreService artifactStoreService;
   private final CacheStoreService cacheStoreService;
   private final JwtUtils jwtUtils;
+  private final ActionsStorageAccess storageAccess;
+
+  /** URL-encoded key a cache hit was stored under. */
+  static final String MATCHED_KEY_HEADER = "X-Cache-Matched-Key";
 
   @PostMapping("/api/actions/artifacts/upload")
   public ResponseEntity<ArtifactResponse> upload(
@@ -62,7 +66,7 @@ public class ArtifactController {
       @RequestParam(defaultValue = "30") final int retentionDays,
       @RequestPart("file") final MultipartFile file) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    this.storageAccess.authorizeForRun(authHeader, runId, ActionsStorageAccess.Mode.WRITE);
     final var artifact = this.artifactStoreService.upload(runId, jobId, name, file, retentionDays);
     return ResponseEntity.ok(this.toResponse(artifact));
   }
@@ -73,7 +77,7 @@ public class ArtifactController {
       @PathVariable final UUID runId,
       @PathVariable final String name) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    this.storageAccess.authorizeForRun(authHeader, runId, ActionsStorageAccess.Mode.READ);
     final Resource resource = this.artifactStoreService.download(runId, name);
 
     return ResponseEntity.ok()
@@ -112,10 +116,19 @@ public class ArtifactController {
       @RequestParam final String key,
       @RequestParam(required = false) @Nullable final List<String> restoreKeys) {
 
-    this.jwtUtils.extractUserId(authHeader);
-    final Optional<Resource> hit = this.cacheStoreService.get(repoId, key, restoreKeys);
+    this.storageAccess.authorizeForRepo(authHeader, repoId, ActionsStorageAccess.Mode.READ);
+    final var hit = this.cacheStoreService.get(repoId, key, restoreKeys);
 
-    return hit.map(r -> ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(r))
+    // The matched key tells the runner whether this was the exact key or a restore-key fallback.
+    return hit.map(
+            h ->
+                ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(
+                        MATCHED_KEY_HEADER,
+                        java.net.URLEncoder.encode(
+                            h.matchedKey(), java.nio.charset.StandardCharsets.UTF_8))
+                    .body(h.resource()))
         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cache miss"));
   }
 
@@ -127,7 +140,7 @@ public class ArtifactController {
       @RequestParam(required = false) @Nullable final List<String> restoreKeys,
       @RequestPart("file") final MultipartFile file) {
 
-    this.jwtUtils.extractUserId(authHeader);
+    this.storageAccess.authorizeForRepo(authHeader, repoId, ActionsStorageAccess.Mode.WRITE);
     this.cacheStoreService.put(repoId, key, restoreKeys, file);
     return ResponseEntity.noContent().build();
   }

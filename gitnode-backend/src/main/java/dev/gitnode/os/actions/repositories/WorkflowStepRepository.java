@@ -27,4 +27,10 @@ import org.springframework.stereotype.Repository;
 public interface WorkflowStepRepository extends JpaRepository<WorkflowStep, UUID> {
 
   List<WorkflowStep> findAllByJobIdOrderByStepNumberAsc(UUID jobId);
+
+  @org.springframework.data.jpa.repository.Modifying
+  @org.springframework.data.jpa.repository.Query(
+      "DELETE FROM WorkflowStep s WHERE s.jobId IN :jobIds")
+  void deleteAllByJobIds(
+      @org.springframework.data.repository.query.Param("jobIds") java.util.Collection<UUID> jobIds);
 }

@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  SecurityContext,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
+import { marked } from 'marked';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
@@ -12,6 +22,7 @@ import { ToastService } from '../../../core/toast/toast.service';
 import type { WorkflowRun } from '../../../domain/actions/models/workflow-run.model';
 import type { WorkflowJob } from '../../../domain/actions/models/workflow-job.model';
 import type { WorkflowStep } from '../../../domain/actions/models/workflow-step.model';
+import type { RunAnnotation } from '../../../domain/actions/models/run-extras.model';
 import {
   commitTitle,
   formatDuration,
@@ -28,6 +39,15 @@ import {
 import { JobGraphComponent } from './components/job-graph/job-graph.component';
 import { JobPanelComponent } from './components/job-panel/job-panel.component';
 import { LogViewerComponent } from './components/log-viewer/log-viewer.component';
+
+/** A job's summary, rendered: the markdown the job wrote, as sanitized HTML. */
+interface RenderedSummary {
+  jobId: string;
+  jobName: string;
+  html: string;
+}
+
+marked.use({ gfm: true, breaks: false });
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +71,7 @@ export class RunDetailPage {
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly logService = inject(LogStreamService);
+  private readonly sanitizer = inject(DomSanitizer);
   readonly repoContext = inject(RepoContextService);
 
   readonly run = signal<WorkflowRun | null>(null);
@@ -58,6 +79,9 @@ export class RunDetailPage {
   readonly cancelling = signal(false);
   /** Ticks every second while the run is active so durations count up between server updates. */
   readonly now = signal(Date.now());
+  readonly annotations = signal<RunAnnotation[]>([]);
+  readonly summaries = signal<RenderedSummary[]>([]);
+  readonly showTimestamps = signal(false);
   readonly rerunning = signal(false);
   readonly downloading = signal(false);
   readonly selectedJobId = signal<string | null>(null);
@@ -106,6 +130,8 @@ export class RunDetailPage {
   formatDuration = formatDuration;
 
   private clockTimer: ReturnType<typeof setInterval> | null = null;
+  /** run id + status the annotations and summaries were last loaded for. */
+  private extrasFor = '';
   private sseAbortController: AbortController | null = null;
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private refreshDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -180,6 +206,10 @@ export class RunDetailPage {
     return job.startedAt ? formatDuration(job.startedAt, job.completedAt, this.now()) : '';
   }
 
+  toggleTimestamps(): void {
+    this.showTimestamps.update((on) => !on);
+  }
+
   onLogSearch(event: Event): void {
     this.logSearch.set((event.target as HTMLInputElement).value);
   }
@@ -240,10 +270,39 @@ export class RunDetailPage {
       this.run.set(run);
       this.stopStreaming();
       this.syncStreaming(run);
+      void this.loadExtras(run);
     } catch {
       this.run.set(null);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /**
+   * Annotations and job summaries come from the logs, so they are fetched when a run is opened and
+   * once more when it changes status (in particular when it finishes), not on every live update.
+   */
+  private async loadExtras(run: WorkflowRun): Promise<void> {
+    const marker = `${run.id}:${run.runAttempt}:${run.status}`;
+    if (marker === this.extrasFor) return;
+    this.extrasFor = marker;
+    try {
+      const [annotations, summaries] = await Promise.all([
+        this.runService.getAnnotations(this.owner(), this.repoName(), run.id),
+        this.runService.getSummary(this.owner(), this.repoName(), run.id),
+      ]);
+      if (this.run()?.id !== run.id) return;
+      this.annotations.set(annotations);
+      this.summaries.set(
+        summaries.map((s) => ({
+          jobId: s.jobId,
+          jobName: s.jobName,
+          html: this.sanitizer.sanitize(SecurityContext.HTML, marked.parse(s.markdown, { async: false })) ?? '',
+        })),
+      );
+    } catch {
+      // the summary page still works without them
+      this.extrasFor = '';
     }
   }
 
@@ -335,6 +394,7 @@ export class RunDetailPage {
       if (ctrl.signal.aborted) return;
       this.run.set(run);
       this.syncClock(isRunActive(run.status));
+      void this.loadExtras(run);
       if (!isRunActive(run.status)) {
         this.stopStreaming();
         this.stopPolling();

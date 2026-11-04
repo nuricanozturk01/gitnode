@@ -70,6 +70,7 @@ class JobDispatcherTest {
   @Mock private RepoLookupPort repoRepository;
   @Mock private SecretVaultService secretVaultService;
   @Mock private StringRedisTemplate redisTemplate;
+  @Mock private RunContextEnricher runContext;
 
   private JobDispatcher dispatcher;
 
@@ -95,7 +96,8 @@ class JobDispatcherTest {
             this.repoRepository,
             expressionEvaluator,
             this.secretVaultService,
-            this.redisTemplate);
+            this.redisTemplate,
+            this.runContext);
     ReflectionTestUtils.setField(this.dispatcher, "heartbeatTimeoutSeconds", 60);
   }
 

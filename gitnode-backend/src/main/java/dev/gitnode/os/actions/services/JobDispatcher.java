@@ -66,6 +66,8 @@ public class JobDispatcher {
   public static final String DISPATCH_CHANNEL_PREFIX = "gitnode:actions:dispatch:";
   private static final int DISPATCH_BATCH_SIZE = 50;
   private static final int STUCK_SAMPLE_SIZE = 20;
+  private static final int MAX_STEP_TITLE = 80;
+  private static final String ELLIPSIS = "...";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final WorkflowJobRepository jobRepository;
@@ -79,6 +81,7 @@ public class JobDispatcher {
   private final ExpressionEvaluator expressionEvaluator;
   private final SecretVaultService secretVaultService;
   private final StringRedisTemplate redisTemplate;
+  private final RunContextEnricher runContext;
 
   @Value("${gitnode.actions.runner.heartbeat-timeout-seconds:60}")
   private int heartbeatTimeoutSeconds;
@@ -255,18 +258,13 @@ public class JobDispatcher {
     }
   }
 
-  public void invalidateYamlCache(final UUID workflowDefId) {
-    this.yamlCache.remove(workflowDefId);
-  }
-
   private @Nullable JobContext resolveJobContext(final WorkflowJob job) {
 
     final var run = this.runRepository.findById(job.getRunId()).orElse(null);
-    if (run == null || run.getWorkflowDefId() == null) {
+    if (run == null) {
       return null;
     }
-    final var defId = run.getWorkflowDefId();
-    final var model = this.resolveWorkflowModel(defId);
+    final var model = this.resolveWorkflowModel(run);
     if (model == null || model.jobs() == null) {
       return null;
     }
@@ -276,21 +274,39 @@ public class JobDispatcher {
     return new JobContext(run, jobModel, model);
   }
 
-  private @Nullable WorkflowModel resolveWorkflowModel(final UUID defId) {
-    final var cached = this.yamlCache.get(defId);
+  /**
+   * The workflow of a run. A run's content never changes (it is the copy taken when the run was
+   * queued), so the parsed model is cached by run id without any invalidation. Runs from before
+   * that copy existed fall back to the definition.
+   */
+  private @Nullable WorkflowModel resolveWorkflowModel(final WorkflowRun run) {
+    final var cached = this.yamlCache.get(run.getId());
     if (cached != null
         && Duration.between(cached.cachedAt(), Instant.now()).compareTo(YAML_CACHE_TTL) < 0) {
       return cached.model();
     }
-    final var def = this.definitionRepository.findById(defId).orElse(null);
-    if (def == null) {
+    final var content = this.workflowContentOf(run);
+    if (content == null) {
       return null;
     }
-    final var model = this.parserService.parseFromContent(def.getContent());
+    final var model = this.parserService.parseFromContent(content);
     if (model != null) {
-      this.yamlCache.put(defId, new CachedWorkflow(model, Instant.now()));
+      this.yamlCache.put(run.getId(), new CachedWorkflow(model, Instant.now()));
     }
     return model;
+  }
+
+  private @Nullable String workflowContentOf(final WorkflowRun run) {
+    if (run.getWorkflowContent() != null) {
+      return run.getWorkflowContent();
+    }
+    if (run.getWorkflowDefId() == null) {
+      return null;
+    }
+    return this.definitionRepository
+        .findById(run.getWorkflowDefId())
+        .map(def -> def.getContent())
+        .orElse(null);
   }
 
   private List<WorkflowStep> createSteps(final WorkflowJob job, final @Nullable JobModel jobModel) {
@@ -306,11 +322,37 @@ public class JobDispatcher {
       final var step = new WorkflowStep();
       step.setJobId(job.getId());
       step.setStepNumber(i + 1);
-      step.setName(stepModel.name());
+      step.setName(displayName(stepModel));
       step.setUses(stepModel.uses());
       created.add(this.stepRepository.save(step));
     }
     return created;
+  }
+
+  /**
+   * GitHub's step title: the given name, else "Run &lt;first line of the script&gt;" or "Run
+   * &lt;action&gt;".
+   */
+  static String displayName(final StepModel step) {
+    return firstText(step.name())
+        .or(() -> firstText(step.uses()).map(uses -> "Run " + uses))
+        .or(() -> firstText(step.run()).map(JobDispatcher::runTitle))
+        .orElse("Run step");
+  }
+
+  private static java.util.Optional<String> firstText(final @Nullable String value) {
+    return value == null || value.isBlank()
+        ? java.util.Optional.empty()
+        : java.util.Optional.of(value.strip());
+  }
+
+  /** "Run &lt;first line of the script&gt;", cut to a readable length. */
+  private static String runTitle(final String script) {
+    final var first = script.lines().findFirst().orElse("").strip();
+    return "Run "
+        + (first.length() > MAX_STEP_TITLE
+            ? first.substring(0, MAX_STEP_TITLE - ELLIPSIS.length()) + ELLIPSIS
+            : first);
   }
 
   private JobPayload buildJobPayload(
@@ -354,7 +396,9 @@ public class JobDispatcher {
         java.util.Optional.ofNullable(job.getMatrixValues()).orElse(Map.of()),
         java.util.Optional.ofNullable(job.getNeeds()).orElse(List.of()),
         timeoutMinutes,
-        jobContext);
+        jobContext,
+        java.util.Optional.ofNullable(jobModel).map(JobModel::outputs).orElse(Map.of()),
+        run == null ? null : this.runContext.eventFor(run));
   }
 
   /**
@@ -369,6 +413,7 @@ public class JobDispatcher {
       ctx.put("github.run_id", run.getId().toString());
       ctx.put("github.run_number", String.valueOf(run.getRunNumber()));
       ctx.put("github.workflow", run.getWorkflowName());
+      ctx.putAll(this.runContext.contextFor(run));
       this.repoLookup
           .findById(run.getRepoId())
           .ifPresent(
@@ -384,7 +429,10 @@ public class JobDispatcher {
     if (needs != null && !needs.isEmpty()) {
       final var all = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
       for (final String need : needs) {
-        ctx.put("needs." + need + ".result", JobNeeds.aggregate(JobNeeds.jobsFor(all, need)));
+        final var needed = JobNeeds.jobsFor(all, need);
+        ctx.put("needs." + need + ".result", JobNeeds.aggregate(needed));
+        JobNeeds.outputsOf(needed)
+            .forEach((name, value) -> ctx.put("needs." + need + ".outputs." + name, value));
       }
     }
     return java.util.Collections.unmodifiableMap(ctx);
@@ -418,6 +466,7 @@ public class JobDispatcher {
               env.put("GITNODE_OWNER", repo.ownerUsername());
               env.put("GITNODE_REPO", repo.name());
             });
+    env.put("GITNODE_REPO_ID", run.getRepoId().toString());
     if (run.getTriggerSha() != null) {
       env.put("GITNODE_SHA", run.getTriggerSha());
     }
@@ -654,7 +703,9 @@ public class JobDispatcher {
       Map<String, String> matrixValues,
       List<String> needs,
       int timeoutMinutes,
-      Map<String, String> context) {}
+      Map<String, String> context,
+      Map<String, String> outputs,
+      @Nullable Map<String, Object> event) {}
 
   public record StepPayload(
       String id,

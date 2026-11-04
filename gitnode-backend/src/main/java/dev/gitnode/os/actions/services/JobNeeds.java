@@ -17,7 +17,10 @@ package dev.gitnode.os.actions.services;
 
 import dev.gitnode.os.actions.entities.WorkflowJob;
 import dev.gitnode.os.actions.entities.WorkflowJobStatus;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.jspecify.annotations.NullMarked;
 
 /** Resolves a job's {@code needs} against the jobs of a run and aggregates their results. */
@@ -36,6 +39,31 @@ final class JobNeeds {
     return all.stream()
         .filter(j -> need.equals(j.getJobKey()) || need.equals(j.getName()))
         .toList();
+  }
+
+  /**
+   * The outputs of a group of jobs. A matrix job has one set per combination; like GitHub, the
+   * value of an output is the last non-empty one in completion order.
+   */
+  static Map<String, String> outputsOf(final List<WorkflowJob> jobs) {
+    final var merged = new LinkedHashMap<String, String>();
+    jobs.stream()
+        .filter(j -> j.getOutputs() != null)
+        .sorted(
+            Comparator.comparing(
+                WorkflowJob::getCompletedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
+        .forEach(
+            j ->
+                j.getOutputs()
+                    .forEach(
+                        (name, value) -> {
+                          if (value != null && !value.isEmpty()) {
+                            merged.put(name, value);
+                          } else {
+                            merged.putIfAbsent(name, "");
+                          }
+                        }));
+    return merged;
   }
 
   static boolean isTerminal(final WorkflowJob job) {

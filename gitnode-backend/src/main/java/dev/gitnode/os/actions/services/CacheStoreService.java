@@ -44,6 +44,11 @@ import org.springframework.web.multipart.MultipartFile;
 @NullMarked
 public class CacheStoreService {
 
+  /**
+   * Bytes of the key's SHA-256 kept in the file name: 12 hex characters, plenty to tell keys apart.
+   */
+  private static final int KEY_HASH_BYTES = 6;
+
   private static final int ENTRY_SIZE = 50;
 
   @Value("${gitnode.actions.artifacts.local-path}")
@@ -89,8 +94,14 @@ public class CacheStoreService {
     return saved;
   }
 
+  /**
+   * A cache entry and the key it was stored under (which differs from the requested key on a
+   * restore-key hit).
+   */
+  public record CacheHit(Resource resource, String matchedKey) {}
+
   @Transactional
-  public Optional<Resource> get(
+  public Optional<CacheHit> get(
       final UUID repoId, final String key, final @Nullable List<String> restoreKeys) {
 
     // Exact key match
@@ -104,8 +115,18 @@ public class CacheStoreService {
       for (final String prefix : restoreKeys) {
         final var candidates =
             this.cacheRepository.findByRepoIdAndCacheKeyStartingWith(repoId, prefix);
-        if (!candidates.isEmpty()) {
-          return this.touchAndReturn(candidates.getFirst());
+        // Several entries can share a prefix; like GitHub, the most recently used one wins.
+        final var newest =
+            candidates.stream()
+                .max(
+                    java.util.Comparator.comparing(
+                        WorkflowCache::getAccessedAt,
+                        java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())));
+        if (newest.isPresent()) {
+          final var hit = this.touchAndReturn(newest.get());
+          if (hit.isPresent()) {
+            return hit;
+          }
         }
       }
     }
@@ -164,7 +185,7 @@ public class CacheStoreService {
     return new long[] {evicted, totalBytes};
   }
 
-  private Optional<Resource> touchAndReturn(final WorkflowCache entry) {
+  private Optional<CacheHit> touchAndReturn(final WorkflowCache entry) {
     final Path path = Path.of(entry.getFilePath());
     if (!Files.exists(path)) {
       log.warn("Cache file missing from disk: {}", path);
@@ -172,10 +193,22 @@ public class CacheStoreService {
     }
     entry.setAccessedAt(Instant.now());
     this.cacheRepository.save(entry);
-    return Optional.of(new FileSystemResource(path));
+    return Optional.of(new CacheHit(new FileSystemResource(path), entry.getCacheKey()));
   }
 
+  /** A safe file name for a key; the hash keeps keys like {@code a/b} and {@code a_b} apart. */
   private String sanitizeKey(final String key) {
-    return key.replaceAll("[^a-zA-Z0-9._-]", "_");
+    return key.replaceAll("[^a-zA-Z0-9._-]", "_") + "-" + sha256Prefix(key);
+  }
+
+  private static String sha256Prefix(final String key) {
+    try {
+      final var digest =
+          java.security.MessageDigest.getInstance("SHA-256")
+              .digest(key.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+      return java.util.HexFormat.of().formatHex(digest, 0, KEY_HASH_BYTES);
+    } catch (final java.security.NoSuchAlgorithmException e) {
+      throw new IllegalStateException(e);
+    }
   }
 }

@@ -104,6 +104,7 @@ class CacheStoreServiceTest {
 
     final var result = service.get(REPO_ID, "maven-abc123", null);
     assertThat(result).isPresent();
+    assertThat(result.get().matchedKey()).isEqualTo("maven-abc123");
   }
 
   @Test
@@ -127,5 +128,50 @@ class CacheStoreServiceTest {
 
     final var result = service.get(REPO_ID, "maven-new", List.of("maven-"));
     assertThat(result).isPresent();
+    assertThat(result.get().matchedKey()).isEqualTo("maven-old");
+  }
+
+  @Test
+  @DisplayName("a restore-key prefix picks the most recently used entry")
+  void get_prefixPicksNewest() throws Exception {
+    final Path dir = tempDir.resolve("cache").resolve(REPO_ID.toString());
+    Files.createDirectories(dir);
+    final var older = entryFile(dir, "maven-1", java.time.Instant.parse("2026-01-01T00:00:00Z"));
+    final var newer = entryFile(dir, "maven-2", java.time.Instant.parse("2026-02-01T00:00:00Z"));
+
+    when(cacheRepository.findByRepoIdAndCacheKey(REPO_ID, "maven-new"))
+        .thenReturn(Optional.empty());
+    when(cacheRepository.findByRepoIdAndCacheKeyStartingWith(REPO_ID, "maven-"))
+        .thenReturn(List.of(older, newer));
+    when(cacheRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    assertThat(service.get(REPO_ID, "maven-new", List.of("maven-")).orElseThrow().matchedKey())
+        .isEqualTo("maven-2");
+  }
+
+  @Test
+  @DisplayName("keys that differ only in unsafe characters do not share a file")
+  void put_keysDoNotCollide() throws Exception {
+    final var first = new org.springframework.mock.web.MockMultipartFile("file", new byte[] {1});
+    final var second = new org.springframework.mock.web.MockMultipartFile("file", new byte[] {2});
+    when(cacheRepository.findByRepoIdAndCacheKey(any(), any())).thenReturn(Optional.empty());
+    when(cacheRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+    final var a = service.put(REPO_ID, "build/x", null, first);
+    final var b = service.put(REPO_ID, "build_x", null, second);
+
+    assertThat(a.getFilePath()).isNotEqualTo(b.getFilePath());
+  }
+
+  private WorkflowCache entryFile(final Path dir, final String key, final java.time.Instant at)
+      throws Exception {
+    final Path file = dir.resolve(key + ".tar.gz");
+    Files.write(file, new byte[] {1});
+    final var entry = new WorkflowCache();
+    entry.setRepoId(REPO_ID);
+    entry.setCacheKey(key);
+    entry.setFilePath(file.toString());
+    entry.setAccessedAt(at);
+    return entry;
   }
 }

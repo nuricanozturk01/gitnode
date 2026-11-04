@@ -81,6 +81,19 @@ public class WorkflowJob {
   @JdbcTypeCode(SqlTypes.JSON)
   private Map<String, String> matrixValues;
 
+  /**
+   * Set while the job is a placeholder for a dynamic matrix ({@code matrix: ${{ fromJSON(...) }}}):
+   * the real jobs are created from it once the jobs it needs have finished.
+   */
+  @Column(name = "matrix_expression", columnDefinition = "text")
+  @Nullable
+  private String matrixExpression;
+
+  @JdbcTypeCode(SqlTypes.JSON)
+  @Column(name = "outputs", columnDefinition = "jsonb")
+  @Nullable
+  private Map<String, String> outputs;
+
   @Column(name = "started_at")
   @Nullable
   private Instant startedAt;

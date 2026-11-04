@@ -13,4 +13,6 @@ export interface WorkflowLogLine {
   lineNumber: number;
   content: string;
   level: string;
+  /** When the server stored the line (ISO instant); absent on lines from before it was recorded. */
+  timestamp?: string | null;
 }

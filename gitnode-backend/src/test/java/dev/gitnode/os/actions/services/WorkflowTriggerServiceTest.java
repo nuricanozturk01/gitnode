@@ -125,6 +125,9 @@ class WorkflowTriggerServiceTest {
     assertThat(run.getValue().getTriggerSha()).isEqualTo(sha);
     assertThat(run.getValue().getTriggerRef()).isEqualTo("refs/heads/feature");
     assertThat(run.getValue().getTriggerActor()).isEqualTo(actor);
+    assertThat(run.getValue().getWorkflowContent())
+        .as("the run keeps the workflow file it was queued with")
+        .isEqualTo("raw: yaml");
   }
 
   // ── Pure unit tests: no repo stub needed ─────────────────────────────────

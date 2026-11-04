@@ -63,6 +63,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     try {
       this.jwtUtils.verifyAndValidate(jwt);
     } catch (final TokenExpiredException e) {
+      if (isRunnerStoragePath(request)) {
+        // Runners call these with their own token; the endpoint checks it (see
+        // ActionsStorageAccess). Anything that is not a valid token is refused there as well.
+        filterChain.doFilter(request, response);
+        return;
+      }
       response.setStatus(HttpStatus.UNAUTHORIZED.value());
       response.setContentType(MediaType.APPLICATION_JSON_VALUE);
       response.getWriter().write("\"" + e.getMessage() + "\"");
@@ -93,6 +99,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
     filterChain.doFilter(request, response);
+  }
+
+  /** Artifact and cache endpoints, which runners call with a runner token. */
+  private static boolean isRunnerStoragePath(final HttpServletRequest request) {
+    final var uri = request.getRequestURI();
+    return uri.startsWith("/api/actions/artifacts/") || uri.equals("/api/actions/cache");
   }
 
   @Override

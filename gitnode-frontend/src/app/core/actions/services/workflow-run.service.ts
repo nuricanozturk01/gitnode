@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import type { WorkflowRun, WorkflowRunPage } from '../../../domain/actions/models/workflow-run.model';
+import type { JobSummary, RunAnnotation } from '../../../domain/actions/models/run-extras.model';
 
 export interface WorkflowRunFilter {
   workflow?: string;
@@ -41,6 +42,16 @@ export class WorkflowRunService {
 
   getRun(owner: string, repo: string, runId: string): Promise<WorkflowRun> {
     return firstValueFrom(this.http.get<WorkflowRun>(`${this.base(owner, repo)}/runs/${runId}`));
+  }
+
+  /** The ::error, ::warning and ::notice lines the run's steps wrote. */
+  getAnnotations(owner: string, repo: string, runId: string): Promise<RunAnnotation[]> {
+    return firstValueFrom(this.http.get<RunAnnotation[]>(`${this.base(owner, repo)}/runs/${runId}/annotations`));
+  }
+
+  /** The markdown each job wrote to $GITHUB_STEP_SUMMARY. */
+  getSummary(owner: string, repo: string, runId: string): Promise<JobSummary[]> {
+    return firstValueFrom(this.http.get<JobSummary[]>(`${this.base(owner, repo)}/runs/${runId}/summary`));
   }
 
   cancelRun(owner: string, repo: string, runId: string): Promise<void> {

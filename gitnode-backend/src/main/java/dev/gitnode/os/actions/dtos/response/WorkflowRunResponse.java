@@ -34,4 +34,9 @@ public record WorkflowRunResponse(
     @Nullable Instant startedAt,
     @Nullable Instant completedAt,
     Instant createdAt,
+    @Nullable String headCommitMessage,
+    @Nullable String actorName,
+    @Nullable String actorAvatarUrl,
+    int runAttempt,
+    @Nullable String workflowPath,
     List<WorkflowJobResponse> jobs) {}

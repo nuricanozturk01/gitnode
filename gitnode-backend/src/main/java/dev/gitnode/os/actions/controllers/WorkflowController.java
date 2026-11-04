@@ -29,6 +29,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -50,17 +52,30 @@ public class WorkflowController {
   private final RepoAccessPort repoService;
   private final JwtUtils jwtUtils;
 
+  record PageResponse<T>(List<T> content, long totalElements, int totalPages, int page, int size) {}
+
+  /** The repository's workflows, one page at a time ({@code q} filters by name or path). */
   @GetMapping("/workflows")
-  public ResponseEntity<List<WorkflowSummaryResponse>> list(
+  public ResponseEntity<PageResponse<WorkflowSummaryResponse>> list(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,
       @PathVariable final String owner,
-      @PathVariable final String repo) {
+      @PathVariable final String repo,
+      @RequestParam(name = "q", required = false) final @Nullable String query,
+      @PageableDefault(size = 20) final Pageable pageable) {
 
     final var userId = this.jwtUtils.tryExtractUserId(authHeader);
     this.repoService.assertUserCanAccessRepo(userId, owner, repo);
     final UUID repoId = this.requireRepoId(owner, repo);
-    return ResponseEntity.ok(this.definitionService.listForRepo(repoId));
+
+    final var page = this.definitionService.pageForRepo(repoId, query, pageable);
+    return ResponseEntity.ok(
+        new PageResponse<>(
+            page.getContent(),
+            page.getTotalElements(),
+            page.getTotalPages(),
+            page.getNumber(),
+            page.getSize()));
   }
 
   @GetMapping("/workflows/detail")

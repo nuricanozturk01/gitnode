@@ -22,4 +22,17 @@ import org.jspecify.annotations.Nullable;
 
 @NullMarked
 public record ServiceModel(
-    String image, @Nullable Map<String, String> env, @Nullable List<String> ports) {}
+    String image,
+    @Nullable Map<String, String> env,
+    @Nullable List<String> ports,
+    @Nullable List<String> volumes,
+    @Nullable String options,
+    @Nullable Object credentials) {
+
+  public ServiceModel(
+      final String image,
+      final @Nullable Map<String, String> env,
+      final @Nullable List<String> ports) {
+    this(image, env, ports, null, null, null);
+  }
+}

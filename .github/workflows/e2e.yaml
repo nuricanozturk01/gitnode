@@ -26,6 +26,10 @@ env:
   GITNODE_FRONTEND_BASE_URL: https://gitnode.dev
   # The deployed API exposes no SSH endpoint to the runner; SSH-only scenario steps are skipped.
   GITNODE_E2E_SSH: "false"
+  # Platform admin of the deployed API, for the scenarios that disable accounts or set up LDAP/SAML.
+  # Without these secrets those scenarios are skipped instead of failing on a wrong password.
+  E2E_ADMIN_USERNAME: ${{ secrets.E2E_ADMIN_USERNAME }}
+  E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
 
 jobs:
   e2e-api:

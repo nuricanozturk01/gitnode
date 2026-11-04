@@ -35,7 +35,8 @@ public record OnTriggerModel(
     @Nullable PushTriggerModel push,
     @JsonProperty("pull_request") @Nullable PullRequestTriggerModel pullRequest,
     @JsonProperty("workflow_dispatch") @Nullable WorkflowDispatchModel workflowDispatch,
-    @Nullable List<ScheduleModel> schedule) {
+    @Nullable List<ScheduleModel> schedule,
+    @JsonProperty("workflow_run") @Nullable WorkflowRunTriggerModel workflowRun) {
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -44,7 +45,15 @@ public record OnTriggerModel(
       final @Nullable PushTriggerModel push,
       final @Nullable PullRequestTriggerModel pullRequest,
       final @Nullable WorkflowDispatchModel workflowDispatch) {
-    this(push, pullRequest, workflowDispatch, null);
+    this(push, pullRequest, workflowDispatch, null, null);
+  }
+
+  public OnTriggerModel(
+      final @Nullable PushTriggerModel push,
+      final @Nullable PullRequestTriggerModel pullRequest,
+      final @Nullable WorkflowDispatchModel workflowDispatch,
+      final @Nullable List<ScheduleModel> schedule) {
+    this(push, pullRequest, workflowDispatch, schedule, null);
   }
 
   @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
@@ -64,7 +73,7 @@ public record OnTriggerModel(
     if (raw instanceof final Map<?, ?> map) {
       return fromMap(map);
     }
-    return new OnTriggerModel(null, null, null, null);
+    return new OnTriggerModel(null, null, null, null, null);
   }
 
   private static OnTriggerModel fromMap(final Map<?, ?> map) {
@@ -76,7 +85,8 @@ public record OnTriggerModel(
         read(map, "push", PushTriggerModel.class),
         read(map, "pull_request", PullRequestTriggerModel.class),
         read(map, "workflow_dispatch", WorkflowDispatchModel.class),
-        schedule);
+        schedule,
+        read(map, "workflow_run", WorkflowRunTriggerModel.class));
   }
 
   /** Absent key → null (trigger not used); key without value → an empty trigger. */

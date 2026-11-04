@@ -397,8 +397,52 @@ public class JobDispatcher {
         java.util.Optional.ofNullable(job.getNeeds()).orElse(List.of()),
         timeoutMinutes,
         jobContext,
-        java.util.Optional.ofNullable(jobModel).map(JobModel::outputs).orElse(Map.of()),
-        run == null ? null : this.runContext.eventFor(run));
+        outputsOf(jobModel),
+        this.eventOf(run),
+        buildContainerPayload(jobModel));
+  }
+
+  private static Map<String, String> outputsOf(final @Nullable JobModel jobModel) {
+    return jobModel == null || jobModel.outputs() == null ? Map.of() : jobModel.outputs();
+  }
+
+  private @Nullable Map<String, Object> eventOf(final @Nullable WorkflowRun run) {
+    return run == null ? null : this.runContext.eventFor(run);
+  }
+
+  /**
+   * The job's {@code container:} (image, env, ports, volumes, options), or null when it has none.
+   */
+  private static @Nullable Map<String, Object> buildContainerPayload(
+      final @Nullable JobModel jobModel) {
+
+    final var container = jobModel == null ? null : jobModel.container();
+    if (container == null || container.image().isBlank()) {
+      return null;
+    }
+    return containerLikePayload(
+        container.image(),
+        container.env(),
+        container.ports(),
+        container.volumes(),
+        container.options());
+  }
+
+  /** The fields a service and a job container share, with absent ones as empty values. */
+  private static Map<String, Object> containerLikePayload(
+      final String image,
+      final @Nullable Map<String, String> env,
+      final @Nullable List<String> ports,
+      final @Nullable List<String> volumes,
+      final @Nullable String options) {
+
+    final var payload = new java.util.LinkedHashMap<String, Object>();
+    payload.put("image", image);
+    payload.put("env", java.util.Objects.requireNonNullElse(env, Map.of()));
+    payload.put("ports", java.util.Objects.requireNonNullElse(ports, List.of()));
+    payload.put("volumes", java.util.Objects.requireNonNullElse(volumes, List.of()));
+    payload.put("options", java.util.Objects.requireNonNullElse(options, ""));
+    return payload;
   }
 
   /**
@@ -624,9 +668,13 @@ public class JobDispatcher {
       final var service = entry.getValue();
       final var payload = new java.util.LinkedHashMap<String, Object>();
       payload.put("name", entry.getKey());
-      payload.put("image", service.image());
-      payload.put("env", service.env() != null ? service.env() : Map.of());
-      payload.put("ports", service.ports() != null ? service.ports() : List.of());
+      payload.putAll(
+          containerLikePayload(
+              service.image(),
+              service.env(),
+              service.ports(),
+              service.volumes(),
+              service.options()));
       result.add(payload);
     }
     return result;
@@ -705,7 +753,8 @@ public class JobDispatcher {
       int timeoutMinutes,
       Map<String, String> context,
       Map<String, String> outputs,
-      @Nullable Map<String, Object> event) {}
+      @Nullable Map<String, Object> event,
+      @Nullable Map<String, Object> container) {}
 
   public record StepPayload(
       String id,

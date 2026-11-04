@@ -26,6 +26,7 @@ import dev.gitnode.os.actions.model.OnTriggerModel;
 import dev.gitnode.os.actions.model.PushTriggerModel;
 import dev.gitnode.os.actions.model.StrategyModel;
 import dev.gitnode.os.actions.model.WorkflowModel;
+import dev.gitnode.os.actions.model.WorkflowRunTriggerModel;
 import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
@@ -189,6 +190,116 @@ public class WorkflowTriggerService {
     }
   }
 
+  /** How deep a chain of workflow_run workflows may go, as on GitHub. */
+  static final int MAX_WORKFLOW_RUN_DEPTH = 3;
+
+  /**
+   * A run finished: starts the workflows (from the default branch, as on GitHub) whose {@code
+   * workflow_run} trigger names it. A workflow triggered this way carries the finished run in
+   * {@code github.event.workflow_run}, and chains of such workflows stop after three levels.
+   */
+  @Transactional
+  public void triggerOnWorkflowRunCompleted(final UUID repoId, final UUID completedRunId) {
+
+    final var completed = this.runRepository.findById(completedRunId).orElse(null);
+    final var repo = this.repoLookup.findById(repoId).orElse(null);
+    if (completed == null || repo == null || repo.defaultBranch() == null) {
+      return;
+    }
+    final int depth = workflowRunDepth(completed) + 1;
+    if (depth > MAX_WORKFLOW_RUN_DEPTH) {
+      log.info(
+          "Not chaining workflow_run beyond {} levels: run {}",
+          MAX_WORKFLOW_RUN_DEPTH,
+          completedRunId);
+      return;
+    }
+
+    final var ref = "refs/heads/" + repo.defaultBranch();
+    this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), ref).stream()
+        .filter(parsed -> listensTo(parsed, completed))
+        .forEach(
+            parsed ->
+                this.createRun(
+                    repoId,
+                    parsed,
+                    ref,
+                    null,
+                    completed.getTriggerActor(),
+                    "workflow_run",
+                    null,
+                    null,
+                    workflowRunPayload(completed, depth)));
+  }
+
+  private static boolean listensTo(final ParsedWorkflow parsed, final WorkflowRun completed) {
+    final var on = parsed.model().on();
+    return on != null
+        && on.workflowRun() != null
+        && workflowRunMatches(on.workflowRun(), completed);
+  }
+
+  /** Whether the trigger asks for this finished run: workflow name, type and branch filters. */
+  static boolean workflowRunMatches(
+      final WorkflowRunTriggerModel trigger, final WorkflowRun completed) {
+
+    return namesWorkflow(trigger, completed.getWorkflowName())
+        && asksForCompleted(trigger)
+        && allowsBranch(trigger, branchOf(completed.getTriggerRef()));
+  }
+
+  private static boolean namesWorkflow(final WorkflowRunTriggerModel trigger, final String name) {
+    return trigger.workflows() != null
+        && trigger.workflows().stream().anyMatch(pattern -> matchesGlob(name, pattern));
+  }
+
+  /** Only "completed" exists here: runs are not announced when they start. */
+  private static boolean asksForCompleted(final WorkflowRunTriggerModel trigger) {
+    return trigger.types() == null
+        || trigger.types().isEmpty()
+        || trigger.types().contains("completed");
+  }
+
+  private static boolean allowsBranch(final WorkflowRunTriggerModel trigger, final String branch) {
+    if (matchesAny(branch, trigger.branchesIgnore())) {
+      return false;
+    }
+    return trigger.branches() == null
+        || trigger.branches().isEmpty()
+        || trigger.branches().stream().anyMatch(pattern -> matchesGlob(branch, pattern));
+  }
+
+  private static String branchOf(final @Nullable String ref) {
+    return ref == null ? "" : ref.replaceFirst("^refs/(heads|tags)/", "");
+  }
+
+  private static int workflowRunDepth(final WorkflowRun run) {
+    final var payload = run.getEventPayload();
+    if (payload == null || !(payload.get("workflow_run") instanceof final Map<?, ?> info)) {
+      return 0;
+    }
+    return info.get("chain_depth") instanceof final Number n ? n.intValue() : 0;
+  }
+
+  private static Map<String, Object> workflowRunPayload(
+      final WorkflowRun completed, final int depth) {
+    final var info = new java.util.LinkedHashMap<String, Object>();
+    info.put("id", completed.getId().toString());
+    info.put("name", completed.getWorkflowName());
+    info.put("run_number", completed.getRunNumber());
+    info.put("run_attempt", completed.getRunAttempt());
+    info.put("event", completed.getTriggerEvent());
+    info.put("status", "completed");
+    info.put("conclusion", completed.getConclusion() == null ? "" : completed.getConclusion());
+    info.put("head_branch", branchOf(completed.getTriggerRef()));
+    info.put("head_sha", completed.getTriggerSha() == null ? "" : completed.getTriggerSha());
+    info.put("chain_depth", depth);
+    final var payload = new java.util.LinkedHashMap<String, Object>();
+    payload.put("action", "completed");
+    payload.put("workflow_run", info);
+    return payload;
+  }
+
   @Transactional
   public void triggerOnPullRequest(
       final UUID repoId,
@@ -304,6 +415,23 @@ public class WorkflowTriggerService {
       final String triggerEvent,
       final @Nullable Map<String, String> inputs,
       final @Nullable String baseBranch) {
+    this.createRun(
+        repoId, parsed, triggerRef, triggerSha, actorId, triggerEvent, inputs, baseBranch, null);
+  }
+
+  /**
+   * {@code extraPayload} entries (for events GitHub documents, like workflow_run) are merged in.
+   */
+  private void createRun(
+      final UUID repoId,
+      final ParsedWorkflow parsed,
+      final String triggerRef,
+      final @Nullable String triggerSha,
+      final @Nullable UUID actorId,
+      final String triggerEvent,
+      final @Nullable Map<String, String> inputs,
+      final @Nullable String baseBranch,
+      final @Nullable Map<String, Object> extraPayload) {
 
     final var defId = this.upsertDefinition(repoId, parsed);
     final var runNumber = this.runRepository.nextRunNumber(repoId);
@@ -336,6 +464,9 @@ public class WorkflowTriggerService {
                       run.getHeadCommitMessage(),
                       baseBranch,
                       inputs));
+              if (extraPayload != null && run.getEventPayload() != null) {
+                run.getEventPayload().putAll(extraPayload);
+              }
             });
     run.setStatus(WorkflowRunStatus.QUEUED);
     run.setInputs(inputs);

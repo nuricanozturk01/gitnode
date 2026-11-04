@@ -1,11 +1,12 @@
 # GitNode Actions: GitHub uyumluluğu
 
 Hedef: GitHub'da çalışan bir workflow GitNode'da değişmeden çalışsın; UI ve loglar GitHub gibi olsun.
-Bu dosya yapılanı, **geriye kalanı** ve her biri için planı tutar. Hiçbir şey commit edilmedi.
+Bu dosya yapılanı, **geriye kalanı** ve her biri için planı tutar. Kod değişiklikleri commit edildi; bu dosyanın kendisi son güncellemeyle birlikte commit bekliyor.
 
 ## Önce bilinmesi gerekenler
 
-- `uses:` içeren bir **job** (reusable workflow) şu an adımı olmadığı için sessizce başarılı görünür ve hiçbir şey yapmaz.
+- `uses:` içeren bir **job** (reusable workflow) çalıştırılmaz. Sessizce geçmesin diye job **başarısız** olur, nedeni job'un
+  log'unda yazar, ona `needs` ile bağlı job'lar atlanır (aşağıda "Yapılanlar").
 - `paths` / `paths-ignore` yok sayılır, workflow her push'ta çalışır.
 - `on: release`, `create`, `delete` olan workflow'lar hiç tetiklenmez.
 
@@ -28,6 +29,7 @@ Bu dosya yapılanı, **geriye kalanı** ve her biri için planı tutar. Hiçbir 
 | `join()` / `contains()` dizi desteği (hem runner hem sunucu ifade motoru) | ✅ |
 | `workflow_run` trigger'ı (3 seviye zincir sınırı) | ✅ |
 | Re-run (hepsi / başarısızlar / tek job) | ✅ |
+| Reusable workflow çağrısı (`jobs.<id>.uses`) sessizce geçmez: job başarısız olur, log'unda `##[error] Reusable workflows are not supported yet: ...` yazar, bağlı job'lar atlanır, run kuyrukta takılmadan `failure` ile kapanır | ✅ geçici koruma |
 | Bir run, kuyruğa alındığı andaki workflow dosyasını çalıştırır (`workflow_run.workflow_content`) | ✅ |
 | Geçersiz workflow dosyası dispatch'te açık hata verir | ✅ |
 | UI: GitHub düzeni (sidebar, filtreler, run listesi, özet, job/step, graph), log grupları, annotations, timestamp, job summary, canlı süre, `prefers-reduced-motion`'da dönen spinner | ✅ |
@@ -35,7 +37,7 @@ Bu dosya yapılanı, **geriye kalanı** ve her biri için planı tutar. Hiçbir 
 | DB index'leri (`V074`), büyük/küçük harf yüzünden kullanılmayan 3 index düzeltildi | ✅ |
 | CI e2e: admin parolası yoksa senaryo atlanır, secret'tan okunur | ✅ |
 
-Doğrulama: backend `./mvnw -o -pl gitnode-backend -am verify` (1115 test, checkstyle, jacoco, mimari), Go `golangci-lint` + `go test ./...`,
+Doğrulama: backend `./mvnw -o -pl gitnode-backend -am verify` (1118 test, checkstyle, jacoco, mimari), Go `golangci-lint` + `go test ./...`,
 frontend `eslint` + `ng test` (50) + `ng build`, e2e API (164), uyumluluk derlemi (11 workflow).
 
 ## Geriye kalanlar ve planları
@@ -44,7 +46,7 @@ Sıralama olmazsa olmazdan başlar.
 
 ### 1. Reusable workflow (`workflow_call`): en kritik
 
-**Sorun:** `jobs.<id>.uses: ./.gitnode/workflows/x.yml` ayrıştırılıyor ama çalıştırılmıyor.
+**Sorun:** `jobs.<id>.uses: ./.gitnode/workflows/x.yml` ayrıştırılıyor ama çalıştırılmıyor (şimdilik açık hata ile başarısız oluyor).
 
 **Plan**
 - Model: `OnTriggerModel.workflowCall` (`inputs`, `outputs`, `secrets`); `JobModel.uses/with/secrets` zaten var.
@@ -59,7 +61,8 @@ Sıralama olmazsa olmazdan başlar.
 - İç içe çağrı (derinlik ≤ 4), yalnızca yerel yol. `secrets:` şimdilik `inherit` gibi davranır.
 - Çağıranda `if:` ve matrix ilk sürümde desteklenmez; açık hata verir.
 - Test: genişletme, toplu sonuç, outputs, `inputs` bağlamı birim testleri; `testdata/compat/workflows/reusable.yml`.
-- **Önerilen ek koruma:** özellik gelene kadar `uses:` olan job'u sessizce geçirmek yerine açık hata ile başarısız yapmak.
+- **Mevcut durum:** koruma yapıldı (`WorkflowTriggerService.createUnsupportedCallJob`). Bu özellik gelince o metot kaldırılır,
+  `ReusableWorkflowGuardTest` gerçek genişletme testleriyle değiştirilir.
 
 ### 2. `paths` / `paths-ignore` ve `pull_request.types`
 
@@ -127,6 +130,13 @@ Runner kayıtta `self-hosted`, OS ve mimari etiketlerini kendisi ekler (`linux`,
 
 CI e2e (`.github/workflows/e2e.yaml`) canlı API'ye karşı koşar; admin gerektiren senaryolar için
 `E2E_ADMIN_USERNAME` ve `E2E_ADMIN_PASSWORD` repo secret'ları tanımlanmalıdır (yoksa senaryo atlanır).
+
+## Yarın nereden devam
+
+1. Bu dosyadaki **Geriye kalanlar** bölümünden hangisi istenirse onu yap; sormadan ekleme yok.
+2. Çalışan ortam gerekirse: Postgres/Redis container'ları (`gn-verify-pg` :15433, `gn-verify-redis` :16379), backend :8080, runner, `ng serve` :4200.
+   Kapandıysa "Nasıl doğrulanır" bölümündeki komutlarla ve `gitnode-demo-environment` hafıza notundaki ortam değişkenleriyle yeniden açılır.
+3. Kod commit edildi (`git log`); yalnızca `actions.md` güncellemesi commit bekliyor.
 
 ## Yeni migration'lar (hepsi uygulandı)
 

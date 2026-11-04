@@ -84,6 +84,13 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
       return;
     }
 
+    // A late close of an old connection must not tear down the runner's newer session.
+    final var current = this.sessionRegistry.get(runnerId);
+    if (current.isPresent() && !current.get().wraps(session)) {
+      log.info("Ignoring close of stale session: runnerId={}, status={}", runnerId, status);
+      return;
+    }
+
     this.sessionRegistry.remove(runnerId);
     this.executionService.handleRunnerDisconnected(runnerId);
     this.markRunnerOffline(runnerId);
@@ -129,6 +136,11 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
         .ifPresent(
             runner -> {
               runner.setLastHeartbeat(java.time.Instant.now());
+              // A runner that is still heartbeating over a live socket is online; recover from a
+              // spurious OFFLINE (stale-heartbeat sweep or late close of an older connection).
+              if (runner.getStatus() == RunnerStatus.OFFLINE) {
+                runner.setStatus(RunnerStatus.ONLINE);
+              }
               this.runnerRepository.save(runner);
             });
   }

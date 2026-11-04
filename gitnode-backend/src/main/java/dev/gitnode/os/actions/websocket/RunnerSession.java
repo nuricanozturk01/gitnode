@@ -43,6 +43,11 @@ public class RunnerSession {
     return this.session.isOpen();
   }
 
+  /** True when this wraps the given underlying WebSocket session. */
+  public boolean wraps(final WebSocketSession other) {
+    return this.session == other || this.session.getId().equals(other.getId());
+  }
+
   public synchronized void send(final ServerMessage message) {
     if (!this.session.isOpen()) {
       log.warn("Cannot send message to runner {}: session closed", this.runnerId);

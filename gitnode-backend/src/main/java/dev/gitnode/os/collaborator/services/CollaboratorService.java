@@ -36,9 +36,13 @@ import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.team.api.TeamAccessPort;
+import dev.gitnode.os.team.api.TeamRole;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +66,7 @@ public class CollaboratorService implements CollaboratorAccessPort {
   private final TenantQueryPort tenants;
   private final CollaboratorMapper collaboratorMapper;
   private final ApplicationEventPublisher eventPublisher;
+  private final TeamAccessPort teamAccess;
 
   @Audited(
       action = "INVITE_COLLABORATOR",
@@ -273,7 +278,14 @@ public class CollaboratorService implements CollaboratorAccessPort {
   @Override
   public boolean isActiveCollaborator(final UUID repoId, final UUID tenantId) {
     return this.collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
-        repoId, tenantId, CollaboratorStatus.ACCEPTED);
+            repoId, tenantId, CollaboratorStatus.ACCEPTED)
+        || this.teamRoleOn(repoId, tenantId).isPresent();
+  }
+
+  @Override
+  public boolean hasTeamAccess(final UUID memberId, final UUID ownerId) {
+    return !memberId.equals(ownerId)
+        && this.teamAccess.acceptedRoleOf(memberId, ownerId).isPresent();
   }
 
   @Override
@@ -286,14 +298,26 @@ public class CollaboratorService implements CollaboratorAccessPort {
   public boolean hasPermission(
       final UUID repoId, final UUID tenantId, final CollaboratorPermission permission) {
 
-    return this.collaboratorRepository
-        .findByRepoIdAndTenantId(repoId, tenantId)
-        .filter(c -> c.getStatus() == CollaboratorStatus.ACCEPTED)
-        .map(
-            c ->
-                c.getPermissions().contains(permission)
-                    || c.getPermissions().contains(CollaboratorPermission.ADMIN))
-        .orElse(false);
+    final boolean explicit =
+        this.collaboratorRepository
+            .findByRepoIdAndTenantId(repoId, tenantId)
+            .filter(c -> c.getStatus() == CollaboratorStatus.ACCEPTED)
+            .map(
+                c ->
+                    c.getPermissions().contains(permission)
+                        || c.getPermissions().contains(CollaboratorPermission.ADMIN))
+            .orElse(false);
+
+    return explicit
+        || this.teamRoleOn(repoId, tenantId).filter(r -> r.grants(permission)).isPresent();
+  }
+
+  private Optional<TeamRole> teamRoleOn(final UUID repoId, final UUID tenantId) {
+    final var ownerId = this.repoLookup.findOwnerIds(List.of(repoId)).get(repoId);
+    if (ownerId == null || ownerId.equals(tenantId)) {
+      return Optional.empty();
+    }
+    return this.teamAccess.acceptedRoleOf(tenantId, ownerId);
   }
 
   @Override

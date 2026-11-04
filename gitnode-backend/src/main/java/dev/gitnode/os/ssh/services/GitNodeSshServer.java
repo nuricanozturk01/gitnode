@@ -17,6 +17,7 @@ package dev.gitnode.os.ssh.services;
 
 import dev.gitnode.os.branch.api.ProtectedBranchReceiveHook;
 import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.GitAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.events.GitPushEventPublisher;
 import jakarta.annotation.PostConstruct;
@@ -59,6 +60,7 @@ public class GitNodeSshServer {
 
   private final SshKeyService sshKeyService;
   private final RepoLookupPort repoLookup;
+  private final GitAccessPort gitAccess;
   private final GitPushEventPublisher pushEventPublisher;
   private final ProtectedBranchReceiveHook protectionHook;
 
@@ -79,10 +81,12 @@ public class GitNodeSshServer {
   public GitNodeSshServer(
       final SshKeyService sshKeyService,
       final RepoLookupPort repoLookup,
+      final GitAccessPort gitAccess,
       final GitPushEventPublisher pushEventPublisher,
       final ProtectedBranchReceiveHook protectionHook) {
     this.sshKeyService = sshKeyService;
     this.repoLookup = repoLookup;
+    this.gitAccess = gitAccess;
     this.pushEventPublisher = pushEventPublisher;
     this.protectionHook = protectionHook;
   }
@@ -262,15 +266,26 @@ public class GitNodeSshServer {
       throw new IOException("Invalid git command args");
     }
 
-    final var raw = args[1].replace(".git", "").replace("'", "").replace("\"", "").trim();
+    final var raw = args[1].replace("'", "").replace("\"", "").trim();
     final var normalized = raw.startsWith("/") ? raw.substring(1) : raw;
-    final var parts = normalized.split("/");
+    final var parts = normalized.split("/", -1);
 
-    if (parts.length < 2 || parts[0].isBlank() || parts[1].isBlank()) {
+    if (parts.length != 2) {
       throw new IOException("Invalid repository path: " + args[1]);
     }
 
-    return new String[] {parts[0], parts[1]};
+    final var repoName =
+        parts[1].endsWith(".git") ? parts[1].substring(0, parts[1].length() - 4) : parts[1];
+
+    if (isInvalidSegment(parts[0]) || isInvalidSegment(repoName)) {
+      throw new IOException("Invalid repository path: " + args[1]);
+    }
+
+    return new String[] {parts[0], repoName};
+  }
+
+  private static boolean isInvalidSegment(final String segment) {
+    return segment.isBlank() || ".".equals(segment) || "..".equals(segment);
   }
 
   private SimpleGeneratorHostKeyProvider createKeyProvider() {
@@ -292,20 +307,17 @@ public class GitNodeSshServer {
         repoName,
         isWrite);
 
-    final var isOwner = tenant.username().equalsIgnoreCase(owner);
-
-    if (isWrite && !isOwner) {
+    if (isWrite && !this.gitAccess.canWrite(tenant.id(), owner, repoName)) {
       log.debug(
           "SSH git access denied: write not allowed for tenant={} on {}/{}",
           tenant.username(),
           owner,
           repoName);
       throw new IOException(
-          "Write access denied: only the repository owner can push to " + owner + "/" + repoName);
+          "Write access denied: you do not have push access to " + owner + "/" + repoName);
     }
 
-    final var repoOpt = this.repoLookup.find(owner, repoName);
-    if (repoOpt.isPresent() && repoOpt.get().isPrivate() && !isOwner) {
+    if (!isWrite && !this.gitAccess.canRead(tenant.id(), owner, repoName)) {
       log.debug(
           "SSH git access denied: private repo read for tenant={} on {}/{}",
           tenant.username(),

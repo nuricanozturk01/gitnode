@@ -298,3 +298,30 @@ export async function setOrganizationLdapEnabled(
 
   return (await response.json()) as OrganizationInfo;
 }
+
+export async function setUserEnabled(
+  request: APIRequestContext,
+  admin: AdminSession,
+  username: string,
+  enabled: boolean,
+): Promise<void> {
+  const headers = { Authorization: admin.authorization };
+  const list = await request.get(`/api/admin/users?q=${encodeURIComponent(username)}&size=20`, {
+    headers,
+  });
+  if (!list.ok()) {
+    throw new Error(`admin user lookup failed (${list.status()}): ${await list.text()}`);
+  }
+  const page = (await list.json()) as { content: { id: string; username: string }[] };
+  const found = page.content.find((user) => user.username === username);
+  if (!found) {
+    throw new Error(`user "${username}" not found`);
+  }
+  const response = await request.put(`/api/admin/users/${found.id}/enabled`, {
+    headers,
+    data: { enabled },
+  });
+  if (!response.ok()) {
+    throw new Error(`set user enabled failed (${response.status()}): ${await response.text()}`);
+  }
+}

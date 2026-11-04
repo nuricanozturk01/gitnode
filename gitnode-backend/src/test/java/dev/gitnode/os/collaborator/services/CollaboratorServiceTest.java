@@ -19,7 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.collaborator.dtos.CollaboratorInfo;
@@ -40,6 +42,8 @@ import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.team.api.TeamAccessPort;
+import dev.gitnode.os.team.api.TeamRole;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumSet;
@@ -70,6 +74,7 @@ class CollaboratorServiceTest {
   @Mock private TenantQueryPort tenantRepository;
   @Mock private CollaboratorMapper collaboratorMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private TeamAccessPort teamAccess;
 
   @InjectMocks private CollaboratorService collaboratorService;
 
@@ -879,6 +884,167 @@ class CollaboratorServiceTest {
     f.setUsername(username);
     f.setPermissions(perms);
     return f;
+  }
+
+  @Nested
+  @DisplayName("team role")
+  class TeamRoleTests {
+
+    private void repoOwnedByOwner() {
+      when(repoRepository.findOwnerIds(List.of(REPO_ID))).thenReturn(Map.of(REPO_ID, OWNER_ID));
+    }
+
+    private void noCollaboratorRow() {
+      when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
+          .thenReturn(Optional.empty());
+    }
+
+    @Test
+    @DisplayName("team DEVELOPER of the repo owner can push without a collaborator row")
+    void hasPermission_teamDeveloperCanPushWithoutCollaboratorRow() {
+      noCollaboratorRow();
+      repoOwnedByOwner();
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID))
+          .thenReturn(Optional.of(TeamRole.DEVELOPER));
+
+      assertThat(
+              collaboratorService.hasPermission(REPO_ID, INVITEE_ID, CollaboratorPermission.PUSH))
+          .isTrue();
+    }
+
+    @Test
+    @DisplayName("team DEVELOPER cannot merge")
+    void hasPermission_teamDeveloperCannotMerge() {
+      noCollaboratorRow();
+      repoOwnedByOwner();
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID))
+          .thenReturn(Optional.of(TeamRole.DEVELOPER));
+
+      assertThat(
+              collaboratorService.hasPermission(
+                  REPO_ID, INVITEE_ID, CollaboratorPermission.PULL_REQUEST_MERGE))
+          .isFalse();
+    }
+
+    @Test
+    @DisplayName("role permissions union with collaborator grants")
+    void hasPermission_roleUnionsWithCollaboratorGrant() {
+      final var existing =
+          collaborator(CollaboratorStatus.ACCEPTED, Set.of(CollaboratorPermission.READ));
+      when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
+          .thenReturn(Optional.of(existing));
+      repoOwnedByOwner();
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID))
+          .thenReturn(Optional.of(TeamRole.DEVELOPER));
+
+      assertThat(
+              collaboratorService.hasPermission(REPO_ID, INVITEE_ID, CollaboratorPermission.PUSH))
+          .isTrue();
+    }
+
+    @Test
+    @DisplayName("an explicit collaborator grant skips the team lookup entirely")
+    void hasPermission_explicitGrantSkipsTeamLookup() {
+      final var existing =
+          collaborator(CollaboratorStatus.ACCEPTED, Set.of(CollaboratorPermission.PUSH));
+      when(collaboratorRepository.findByRepoIdAndTenantId(REPO_ID, INVITEE_ID))
+          .thenReturn(Optional.of(existing));
+      when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
+              REPO_ID, INVITEE_ID, CollaboratorStatus.ACCEPTED))
+          .thenReturn(true);
+
+      assertThat(
+              collaboratorService.hasPermission(REPO_ID, INVITEE_ID, CollaboratorPermission.PUSH))
+          .isTrue();
+      assertThat(collaboratorService.isActiveCollaborator(REPO_ID, INVITEE_ID)).isTrue();
+      verifyNoInteractions(teamAccess);
+      verify(repoRepository, never()).findOwnerIds(any());
+    }
+
+    @Test
+    @DisplayName("accepted team member is active; pending member (no accepted role) is not")
+    void isActiveCollaborator_acceptedActive_pendingNot() {
+      when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
+              REPO_ID, INVITEE_ID, CollaboratorStatus.ACCEPTED))
+          .thenReturn(false);
+      repoOwnedByOwner();
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID))
+          .thenReturn(Optional.of(TeamRole.VIEWER))
+          .thenReturn(Optional.empty());
+
+      assertThat(collaboratorService.isActiveCollaborator(REPO_ID, INVITEE_ID)).isTrue();
+      assertThat(collaboratorService.isActiveCollaborator(REPO_ID, INVITEE_ID)).isFalse();
+    }
+
+    @Test
+    @DisplayName("membership in another owner's team grants nothing on this repo")
+    void hasPermission_otherOwnersTeamGrantsNothing() {
+      final var otherRepo = UUID.randomUUID();
+      final var otherOwner = UUID.randomUUID();
+      when(collaboratorRepository.findByRepoIdAndTenantId(otherRepo, INVITEE_ID))
+          .thenReturn(Optional.empty());
+      when(repoRepository.findOwnerIds(List.of(otherRepo)))
+          .thenReturn(Map.of(otherRepo, otherOwner));
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, otherOwner)).thenReturn(Optional.empty());
+
+      assertThat(
+              collaboratorService.hasPermission(otherRepo, INVITEE_ID, CollaboratorPermission.READ))
+          .isFalse();
+      verify(teamAccess, never()).acceptedRoleOf(INVITEE_ID, OWNER_ID);
+    }
+
+    @Test
+    @DisplayName("the repo owner never triggers a team lookup")
+    void ownerSkipsTeamLookup() {
+      when(collaboratorRepository.existsByRepoIdAndTenantIdAndStatus(
+              REPO_ID, OWNER_ID, CollaboratorStatus.ACCEPTED))
+          .thenReturn(false);
+      repoOwnedByOwner();
+
+      assertThat(collaboratorService.isActiveCollaborator(REPO_ID, OWNER_ID)).isFalse();
+      assertThat(collaboratorService.hasTeamAccess(OWNER_ID, OWNER_ID)).isFalse();
+      verifyNoInteractions(teamAccess);
+    }
+
+    @Test
+    @DisplayName("no role and no collaborator row denies")
+    void hasPermission_noRoleAndNoRow_false() {
+      noCollaboratorRow();
+      repoOwnedByOwner();
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID)).thenReturn(Optional.empty());
+
+      assertThat(
+              collaboratorService.hasPermission(REPO_ID, INVITEE_ID, CollaboratorPermission.READ))
+          .isFalse();
+    }
+
+    @Test
+    @DisplayName("hasTeamAccess reflects the accepted role in that owner's team")
+    void hasTeamAccess_reflectsAcceptedRole() {
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID))
+          .thenReturn(Optional.of(TeamRole.VIEWER))
+          .thenReturn(Optional.empty());
+
+      assertThat(collaboratorService.hasTeamAccess(INVITEE_ID, OWNER_ID)).isTrue();
+      assertThat(collaboratorService.hasTeamAccess(INVITEE_ID, OWNER_ID)).isFalse();
+    }
+
+    @Test
+    @DisplayName("removed role denies on the next call")
+    void roleRemoved_nextCallDenies() {
+      noCollaboratorRow();
+      repoOwnedByOwner();
+      when(teamAccess.acceptedRoleOf(INVITEE_ID, OWNER_ID))
+          .thenReturn(Optional.of(TeamRole.DEVELOPER))
+          .thenReturn(Optional.empty());
+
+      assertThat(
+              collaboratorService.hasPermission(REPO_ID, INVITEE_ID, CollaboratorPermission.PUSH))
+          .isTrue();
+      assertThat(
+              collaboratorService.hasPermission(REPO_ID, INVITEE_ID, CollaboratorPermission.PUSH))
+          .isFalse();
+    }
   }
 
   private RepoCollaborator collaborator(

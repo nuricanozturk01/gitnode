@@ -18,6 +18,7 @@ package dev.gitnode.os.shared.errorhandling;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
+import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.TooManyRequestsException;
@@ -98,6 +99,23 @@ public class ErrorHandler {
     }
 
     return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(ex.getMessage());
+  }
+
+  @ExceptionHandler(ItemAlreadyExistsException.class)
+  @Nullable ResponseEntity<String> handleException(
+      final ItemAlreadyExistsException ex,
+      final HttpServletRequest request,
+      final @Nullable HttpServletResponse response) {
+
+    if (response == null) {
+      log.debug("Item already exists", ex);
+
+      return null;
+    }
+
+    return ResponseEntity.status(HttpStatus.CONFLICT)
         .contentType(MediaType.APPLICATION_JSON)
         .body(ex.getMessage());
   }

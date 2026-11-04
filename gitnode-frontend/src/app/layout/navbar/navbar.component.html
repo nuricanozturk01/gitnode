@@ -32,6 +32,14 @@
             <li><a routerLink="/docs" class="no-underline">Docs</a></li>
             <li><a routerLink="/settings" class="no-underline">Settings</a></li>
             <li>
+              <a routerLink="/team" class="no-underline">
+                Team
+                @if ((teamService.me()?.pendingInvitations ?? 0) > 0) {
+                  <span class="badge badge-primary badge-sm">{{ teamService.me()?.pendingInvitations }}</span>
+                }
+              </a>
+            </li>
+            <li>
               <a [routerLink]="user() ? ['/', user()!.username] : ['/']" class="no-underline">Profile</a>
             </li>
           } @else {
@@ -204,6 +212,14 @@
               }}</a>
             </li>
             <li><a routerLink="/settings" class="no-underline">Settings</a></li>
+            <li>
+              <a routerLink="/team" class="no-underline">
+                Team
+                @if ((teamService.me()?.pendingInvitations ?? 0) > 0) {
+                  <span class="badge badge-primary badge-sm">{{ teamService.me()?.pendingInvitations }}</span>
+                }
+              </a>
+            </li>
             <li><a routerLink="/dashboard" class="no-underline">Dashboard</a></li>
             <li><a routerLink="/migrate" class="no-underline">Migrate from GitHub</a></li>
             <li><a routerLink="/docs" class="no-underline">Docs</a></li>

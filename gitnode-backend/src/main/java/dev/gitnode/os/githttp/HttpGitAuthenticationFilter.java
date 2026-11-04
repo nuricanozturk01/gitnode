@@ -17,7 +17,9 @@ package dev.gitnode.os.githttp;
 
 import dev.gitnode.os.githttp.api.RunnerTokenPort;
 import dev.gitnode.os.identity.api.GitCredentialPort;
-import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
+import dev.gitnode.os.repo.api.GitAccessPort;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -39,16 +41,21 @@ public class HttpGitAuthenticationFilter implements Filter {
 
   private static final String RUNNER_USERNAME = "x-token";
 
+  private static final String RECEIVE_PACK = "git-receive-pack";
+
   private final GitCredentialPort credentials;
-  private final RepoLookupPort repoLookup;
+  private final GitAccessPort gitAccess;
+  private final TenantQueryPort tenants;
   @Nullable private final RunnerTokenPort runnerTokenPort;
 
   public HttpGitAuthenticationFilter(
       final GitCredentialPort credentials,
-      final RepoLookupPort repoLookup,
+      final GitAccessPort gitAccess,
+      final TenantQueryPort tenants,
       final @Nullable RunnerTokenPort runnerTokenPort) {
     this.credentials = credentials;
-    this.repoLookup = repoLookup;
+    this.gitAccess = gitAccess;
+    this.tenants = tenants;
     this.runnerTokenPort = runnerTokenPort;
   }
 
@@ -59,14 +66,21 @@ public class HttpGitAuthenticationFilter implements Filter {
 
     final var httpRequest = (HttpServletRequest) request;
     final var httpResponse = (HttpServletResponse) response;
+    final var isWrite = isWriteRequest(httpRequest);
+    final var repoPath = extractOwnerAndRepo(httpRequest);
 
     try {
       final var auth = httpRequest.getHeader("Authorization");
 
       if (auth != null && auth.startsWith("Basic ")) {
         final var username = this.authenticate(auth);
-        chain.doFilter(new AuthenticatedRequest(httpRequest, username), response);
-      } else if (this.isPublicReadRequest(httpRequest)) {
+        final var status = this.authorize(username, repoPath, isWrite);
+        if (status == HttpServletResponse.SC_OK) {
+          chain.doFilter(new AuthenticatedRequest(httpRequest, username), response);
+        } else {
+          sendError(httpResponse, status);
+        }
+      } else if (this.isPublicRead(repoPath, isWrite)) {
         chain.doFilter(request, response);
       } else {
         this.sendUnauthorized(httpResponse, "Unauthorized");
@@ -76,43 +90,70 @@ public class HttpGitAuthenticationFilter implements Filter {
     }
   }
 
-  private boolean isPublicReadRequest(final HttpServletRequest request) {
-    final var uri = request.getRequestURI();
-    final var queryString = request.getQueryString();
-    final var isWriteRequest =
-        uri.contains("git-receive-pack")
-            || (queryString != null && queryString.contains("service=git-receive-pack"));
-
-    if (isWriteRequest) {
-      return false;
-    }
-
-    final var partsOpt = this.extractOwnerAndRepo(uri);
-    if (partsOpt.isEmpty()) {
-      return false;
-    }
-
-    final var parts = partsOpt.get();
-
-    final var repoOpt = this.repoLookup.find(parts[0], parts[1]);
-    return repoOpt.isPresent() && !repoOpt.get().isPrivate();
+  private boolean isPublicRead(final Optional<String[]> repoPath, final boolean isWrite) {
+    return !isWrite
+        && repoPath.isPresent()
+        && this.gitAccess.canRead(null, repoPath.get()[0], repoPath.get()[1]);
   }
 
-  private Optional<String[]> extractOwnerAndRepo(final String uri) {
-    final var gitPrefix = "/git/";
+  private int authorize(
+      final String username, final Optional<String[]> repoPath, final boolean isWrite) {
 
-    if (!uri.startsWith(gitPrefix)) {
-      return Optional.empty();
+    if (RUNNER_USERNAME.equals(username)) {
+      return isWrite ? HttpServletResponse.SC_FORBIDDEN : HttpServletResponse.SC_OK;
     }
 
-    final var segments = uri.substring(gitPrefix.length()).split("/");
+    if (repoPath.isEmpty()) {
+      return HttpServletResponse.SC_NOT_FOUND;
+    }
 
-    if (segments.length < 2) {
+    final var owner = repoPath.get()[0];
+    final var repoName = repoPath.get()[1];
+    final var tenantId =
+        this.tenants
+            .findByUsername(username)
+            .map(TenantRef::id)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+    if (!this.gitAccess.canRead(tenantId, owner, repoName)) {
+      log.info("HTTP Git access denied: {} cannot read {}/{}", username, owner, repoName);
+      return HttpServletResponse.SC_NOT_FOUND;
+    }
+
+    if (isWrite && !this.gitAccess.canWrite(tenantId, owner, repoName)) {
+      log.info("HTTP Git access denied: {} cannot push to {}/{}", username, owner, repoName);
+      return HttpServletResponse.SC_FORBIDDEN;
+    }
+
+    return HttpServletResponse.SC_OK;
+  }
+
+  private static boolean isWriteRequest(final HttpServletRequest request) {
+    final var queryString = request.getQueryString();
+    return decodedPath(request).contains(RECEIVE_PACK)
+        || request.getRequestURI().contains(RECEIVE_PACK)
+        || RECEIVE_PACK.equals(request.getParameter("service"))
+        || queryString != null && queryString.contains(RECEIVE_PACK);
+  }
+
+  private static String decodedPath(final HttpServletRequest request) {
+    final var pathInfo = request.getPathInfo();
+    return pathInfo != null ? pathInfo : "";
+  }
+
+  private static Optional<String[]> extractOwnerAndRepo(final HttpServletRequest request) {
+    final var path = decodedPath(request);
+    final var segments = (path.startsWith("/") ? path.substring(1) : path).split("/");
+
+    if (segments.length < 2 || segments[0].isBlank() || segments[1].isBlank()) {
       return Optional.empty();
     }
 
     final var owner = segments[0];
-    final var repo = segments[1].replace(".git", "");
+    final var repo =
+        segments[1].endsWith(".git")
+            ? segments[1].substring(0, segments[1].length() - 4)
+            : segments[1];
 
     return Optional.of(new String[] {owner, repo});
   }
@@ -157,6 +198,16 @@ public class HttpGitAuthenticationFilter implements Filter {
     }
     log.info("HTTP Git auth success: runner");
     return RUNNER_USERNAME;
+  }
+
+  private static void sendError(final HttpServletResponse response, final int status)
+      throws IOException {
+    response.setStatus(status);
+    response.setContentType("text/plain");
+    response
+        .getWriter()
+        .write(status == HttpServletResponse.SC_FORBIDDEN ? "Forbidden" : "Repository not found");
+    response.getWriter().flush();
   }
 
   private void sendUnauthorized(final HttpServletResponse response, final String message)

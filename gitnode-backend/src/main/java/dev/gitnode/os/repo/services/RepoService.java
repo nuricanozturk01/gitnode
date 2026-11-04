@@ -21,6 +21,7 @@ import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
+import dev.gitnode.os.repo.api.GitAccessPort;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoQueryPort;
 import dev.gitnode.os.repo.dtos.RepoForm;
@@ -48,7 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @NullMarked
-public class RepoService implements RepoAccessPort, RepoQueryPort {
+public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort {
 
   public static final String NEW_REPO_DEFAULT_BRANCH = "main";
 
@@ -230,7 +231,9 @@ public class RepoService implements RepoAccessPort, RepoQueryPort {
             .findByOwnerUsernameAndName(sourceOwner, sourceRepoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
-    if (sourceRepo.isPrivate() && !sourceRepo.getOwner().getId().equals(tenantId)) {
+    if (sourceRepo.isPrivate()
+        && !sourceRepo.getOwner().getId().equals(tenantId)
+        && !this.collaboratorAccessPort.isActiveCollaborator(sourceRepo.getId(), tenantId)) {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 
@@ -266,13 +269,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort {
       final Pageable pageable,
       final @org.jspecify.annotations.Nullable UUID requesterId) {
 
-    final var ownerTenant = this.tenantRepository.findByUsername(owner);
-    final boolean isOwner =
-        requesterId != null
-            && ownerTenant.isPresent()
-            && ownerTenant.get().getId().equals(requesterId);
-
-    if (isOwner) {
+    if (requesterId != null && this.canListPrivateRepos(owner, requesterId)) {
       return this.repoRepository
           .findAllByOwnerUsername(owner, pageable)
           .map(this.repoMapper::toDto);
@@ -292,6 +289,16 @@ public class RepoService implements RepoAccessPort, RepoQueryPort {
     return this.repoRepository
         .findAllByOwnerUsernameAndIsPrivateFalse(owner, pageable)
         .map(this.repoMapper::toDto);
+  }
+
+  private boolean canListPrivateRepos(final String owner, final UUID requesterId) {
+    return this.tenantRepository
+        .findByUsername(owner)
+        .map(
+            tenant ->
+                tenant.getId().equals(requesterId)
+                    || this.collaboratorAccessPort.hasTeamAccess(requesterId, tenant.getId()))
+        .orElse(false);
   }
 
   @Override
@@ -353,13 +360,11 @@ public class RepoService implements RepoAccessPort, RepoQueryPort {
       return; // any authenticated user may open a PR on a public repo
     }
 
-    if (!this.collaboratorAccessPort.isActiveCollaborator(repo.getId(), tenantId)) {
-      throw new AccessNotAllowedException("repoAccessDenied");
+    if (this.collaboratorAccessPort.hasPermission(repo.getId(), tenantId, permission)) {
+      return;
     }
 
-    if (!this.collaboratorAccessPort.hasPermission(repo.getId(), tenantId, permission)) {
-      throw new AccessNotAllowedException("insufficientPermissions");
-    }
+    throw this.permissionDenied(repo.getId(), tenantId);
   }
 
   /**
@@ -381,17 +386,20 @@ public class RepoService implements RepoAccessPort, RepoQueryPort {
       return; // repo owner always has all permissions
     }
 
-    if (!this.collaboratorAccessPort.isActiveCollaborator(repo.getId(), tenantId)) {
-      throw new AccessNotAllowedException("repoAccessDenied");
-    }
-
     for (final CollaboratorPermission permission : permissions) {
       if (this.collaboratorAccessPort.hasPermission(repo.getId(), tenantId, permission)) {
         return;
       }
     }
 
-    throw new AccessNotAllowedException("insufficientPermissions");
+    throw this.permissionDenied(repo.getId(), tenantId);
+  }
+
+  private AccessNotAllowedException permissionDenied(final UUID repoId, final UUID tenantId) {
+    return new AccessNotAllowedException(
+        this.collaboratorAccessPort.isActiveCollaborator(repoId, tenantId)
+            ? "insufficientPermissions"
+            : "repoAccessDenied");
   }
 
   @Override
@@ -415,6 +423,32 @@ public class RepoService implements RepoAccessPort, RepoQueryPort {
         }
       }
     }
+  }
+
+  @Override
+  public boolean canRead(final @Nullable UUID tenantId, final String owner, final String repoName) {
+    return this.repoRepository
+        .findByOwnerUsernameAndName(owner, repoName)
+        .map(
+            repo ->
+                !repo.isPrivate()
+                    || tenantId != null
+                        && (repo.getOwner().getId().equals(tenantId)
+                            || this.collaboratorAccessPort.isActiveCollaborator(
+                                repo.getId(), tenantId)))
+        .orElse(false);
+  }
+
+  @Override
+  public boolean canWrite(final UUID tenantId, final String owner, final String repoName) {
+    return this.repoRepository
+        .findByOwnerUsernameAndName(owner, repoName)
+        .map(
+            repo ->
+                repo.getOwner().getId().equals(tenantId)
+                    || this.collaboratorAccessPort.hasPermission(
+                        repo.getId(), tenantId, CollaboratorPermission.PUSH))
+        .orElse(false);
   }
 
   private void checkIsRepoOwner(final Tenant tenant, final Tenant repoOwner) {

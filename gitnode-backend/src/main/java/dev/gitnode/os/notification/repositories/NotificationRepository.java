@@ -16,6 +16,7 @@
 package dev.gitnode.os.notification.repositories;
 
 import dev.gitnode.os.notification.entities.Notification;
+import dev.gitnode.os.notification.entities.NotificationType;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.domain.Page;
@@ -38,8 +39,20 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
   void markAllReadByRecipientId(@Param("recipientId") UUID recipientId);
 
   @Modifying
+  @Query("DELETE FROM Notification n WHERE n.type = :type AND n.actorId = :actorId")
+  int deleteByTypeAndActorId(@Param("type") NotificationType type, @Param("actorId") UUID actorId);
+
+  @Modifying
   @Query("DELETE FROM Notification n WHERE n.recipientId = :recipientId")
   void deleteAllByRecipientId(@Param("recipientId") UUID recipientId);
+
+  @Modifying
+  @Query(
+      "DELETE FROM Notification n WHERE n.type = :type AND n.recipientId = :recipientId AND n.entityId = :entityId")
+  int deleteByTypeAndRecipientIdAndEntityId(
+      @Param("type") NotificationType type,
+      @Param("recipientId") UUID recipientId,
+      @Param("entityId") UUID entityId);
 
   boolean existsByIdAndRecipientId(UUID id, UUID recipientId);
 }

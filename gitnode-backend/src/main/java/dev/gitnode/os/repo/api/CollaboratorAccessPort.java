@@ -28,5 +28,7 @@ public interface CollaboratorAccessPort {
 
   boolean hasPermission(UUID repoId, UUID tenantId, CollaboratorPermission permission);
 
+  boolean hasTeamAccess(UUID memberId, UUID ownerId);
+
   Set<UUID> findAcceptedRepoIds(UUID tenantId, String ownerUsername);
 }

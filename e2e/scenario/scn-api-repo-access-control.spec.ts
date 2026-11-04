@@ -7,6 +7,7 @@
  * All tests use the shared intruder user instead of registering ephemeral accounts.
  */
 import { expect, test } from './fixtures/scenario';
+import { listAllRepoNames } from './helpers/repo-listing';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // PRIVATE REPO ACCESS
@@ -186,13 +187,9 @@ test.describe('SCN-API-PRIVATE-REPO — access control', () => {
     intruder,
     privateRepo,
   }) => {
-    const listResp = await bareApi.get(`/api/repo/${owner.username}`, {
-      headers: { Authorization: intruder.authorization },
-      params: { page: '0', size: '50' },
+    const names = await listAllRepoNames(bareApi, owner.username, {
+      Authorization: intruder.authorization,
     });
-    expect(listResp.status()).toBe(200);
-    const body = await listResp.json();
-    const names: string[] = body.content.map((r: { name: string }) => r.name);
     expect(names).not.toContain(privateRepo.name);
   });
 
@@ -212,13 +209,9 @@ test.describe('SCN-API-PRIVATE-REPO — access control', () => {
         { headers: { Authorization: intruder.authorization } },
       );
 
-      const listResp = await bareApi.get(`/api/repo/${owner.username}`, {
-        headers: { Authorization: intruder.authorization },
-        params: { page: '0', size: '50' },
+      const names = await listAllRepoNames(bareApi, owner.username, {
+        Authorization: intruder.authorization,
       });
-      expect(listResp.status()).toBe(200);
-      const body = await listResp.json();
-      const names: string[] = body.content.map((r: { name: string }) => r.name);
       expect(names).toContain(privateRepo.name);
     } finally {
       await bareApi
@@ -275,22 +268,12 @@ test.describe('SCN-API-PUBLIC-REPO — access control', () => {
     intruder,
     publicRepo,
   }) => {
-    const guestList = await bareApi.get(`/api/repo/${owner.username}`, {
-      params: { page: '0', size: '50' },
-    });
-    expect(guestList.status()).toBe(200);
-    const guestNames: string[] = (await guestList.json()).content.map(
-      (r: { name: string }) => r.name,
-    );
+    const guestNames = await listAllRepoNames(bareApi, owner.username);
     expect(guestNames).toContain(publicRepo.name);
 
-    const intruderList = await bareApi.get(`/api/repo/${owner.username}`, {
-      headers: { Authorization: intruder.authorization },
-      params: { page: '0', size: '50' },
+    const intruderNames = await listAllRepoNames(bareApi, owner.username, {
+      Authorization: intruder.authorization,
     });
-    const intruderNames: string[] = (await intruderList.json()).content.map(
-      (r: { name: string }) => r.name,
-    );
     expect(intruderNames).toContain(publicRepo.name);
   });
 

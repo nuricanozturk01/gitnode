@@ -38,7 +38,6 @@ import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -67,6 +66,7 @@ public class WorkflowExecutionService {
   private final ApplicationEventPublisher eventPublisher;
   private final SseEmitterRegistry sseEmitterRegistry;
   private final RunStatusSseRegistry runStatusSseRegistry;
+  private final JobAdvancer jobAdvancer;
 
   @Transactional
   public void handleJobClaimed(final UUID jobId, final UUID runnerId) {
@@ -146,7 +146,7 @@ public class WorkflowExecutionService {
 
     this.runStatusSseRegistry.notify(job.getRunId());
     final var allJobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
-    this.advanceWaitingJobs(job.getRunId(), run.getRepoId(), allJobs);
+    this.advanceWaitingJobs(run, allJobs);
     this.maybeCompleteRun(run, allJobs);
 
     log.info("Job completed: jobId={}, conclusion={}", jobId, conclusion);
@@ -240,7 +240,7 @@ public class WorkflowExecutionService {
                         job.getId(), job.getRunId(), run.getRepoId(), job.getName(), "failure"));
                 final var runJobs =
                     this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
-                this.advanceWaitingJobs(job.getRunId(), run.getRepoId(), runJobs);
+                this.advanceWaitingJobs(run, runJobs);
                 this.maybeCompleteRun(run, runJobs);
               });
 
@@ -268,71 +268,25 @@ public class WorkflowExecutionService {
     this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, level));
   }
 
+  /**
+   * Starts (or skips) the WAITING jobs whose needs have finished. See {@link JobAdvancer} for the
+   * rules; the changed jobs are persisted here and the started ones announced.
+   */
   private void advanceWaitingJobs(
-      final UUID runId, final UUID repoId, final java.util.List<WorkflowJob> allJobs) {
+      final WorkflowRun run, final java.util.List<WorkflowJob> allJobs) {
 
-    final var successKeys =
-        allJobs.stream()
-            .filter(j -> j.getStatus() == WorkflowJobStatus.SUCCESS)
-            .flatMap(j -> resolveJobIdentifiers(j).stream())
-            .collect(Collectors.toSet());
-
-    final var failedKeys =
-        allJobs.stream()
-            .filter(
-                j ->
-                    j.getStatus() == WorkflowJobStatus.FAILURE
-                        || j.getStatus() == WorkflowJobStatus.CANCELLED)
-            .flatMap(j -> resolveJobIdentifiers(j).stream())
-            .collect(Collectors.toSet());
-
-    for (final var waiting : allJobs) {
-      this.advanceJobIfReady(waiting, successKeys, failedKeys, runId, repoId);
-    }
-  }
-
-  /** Returns both the job key and name so needs matching works regardless of which is stored. */
-  private static java.util.List<String> resolveJobIdentifiers(final WorkflowJob job) {
-    final var ids = new java.util.ArrayList<String>();
-    if (job.getJobKey() != null) {
-      ids.add(job.getJobKey());
-    }
-    ids.add(job.getName());
-    return ids;
-  }
-
-  private void advanceJobIfReady(
-      final WorkflowJob waiting,
-      final Set<String> successKeys,
-      final Set<String> failedKeys,
-      final UUID runId,
-      final UUID repoId) {
-
-    if (waiting.getStatus() != WorkflowJobStatus.WAITING) {
-      return;
-    }
-    final var needs = waiting.getNeeds();
-    if (needs == null || needs.isEmpty()) {
-      return;
-    }
-
-    final boolean anyNeedFailed = needs.stream().anyMatch(failedKeys::contains);
-    if (anyNeedFailed) {
-      waiting.setStatus(WorkflowJobStatus.SKIPPED);
-      waiting.setConclusion("skipped");
-      waiting.setCompletedAt(Instant.now());
-      this.jobRepository.save(waiting);
-      log.info("Job skipped due to failed dependency: jobId={}", waiting.getId());
-      return;
-    }
-
-    if (successKeys.containsAll(needs)) {
-      waiting.setStatus(WorkflowJobStatus.QUEUED);
-      this.jobRepository.save(waiting);
-      this.eventPublisher.publishEvent(
-          new WorkflowJobQueuedEvent(
-              waiting.getId(), runId, repoId, waiting.getName(), waiting.getRunnerLabels()));
-      log.info("Job advanced to QUEUED after needs resolved: jobId={}", waiting.getId());
+    final var changed = this.jobAdvancer.advance(run, allJobs, this.jobAdvancer.loadModel(run));
+    for (final var job : changed) {
+      this.jobRepository.save(job);
+      if (job.getStatus() == WorkflowJobStatus.QUEUED) {
+        this.eventPublisher.publishEvent(
+            new WorkflowJobQueuedEvent(
+                job.getId(), run.getId(), run.getRepoId(), job.getName(), job.getRunnerLabels()));
+        log.info("Job advanced to QUEUED after needs resolved: jobId={}", job.getId());
+      } else {
+        log.info(
+            "Job skipped because its needs or condition did not allow it: jobId={}", job.getId());
+      }
     }
   }
 

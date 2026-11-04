@@ -3,16 +3,29 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
 
 	"github.com/nuricanozturk/gitnode-runner/internal/actions"
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
+	"github.com/nuricanozturk/gitnode-runner/internal/expr"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
 	"github.com/nuricanozturk/gitnode-runner/internal/workspace"
 	"github.com/nuricanozturk/gitnode-runner/pkg/protocol"
+)
+
+const (
+	statusSuccess   = "success"
+	statusFailure   = "failure"
+	statusCancelled = "cancelled"
+	statusSkipped   = "skipped"
 )
 
 // JobExecutor orchestrates step execution for a single job.
@@ -22,6 +35,7 @@ type JobExecutor struct {
 	send         func(protocol.OutboundMessage)
 	executorType string // "shell" or "docker"
 	log          *zap.Logger
+	resolver     *actions.Resolver
 }
 
 // New builds a JobExecutor.
@@ -38,6 +52,7 @@ func New(
 		send:         send,
 		executorType: executorType,
 		log:          log,
+		resolver:     actions.NewResolver(filepath.Join(os.TempDir(), "gitnode-runner-actions")),
 	}
 }
 
@@ -46,14 +61,38 @@ func (e *JobExecutor) Execute(ctx context.Context, job protocol.JobPayload) {
 	go e.run(ctx, job)
 }
 
+// stepResult is what later steps and expressions can observe about a finished step.
+type stepResult struct {
+	outputs    map[string]string
+	outcome    string // result before continue-on-error: success, failure, cancelled, skipped
+	conclusion string // result after continue-on-error
+}
+
+// stepScope is the expression scope steps run in: the job itself, or one composite action
+// (its own inputs.* and steps.*).
+type stepScope struct {
+	job     protocol.JobPayload
+	results map[string]*stepResult
+	depth   int
+	posts   *[]postHook
+}
+
 func (e *JobExecutor) run(ctx context.Context, job protocol.JobPayload) {
 	workDir, err := e.workspaceMgr.Create(job.RunID, job.ID)
 	if err != nil {
 		e.log.Error("failed to create workspace", zap.Error(err))
-		e.sendJobCompleted(job.ID, "failure")
+		e.sendJobCompleted(job.ID, statusFailure)
 		return
 	}
 	defer e.workspaceMgr.Remove(job.RunID, job.ID) //nolint:errcheck
+
+	rt, err := newRuntimeFiles()
+	if err != nil {
+		e.log.Error("failed to create runtime files", zap.Error(err))
+		e.sendJobCompleted(job.ID, statusFailure)
+		return
+	}
+	defer rt.cleanup()
 
 	timeout := time.Duration(job.TimeoutMins) * time.Minute
 	if timeout <= 0 {
@@ -63,92 +102,390 @@ func (e *JobExecutor) run(ctx context.Context, job protocol.JobPayload) {
 	defer cancel()
 
 	jctx := jobctx.New(job.Env, job.Secrets)
-	// Inject repo context so checkout knows where to clone from.
-	for k, v := range job.Env {
-		jctx.SetEnv(k, v)
-	}
+	applyStandardEnv(jctx, job, workDir, rt)
 
 	e.sendJobClaimed(job.ID)
 
-	jobConclusion := "success"
+	status := statusSuccess
+	results := map[string]*stepResult{}
+	var posts []postHook
+	sc := &stepScope{job: job, results: results, posts: &posts}
 
 	for _, step := range job.Steps {
 		if jobCtx.Err() != nil {
+			status = statusCancelled
 			break
 		}
 
-		streamer := runnerlog.New(
-			step.ID,
-			jctx.SecretValues(),
-			e.send,
-			e.log,
-		)
-
+		streamer := runnerlog.New(step.ID, jctx.SecretValues(), e.send, e.log)
 		e.sendStepStarted(step.ID, job.ID)
 
-		conclusion, execErr := e.runStep(jobCtx, step, jctx, streamer, workDir)
-		if execErr != nil {
-			streamer.Emit(fmt.Sprintf("step error: %v", execErr), "error")
-			conclusion = "failure"
+		res := e.runOneStep(jobCtx, sc, step, jctx, streamer, workDir, rt, status)
+
+		if step.Key != "" {
+			results[step.Key] = res
 		}
+		e.sendStepCompleted(step.ID, job.ID, res.conclusion, res.outputs)
 
-		e.sendStepCompleted(step.ID, job.ID, conclusion, map[string]string{})
-
-		if conclusion == "failure" {
-			jobConclusion = "failure"
-			break
+		switch {
+		case res.conclusion == statusFailure:
+			status = statusFailure
+		case res.outcome == statusCancelled && jobCtx.Err() != nil:
+			status = statusCancelled
 		}
 	}
 
-	e.sendJobCompleted(job.ID, jobConclusion)
+	if jobCtx.Err() != nil && status == statusSuccess {
+		status = statusCancelled
+	}
+	if errors.Is(jobCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
+		status = statusFailure // the job ran past its timeout
+	}
+
+	e.runPostHooks(ctx, sc, jctx, workDir, rt, status)
+	e.sendJobCompleted(job.ID, status)
 }
 
-func (e *JobExecutor) runStep(
+// runOneStep evaluates the step's condition, applies its env, runs it and collects its outputs.
+// It never returns a nil result.
+func (e *JobExecutor) runOneStep(
 	ctx context.Context,
+	sc *stepScope,
 	step protocol.StepPayload,
 	jctx *jobctx.JobContext,
 	streamer *runnerlog.Streamer,
 	workDir string,
-) (string, error) {
+	rt *runtimeFiles,
+	jobStatus string,
+) *stepResult {
+	res := &stepResult{outputs: map[string]string{}}
 
+	env := buildExprEnv(sc.job, jctx, jobStatus, sc.results, workDir, rt)
+
+	run, condErr := expr.EvalCondition(step.Condition, env)
+	if condErr != nil {
+		streamer.Emit(fmt.Sprintf("invalid if condition %q: %v", step.Condition, condErr), "error")
+		res.outcome, res.conclusion = statusFailure, statusFailure
+		return res
+	}
+	if !run {
+		streamer.Emit("Skipped: condition not met", "info")
+		res.outcome, res.conclusion = statusSkipped, statusSkipped
+		return res
+	}
+
+	step = interpolateStep(step, env, streamer)
+
+	stepCtx := ctx
+	if step.TimeoutMins > 0 {
+		var cancel context.CancelFunc
+		stepCtx, cancel = context.WithTimeout(ctx, time.Duration(step.TimeoutMins)*time.Minute)
+		defer cancel()
+	}
+
+	restore := overlayEnv(jctx, step.Env)
+	defer restore()
+
+	conclusion, outputs, execErr := e.runStep(stepCtx, sc, step, jctx, streamer, workDir, rt, jobStatus)
+	if execErr != nil {
+		streamer.Emit(fmt.Sprintf("step error: %v", execErr), "error")
+		conclusion = statusFailure
+	}
+	if conclusion == statusFailure && errors.Is(stepCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil {
+		streamer.Emit(fmt.Sprintf("step timed out after %d minute(s)", step.TimeoutMins), "error")
+	}
+
+	for k, v := range outputs {
+		res.outputs[k] = v
+	}
+	e.collectRuntimeFiles(jctx, rt, res)
+
+	res.outcome = conclusion
+	res.conclusion = conclusion
+	if conclusion == statusFailure && step.ContinueOnError {
+		streamer.Emit("Step failed but continue-on-error is set; the job keeps going", "warn")
+		res.conclusion = statusSuccess
+	}
+	return res
+}
+
+func (e *JobExecutor) runStep(
+	ctx context.Context,
+	sc *stepScope,
+	step protocol.StepPayload,
+	jctx *jobctx.JobContext,
+	streamer *runnerlog.Streamer,
+	workDir string,
+	rt *runtimeFiles,
+	jobStatus string,
+) (string, map[string]string, error) {
 	if step.Uses != "" {
-		handler, err := e.actionReg.Resolve(step.Uses)
-		if err != nil {
-			return "failure", fmt.Errorf("resolve action %q: %w", step.Uses, err)
+		handler, ok := e.actionReg.Lookup(step.Uses)
+		if !ok {
+			return e.runRemoteAction(ctx, sc, step, jctx, streamer, workDir, rt, jobStatus)
 		}
 		inputs := step.With
 		if inputs == nil {
 			inputs = map[string]string{}
 		}
-		_, execErr := handler.Execute(ctx, inputs, jctx, streamer, workDir)
+		outputs, execErr := handler.Execute(ctx, inputs, jctx, streamer, workDir)
 		if execErr != nil {
-			return "failure", execErr
+			return statusFailure, outputs, execErr
 		}
-		return "success", nil
+		return statusSuccess, outputs, nil
 	}
-
 	if step.Run != "" {
-		return e.runShellCommand(ctx, step.Run, jctx, streamer, workDir)
+		conclusion, err := e.runShellCommand(ctx, step, jctx, streamer, workDir, rt)
+		return conclusion, nil, err
 	}
-
 	streamer.Emit("step has neither 'uses' nor 'run'", "warn")
-	return "skipped", nil
+	return statusSkipped, nil, nil
 }
 
 func (e *JobExecutor) runShellCommand(
 	ctx context.Context,
-	command string,
+	step protocol.StepPayload,
 	jctx *jobctx.JobContext,
 	streamer *runnerlog.Streamer,
 	workDir string,
+	rt *runtimeFiles,
 ) (string, error) {
-
-	if e.executorType == "docker" {
-		exec := NewDockerExecutor(workDir, "", e.log)
-		return exec.Run(ctx, command, jctx, streamer)
+	subDir, err := resolveSubDir(workDir, step.WorkingDirectory)
+	if err != nil {
+		return statusFailure, err
 	}
-	exec := NewShellExecutor(workDir)
-	return exec.Run(ctx, command, jctx, streamer)
+	if e.executorType == "docker" {
+		exec := NewDockerExecutor(workDir, "", e.log).
+			WithShell(step.Shell).
+			WithSubDir(subDir).
+			WithSharedPaths(rt.dir)
+		return exec.Run(ctx, step.Run, jctx, streamer)
+	}
+	exec := NewShellExecutor(filepath.Join(workDir, subDir)).WithShell(step.Shell)
+	return exec.Run(ctx, step.Run, jctx, streamer)
+}
+
+// collectRuntimeFiles applies what the step wrote to $GITHUB_OUTPUT, $GITHUB_ENV and
+// $GITHUB_PATH, and discards $GITHUB_STEP_SUMMARY.
+func (e *JobExecutor) collectRuntimeFiles(jctx *jobctx.JobContext, rt *runtimeFiles, res *stepResult) {
+	for k, v := range parseKeyValues(drain(rt.output)) {
+		res.outputs[k] = v
+	}
+	for k, v := range parseKeyValues(drain(rt.env)) {
+		jctx.SetEnv(k, v)
+	}
+	if entries := parsePathEntries(drain(rt.path)); len(entries) > 0 {
+		current, ok := jctx.Env()["PATH"]
+		if !ok {
+			current = os.Getenv("PATH")
+		}
+		jctx.SetEnv("PATH", strings.Join(entries, string(os.PathListSeparator))+
+			string(os.PathListSeparator)+current)
+	}
+	_ = drain(rt.summary)
+}
+
+// interpolateStep resolves ${{ }} expressions left in the step by the server (steps.*, env.*,
+// secrets.*, runner.*, ...). An expression that fails to evaluate is kept verbatim and logged.
+func interpolateStep(step protocol.StepPayload, env expr.Env, streamer *runnerlog.Streamer) protocol.StepPayload {
+	apply := func(s string) string {
+		out, err := expr.Interpolate(s, env)
+		if err != nil {
+			streamer.Emit(fmt.Sprintf("warning: %v", err), "warn")
+		}
+		return out
+	}
+	step.Run = apply(step.Run)
+	step.WorkingDirectory = apply(step.WorkingDirectory)
+	step.Shell = apply(step.Shell)
+	step.With = mapValues(step.With, apply)
+	step.Env = mapValues(step.Env, apply)
+	return step
+}
+
+func mapValues(in map[string]string, f func(string) string) map[string]string {
+	if in == nil {
+		return nil
+	}
+	out := make(map[string]string, len(in))
+	for k, v := range in {
+		out[k] = f(v)
+	}
+	return out
+}
+
+// overlayEnv applies step-scoped env on top of the job env and returns a function restoring the
+// previous values. Steps run sequentially within a job, so the shared context is safe to patch.
+func overlayEnv(jctx *jobctx.JobContext, overlay map[string]string) func() {
+	if len(overlay) == 0 {
+		return func() {}
+	}
+	prev := jctx.Env()
+	for k, v := range overlay {
+		jctx.SetEnv(k, v)
+	}
+	return func() {
+		for k := range overlay {
+			if old, had := prev[k]; had {
+				jctx.SetEnv(k, old)
+			} else {
+				jctx.UnsetEnv(k)
+			}
+		}
+	}
+}
+
+// resolveSubDir validates a step's working-directory: it must stay inside the workspace.
+func resolveSubDir(workDir, wd string) (string, error) {
+	wd = strings.TrimSpace(wd)
+	if wd == "" {
+		return "", nil
+	}
+	target := wd
+	if !filepath.IsAbs(target) {
+		target = filepath.Join(workDir, wd)
+	}
+	rel, err := filepath.Rel(workDir, filepath.Clean(target))
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("working-directory %q is outside the workspace", wd)
+	}
+	if rel == "." {
+		return "", nil
+	}
+	if err := os.MkdirAll(filepath.Join(workDir, rel), 0o750); err != nil {
+		return "", fmt.Errorf("working-directory %q: %w", wd, err)
+	}
+	return rel, nil
+}
+
+// applyStandardEnv sets the GitHub-compatible environment variables unless the workflow
+// already defines them.
+func applyStandardEnv(jctx *jobctx.JobContext, job protocol.JobPayload, workDir string, rt *runtimeFiles) {
+	existing := jctx.Env()
+	set := func(k, v string) {
+		if v == "" {
+			return
+		}
+		if _, ok := existing[k]; !ok {
+			jctx.SetEnv(k, v)
+		}
+	}
+	owner, repo := existing["GITNODE_OWNER"], existing["GITNODE_REPO"]
+	ref := existing["GITNODE_REF"]
+	refName, refType := splitRef(ref)
+
+	set("CI", "true")
+	set("GITHUB_ACTIONS", "true")
+	set("GITNODE_ACTIONS", "true")
+	set("GITHUB_WORKSPACE", workDir)
+	set("GITHUB_OUTPUT", rt.output)
+	set("GITHUB_ENV", rt.env)
+	set("GITHUB_PATH", rt.path)
+	set("GITHUB_STEP_SUMMARY", rt.summary)
+	set("GITHUB_SHA", existing["GITNODE_SHA"])
+	set("GITHUB_REF", ref)
+	set("GITHUB_REF_NAME", refName)
+	set("GITHUB_REF_TYPE", refType)
+	if owner != "" && repo != "" {
+		set("GITHUB_REPOSITORY", owner+"/"+repo)
+	}
+	set("GITHUB_REPOSITORY_OWNER", owner)
+	set("GITHUB_RUN_ID", job.RunID)
+	set("GITHUB_JOB", job.Context["github.job"])
+	set("GITHUB_WORKFLOW", job.Context["github.workflow"])
+	set("GITHUB_RUN_NUMBER", job.Context["github.run_number"])
+	set("GITHUB_EVENT_NAME", job.Context["github.event_name"])
+	set("GITHUB_SERVER_URL", job.Context["github.server_url"])
+	set("RUNNER_OS", runnerOS())
+	set("RUNNER_ARCH", runnerArch())
+	set("RUNNER_TEMP", rt.dir)
+}
+
+func splitRef(ref string) (name, kind string) {
+	switch {
+	case strings.HasPrefix(ref, "refs/heads/"):
+		return strings.TrimPrefix(ref, "refs/heads/"), "branch"
+	case strings.HasPrefix(ref, "refs/tags/"):
+		return strings.TrimPrefix(ref, "refs/tags/"), "tag"
+	}
+	return ref, ""
+}
+
+func runnerOS() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return "macOS"
+	case "windows":
+		return "Windows"
+	}
+	return "Linux"
+}
+
+func runnerArch() string {
+	switch runtime.GOARCH {
+	case "amd64":
+		return "X64"
+	case "arm64":
+		return "ARM64"
+	case "arm":
+		return "ARM"
+	case "386":
+		return "X86"
+	}
+	return runtime.GOARCH
+}
+
+// buildExprEnv assembles every context an expression can reference.
+func buildExprEnv(
+	job protocol.JobPayload,
+	jctx *jobctx.JobContext,
+	status string,
+	results map[string]*stepResult,
+	workDir string,
+	rt *runtimeFiles,
+) expr.Env {
+	vars := map[string]string{}
+	for k, v := range job.Context {
+		vars[k] = v
+	}
+	envMap := jctx.Env()
+	for k, v := range envMap {
+		vars["env."+k] = v
+	}
+	for k, v := range jctx.Secrets() {
+		vars["secrets."+k] = v
+	}
+	// github.* fall back to what the runner already knows when the server did not send them.
+	fallback := func(k, v string) {
+		if _, ok := vars[k]; !ok && v != "" {
+			vars[k] = v
+		}
+	}
+	fallback("github.sha", envMap["GITNODE_SHA"])
+	fallback("github.ref", envMap["GITNODE_REF"])
+	refName, refType := splitRef(envMap["GITNODE_REF"])
+	fallback("github.ref_name", refName)
+	fallback("github.ref_type", refType)
+	fallback("github.run_id", job.RunID)
+	fallback("github.workspace", workDir)
+	if owner, repo := envMap["GITNODE_OWNER"], envMap["GITNODE_REPO"]; owner != "" && repo != "" {
+		fallback("github.repository", owner+"/"+repo)
+		fallback("github.repository_owner", owner)
+	}
+	for id, r := range results {
+		for k, v := range r.outputs {
+			vars["steps."+id+".outputs."+k] = v
+		}
+		vars["steps."+id+".outcome"] = r.outcome
+		vars["steps."+id+".conclusion"] = r.conclusion
+	}
+	vars["job.status"] = status
+	vars["runner.os"] = runnerOS()
+	vars["runner.arch"] = runnerArch()
+	vars["runner.temp"] = rt.dir
+	vars["runner.workspace"] = workDir
+
+	return expr.Env{Vars: vars, Status: status, WorkDir: workDir}
 }
 
 // ── WS message senders ───────────────────────────────────────────────────────
@@ -164,6 +501,9 @@ func (e *JobExecutor) sendStepStarted(stepID, jobID string) {
 func (e *JobExecutor) sendStepCompleted(
 	stepID, jobID, conclusion string, outputs map[string]string,
 ) {
+	if outputs == nil {
+		outputs = map[string]string{}
+	}
 	e.sendMsg(protocol.TypeStepCompleted, protocol.StepCompletedPayload{
 		StepID:     stepID,
 		JobID:      jobID,

@@ -18,10 +18,12 @@ package dev.gitnode.os.actions.services;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @NullMarked
 public class ExpressionEvaluator {
@@ -40,62 +42,62 @@ public class ExpressionEvaluator {
     return sb.toString();
   }
 
+  /**
+   * Evaluates an {@code if:} condition with the full GitHub expression language. A blank condition
+   * is false here; callers that treat "no condition" as success() must check for it themselves.
+   * Conditions that cannot be parsed evaluate to false (and are logged) so a typo skips the job
+   * instead of running it unintentionally.
+   */
   public boolean evaluateCondition(
       final String condition, final Map<String, String> ctx, final String jobStatus) {
 
-    final String inner = this.unwrapExpression(condition.trim(), ctx);
-
-    if ("always()".equalsIgnoreCase(inner)) {
-      return true;
-    }
-    if ("failure()".equalsIgnoreCase(inner)) {
-      return "failure".equalsIgnoreCase(jobStatus);
-    }
-    if ("success()".equalsIgnoreCase(inner)) {
-      return "success".equalsIgnoreCase(jobStatus);
-    }
-    if ("cancelled()".equalsIgnoreCase(inner)) {
-      return "cancelled".equalsIgnoreCase(jobStatus);
+    final String trimmed = condition.trim();
+    if (trimmed.isEmpty()) {
+      return false;
     }
 
-    return this.evaluateComparison(inner, ctx);
+    try {
+      final Matcher whole = EXPR_PATTERN.matcher(trimmed);
+      if (whole.matches()) {
+        return ExpressionEngine.truthy(
+            ExpressionEngine.evaluate(whole.group(1).trim(), ctx, jobStatus));
+      }
+      if (trimmed.contains("${{")) {
+        return this.evaluateMixed(trimmed, ctx, jobStatus);
+      }
+      return ExpressionEngine.truthy(ExpressionEngine.evaluate(trimmed, ctx, jobStatus));
+    } catch (final ExpressionEngine.ExpressionException ex) {
+      log.warn("Invalid condition '{}': {}", condition, ex.getMessage());
+      return false;
+    }
   }
 
   /**
-   * If the condition is a single {@code ${{ expr }}} block, extracts the inner expression so that
-   * comparison operands can be resolved individually. Otherwise returns the fully interpolated
-   * string.
+   * Text mixed with {@code ${{ }}}, e.g. {@code ${{ github.ref }} == 'refs/heads/main'}. GitHub
+   * would make that a plain (truthy) string; GitNode substitutes each block with a quoted literal
+   * and evaluates the result, which is what the author meant. Text that is not an expression after
+   * substitution is truthy when non-empty, like on GitHub.
    */
-  private String unwrapExpression(final String condition, final Map<String, String> ctx) {
+  private boolean evaluateMixed(
+      final String condition, final Map<String, String> ctx, final String jobStatus) {
+
     final Matcher m = EXPR_PATTERN.matcher(condition);
-    if (m.matches()) {
-      return m.group(1).trim();
+    final var sb = new StringBuilder();
+    while (m.find()) {
+      final var value = ExpressionEngine.evaluate(m.group(1).trim(), ctx, jobStatus);
+      final String quoted = "'" + ExpressionEngine.asString(value).replace("'", "''") + "'";
+      m.appendReplacement(sb, Matcher.quoteReplacement(quoted));
     }
-    return this.evaluate(condition, ctx);
-  }
-
-  private boolean evaluateComparison(final String expr, final Map<String, String> ctx) {
-    if (expr.contains("!=")) {
-      final String[] parts = expr.split("!=", 2);
-      final String left = this.resolveOperand(parts[0].trim(), ctx);
-      final String right = this.normalize(parts[1].trim());
-      return !left.equals(right);
+    m.appendTail(sb);
+    final String substituted = sb.toString();
+    if (substituted.isBlank()) {
+      return false;
     }
-    if (expr.contains("==")) {
-      final String[] parts = expr.split("==", 2);
-      final String left = this.resolveOperand(parts[0].trim(), ctx);
-      final String right = this.normalize(parts[1].trim());
-      return left.equals(right);
+    try {
+      return ExpressionEngine.truthy(ExpressionEngine.evaluate(substituted, ctx, jobStatus));
+    } catch (final ExpressionEngine.ExpressionException ex) {
+      return true;
     }
-
-    // Simple value — resolve and treat non-empty/non-false as truthy
-    final String resolved = this.resolveOperand(expr, ctx);
-    return !resolved.isEmpty() && !"false".equalsIgnoreCase(resolved);
-  }
-
-  private String resolveOperand(final String operand, final Map<String, String> ctx) {
-    final String resolved = this.resolveExpr(operand, ctx);
-    return resolved != null ? resolved : this.normalize(operand);
   }
 
   @Nullable
@@ -106,8 +108,10 @@ public class ExpressionEvaluator {
     if (isSimpleContextRef(expr)) {
       return ctx.getOrDefault(expr, "");
     }
-    if (expr.startsWith("steps.") && expr.contains(".outputs.")) {
-      return ctx.getOrDefault(expr, "");
+    if (expr.startsWith("steps.")) {
+      // Step outputs only exist while the job runs; the runner resolves them. Leave the
+      // expression untouched unless the caller already knows the value.
+      return ctx.get(expr);
     }
     return null;
   }
@@ -116,9 +120,5 @@ public class ExpressionEvaluator {
     return (expr.startsWith("inputs.") || expr.startsWith("matrix.") || expr.startsWith("secrets."))
         && !expr.contains("==")
         && !expr.contains("!=");
-  }
-
-  private String normalize(final String s) {
-    return s.trim().replaceAll("^['\"]|['\"]$", "");
   }
 }

@@ -34,4 +34,19 @@ public record JobModel(
     @Nullable Map<String, String> env,
     @Nullable StrategyModel strategy,
     @Nullable Map<String, ServiceModel> services,
-    @Nullable List<StepModel> steps) {}
+    @Nullable List<StepModel> steps,
+    @Nullable DefaultsModel defaults) {
+
+  public JobModel(
+      final @Nullable String name,
+      final @Nullable List<String> runsOn,
+      final @Nullable Integer timeoutMinutes,
+      final @Nullable List<String> needs,
+      final @Nullable String condition,
+      final @Nullable Map<String, String> env,
+      final @Nullable StrategyModel strategy,
+      final @Nullable Map<String, ServiceModel> services,
+      final @Nullable List<StepModel> steps) {
+    this(name, runsOn, timeoutMinutes, needs, condition, env, strategy, services, steps, null);
+  }
+}

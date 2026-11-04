@@ -33,6 +33,7 @@ import dev.gitnode.os.events.actions.WorkflowRunQueuedEvent;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,7 @@ public class WorkflowTriggerService {
   private final ApplicationEventPublisher eventPublisher;
   private final MatrixExpander matrixExpander;
   private final ExpressionEvaluator expressionEvaluator;
+  private final JobAdvancer jobAdvancer;
 
   @Transactional
   public void triggerOnPush(
@@ -233,8 +235,7 @@ public class WorkflowTriggerService {
       return;
     }
 
-    final var context = this.buildGithubContext(run);
-
+    final var created = new ArrayList<WorkflowJob>();
     for (final Map.Entry<String, JobModel> entry : model.jobs().entrySet()) {
       final var jobKey = entry.getKey();
       final var jobDef = entry.getValue();
@@ -242,18 +243,32 @@ public class WorkflowTriggerService {
       final var combinations = this.matrixExpander.expand(jobDef);
 
       for (final var matrixValues : combinations) {
-        this.createSingleJob(run, jobDef, jobKey, baseName, matrixValues, context);
+        created.add(this.createSingleJob(run, jobDef, jobKey, baseName, matrixValues, created));
+      }
+    }
+
+    this.settleWaitingJobs(run, created, model);
+  }
+
+  /** A job skipped by its own condition may be what other jobs are waiting for. */
+  private void settleWaitingJobs(
+      final WorkflowRun run, final List<WorkflowJob> created, final WorkflowModel model) {
+
+    for (final var job : this.jobAdvancer.advance(run, created, model)) {
+      this.jobRepository.save(job);
+      if (job.getStatus() == WorkflowJobStatus.QUEUED) {
+        this.publishQueued(run, job);
       }
     }
   }
 
-  private void createSingleJob(
+  private WorkflowJob createSingleJob(
       final WorkflowRun run,
       final JobModel jobDef,
       final String jobKey,
       final String baseName,
       final Map<String, String> matrixValues,
-      final Map<String, String> context) {
+      final List<WorkflowJob> createdSoFar) {
 
     final var matrixCtx =
         matrixValues.entrySet().stream()
@@ -271,32 +286,28 @@ public class WorkflowTriggerService {
     job.setNeeds(jobDef.needs());
     job.setMatrixValues(matrixValues.isEmpty() ? null : matrixValues);
 
-    if (this.isSkippedByCondition(jobDef, context)) {
+    if (hasUnmetNeeds(jobDef)) {
+      // Its if: is evaluated once the jobs it needs have finished (see JobAdvancer).
+      job.setStatus(WorkflowJobStatus.WAITING);
+      return this.jobRepository.save(job);
+    }
+
+    if (!this.jobAdvancer.shouldRun(run, job, jobDef, createdSoFar)) {
       job.setStatus(WorkflowJobStatus.SKIPPED);
       job.setConclusion("skipped");
-      this.jobRepository.save(job);
-      return;
+      return this.jobRepository.save(job);
     }
 
-    final boolean hasNeeds = hasUnmetNeeds(jobDef);
-    job.setStatus(hasNeeds ? WorkflowJobStatus.WAITING : WorkflowJobStatus.QUEUED);
-
+    job.setStatus(WorkflowJobStatus.QUEUED);
     final var savedJob = this.jobRepository.save(job);
-
-    if (!hasNeeds) {
-      this.eventPublisher.publishEvent(
-          new WorkflowJobQueuedEvent(
-              savedJob.getId(),
-              run.getId(),
-              run.getRepoId(),
-              savedJob.getName(),
-              savedJob.getRunnerLabels()));
-    }
+    this.publishQueued(run, savedJob);
+    return savedJob;
   }
 
-  private boolean isSkippedByCondition(final JobModel jobDef, final Map<String, String> context) {
-    return jobDef.condition() != null
-        && !this.expressionEvaluator.evaluateCondition(jobDef.condition(), context, "success");
+  private void publishQueued(final WorkflowRun run, final WorkflowJob job) {
+    this.eventPublisher.publishEvent(
+        new WorkflowJobQueuedEvent(
+            job.getId(), run.getId(), run.getRepoId(), job.getName(), job.getRunnerLabels()));
   }
 
   private static boolean hasUnmetNeeds(final JobModel jobDef) {

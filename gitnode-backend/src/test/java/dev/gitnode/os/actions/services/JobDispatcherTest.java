@@ -23,11 +23,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.gitnode.os.actions.entities.Runner;
 import dev.gitnode.os.actions.entities.RunnerStatus;
+import dev.gitnode.os.actions.entities.WorkflowDefinition;
 import dev.gitnode.os.actions.entities.WorkflowJob;
 import dev.gitnode.os.actions.entities.WorkflowJobStatus;
 import dev.gitnode.os.actions.entities.WorkflowRun;
+import dev.gitnode.os.actions.entities.WorkflowStep;
 import dev.gitnode.os.actions.repositories.RunnerRepository;
 import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
@@ -45,6 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -229,6 +234,142 @@ class JobDispatcherTest {
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
+
+  private static final String WORKFLOW_YAML =
+      """
+      on: push
+      env:
+        GLOBAL: g1
+        TOKEN: ${{ secrets.TOK }}
+      defaults:
+        run:
+          shell: bash
+          working-directory: app
+      jobs:
+        build:
+          runs-on: self-hosted
+          timeout-minutes: 15
+          needs: setup
+          env:
+            JOBVAR: ${{ github.ref }}
+            GLOBAL: overridden
+          steps:
+            - id: first
+              run: echo hi
+              continue-on-error: true
+              timeout-minutes: 2
+            - id: second
+              run: echo ${{ steps.first.outputs.x }} ${{ inputs.v }}
+              if: ${{ failure() }}
+              shell: sh
+              working-directory: sub
+              env:
+                LOCAL: ${{ inputs.v }}
+      """;
+
+  @Test
+  @DisplayName("job payload carries merged env, expression context and step settings")
+  void dispatch_buildsRichPayload() throws Exception {
+    final var defId = UUID.randomUUID();
+    final var definition = new WorkflowDefinition();
+    definition.setContent(WORKFLOW_YAML);
+
+    final var run = new WorkflowRun();
+    run.setId(RUN_ID);
+    run.setRepoId(REPO_ID);
+    run.setWorkflowDefId(defId);
+    run.setWorkflowName("CI");
+    run.setRunNumber(7);
+    run.setTriggerRef("refs/heads/main");
+    run.setTriggerEvent("workflow_dispatch");
+    run.setInputs(java.util.Map.of("v", "x"));
+
+    final var setup = new WorkflowJob();
+    setup.setId(UUID.randomUUID());
+    setup.setRunId(RUN_ID);
+    setup.setJobKey("setup");
+    setup.setName("setup");
+    setup.setStatus(WorkflowJobStatus.SUCCESS);
+
+    final var job = buildJob(List.of("self-hosted"));
+    job.setJobKey("build");
+    job.setNeeds(List.of("setup"));
+
+    final var runner = buildRunner(List.of("self-hosted", "linux"), RunnerStatus.ONLINE, TENANT_ID);
+
+    when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.repoRepository.findOwnerIds(Set.of(REPO_ID)))
+        .thenReturn(java.util.Map.of(REPO_ID, TENANT_ID));
+    when(this.repoRepository.findById(REPO_ID))
+        .thenReturn(
+            Optional.of(new RepoLookupPort.RepoRef(REPO_ID, TENANT_ID, "acme", "app", false)));
+    when(this.definitionRepository.findById(defId)).thenReturn(Optional.of(definition));
+    when(this.parserService.parseFromContent(WORKFLOW_YAML))
+        .thenReturn(
+            WorkflowParserService.YAML_MAPPER.readValue(
+                WORKFLOW_YAML, dev.gitnode.os.actions.model.WorkflowModel.class));
+    when(this.secretVaultService.resolveSecrets(REPO_ID))
+        .thenReturn(java.util.Map.of("TOK", "s3cr3t"));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID))
+        .thenReturn(List.of(setup, job));
+    when(this.stepRepository.save(any(WorkflowStep.class)))
+        .thenAnswer(
+            inv -> {
+              final WorkflowStep st = inv.getArgument(0);
+              st.setId(UUID.randomUUID());
+              return st;
+            });
+    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
+    when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
+
+    this.dispatcher.dispatch();
+
+    final var json = ArgumentCaptor.forClass(String.class);
+    verify(this.redisTemplate)
+        .convertAndSend(eq(JobDispatcher.DISPATCH_CHANNEL_PREFIX + RUNNER_ID), json.capture());
+    final JsonNode payload = new ObjectMapper().readTree(json.getValue()).path("data").path("job");
+
+    final var env = payload.path("env");
+    assertThat(env.path("GLOBAL").asText()).isEqualTo("overridden");
+    assertThat(env.path("JOBVAR").asText()).isEqualTo("refs/heads/main");
+    assertThat(env.path("TOKEN").asText()).isEqualTo("s3cr3t");
+    assertThat(env.path("GITNODE_OWNER").asText()).isEqualTo("acme");
+    assertThat(env.path("GITNODE_REPO").asText()).isEqualTo("app");
+    assertThat(env.path("GITNODE_REF").asText()).isEqualTo("refs/heads/main");
+    assertThat(payload.path("timeoutMinutes").asInt()).isEqualTo(15);
+
+    final var ctx = payload.path("context");
+    assertThat(ctx.path("github.ref").asText()).isEqualTo("refs/heads/main");
+    assertThat(ctx.path("github.event_name").asText()).isEqualTo("workflow_dispatch");
+    assertThat(ctx.path("github.repository").asText()).isEqualTo("acme/app");
+    assertThat(ctx.path("github.repository_owner").asText()).isEqualTo("acme");
+    assertThat(ctx.path("github.run_number").asText()).isEqualTo("7");
+    assertThat(ctx.path("github.workflow").asText()).isEqualTo("CI");
+    assertThat(ctx.path("github.job").asText()).isEqualTo("build");
+    assertThat(ctx.path("inputs.v").asText()).isEqualTo("x");
+    assertThat(ctx.path("needs.setup.result").asText()).isEqualTo("success");
+    ctx.fieldNames().forEachRemaining(name -> assertThat(name).doesNotStartWith("secrets."));
+
+    final var first = payload.path("steps").get(0);
+    assertThat(first.path("key").asText()).isEqualTo("first");
+    assertThat(first.path("continueOnError").asBoolean()).isTrue();
+    assertThat(first.path("timeoutMinutes").asInt()).isEqualTo(2);
+    assertThat(first.path("shell").asText()).isEqualTo("bash");
+    assertThat(first.path("workingDirectory").asText()).isEqualTo("app");
+
+    final var second = payload.path("steps").get(1);
+    assertThat(second.path("key").asText()).isEqualTo("second");
+    assertThat(second.path("continueOnError").asBoolean()).isFalse();
+    assertThat(second.path("shell").asText()).isEqualTo("sh");
+    assertThat(second.path("workingDirectory").asText()).isEqualTo("sub");
+    assertThat(second.path("condition").asText()).isEqualTo("${{ failure() }}");
+    assertThat(second.path("run").asText())
+        .as("steps.* is left for the runner, inputs.* is resolved")
+        .isEqualTo("echo ${{ steps.first.outputs.x }} x");
+    assertThat(second.path("env").path("LOCAL").asText()).isEqualTo("x");
+  }
 
   private void stubRunToTenant(final UUID tenantId) {
     final var run = new WorkflowRun();

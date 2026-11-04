@@ -28,4 +28,8 @@ public record StepModel(
     @Nullable String run,
     @JsonProperty("if") @Nullable String condition,
     @Nullable Map<String, String> with,
-    @Nullable Map<String, String> env) {}
+    @Nullable Map<String, String> env,
+    @JsonProperty("working-directory") @Nullable String workingDirectory,
+    @Nullable String shell,
+    @JsonProperty("continue-on-error") @Nullable String continueOnError,
+    @JsonProperty("timeout-minutes") @Nullable Integer timeoutMinutes) {}

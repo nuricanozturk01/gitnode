@@ -222,7 +222,7 @@ public class JobDispatcher {
     final var key =
         job.getJobKey() != null ? job.getJobKey() : this.findJobKey(model, job.getName());
     final var jobModel = model.jobs().get(key);
-    return new JobContext(run, jobModel);
+    return new JobContext(run, jobModel, model);
   }
 
   private @Nullable WorkflowModel resolveWorkflowModel(final UUID defId) {
@@ -267,6 +267,7 @@ public class JobDispatcher {
 
     final var run = java.util.Optional.ofNullable(ctx).map(JobContext::run).orElse(null);
     final var jobModel = java.util.Optional.ofNullable(ctx).map(JobContext::jobModel).orElse(null);
+    final var workflow = java.util.Optional.ofNullable(ctx).map(JobContext::workflow).orElse(null);
     final List<StepModel> stepModels =
         java.util.Optional.ofNullable(jobModel).map(JobModel::steps).orElse(List.of());
 
@@ -275,18 +276,20 @@ public class JobDispatcher {
             ? this.secretVaultService.resolveSecrets(run.getRepoId())
             : Map.<String, String>of();
 
-    final var baseCtx = buildExpressionContext(run, job);
-    final var exprCtx = new java.util.LinkedHashMap<>(baseCtx);
+    final var jobContext = this.buildJobContext(run, job);
+    final var exprCtx = new java.util.LinkedHashMap<>(jobContext);
     secrets.forEach((k, v) -> exprCtx.put("secrets." + k, v));
-    final var stepPayloads =
-        this.buildStepPayloads(steps, stepModels, java.util.Collections.unmodifiableMap(exprCtx));
+    final var fullCtx = java.util.Collections.unmodifiableMap(exprCtx);
+
+    final var stepPayloads = this.buildStepPayloads(steps, stepModels, fullCtx, workflow, jobModel);
     final var services =
         buildServicesPayload(
             java.util.Optional.ofNullable(jobModel).map(JobModel::services).orElse(null));
-    final var env =
-        java.util.Optional.ofNullable(run)
-            .map(this::buildEnvMap)
-            .orElseGet(java.util.LinkedHashMap::new);
+    final var env = this.buildEnvMap(run, workflow, jobModel, fullCtx);
+    final int timeoutMinutes =
+        jobModel != null && jobModel.timeoutMinutes() != null && jobModel.timeoutMinutes() > 0
+            ? jobModel.timeoutMinutes()
+            : DEFAULT_JOB_TIMEOUT_MINUTES;
 
     return new JobPayload(
         job.getId().toString(),
@@ -299,12 +302,64 @@ public class JobDispatcher {
         secrets,
         java.util.Optional.ofNullable(job.getMatrixValues()).orElse(Map.of()),
         java.util.Optional.ofNullable(job.getNeeds()).orElse(List.of()),
-        DEFAULT_JOB_TIMEOUT_MINUTES);
+        timeoutMinutes,
+        jobContext);
   }
 
-  private java.util.LinkedHashMap<String, String> buildEnvMap(final WorkflowRun run) {
+  /**
+   * The expression context sent to the runner: github.*, inputs.*, matrix.* and needs.*.result.
+   * Secrets are deliberately not part of it; they travel separately.
+   */
+  private Map<String, String> buildJobContext(
+      final @Nullable WorkflowRun run, final WorkflowJob job) {
+
+    final var ctx = new java.util.LinkedHashMap<>(buildExpressionContext(run, job));
+    if (run != null) {
+      ctx.put("github.run_id", run.getId().toString());
+      ctx.put("github.run_number", String.valueOf(run.getRunNumber()));
+      ctx.put("github.workflow", run.getWorkflowName());
+      this.repoLookup
+          .findById(run.getRepoId())
+          .ifPresent(
+              repo -> {
+                ctx.put("github.repository", repo.ownerUsername() + "/" + repo.name());
+                ctx.put("github.repository_owner", repo.ownerUsername());
+              });
+    }
+    if (job.getJobKey() != null) {
+      ctx.put("github.job", job.getJobKey());
+    }
+    final var needs = job.getNeeds();
+    if (needs != null && !needs.isEmpty()) {
+      final var all = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
+      for (final String need : needs) {
+        ctx.put("needs." + need + ".result", JobNeeds.aggregate(JobNeeds.jobsFor(all, need)));
+      }
+    }
+    return java.util.Collections.unmodifiableMap(ctx);
+  }
+
+  /**
+   * Workflow-level env, then job-level env, then the GITNODE_* variables the runner relies on
+   * (these win so a workflow cannot break checkout).
+   */
+  @SuppressWarnings("checkstyle:CyclomaticComplexity") // one guarded step per env source
+  private java.util.LinkedHashMap<String, String> buildEnvMap(
+      final @Nullable WorkflowRun run,
+      final @Nullable WorkflowModel workflow,
+      final @Nullable JobModel jobModel,
+      final Map<String, String> exprCtx) {
 
     final var env = new java.util.LinkedHashMap<String, String>();
+    if (workflow != null && workflow.env() != null) {
+      env.putAll(this.interpolateMap(workflow.env(), exprCtx));
+    }
+    if (jobModel != null && jobModel.env() != null) {
+      env.putAll(this.interpolateMap(jobModel.env(), exprCtx));
+    }
+    if (run == null) {
+      return env;
+    }
     this.repoLookup
         .findById(run.getRepoId())
         .ifPresent(
@@ -321,10 +376,16 @@ public class JobDispatcher {
     return env;
   }
 
+  @SuppressWarnings("checkstyle:CyclomaticComplexity") // maps every step field onto its payload
   private List<StepPayload> buildStepPayloads(
       final List<WorkflowStep> steps,
       final List<StepModel> stepModels,
-      final Map<String, String> exprCtx) {
+      final Map<String, String> exprCtx,
+      final @Nullable WorkflowModel workflow,
+      final @Nullable JobModel jobModel) {
+
+    final var defaultShell = this.runDefault(workflow, jobModel, true);
+    final var defaultDir = this.runDefault(workflow, jobModel, false);
 
     final var stepPayloads = new ArrayList<StepPayload>();
     for (int i = 0; i < steps.size(); i++) {
@@ -346,7 +407,18 @@ public class JobDispatcher {
                 this.expressionEvaluator.evaluate(rawRun, exprCtx),
                 withValues,
                 envValues,
-                this.expressionEvaluator.evaluate(rawCond, exprCtx)));
+                this.expressionEvaluator.evaluate(rawCond, exprCtx),
+                sm.id() != null ? sm.id() : "",
+                "true"
+                    .equalsIgnoreCase(
+                        this.expressionEvaluator
+                            .evaluate(
+                                sm.continueOnError() != null ? sm.continueOnError() : "", exprCtx)
+                            .trim()),
+                this.expressionEvaluator.evaluate(
+                    firstNonBlank(sm.workingDirectory(), defaultDir), exprCtx),
+                this.expressionEvaluator.evaluate(firstNonBlank(sm.shell(), defaultShell), exprCtx),
+                sm.timeoutMinutes() != null && sm.timeoutMinutes() > 0 ? sm.timeoutMinutes() : 0));
       } else {
         stepPayloads.add(
             new StepPayload(
@@ -357,7 +429,12 @@ public class JobDispatcher {
                 "",
                 Map.of(),
                 Map.of(),
-                ""));
+                "",
+                "",
+                false,
+                "",
+                "",
+                0));
       }
     }
     return stepPayloads;
@@ -398,6 +475,34 @@ public class JobDispatcher {
     }
   }
 
+  /** The job-level default wins over the workflow-level one, like on GitHub. */
+  private String runDefault(
+      final @Nullable WorkflowModel workflow,
+      final @Nullable JobModel jobModel,
+      final boolean shell) {
+
+    final var fromJob = jobModel != null ? runDefaultOf(jobModel.defaults(), shell) : null;
+    if (fromJob != null) {
+      return fromJob;
+    }
+    final var fromWorkflow = workflow != null ? runDefaultOf(workflow.defaults(), shell) : null;
+    return fromWorkflow != null ? fromWorkflow : "";
+  }
+
+  private static @Nullable String runDefaultOf(
+      final dev.gitnode.os.actions.model.@Nullable DefaultsModel defaults, final boolean shell) {
+
+    if (defaults == null || defaults.run() == null) {
+      return null;
+    }
+    final var value = shell ? defaults.run().shell() : defaults.run().workingDirectory();
+    return value == null || value.isBlank() ? null : value;
+  }
+
+  private static String firstNonBlank(final @Nullable String first, final String fallback) {
+    return first != null && !first.isBlank() ? first : fallback;
+  }
+
   private Map<String, String> interpolateMap(
       final Map<String, String> raw, final Map<String, String> ctx) {
 
@@ -427,7 +532,8 @@ public class JobDispatcher {
     return result;
   }
 
-  private record JobContext(WorkflowRun run, @Nullable JobModel jobModel) {}
+  private record JobContext(
+      WorkflowRun run, @Nullable JobModel jobModel, @Nullable WorkflowModel workflow) {}
 
   private @Nullable String findJobKey(final WorkflowModel model, final String jobName) {
     if (model.jobs() == null) {
@@ -496,7 +602,8 @@ public class JobDispatcher {
       Map<String, String> secrets,
       Map<String, String> matrixValues,
       List<String> needs,
-      int timeoutMinutes) {}
+      int timeoutMinutes,
+      Map<String, String> context) {}
 
   public record StepPayload(
       String id,
@@ -506,5 +613,10 @@ public class JobDispatcher {
       String run,
       Map<String, String> with,
       Map<String, String> env,
-      String condition) {}
+      String condition,
+      String key,
+      boolean continueOnError,
+      String workingDirectory,
+      String shell,
+      int timeoutMinutes) {}
 }

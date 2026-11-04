@@ -59,6 +59,13 @@ func (c *JobContext) SetEnv(key, value string) {
 	c.env[key] = value
 }
 
+// UnsetEnv removes an env variable.
+func (c *JobContext) UnsetEnv(key string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	delete(c.env, key)
+}
+
 // SetOutput records a step output value.
 func (c *JobContext) SetOutput(stepID, name, value string) {
 	c.mu.Lock()

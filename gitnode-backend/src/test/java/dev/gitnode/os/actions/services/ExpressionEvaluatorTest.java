@@ -114,4 +114,49 @@ class ExpressionEvaluatorTest {
   void falseStringFalsy() {
     assertThat(evaluator.evaluateCondition("false", CTX, "success")).isFalse();
   }
+
+  @Test
+  @DisplayName("evaluates compound conditions with && || ! and functions")
+  void compoundConditions() {
+    final Map<String, String> ctx =
+        Map.of("github.ref", "refs/heads/main", "inputs.skip", "false", "inputs.target", "vps");
+    assertThat(
+            evaluator.evaluateCondition(
+                "${{ github.ref == 'refs/heads/main' && inputs.skip != 'true' }}", ctx, "success"))
+        .isTrue();
+    assertThat(
+            evaluator.evaluateCondition(
+                "${{ inputs.target == 'default' || inputs.target == 'vps' }}", ctx, "success"))
+        .isTrue();
+    assertThat(evaluator.evaluateCondition("!(inputs.target == 'vps')", ctx, "success")).isFalse();
+    assertThat(evaluator.evaluateCondition("startsWith(github.ref, 'refs/heads/')", ctx, "success"))
+        .isTrue();
+    assertThat(evaluator.evaluateCondition("${{ inputs.skip }}", ctx, "success")).isFalse();
+    assertThat(evaluator.evaluateCondition("${{ failure() }}", ctx, "success")).isFalse();
+    assertThat(evaluator.evaluateCondition("always() && !cancelled()", ctx, "failure")).isTrue();
+  }
+
+  @Test
+  @DisplayName("an unparsable condition evaluates to false instead of throwing")
+  void invalidConditionIsFalse() {
+    assertThat(evaluator.evaluateCondition("${{ ( }}", CTX, "success")).isFalse();
+    assertThat(evaluator.evaluateCondition("unknownFn()", CTX, "success")).isFalse();
+  }
+
+  @Test
+  @DisplayName("mixed text and expression compares substituted values")
+  void mixedTextCondition() {
+    final Map<String, String> ctx = Map.of("github.ref", "refs/heads/main");
+    assertThat(
+            evaluator.evaluateCondition("${{ github.ref }} == 'refs/heads/main'", ctx, "success"))
+        .isTrue();
+    assertThat(evaluator.evaluateCondition("prefix ${{ github.ref }}", ctx, "success")).isTrue();
+  }
+
+  @Test
+  @DisplayName("leaves step outputs for the runner when the value is not known yet")
+  void leavesUnknownStepOutputs() {
+    final String template = "v=${{ steps.build.outputs.missing }} ${{ steps.x.outcome }}";
+    assertThat(evaluator.evaluate(template, CTX)).isEqualTo(template);
+  }
 }

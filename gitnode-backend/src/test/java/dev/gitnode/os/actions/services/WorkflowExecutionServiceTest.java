@@ -18,18 +18,22 @@ package dev.gitnode.os.actions.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.actions.entities.Runner;
 import dev.gitnode.os.actions.entities.RunnerStatus;
+import dev.gitnode.os.actions.entities.WorkflowDefinition;
 import dev.gitnode.os.actions.entities.WorkflowJob;
 import dev.gitnode.os.actions.entities.WorkflowJobStatus;
 import dev.gitnode.os.actions.entities.WorkflowLog;
 import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.entities.WorkflowRunStatus;
 import dev.gitnode.os.actions.entities.WorkflowStep;
+import dev.gitnode.os.actions.model.WorkflowModel;
 import dev.gitnode.os.actions.repositories.RunnerRepository;
+import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
 import dev.gitnode.os.actions.repositories.WorkflowLogRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
@@ -37,13 +41,14 @@ import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.websocket.RunStatusSseRegistry;
 import dev.gitnode.os.actions.websocket.SseEmitterRegistry;
 import dev.gitnode.os.events.actions.WorkflowJobStartedEvent;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -61,7 +66,30 @@ class WorkflowExecutionServiceTest {
   @Mock private SseEmitterRegistry sseEmitterRegistry;
   @Mock private RunStatusSseRegistry runStatusSseRegistry;
 
-  @InjectMocks private WorkflowExecutionService service;
+  @Mock private WorkflowDefinitionRepository definitionRepository;
+  @Mock private WorkflowParserService parserService;
+  @Mock private RepoLookupPort repoLookup;
+
+  private WorkflowExecutionService service;
+
+  @BeforeEach
+  void setUp() {
+    this.service =
+        new WorkflowExecutionService(
+            this.jobRepository,
+            this.runRepository,
+            this.stepRepository,
+            this.logRepository,
+            this.runnerRepository,
+            this.eventPublisher,
+            this.sseEmitterRegistry,
+            this.runStatusSseRegistry,
+            new JobAdvancer(
+                this.definitionRepository,
+                this.parserService,
+                new ExpressionEvaluator(),
+                this.repoLookup));
+  }
 
   private static final UUID RUNNER_ID = UUID.randomUUID();
   private static final UUID JOB_ID = UUID.randomUUID();
@@ -318,6 +346,218 @@ class WorkflowExecutionServiceTest {
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────
+
+  // ── needs and if: semantics ──────────────────────────────────────────────
+
+  private WorkflowRun runWithWorkflow(final String yaml) throws Exception {
+    final var defId = UUID.randomUUID();
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+    run.setWorkflowDefId(defId);
+    final var definition = new WorkflowDefinition();
+    definition.setContent(yaml);
+    lenient().when(this.definitionRepository.findById(defId)).thenReturn(Optional.of(definition));
+    lenient()
+        .when(this.parserService.parseFromContent(yaml))
+        .thenReturn(WorkflowParserService.YAML_MAPPER.readValue(yaml, WorkflowModel.class));
+    return run;
+  }
+
+  private static WorkflowJob namedJob(
+      final String key, final WorkflowJobStatus status, final List<String> needs) {
+    final var job = buildJob(status);
+    job.setId(UUID.randomUUID());
+    job.setJobKey(key);
+    job.setName(key);
+    job.setNeeds(needs);
+    return job;
+  }
+
+  private void complete(
+      final WorkflowRun run,
+      final WorkflowJob finished,
+      final List<WorkflowJob> all,
+      final String conclusion) {
+    finished.setId(JOB_ID);
+    lenient().when(this.jobRepository.findById(JOB_ID)).thenReturn(Optional.of(finished));
+    lenient().when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    lenient().when(this.jobRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    lenient().when(this.runRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    lenient().when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(all);
+    this.service.handleJobCompleted(JOB_ID, conclusion);
+  }
+
+  private static final String CLEANUP_WORKFLOW =
+      """
+      on: push
+      jobs:
+        test:
+          runs-on: x
+          steps: []
+        cleanup:
+          runs-on: x
+          needs: test
+          if: always()
+          steps: []
+        onfail:
+          runs-on: x
+          needs: test
+          if: ${{ failure() }}
+          steps: []
+        report:
+          runs-on: x
+          needs: test
+          if: needs.test.result == 'success'
+          steps: []
+        deploy:
+          runs-on: x
+          needs: test
+          steps: []
+      """;
+
+  @Test
+  @DisplayName("a failed need skips dependents unless their if: allows it (always/failure)")
+  void needFails_conditionsDecide() throws Exception {
+    final var run = this.runWithWorkflow(CLEANUP_WORKFLOW);
+    final var test = namedJob("test", WorkflowJobStatus.IN_PROGRESS, null);
+    final var cleanup = namedJob("cleanup", WorkflowJobStatus.WAITING, List.of("test"));
+    final var onfail = namedJob("onfail", WorkflowJobStatus.WAITING, List.of("test"));
+    final var report = namedJob("report", WorkflowJobStatus.WAITING, List.of("test"));
+    final var deploy = namedJob("deploy", WorkflowJobStatus.WAITING, List.of("test"));
+
+    this.complete(run, test, List.of(test, cleanup, onfail, report, deploy), "failure");
+
+    assertThat(cleanup.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    assertThat(onfail.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    assertThat(report.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+    assertThat(deploy.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+  }
+
+  @Test
+  @DisplayName(
+      "a successful need runs plain dependents and success-conditioned ones, not failure-only")
+  void needSucceeds_conditionsDecide() throws Exception {
+    final var run = this.runWithWorkflow(CLEANUP_WORKFLOW);
+    final var test = namedJob("test", WorkflowJobStatus.IN_PROGRESS, null);
+    final var cleanup = namedJob("cleanup", WorkflowJobStatus.WAITING, List.of("test"));
+    final var onfail = namedJob("onfail", WorkflowJobStatus.WAITING, List.of("test"));
+    final var report = namedJob("report", WorkflowJobStatus.WAITING, List.of("test"));
+    final var deploy = namedJob("deploy", WorkflowJobStatus.WAITING, List.of("test"));
+
+    this.complete(run, test, List.of(test, cleanup, onfail, report, deploy), "success");
+
+    assertThat(cleanup.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    assertThat(onfail.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+    assertThat(report.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+    assertThat(deploy.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
+  @Test
+  @DisplayName("a job waits until every job it needs has finished")
+  void waitsForAllNeeds() throws Exception {
+    final var yaml =
+        """
+        on: push
+        jobs:
+          a: {runs-on: x, steps: []}
+          b: {runs-on: x, steps: []}
+          c: {runs-on: x, needs: [a, b], steps: []}
+        """;
+    final var run = this.runWithWorkflow(yaml);
+    final var a = namedJob("a", WorkflowJobStatus.IN_PROGRESS, null);
+    final var b = namedJob("b", WorkflowJobStatus.IN_PROGRESS, null);
+    final var c = namedJob("c", WorkflowJobStatus.WAITING, List.of("a", "b"));
+
+    this.complete(run, a, List.of(a, b, c), "success");
+    assertThat(c.getStatus()).isEqualTo(WorkflowJobStatus.WAITING);
+
+    b.setStatus(WorkflowJobStatus.SUCCESS);
+    this.complete(run, b, List.of(a, b, c), "success");
+    assertThat(c.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
+  @Test
+  @DisplayName("skipping a job cascades to the jobs that need it")
+  void skipCascades() throws Exception {
+    final var yaml =
+        """
+        on: push
+        jobs:
+          a: {runs-on: x, steps: []}
+          b: {runs-on: x, needs: a, steps: []}
+          c: {runs-on: x, needs: b, steps: []}
+        """;
+    final var run = this.runWithWorkflow(yaml);
+    final var a = namedJob("a", WorkflowJobStatus.IN_PROGRESS, null);
+    final var b = namedJob("b", WorkflowJobStatus.WAITING, List.of("a"));
+    final var c = namedJob("c", WorkflowJobStatus.WAITING, List.of("b"));
+
+    this.complete(run, a, List.of(a, b, c), "failure");
+
+    assertThat(b.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+    assertThat(c.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+    assertThat(run.getStatus()).isEqualTo(WorkflowRunStatus.FAILURE);
+  }
+
+  @Test
+  @DisplayName("an already skipped need skips its dependent, but not one with always()")
+  void skippedNeed() throws Exception {
+    final var yaml =
+        """
+        on: push
+        jobs:
+          a: {runs-on: x, steps: []}
+          skipme: {runs-on: x, if: "false", steps: []}
+          plain: {runs-on: x, needs: [a, skipme], steps: []}
+          tolerant: {runs-on: x, needs: [a, skipme], if: always(), steps: []}
+        """;
+    final var run = this.runWithWorkflow(yaml);
+    final var a = namedJob("a", WorkflowJobStatus.IN_PROGRESS, null);
+    final var skipme = namedJob("skipme", WorkflowJobStatus.SKIPPED, null);
+    final var plain = namedJob("plain", WorkflowJobStatus.WAITING, List.of("a", "skipme"));
+    final var tolerant = namedJob("tolerant", WorkflowJobStatus.WAITING, List.of("a", "skipme"));
+
+    this.complete(run, a, List.of(a, skipme, plain, tolerant), "success");
+
+    assertThat(plain.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+    assertThat(tolerant.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
+
+  @Test
+  @DisplayName("matrix jobs share a key: dependents wait for every expansion")
+  void matrixNeedsWaitForAllExpansions() throws Exception {
+    final var yaml =
+        """
+        on: push
+        jobs:
+          build: {runs-on: x, steps: []}
+          ship: {runs-on: x, needs: build, steps: []}
+        """;
+    final var run = this.runWithWorkflow(yaml);
+    final var linux = namedJob("build", WorkflowJobStatus.IN_PROGRESS, null);
+    linux.setName("build (linux)");
+    final var mac = namedJob("build", WorkflowJobStatus.IN_PROGRESS, null);
+    mac.setName("build (mac)");
+    final var ship = namedJob("ship", WorkflowJobStatus.WAITING, List.of("build"));
+
+    this.complete(run, linux, List.of(linux, mac, ship), "success");
+    assertThat(ship.getStatus()).isEqualTo(WorkflowJobStatus.WAITING);
+
+    mac.setStatus(WorkflowJobStatus.FAILURE);
+    this.complete(run, mac, List.of(linux, mac, ship), "failure");
+    assertThat(ship.getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
+  }
+
+  @Test
+  @DisplayName("without a stored workflow definition, needs still resolve with success() semantics")
+  void noDefinition_defaultSemantics() {
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+    final var test = namedJob("test", WorkflowJobStatus.IN_PROGRESS, null);
+    final var deploy = namedJob("deploy", WorkflowJobStatus.WAITING, List.of("test"));
+
+    this.complete(run, test, List.of(test, deploy), "success");
+
+    assertThat(deploy.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
+  }
 
   private static WorkflowJob buildJob(final WorkflowJobStatus status) {
     final var job = new WorkflowJob();

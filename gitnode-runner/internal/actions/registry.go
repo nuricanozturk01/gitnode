@@ -3,6 +3,7 @@ package actions
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
@@ -27,11 +28,14 @@ type ActionHandler interface {
 // Registry maps "name@version" strings to ActionHandler implementations.
 type Registry struct {
 	handlers map[string]ActionHandler
+	// byName finds a built-in by action name regardless of version, so workflows written for
+	// newer GitHub releases (checkout@v6, setup-node@v7, ...) keep working.
+	byName map[string]ActionHandler
 }
 
 // NewRegistry builds a Registry with all built-in handlers registered.
 func NewRegistry(serverURL, runnerToken string) *Registry {
-	r := &Registry{handlers: make(map[string]ActionHandler)}
+	r := &Registry{handlers: make(map[string]ActionHandler), byName: make(map[string]ActionHandler)}
 	r.register(NewCheckoutAction(serverURL, runnerToken))
 	r.register(NewSetupNodeAction())
 	r.register(NewSetupPnpmAction())
@@ -48,18 +52,31 @@ func NewRegistry(serverURL, runnerToken string) *Registry {
 }
 
 func (r *Registry) register(h ActionHandler) {
+	r.byName[h.Name()] = h
 	for _, ver := range h.Versions() {
 		key := h.Name() + "@" + ver
 		r.handlers[key] = h
 	}
 }
 
-// Resolve returns the handler for a "name@version" string.
-// Returns an error when the action is unknown.
+// Resolve returns the built-in handler for a "name@version" string. A built-in matches any
+// version of its name. Returns an error when no built-in has that name.
 func (r *Registry) Resolve(uses string) (ActionHandler, error) {
-	h, ok := r.handlers[uses]
-	if !ok {
-		return nil, fmt.Errorf("unknown action: %q", uses)
+	if h, ok := r.Lookup(uses); ok {
+		return h, nil
 	}
-	return h, nil
+	return nil, fmt.Errorf("unknown action: %q", uses)
+}
+
+// Lookup is Resolve without the error, for callers that fall back to remote actions.
+func (r *Registry) Lookup(uses string) (ActionHandler, bool) {
+	if h, ok := r.handlers[uses]; ok {
+		return h, true
+	}
+	name := uses
+	if at := strings.LastIndex(uses, "@"); at > 0 {
+		name = uses[:at]
+	}
+	h, ok := r.byName[name]
+	return h, ok
 }

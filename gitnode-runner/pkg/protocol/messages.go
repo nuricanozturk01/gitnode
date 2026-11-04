@@ -94,10 +94,17 @@ type JobPayload struct {
 	MatrixValues map[string]string `json:"matrixValues"`
 	Needs        []string          `json:"needs"`
 	TimeoutMins  int               `json:"timeoutMinutes"`
+	// Context carries the flattened expression context resolved by the server
+	// (github.*, inputs.*, matrix.*, needs.<job>.result, ...). The runner adds env.*,
+	// secrets.*, steps.*, job.* and runner.* itself.
+	Context map[string]string `json:"context"`
 }
 
 type StepPayload struct {
-	ID        string            `json:"id"`
+	ID string `json:"id"`
+	// Key is the step's `id:` from the workflow YAML (empty when not set). It addresses the
+	// step in expressions: steps.<key>.outputs.<name>.
+	Key       string            `json:"key"`
 	Number    int               `json:"number"`
 	Name      string            `json:"name"`
 	Uses      string            `json:"uses"`
@@ -105,6 +112,14 @@ type StepPayload struct {
 	With      map[string]string `json:"with"`
 	Env       map[string]string `json:"env"`
 	Condition string            `json:"condition"`
+	// ContinueOnError makes a failing step not fail the job (outcome=failure, conclusion=success).
+	ContinueOnError bool `json:"continueOnError"`
+	// WorkingDirectory is relative to the workspace root.
+	WorkingDirectory string `json:"workingDirectory"`
+	// Shell selects the interpreter for run steps (bash, sh, python, pwsh).
+	Shell string `json:"shell"`
+	// TimeoutMins limits a single step; 0 means no step-level limit.
+	TimeoutMins int `json:"timeoutMinutes"`
 }
 
 type ServicePayload struct {

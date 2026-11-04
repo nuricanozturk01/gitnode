@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
@@ -22,6 +24,11 @@ type DockerExecutor struct {
 	workDir string
 	image   string
 	log     *zap.Logger
+	shell   string
+	subDir  string
+	// sharedPaths are host directories bind-mounted at the identical path inside the container
+	// (the runtime files behind $GITHUB_OUTPUT, $GITHUB_ENV, ...).
+	sharedPaths []string
 }
 
 // NewDockerExecutor returns a DockerExecutor.
@@ -31,6 +38,24 @@ func NewDockerExecutor(workDir, image string, log *zap.Logger) *DockerExecutor {
 		image = defaultImage
 	}
 	return &DockerExecutor{workDir: workDir, image: image, log: log}
+}
+
+// WithShell selects the interpreter; empty means GitHub's default.
+func (e *DockerExecutor) WithShell(shell string) *DockerExecutor {
+	e.shell = shell
+	return e
+}
+
+// WithSubDir sets the working directory below the mounted workspace.
+func (e *DockerExecutor) WithSubDir(subDir string) *DockerExecutor {
+	e.subDir = subDir
+	return e
+}
+
+// WithSharedPaths mounts host paths at the same location inside the container.
+func (e *DockerExecutor) WithSharedPaths(paths ...string) *DockerExecutor {
+	e.sharedPaths = append(e.sharedPaths, paths...)
+	return e
 }
 
 // Run executes a shell command inside a Docker container, streaming output via streamer.
@@ -47,27 +72,38 @@ func (e *DockerExecutor) Run(
 	}
 	defer cli.Close() //nolint:errcheck
 
+	args, argsErr := shellArgs(e.shell, command)
+	if argsErr != nil {
+		return "failure", argsErr
+	}
+
 	envVars := make([]string, 0)
 	for k, v := range jctx.Env() {
+		if k == "GITHUB_WORKSPACE" {
+			v = "/workspace" // the host path does not exist inside the container
+		}
 		envVars = append(envVars, k+"="+v)
+	}
+
+	workingDir := "/workspace"
+	if e.subDir != "" && e.subDir != "." {
+		workingDir = path.Join("/workspace", filepath.ToSlash(e.subDir))
 	}
 
 	cfg := &container.Config{
 		Image:        e.image,
-		Cmd:          []string{"bash", "-c", command},
+		Cmd:          args,
 		Env:          envVars,
-		WorkingDir:   "/workspace",
+		WorkingDir:   workingDir,
 		AttachStdout: true,
 		AttachStderr: true,
 	}
+	mounts := []mount.Mount{{Type: mount.TypeBind, Source: e.workDir, Target: "/workspace"}}
+	for _, p := range e.sharedPaths {
+		mounts = append(mounts, mount.Mount{Type: mount.TypeBind, Source: p, Target: p})
+	}
 	hostCfg := &container.HostConfig{
-		Mounts: []mount.Mount{
-			{
-				Type:   mount.TypeBind,
-				Source: e.workDir,
-				Target: "/workspace",
-			},
-		},
+		Mounts:      mounts,
 		SecurityOpt: []string{"no-new-privileges"},
 	}
 

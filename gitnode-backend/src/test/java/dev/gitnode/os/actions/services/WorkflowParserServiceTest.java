@@ -192,4 +192,97 @@ class WorkflowParserServiceTest {
 
     assertThat(model.on().push().branchesIgnore()).containsExactly("dependabot/**", "release/**");
   }
+
+  @Test
+  @DisplayName("on: accepts a single event name")
+  void on_singleString() throws IOException {
+    final var model = this.parse("on: push\njobs:\n  a:\n    runs-on: x\n    steps: []\n");
+    assertThat(model.on()).isNotNull();
+    assertThat(model.on().push()).isNotNull();
+    assertThat(model.on().pullRequest()).isNull();
+  }
+
+  @Test
+  @DisplayName("on: accepts a list of event names")
+  void on_list() throws IOException {
+    final var model = this.parse("on: [push, pull_request, workflow_dispatch]\njobs: {}\n");
+    assertThat(model.on().push()).isNotNull();
+    assertThat(model.on().pullRequest()).isNotNull();
+    assertThat(model.on().workflowDispatch()).isNotNull();
+    assertThat(model.on().schedule()).isNull();
+  }
+
+  @Test
+  @DisplayName("on: events without a value are enabled (workflow_dispatch:, push:)")
+  void on_eventsWithoutValue() throws IOException {
+    final var model = this.parse("on:\n  workflow_dispatch:\n  push:\n  pull_request:\njobs: {}\n");
+    assertThat(model.on().workflowDispatch()).isNotNull();
+    assertThat(model.on().workflowDispatch().inputs()).isNull();
+    assertThat(model.on().push()).isNotNull();
+    assertThat(model.on().pullRequest()).isNotNull();
+  }
+
+  @Test
+  @DisplayName("on: absent events stay disabled")
+  void on_absentEventsDisabled() throws IOException {
+    final var model = this.parse("on:\n  push:\n    branches: [main]\njobs: {}\n");
+    assertThat(model.on().push().branches()).containsExactly("main");
+    assertThat(model.on().pullRequest()).isNull();
+    assertThat(model.on().workflowDispatch()).isNull();
+  }
+
+  @Test
+  @DisplayName("on: parses schedule entries with optional timezone")
+  void on_schedule() throws IOException {
+    final var model =
+        this.parse(
+            """
+            on:
+              schedule:
+                - cron: "0 16 * * *"
+                  timezone: 'Europe/Istanbul'
+                - cron: "*/5 * * * *"
+            jobs: {}
+            """);
+    assertThat(model.on().schedule()).hasSize(2);
+    assertThat(model.on().schedule().get(0).cron()).isEqualTo("0 16 * * *");
+    assertThat(model.on().schedule().get(0).timezone()).isEqualTo("Europe/Istanbul");
+    assertThat(model.on().schedule().get(1).timezone()).isNull();
+  }
+
+  @Test
+  @DisplayName("parses defaults and step-level shell, working-directory, continue-on-error")
+  void defaultsAndStepFields() throws IOException {
+    final var model =
+        this.parse(
+            """
+            on: push
+            defaults:
+              run:
+                shell: bash
+                working-directory: app
+            jobs:
+              a:
+                runs-on: x
+                defaults:
+                  run:
+                    working-directory: web
+                steps:
+                  - id: s1
+                    run: echo hi
+                    shell: sh
+                    working-directory: sub
+                    continue-on-error: true
+                    timeout-minutes: 3
+            """);
+    assertThat(model.defaults().run().shell()).isEqualTo("bash");
+    assertThat(model.defaults().run().workingDirectory()).isEqualTo("app");
+    final var job = model.jobs().get("a");
+    assertThat(job.defaults().run().workingDirectory()).isEqualTo("web");
+    final var step = job.steps().get(0);
+    assertThat(step.shell()).isEqualTo("sh");
+    assertThat(step.workingDirectory()).isEqualTo("sub");
+    assertThat(step.continueOnError()).isEqualTo("true");
+    assertThat(step.timeoutMinutes()).isEqualTo(3);
+  }
 }

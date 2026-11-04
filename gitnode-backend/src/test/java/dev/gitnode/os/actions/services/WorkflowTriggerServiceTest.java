@@ -53,7 +53,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -73,7 +72,26 @@ class WorkflowTriggerServiceTest {
   @Spy private MatrixExpander matrixExpander = new MatrixExpander();
   @Spy private ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-  @InjectMocks private WorkflowTriggerService triggerService;
+  private WorkflowTriggerService triggerService;
+
+  @BeforeEach
+  void setUpService() {
+    this.triggerService =
+        new WorkflowTriggerService(
+            this.parserService,
+            this.definitionRepository,
+            this.runRepository,
+            this.jobRepository,
+            this.repoRepository,
+            this.eventPublisher,
+            this.matrixExpander,
+            this.expressionEvaluator,
+            new JobAdvancer(
+                this.definitionRepository,
+                this.parserService,
+                this.expressionEvaluator,
+                this.repoRepository));
+  }
 
   private static final UUID REPO_ID = UUID.randomUUID();
   private static final String OWNER = "alice";
@@ -310,6 +328,99 @@ class WorkflowTriggerServiceTest {
       verify(jobRepository).save(jobCaptor.capture());
       assertThat(jobCaptor.getValue().getStatus()).isEqualTo(WorkflowJobStatus.SKIPPED);
       verify(eventPublisher, never()).publishEvent(any(WorkflowJobQueuedEvent.class));
+    }
+  }
+
+  // ── needs and if: at creation time ───────────────────────────────────────
+
+  @Nested
+  @DisplayName("NeedsAtCreationTests")
+  class NeedsAtCreationTests {
+
+    @BeforeEach
+    void stubRepo() {
+      final var repo = new RepoRef(REPO_ID, UUID.randomUUID(), OWNER, REPO_NAME, false);
+      when(repoRepository.findById(REPO_ID)).thenReturn(Optional.of(repo));
+      when(definitionRepository.findByRepoIdAndFilePath(any(), anyString()))
+          .thenReturn(Optional.empty());
+      stubDefinitionSave();
+      stubRunSave();
+      stubJobSave();
+      when(runRepository.nextRunNumber(REPO_ID)).thenReturn(1);
+    }
+
+    private java.util.Map<String, WorkflowJobStatus> runPush(final String yaml, final String branch)
+        throws Exception {
+      final var model = WorkflowParserService.YAML_MAPPER.readValue(yaml, WorkflowModel.class);
+      when(parserService.parseWorkflows(OWNER, REPO_NAME, "refs/heads/" + branch))
+          .thenReturn(List.of(parsed(model)));
+
+      triggerService.triggerOnPush(REPO_ID, branch, OWNER, null);
+
+      final var captor = ArgumentCaptor.forClass(WorkflowJob.class);
+      verify(jobRepository, org.mockito.Mockito.atLeastOnce()).save(captor.capture());
+      final var result = new java.util.LinkedHashMap<String, WorkflowJobStatus>();
+      captor.getAllValues().forEach(j -> result.put(j.getJobKey(), j.getStatus()));
+      return result;
+    }
+
+    @Test
+    @DisplayName("a job skipped by its own if: also skips the jobs that need it")
+    void skippedJobCascadesAtCreation() throws Exception {
+      final var statuses =
+          runPush(
+              """
+              on: push
+              jobs:
+                gated:
+                  runs-on: x
+                  if: github.ref == 'refs/heads/main'
+                  steps: []
+                after:
+                  runs-on: x
+                  needs: gated
+                  steps: []
+                last:
+                  runs-on: x
+                  needs: after
+                  steps: []
+                always-after:
+                  runs-on: x
+                  needs: gated
+                  if: always()
+                  steps: []
+              """,
+              "develop");
+
+      assertThat(statuses.get("gated")).isEqualTo(WorkflowJobStatus.SKIPPED);
+      assertThat(statuses.get("after")).isEqualTo(WorkflowJobStatus.SKIPPED);
+      assertThat(statuses.get("last")).isEqualTo(WorkflowJobStatus.SKIPPED);
+      assertThat(statuses.get("always-after")).isEqualTo(WorkflowJobStatus.QUEUED);
+      verify(eventPublisher, org.mockito.Mockito.times(1))
+          .publishEvent(any(WorkflowJobQueuedEvent.class));
+    }
+
+    @Test
+    @DisplayName("a job with needs keeps WAITING; its if: is evaluated when the needs finish")
+    void needsJobWaitsAndDefersCondition() throws Exception {
+      final var statuses =
+          runPush(
+              """
+              on: push
+              jobs:
+                build:
+                  runs-on: x
+                  steps: []
+                deploy:
+                  runs-on: x
+                  needs: build
+                  if: needs.build.result == 'success'
+                  steps: []
+              """,
+              "main");
+
+      assertThat(statuses.get("build")).isEqualTo(WorkflowJobStatus.QUEUED);
+      assertThat(statuses.get("deploy")).isEqualTo(WorkflowJobStatus.WAITING);
     }
   }
 

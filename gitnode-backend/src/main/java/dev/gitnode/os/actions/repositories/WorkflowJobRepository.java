@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -31,12 +32,40 @@ public interface WorkflowJobRepository extends JpaRepository<WorkflowJob, UUID> 
 
   List<WorkflowJob> findAllByRunIdOrderByCreatedAtAsc(UUID runId);
 
+  /**
+   * Queued jobs some ONLINE runner can actually take: the repository exists, the runner belongs to
+   * the repository's owner and has every label the job asks for. Selecting only those keeps jobs
+   * nobody can run (other owners without a runner, deleted repositories) from filling the batch and
+   * starving everything behind them.
+   */
   @Query(
       value =
-          "SELECT * FROM workflow_job WHERE status = 'QUEUED'"
-              + " ORDER BY created_at ASC LIMIT :limit FOR UPDATE SKIP LOCKED",
+          "SELECT j.* FROM workflow_job j WHERE j.status = 'QUEUED' AND EXISTS ("
+              + " SELECT 1 FROM workflow_run wr"
+              + " JOIN repositories rp ON rp.id = wr.repo_id"
+              + " JOIN runner r ON r.tenant_id = rp.owner_id AND r.status = 'ONLINE'"
+              + " WHERE wr.id = j.run_id AND j.runner_labels <@ r.labels)"
+              + " ORDER BY j.created_at ASC LIMIT :limit FOR UPDATE OF j SKIP LOCKED",
       nativeQuery = true)
-  List<WorkflowJob> findQueuedForClaim(@Param("limit") int limit);
+  List<WorkflowJob> findDispatchableForClaim(@Param("limit") int limit);
+
+  /** The newest queued jobs, for explaining why they are not being picked up. */
+  @Query(
+      value =
+          "SELECT * FROM workflow_job WHERE status = 'QUEUED' ORDER BY created_at DESC LIMIT :limit",
+      nativeQuery = true)
+  List<WorkflowJob> findRecentQueued(@Param("limit") int limit);
+
+  /** Cancels queued jobs whose run or repository no longer exists; nothing can ever run them. */
+  @Modifying
+  @Query(
+      value =
+          "UPDATE workflow_job SET status = 'CANCELLED', conclusion = 'cancelled',"
+              + " completed_at = now() WHERE status = 'QUEUED' AND NOT EXISTS ("
+              + " SELECT 1 FROM workflow_run wr JOIN repositories rp ON rp.id = wr.repo_id"
+              + " WHERE wr.id = workflow_job.run_id)",
+      nativeQuery = true)
+  int cancelOrphanedQueuedJobs();
 
   List<WorkflowJob> findAllByRunnerIdAndStatus(UUID runnerId, WorkflowJobStatus status);
 

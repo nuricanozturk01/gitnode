@@ -102,7 +102,7 @@ class JobDispatcherTest {
   @Test
   @DisplayName("dispatch does nothing when no queued jobs")
   void dispatch_doesNothing_whenNoQueuedJobs() {
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of());
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of());
 
     this.dispatcher.dispatch();
 
@@ -112,7 +112,7 @@ class JobDispatcherTest {
   @Test
   @DisplayName("dispatch does nothing when no online runners")
   void dispatch_doesNothing_whenNoOnlineRunners() {
-    when(this.jobRepository.findQueuedForClaim(50))
+    when(this.jobRepository.findDispatchableForClaim(50))
         .thenReturn(List.of(buildJob(List.of("self-hosted"))));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of());
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
@@ -130,7 +130,7 @@ class JobDispatcherTest {
 
     stubRunToTenant(TENANT_ID);
 
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
     when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.empty());
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
@@ -150,7 +150,7 @@ class JobDispatcherTest {
 
     stubRunToTenant(TENANT_ID);
 
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
 
@@ -167,7 +167,7 @@ class JobDispatcherTest {
 
     stubRunToTenant(TENANT_ID);
 
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
     when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.empty());
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
@@ -191,7 +191,7 @@ class JobDispatcherTest {
 
     stubRunToTenant(TENANT_ID);
 
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
 
@@ -210,7 +210,7 @@ class JobDispatcherTest {
     run.setId(RUN_ID);
     run.setRepoId(REPO_ID);
 
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE))
         .thenReturn(List.of(buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID)));
     when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
@@ -225,7 +225,7 @@ class JobDispatcherTest {
   @Test
   @DisplayName("dispatch marks stale runners offline")
   void dispatch_marksStaleRunnersOffline() {
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of());
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of());
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(2);
 
     this.dispatcher.dispatch();
@@ -235,20 +235,137 @@ class JobDispatcherTest {
 
   // ── helpers ───────────────────────────────────────────────────────────────
 
+  // ── housekeeping: orphans and "why is it still queued" ───────────────────
+
+  private final ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>
+      logs = new ch.qos.logback.core.read.ListAppender<>();
+
+  private void captureLogs() {
+    this.logs.start();
+    ((ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(DispatchDiagnostics.class))
+        .addAppender(this.logs);
+  }
+
+  private void releaseLogs() {
+    ((ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(DispatchDiagnostics.class))
+        .detachAppender(this.logs);
+  }
+
+  private List<String> warnings() {
+    return this.logs.list.stream().map(e -> e.getFormattedMessage()).toList();
+  }
+
+  private void stubRecentQueued(final WorkflowJob job, final Runner runner) {
+    when(this.jobRepository.findRecentQueued(20)).thenReturn(List.of(job));
+    when(this.runnerRepository.findAll()).thenReturn(List.of(runner));
+    stubRunToTenant(TENANT_ID);
+  }
+
   @Test
-  @DisplayName("a queued job with no ONLINE runner is reported and left queued")
-  void dispatch_leavesJobQueued_whenNoOnlineRunner() {
-    final var job = buildJob(List.of("self-hosted"));
-    when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
-    when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of());
-    when(this.runnerRepository.findAll())
-        .thenReturn(List.of(buildRunner(List.of("self-hosted"), RunnerStatus.OFFLINE, TENANT_ID)));
+  @DisplayName("housekeeping cancels queued jobs whose repository is gone")
+  void housekeeping_cancelsOrphans() {
+    when(this.jobRepository.cancelOrphanedQueuedJobs()).thenReturn(3);
+    when(this.jobRepository.findRecentQueued(20)).thenReturn(List.of());
 
-    this.dispatcher.dispatch();
+    this.dispatcher.housekeeping();
 
-    assertThat(job.getStatus()).isEqualTo(WorkflowJobStatus.QUEUED);
-    verify(this.runnerRepository, never()).save(any());
+    verify(this.jobRepository).cancelOrphanedQueuedJobs();
+  }
+
+  @Test
+  @DisplayName("housekeeping explains an OFFLINE runner")
+  void housekeeping_reportsOfflineRunner() {
+    this.captureLogs();
+    try {
+      final var job = buildJob(List.of("self-hosted"));
+      this.stubRecentQueued(
+          job, buildRunner(List.of("self-hosted"), RunnerStatus.OFFLINE, TENANT_ID));
+
+      this.dispatcher.housekeeping();
+
+      assertThat(this.warnings())
+          .anySatisfy(
+              m ->
+                  assertThat(m)
+                      .contains("not being picked up")
+                      .contains("test-runner -> status is OFFLINE"));
+    } finally {
+      this.releaseLogs();
+    }
+  }
+
+  @Test
+  @DisplayName("housekeeping explains a runner that belongs to another owner")
+  void housekeeping_reportsOtherOwner() {
+    this.captureLogs();
+    try {
+      final var job = buildJob(List.of("self-hosted"));
+      this.stubRecentQueued(
+          job, buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, OTHER_TENANT_ID));
+
+      this.dispatcher.housekeeping();
+
+      assertThat(this.warnings())
+          .anySatisfy(m -> assertThat(m).contains("registered for another owner"));
+    } finally {
+      this.releaseLogs();
+    }
+  }
+
+  @Test
+  @DisplayName("housekeeping lists the missing labels")
+  void housekeeping_reportsMissingLabels() {
+    this.captureLogs();
+    try {
+      final var job = buildJob(List.of("self-hosted", "linux"));
+      this.stubRecentQueued(
+          job, buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID));
+
+      this.dispatcher.housekeeping();
+
+      assertThat(this.warnings()).anySatisfy(m -> assertThat(m).contains("missing labels [linux]"));
+    } finally {
+      this.releaseLogs();
+    }
+  }
+
+  @Test
+  @DisplayName("housekeeping stays quiet when a runner can take the job")
+  void housekeeping_quietWhenRunnerMatches() {
+    this.captureLogs();
+    try {
+      final var job = buildJob(List.of("self-hosted"));
+      this.stubRecentQueued(
+          job, buildRunner(List.of("self-hosted", "linux"), RunnerStatus.ONLINE, TENANT_ID));
+
+      this.dispatcher.housekeeping();
+
+      assertThat(this.warnings()).isEmpty();
+    } finally {
+      this.releaseLogs();
+    }
+  }
+
+  @Test
+  @DisplayName("housekeeping skips jobs whose owner cannot be resolved")
+  void housekeeping_skipsOrphans() {
+    this.captureLogs();
+    try {
+      final var job = buildJob(List.of("self-hosted"));
+      when(this.jobRepository.findRecentQueued(20)).thenReturn(List.of(job));
+      when(this.runnerRepository.findAll()).thenReturn(List.of());
+      final var run = new WorkflowRun();
+      run.setId(RUN_ID);
+      run.setRepoId(REPO_ID);
+      when(this.runRepository.findAllById(Set.of(RUN_ID))).thenReturn(List.of(run));
+      when(this.repoRepository.findOwnerIds(Set.of(REPO_ID))).thenReturn(java.util.Map.of());
+
+      this.dispatcher.housekeeping();
+
+      assertThat(this.warnings()).isEmpty();
+    } finally {
+      this.releaseLogs();
+    }
   }
 
   private static final String WORKFLOW_YAML =
@@ -336,7 +453,7 @@ class JobDispatcherTest {
               st.setId(UUID.randomUUID());
               return st;
             });
-    when(this.jobRepository.findQueuedForClaim(50)).thenReturn(List.of(job));
+    when(this.jobRepository.findDispatchableForClaim(50)).thenReturn(List.of(job));
     when(this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE)).thenReturn(List.of(runner));
     when(this.runnerRepository.markStaleRunnersOffline(any())).thenReturn(0);
 

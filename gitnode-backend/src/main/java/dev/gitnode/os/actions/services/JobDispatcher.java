@@ -65,6 +65,7 @@ public class JobDispatcher {
 
   public static final String DISPATCH_CHANNEL_PREFIX = "gitnode:actions:dispatch:";
   private static final int DISPATCH_BATCH_SIZE = 50;
+  private static final int STUCK_SAMPLE_SIZE = 20;
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   private final WorkflowJobRepository jobRepository;
@@ -105,15 +106,13 @@ public class JobDispatcher {
 
     this.markStaleRunnersOffline();
 
-    final var queuedJobs = this.jobRepository.findQueuedForClaim(DISPATCH_BATCH_SIZE);
-    this.diagnostics.retainOnly(queuedJobs.stream().map(WorkflowJob::getId).toList());
+    final var queuedJobs = this.jobRepository.findDispatchableForClaim(DISPATCH_BATCH_SIZE);
     if (queuedJobs.isEmpty()) {
       return;
     }
 
     final var onlineRunners = this.runnerRepository.findAllByStatus(RunnerStatus.ONLINE);
     if (onlineRunners.isEmpty()) {
-      this.reportNoOnlineRunner(queuedJobs);
       return;
     }
 
@@ -128,14 +127,53 @@ public class JobDispatcher {
     this.assignJobs(queuedJobs, onlineRunners, repoIdByRunId, tenantIdByRepoId);
   }
 
-  private void reportNoOnlineRunner(final List<WorkflowJob> queuedJobs) {
+  /**
+   * Runs once a minute: cancels queued jobs that can never run and explains, at WARN level, why the
+   * newest queued jobs are not being picked up (no ONLINE runner, runner of another owner, missing
+   * labels). Without this a stuck job just stays "queued" with nothing in the logs.
+   */
+  @Scheduled(fixedDelayString = "${gitnode.actions.dispatch.housekeeping-ms:60000}")
+  @Transactional
+  public void housekeeping() {
 
-    final var reason =
-        "no runner is ONLINE ("
-            + DispatchDiagnostics.describeRunners(
-                this.runnerRepository.findAll(), List.of(), UUID.randomUUID())
-            + ")";
-    queuedJobs.forEach(job -> this.diagnostics.warn(job, reason));
+    final int cancelled = this.jobRepository.cancelOrphanedQueuedJobs();
+    if (cancelled > 0) {
+      log.warn("Cancelled {} queued job(s) whose repository no longer exists", cancelled);
+    }
+    this.reportStuckJobs();
+  }
+
+  private void reportStuckJobs() {
+
+    final var recent = this.jobRepository.findRecentQueued(STUCK_SAMPLE_SIZE);
+    this.diagnostics.retainOnly(recent.stream().map(WorkflowJob::getId).toList());
+    if (recent.isEmpty()) {
+      return;
+    }
+
+    final var runners = this.runnerRepository.findAll();
+    final var runIds = recent.stream().map(WorkflowJob::getRunId).collect(Collectors.toSet());
+    final var repoIdByRunId =
+        this.runRepository.findAllById(runIds).stream()
+            .collect(Collectors.toMap(WorkflowRun::getId, WorkflowRun::getRepoId));
+    final var tenantByRepo =
+        this.repoLookup.findOwnerIds(new java.util.HashSet<>(repoIdByRunId.values()));
+
+    for (final var job : recent) {
+      final var tenantId = tenantByRepo.get(repoIdByRunId.get(job.getRunId()));
+      if (tenantId == null) {
+        continue; // orphaned; cancelled above
+      }
+      final var required = job.getRunnerLabels();
+      if (runners.stream()
+          .anyMatch(r -> "matches".equals(DispatchDiagnostics.explain(r, required, tenantId)))) {
+        continue; // a runner can take it; it is simply about to be dispatched
+      }
+      this.diagnostics.warn(
+          job,
+          "no runner can take it: "
+              + DispatchDiagnostics.describeRunners(runners, required, tenantId));
+    }
   }
 
   private void assignJobs(
@@ -147,23 +185,16 @@ public class JobDispatcher {
     for (final var job : queuedJobs) {
       final var repoId = repoIdByRunId.get(job.getRunId());
       if (repoId == null) {
-        this.diagnostics.warn(job, "its workflow run no longer exists");
         continue;
       }
 
       final var tenantId = tenantIdByRepoId.get(repoId);
       if (tenantId == null) {
-        this.diagnostics.warn(job, "the owner of its repository could not be found");
         continue;
       }
 
       final var runner = this.findMatchingRunner(job, onlineRunners, tenantId);
       if (runner == null) {
-        this.diagnostics.warn(
-            job,
-            "no runner can take it: "
-                + DispatchDiagnostics.describeRunners(
-                    onlineRunners, job.getRunnerLabels(), tenantId));
         continue;
       }
 

@@ -15,6 +15,7 @@
 ///
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { LUCIDE_ICONS, LucideIconProvider } from 'lucide-angular';
 import { LUCIDE_ICONS as ICON_OBJECT } from '../../lucide-icons';
 import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.service';
@@ -66,6 +67,7 @@ describe('TeamPage', () => {
     };
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
         { provide: LUCIDE_ICONS, multi: true, useValue: new LucideIconProvider(ICON_OBJECT) },
         { provide: TeamService, useValue: team },
         { provide: CollaboratorService, useValue: { searchUsers: () => Promise.resolve([]) } },

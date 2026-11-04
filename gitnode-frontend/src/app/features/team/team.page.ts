@@ -17,6 +17,7 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { ConfirmModalService } from '../../core/confirm-modal/confirm-modal.service';
 import { CollaboratorService } from '../../core/collaborator/collaborator.service';
@@ -40,7 +41,7 @@ const PAGE_SIZE = 20;
 @Component({
   selector: 'app-team-page',
   standalone: true,
-  imports: [FormsModule, NgTemplateOutlet, LucideAngularModule],
+  imports: [FormsModule, NgTemplateOutlet, LucideAngularModule, RouterLink],
   templateUrl: './team.page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

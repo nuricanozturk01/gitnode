@@ -11,6 +11,7 @@ import (
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
+	"github.com/nuricanozturk/gitnode-runner/internal/shell"
 	"github.com/nuricanozturk/gitnode-runner/pkg/protocol"
 )
 
@@ -27,4 +28,10 @@ func TestSetupNode_realDownload(t *testing.T) {
 	out, err := NewSetupNodeAction().Execute(context.Background(), map[string]string{"node-version": "24"}, jctx, streamer, t.TempDir())
 	require.NoError(t, err)
 	assert.Regexp(t, `^v24\.`, out["node-version"])
+
+	// The steps a Node workflow runs next: corepack, then pnpm, with the node the action installed.
+	conclusion, err := shell.Run(context.Background(),
+		"corepack enable && corepack prepare pnpm@10 --activate && pnpm --version", t.TempDir(), jctx, streamer)
+	require.NoError(t, err)
+	assert.Equal(t, "success", conclusion)
 }

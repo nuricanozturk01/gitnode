@@ -9,6 +9,7 @@ import (
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
+	"github.com/nuricanozturk/gitnode-runner/internal/proc"
 )
 
 const DefaultBytes = 4096
@@ -21,6 +22,7 @@ func Run(
 ) (string, error) {
 
 	cmd := exec.CommandContext(ctx, "bash", "-c", command) //nolint:gosec
+	proc.Configure(cmd)
 	cmd.Dir = workDir
 
 	// Inject env

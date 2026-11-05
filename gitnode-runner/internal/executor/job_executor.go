@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
@@ -37,6 +38,9 @@ type JobExecutor struct {
 	log          *zap.Logger
 	resolver     *actions.Resolver
 	serverURL    string // the server the runner is connected to; github.server_url fallback
+
+	mu      sync.Mutex
+	cancels map[string]context.CancelFunc // running jobs by id
 }
 
 // New builds a JobExecutor.
@@ -62,6 +66,31 @@ func New(
 func (e *JobExecutor) WithServerURL(url string) *JobExecutor {
 	e.serverURL = strings.TrimRight(url, "/")
 	return e
+}
+
+// Cancel stops the running job with the given id; false when this runner is not running it.
+func (e *JobExecutor) Cancel(jobID string) bool {
+	e.mu.Lock()
+	cancel, ok := e.cancels[jobID]
+	e.mu.Unlock()
+	if ok {
+		cancel()
+	}
+	return ok
+}
+
+func (e *JobExecutor) track(jobID string, cancel context.CancelFunc) func() {
+	e.mu.Lock()
+	if e.cancels == nil {
+		e.cancels = map[string]context.CancelFunc{}
+	}
+	e.cancels[jobID] = cancel
+	e.mu.Unlock()
+	return func() {
+		e.mu.Lock()
+		delete(e.cancels, jobID)
+		e.mu.Unlock()
+	}
 }
 
 // Execute runs the job in a goroutine and returns immediately.
@@ -110,6 +139,7 @@ func (e *JobExecutor) run(ctx context.Context, job protocol.JobPayload) {
 	}
 	jobCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	defer e.track(job.ID, cancel)()
 
 	if e.serverURL != "" {
 		job.Context = withDefault(job.Context, "github.server_url", e.serverURL)

@@ -71,6 +71,7 @@ class JobDispatcherTest {
   @Mock private SecretVaultService secretVaultService;
   @Mock private StringRedisTemplate redisTemplate;
   @Mock private RunContextEnricher runContext;
+  @Mock private dev.gitnode.os.actions.repositories.WorkflowLogRepository logRepository;
 
   private JobDispatcher dispatcher;
 
@@ -97,7 +98,8 @@ class JobDispatcherTest {
             expressionEvaluator,
             this.secretVaultService,
             this.redisTemplate,
-            this.runContext);
+            this.runContext,
+            this.logRepository);
     ReflectionTestUtils.setField(this.dispatcher, "heartbeatTimeoutSeconds", 60);
   }
 
@@ -283,6 +285,14 @@ class JobDispatcherTest {
       this.stubRecentQueued(
           job, buildRunner(List.of("self-hosted"), RunnerStatus.OFFLINE, TENANT_ID));
 
+      when(this.stepRepository.save(any(WorkflowStep.class)))
+          .thenAnswer(
+              i -> {
+                final WorkflowStep st = i.getArgument(0);
+                st.setId(UUID.randomUUID());
+                return st;
+              });
+
       this.dispatcher.housekeeping();
 
       assertThat(this.warnings())
@@ -305,6 +315,14 @@ class JobDispatcherTest {
       this.stubRecentQueued(
           job, buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, OTHER_TENANT_ID));
 
+      when(this.stepRepository.save(any(WorkflowStep.class)))
+          .thenAnswer(
+              i -> {
+                final WorkflowStep st = i.getArgument(0);
+                st.setId(UUID.randomUUID());
+                return st;
+              });
+
       this.dispatcher.housekeeping();
 
       assertThat(this.warnings())
@@ -323,9 +341,21 @@ class JobDispatcherTest {
       this.stubRecentQueued(
           job, buildRunner(List.of("self-hosted"), RunnerStatus.ONLINE, TENANT_ID));
 
+      when(this.stepRepository.save(any(WorkflowStep.class)))
+          .thenAnswer(
+              i -> {
+                final WorkflowStep st = i.getArgument(0);
+                st.setId(UUID.randomUUID());
+                return st;
+              });
+
       this.dispatcher.housekeeping();
 
       assertThat(this.warnings()).anySatisfy(m -> assertThat(m).contains("missing labels [linux]"));
+      final var logCaptor =
+          ArgumentCaptor.forClass(dev.gitnode.os.actions.entities.WorkflowLog.class);
+      verify(this.logRepository).save(logCaptor.capture());
+      assertThat(logCaptor.getValue().getContent()).contains("missing labels [linux]");
     } finally {
       this.releaseLogs();
     }

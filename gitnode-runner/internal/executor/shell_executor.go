@@ -9,6 +9,7 @@ import (
 
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
+	"github.com/nuricanozturk/gitnode-runner/internal/proc"
 )
 
 // ShellExecutor runs step commands directly in the host shell.
@@ -68,6 +69,8 @@ func (e *ShellExecutor) Run(
 		}
 		cmd.Env = env
 	}
+
+	proc.Configure(cmd)
 
 	// stdout and stderr share the streamer (it is safe for concurrent use and splits lines), so a
 	// workflow command printed on either stream is recognised, as on GitHub.

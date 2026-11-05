@@ -163,7 +163,7 @@ func buildMessageHandler(
 				log.Warn("failed to unmarshal JOB_CANCELLED", zap.Error(err))
 				return
 			}
-			log.Info("job cancelled", zap.String("jobId", payload.JobID))
+			log.Info("job cancelled", zap.String("jobId", payload.JobID), zap.Bool("running", jobExec.Cancel(payload.JobID)))
 
 		default:
 			log.Warn("unknown message type", zap.String("type", string(msg.Type)))

@@ -19,6 +19,7 @@ import (
 	jobctx "github.com/nuricanozturk/gitnode-runner/internal/context"
 	"github.com/nuricanozturk/gitnode-runner/internal/expr"
 	runnerlog "github.com/nuricanozturk/gitnode-runner/internal/log"
+	"github.com/nuricanozturk/gitnode-runner/internal/proc"
 	"github.com/nuricanozturk/gitnode-runner/pkg/protocol"
 )
 
@@ -169,6 +170,7 @@ func runProcess(
 	args ...string,
 ) (string, error) {
 	cmd := exec.CommandContext(ctx, name, args...) //nolint:gosec
+	proc.Configure(cmd)
 	cmd.Dir = dir
 	cmd.Env = env
 	cmd.Stdout = streamer

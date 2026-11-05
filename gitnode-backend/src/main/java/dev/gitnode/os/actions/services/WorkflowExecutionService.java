@@ -78,6 +78,7 @@ public class WorkflowExecutionService {
   private final RunStatusSseRegistry runStatusSseRegistry;
   private final JobAdvancer jobAdvancer;
   private final WorkflowTriggerService triggerService;
+  private final RunnerCommands runnerCommands;
 
   @Transactional
   public void handleJobClaimed(final UUID jobId, final UUID runnerId) {
@@ -144,6 +145,15 @@ public class WorkflowExecutionService {
       final UUID jobId, final String conclusion, final java.util.Map<String, String> outputs) {
 
     final var job = this.requireJob(jobId);
+    if (job.getStatus() == WorkflowJobStatus.CANCELLED) {
+      // Cancelled from the UI; the runner only confirms it stopped. Keep the cancelled result and
+      // free the runner.
+      if (job.getRunnerId() != null) {
+        this.markRunnerOnlineIfIdle(job.getRunnerId());
+      }
+      log.info("Job {} finished on the runner after it was cancelled", jobId);
+      return;
+    }
     final var run0 = this.requireRun(job.getRunId());
     final var effective = this.applyContinueOnError(run0, job, conclusion);
     final var status = conclusionToStatus(effective);
@@ -189,14 +199,9 @@ public class WorkflowExecutionService {
     }
 
     final var jobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId);
-    for (final var job : jobs) {
-      if (!TERMINAL_STATUSES.contains(job.getStatus())) {
-        job.setStatus(WorkflowJobStatus.CANCELLED);
-        job.setConclusion("cancelled");
-        job.setCompletedAt(Instant.now());
-        this.jobRepository.save(job);
-      }
-    }
+    jobs.stream()
+        .filter(job -> !TERMINAL_STATUSES.contains(job.getStatus()))
+        .forEach(this::cancelJob);
 
     run.setStatus(WorkflowRunStatus.CANCELLED);
     run.setConclusion("cancelled");
@@ -388,9 +393,7 @@ public class WorkflowExecutionService {
       job.setCompletedAt(Instant.now());
       this.jobRepository.save(job);
 
-      this.stepRepository.findAllByJobIdOrderByStepNumberAsc(job.getId()).stream()
-          .filter(s -> "running".equals(s.getStatus()))
-          .forEach(s -> this.sseEmitterRegistry.complete(s.getId()));
+      this.closeOpenSteps(job.getId(), "failure");
 
       this.runRepository
           .findById(job.getRunId())
@@ -513,6 +516,37 @@ public class WorkflowExecutionService {
     this.runStatusSseRegistry.complete(run.getId());
 
     log.info("Run completed: runId={}, conclusion={}", run.getId(), conclusion);
+  }
+
+  private void cancelJob(final WorkflowJob job) {
+
+    final boolean wasRunning = job.getStatus() == WorkflowJobStatus.IN_PROGRESS;
+    job.setStatus(WorkflowJobStatus.CANCELLED);
+    job.setConclusion("cancelled");
+    job.setCompletedAt(Instant.now());
+    this.jobRepository.save(job);
+    this.closeOpenSteps(job.getId(), "cancelled");
+    if (wasRunning && job.getRunnerId() != null) {
+      // The runner stops the job and reports it; until then it stays BUSY.
+      this.runnerCommands.cancelJob(job.getRunnerId(), job.getId());
+    }
+  }
+
+  /** Steps that never finished (running or not started) are closed so the UI stops spinning. */
+  private void closeOpenSteps(final UUID jobId, final String conclusion) {
+
+    final var now = Instant.now();
+    for (final var step : this.stepRepository.findAllByJobIdOrderByStepNumberAsc(jobId)) {
+      if ("completed".equals(step.getStatus())) {
+        continue;
+      }
+      final boolean wasRunning = "running".equals(step.getStatus());
+      step.setStatus("completed");
+      step.setConclusion(wasRunning ? conclusion : "cancelled");
+      step.setCompletedAt(now);
+      this.stepRepository.save(step);
+      this.sseEmitterRegistry.complete(step.getId());
+    }
   }
 
   private void markRunnerOnlineIfIdle(final UUID runnerId) {

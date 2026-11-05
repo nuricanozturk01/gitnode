@@ -20,6 +20,7 @@ import dev.gitnode.os.actions.entities.Runner;
 import dev.gitnode.os.actions.entities.RunnerStatus;
 import dev.gitnode.os.actions.entities.WorkflowJob;
 import dev.gitnode.os.actions.entities.WorkflowJobStatus;
+import dev.gitnode.os.actions.entities.WorkflowLog;
 import dev.gitnode.os.actions.entities.WorkflowRun;
 import dev.gitnode.os.actions.entities.WorkflowStep;
 import dev.gitnode.os.actions.model.JobModel;
@@ -29,6 +30,7 @@ import dev.gitnode.os.actions.model.WorkflowModel;
 import dev.gitnode.os.actions.repositories.RunnerRepository;
 import dev.gitnode.os.actions.repositories.WorkflowDefinitionRepository;
 import dev.gitnode.os.actions.repositories.WorkflowJobRepository;
+import dev.gitnode.os.actions.repositories.WorkflowLogRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
 import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.websocket.RunnerSessionRegistry;
@@ -66,6 +68,7 @@ public class JobDispatcher {
   public static final String DISPATCH_CHANNEL_PREFIX = "gitnode:actions:dispatch:";
   private static final int DISPATCH_BATCH_SIZE = 50;
   private static final int STUCK_SAMPLE_SIZE = 20;
+  private static final int WAITING_STEP_NUMBER = 0;
   private static final int MAX_STEP_TITLE = 80;
   private static final String ELLIPSIS = "...";
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -82,6 +85,7 @@ public class JobDispatcher {
   private final SecretVaultService secretVaultService;
   private final StringRedisTemplate redisTemplate;
   private final RunContextEnricher runContext;
+  private final WorkflowLogRepository logRepository;
 
   @Value("${gitnode.actions.runner.heartbeat-timeout-seconds:60}")
   private int heartbeatTimeoutSeconds;
@@ -172,11 +176,48 @@ public class JobDispatcher {
           .anyMatch(r -> "matches".equals(DispatchDiagnostics.explain(r, required, tenantId)))) {
         continue; // a runner can take it; it is simply about to be dispatched
       }
-      this.diagnostics.warn(
-          job,
+      final var reason =
           "no runner can take it: "
-              + DispatchDiagnostics.describeRunners(runners, required, tenantId));
+              + DispatchDiagnostics.describeRunners(runners, required, tenantId);
+      this.diagnostics.warn(job, reason);
+      this.recordWaitingReason(job, reason);
     }
+  }
+
+  /**
+   * Puts the reason a job is stuck into the job's own log (step 0, "Waiting for a runner"), so a
+   * wrong {@code runs-on} is visible in the UI and not only in the server log. Written once per
+   * job.
+   */
+  private void recordWaitingReason(final WorkflowJob job, final String reason) {
+
+    final boolean exists =
+        this.stepRepository.findAllByJobIdOrderByStepNumberAsc(job.getId()).stream()
+            .anyMatch(s -> s.getStepNumber() == WAITING_STEP_NUMBER);
+    if (exists) {
+      return;
+    }
+    final var now = Instant.now();
+    final var step = new WorkflowStep();
+    step.setJobId(job.getId());
+    step.setStepNumber(WAITING_STEP_NUMBER);
+    step.setName("Waiting for a runner");
+    step.setStatus("completed");
+    step.setConclusion("skipped");
+    step.setStartedAt(now);
+    step.setCompletedAt(now);
+    final var saved = this.stepRepository.save(step);
+
+    final var line = new WorkflowLog();
+    line.setStepId(saved.getId());
+    line.setLineNumber(1);
+    line.setLevel("warning");
+    line.setContent(
+        "##[warning]Job is waiting for a runner with labels "
+            + job.getRunnerLabels()
+            + " (runs-on). "
+            + reason);
+    this.logRepository.save(line);
   }
 
   private void assignJobs(

@@ -75,6 +75,13 @@ public class ErrorHandler {
       return null;
     }
 
+    if (ex
+        instanceof org.springframework.web.context.request.async.AsyncRequestNotUsableException) {
+      // The client went away while a stream (SSE) was open; nothing to answer and not an error.
+      log.debug("Client disconnected on {} {}", request.getMethod(), request.getRequestURI());
+      return null;
+    }
+
     if (ex instanceof final HttpClientErrorException exception) {
       log.error(exception.getResponseBodyAsString());
     }

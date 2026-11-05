@@ -191,12 +191,14 @@ jobs:
     name: dist-bundle
     path: dist/`;
 
-  readonly actionsRunnerCmd = `./gitnode-runner start \\
+  readonly actionsRunnerCmd = `docker run -d --name my-runner --restart unless-stopped \\
+  -v /var/run/docker.sock:/var/run/docker.sock \\
+  -v gitnode-runner-data:/data \\
+  repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:latest \\
   --server-url http://localhost:8080 \\
   --token <registration-token> \\
   --name my-runner \\
-  --labels self-hosted,linux \\
-  --executor shell`;
+  --labels self-hosted,linux`;
 
   readonly actionsSecretsYaml = `jobs:
   deploy:

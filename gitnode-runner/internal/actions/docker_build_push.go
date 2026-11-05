@@ -48,13 +48,13 @@ func (a *DockerBuildPushAction) Execute(
 		target:    inputs["target"],
 		platforms: inputs["platforms"],
 		tags:      tags,
-		buildArgs: splitLines(inputs["build-args"]),
-		labels:    splitLines(inputs["labels"]),
-		secrets:   splitLines(inputs["secrets"]),
-		outputs:   splitLines(inputs["outputs"]),
+		buildArgs: splitNewlines(inputs["build-args"]),
+		labels:    splitNewlines(inputs["labels"]),
+		secrets:   splitNewlines(inputs["secrets"]),
+		outputs:   splitNewlines(inputs["outputs"]),
 		ssh:       inputs["ssh"],
-		cacheFrom: filterGHACache(splitLines(inputs["cache-from"]), streamer),
-		cacheTo:   filterGHACache(splitLines(inputs["cache-to"]), streamer),
+		cacheFrom: filterGHACache(splitNewlines(inputs["cache-from"]), streamer),
+		cacheTo:   filterGHACache(splitNewlines(inputs["cache-to"]), streamer),
 	}
 
 	cmd := buildBuildxCommand(buildCtx, opts)
@@ -151,6 +151,18 @@ func buildBuildxCommand(buildCtx string, o buildOpts) string {
 func splitLines(s string) []string {
 	var out []string
 	for _, part := range strings.FieldsFunc(s, func(r rune) bool { return r == '\n' || r == ',' }) {
+		if v := strings.TrimSpace(part); v != "" {
+			out = append(out, v)
+		}
+	}
+	return out
+}
+
+// splitNewlines splits on newlines only. Values such as "type=gha,mode=max" or
+// build-args contain commas that belong to the entry (matches docker/build-push-action).
+func splitNewlines(s string) []string {
+	var out []string
+	for _, part := range strings.Split(s, "\n") {
 		if v := strings.TrimSpace(part); v != "" {
 			out = append(out, v)
 		}

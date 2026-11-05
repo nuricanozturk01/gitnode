@@ -75,6 +75,8 @@ class WorkflowExecutionServiceTest {
   @Mock private RepoLookupPort repoLookup;
   @Mock private WorkflowTriggerService triggerService;
 
+  @Mock private RunnerCommands runnerCommands;
+
   private WorkflowExecutionService service;
 
   @BeforeEach
@@ -94,7 +96,8 @@ class WorkflowExecutionServiceTest {
                 this.parserService,
                 new ExpressionEvaluator(),
                 this.repoLookup),
-            this.triggerService);
+            this.triggerService,
+            this.runnerCommands);
   }
 
   private static final UUID RUNNER_ID = UUID.randomUUID();
@@ -148,6 +151,40 @@ class WorkflowExecutionServiceTest {
     assertThat(step.getStatus()).isEqualTo("completed");
     assertThat(step.getConclusion()).isEqualTo("success");
     verify(this.sseEmitterRegistry).complete(STEP_ID);
+  }
+
+  @Test
+  @DisplayName("cancelRun tells the runner, closes running steps and keeps the cancelled result")
+  void cancelRun_notifiesRunnerAndClosesSteps() {
+    final var job = buildJob(WorkflowJobStatus.IN_PROGRESS);
+    job.setRunnerId(RUNNER_ID);
+    final var run = buildRun(WorkflowRunStatus.IN_PROGRESS);
+    final var running = buildStep();
+    running.setStatus("running");
+
+    when(this.runRepository.findById(RUN_ID)).thenReturn(Optional.of(run));
+    when(this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(RUN_ID)).thenReturn(List.of(job));
+    when(this.stepRepository.findAllByJobIdOrderByStepNumberAsc(JOB_ID))
+        .thenReturn(List.of(running));
+
+    this.service.cancelRun(RUN_ID);
+
+    assertThat(job.getStatus()).isEqualTo(WorkflowJobStatus.CANCELLED);
+    assertThat(running.getStatus()).isEqualTo("completed");
+    assertThat(running.getConclusion()).isEqualTo("cancelled");
+    verify(this.runnerCommands).cancelJob(RUNNER_ID, JOB_ID);
+
+    // The runner confirms later; that must not turn the job into a success.
+    final var runner = buildRunner();
+    when(this.runnerRepository.findById(RUNNER_ID)).thenReturn(Optional.of(runner));
+    when(this.jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
+    when(this.jobRepository.countByRunnerIdAndStatus(RUNNER_ID, WorkflowJobStatus.IN_PROGRESS))
+        .thenReturn(0L);
+
+    this.service.handleJobCompleted(JOB_ID, "success");
+
+    assertThat(job.getStatus()).isEqualTo(WorkflowJobStatus.CANCELLED);
+    assertThat(runner.getStatus()).isEqualTo(RunnerStatus.ONLINE);
   }
 
   @Test

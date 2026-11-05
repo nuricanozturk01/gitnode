@@ -30,7 +30,7 @@ jobs:
         with:
           context: gitnode-runner
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: |
             repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:${{ inputs.version }}
             repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:latest

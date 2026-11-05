@@ -13,7 +13,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o dist/gitnode-runner ./
 # ─── Stage 2: Final Image ─────────────────────────────────────────────────────
 FROM alpine:3.21
 
-RUN apk add --no-cache ca-certificates git bash docker-cli docker-cli-buildx
+# libstdc++ is needed by the Node.js musl builds that actions/setup-node downloads.
+RUN apk add --no-cache ca-certificates git bash docker-cli docker-cli-buildx libstdc++
 
 WORKDIR /app
 COPY --from=build /app/dist/gitnode-runner ./gitnode-runner

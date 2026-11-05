@@ -71,6 +71,16 @@ class TagNonTxServiceCacheTest {
     GitProvider gitProvider() {
       return mock(GitProvider.class);
     }
+
+    @Bean
+    dev.gitnode.os.repo.api.RepoLookupPort repoLookupPort() {
+      return mock(dev.gitnode.os.repo.api.RepoLookupPort.class);
+    }
+
+    @Bean
+    org.springframework.context.ApplicationEventPublisher eventPublisher() {
+      return mock(org.springframework.context.ApplicationEventPublisher.class);
+    }
   }
 
   @Autowired TagNonTxService service;

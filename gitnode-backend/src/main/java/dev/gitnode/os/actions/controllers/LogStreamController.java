@@ -21,6 +21,9 @@ import dev.gitnode.os.actions.services.WorkflowExecutionService;
 import dev.gitnode.os.actions.services.WorkflowRunQueryService;
 import dev.gitnode.os.actions.websocket.SseEmitterRegistry;
 import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,8 @@ public class LogStreamController {
   private final SseEmitterRegistry sseEmitterRegistry;
   private final RunnerTokenService runnerTokenService;
   private final JwtUtils jwtUtils;
+  private final RepoLookupPort repoLookup;
+  private final RepoAccessPort repoAccess;
 
   @PostMapping("/{stepId}/logs")
   public ResponseEntity<Void> ingestLog(
@@ -70,7 +75,14 @@ public class LogStreamController {
           final @Nullable String authHeader,
       @PathVariable final UUID stepId) {
 
-    this.jwtUtils.tryExtractUserId(authHeader);
+    // Same rule as the run pages: public repositories for everyone, private ones for the owner
+    // and collaborators. Knowing a step id is not enough.
+    final var userId = this.jwtUtils.tryExtractUserId(authHeader);
+    final var repo =
+        this.repoLookup
+            .findById(this.runQueries.repoIdOfStep(stepId))
+            .orElseThrow(() -> new ItemNotFoundException("Workflow step not found: " + stepId));
+    this.repoAccess.assertUserCanAccessRepo(userId, repo.ownerUsername(), repo.name());
 
     final var emitter = this.sseEmitterRegistry.subscribe(stepId);
 

@@ -61,12 +61,17 @@ public class PushEventListener {
 
     final var actorId = this.actorId(event.pusherUsername());
     this.workflowTriggerService.triggerOnPush(
-        event.repoId(), event.branchName(), event.pusherUsername(), actorId, event.commitSha());
+        event.repoId(),
+        event.branchName(),
+        event.pusherUsername(),
+        actorId,
+        event.commitSha(),
+        event.beforeSha());
     if (event.commitSha() != null) {
       for (final var target :
           this.pullRequests.findTargetBranches(event.repoId(), event.branchName())) {
         this.workflowTriggerService.triggerOnPullRequest(
-            event.repoId(), event.branchName(), target, event.commitSha(), actorId);
+            event.repoId(), event.branchName(), target, event.commitSha(), actorId, "synchronize");
       }
     }
   }

@@ -25,6 +25,7 @@ import dev.gitnode.os.actions.entities.WorkflowStep;
 import dev.gitnode.os.actions.model.JobModel;
 import dev.gitnode.os.actions.model.MatrixStrategy;
 import dev.gitnode.os.actions.model.OnTriggerModel;
+import dev.gitnode.os.actions.model.PullRequestTriggerModel;
 import dev.gitnode.os.actions.model.PushTriggerModel;
 import dev.gitnode.os.actions.model.StrategyModel;
 import dev.gitnode.os.actions.model.WorkflowModel;
@@ -78,6 +79,7 @@ public class WorkflowTriggerService {
   private final JobAdvancer jobAdvancer;
   private final WorkflowStepRepository stepRepository;
   private final WorkflowLogRepository logRepository;
+  private final JobCancellation jobCancellation;
 
   @Transactional
   public void triggerOnPush(
@@ -95,6 +97,21 @@ public class WorkflowTriggerService {
       final String pusherUsername,
       final @Nullable UUID actorId,
       final @Nullable String commitSha) {
+    this.triggerOnPush(repoId, branchName, pusherUsername, actorId, commitSha, null);
+  }
+
+  /**
+   * A branch was pushed. {@code beforeSha} (null when unknown) is the tip before the push; it
+   * decides which files count as changed for {@code paths} / {@code paths-ignore}.
+   */
+  @Transactional
+  public void triggerOnPush(
+      final UUID repoId,
+      final String branchName,
+      final String pusherUsername,
+      final @Nullable UUID actorId,
+      final @Nullable String commitSha,
+      final @Nullable String beforeSha) {
 
     final var repo =
         this.repoLookup
@@ -122,16 +139,81 @@ public class WorkflowTriggerService {
       return;
     }
 
+    final var changed =
+        new ChangedFiles(() -> this.pushedFiles(ownerUsername, repoName, beforeSha, commitSha));
+    this.startPushRuns(repoId, workflows, branchName, changed, actorId, commitSha, beforeSha);
+  }
+
+  private @Nullable List<String> pushedFiles(
+      final String owner,
+      final String repoName,
+      final @Nullable String beforeSha,
+      final @Nullable String commitSha) {
+    return commitSha == null
+        ? null
+        : this.parserService.changedFiles(owner, repoName, beforeSha, commitSha);
+  }
+
+  private void startPushRuns(
+      final UUID repoId,
+      final List<ParsedWorkflow> workflows,
+      final String branchName,
+      final ChangedFiles changed,
+      final @Nullable UUID actorId,
+      final @Nullable String commitSha,
+      final @Nullable String beforeSha) {
+
+    final var branchRef = "refs/heads/" + branchName;
+    final var extra =
+        beforeSha == null || beforeSha.isBlank()
+            ? null
+            : Map.<String, Object>of("before", beforeSha);
     for (final var parsed : workflows) {
       if (hasSchedule(parsed.model())) {
         this.upsertDefinition(
             repoId, parsed); // lets the scheduler find workflows without a push trigger
       }
-      if (!this.hasPushTrigger(parsed.model(), branchName)) {
-        continue;
+      if (this.hasPushTrigger(parsed.model(), branchName)
+          && this.passesPushPaths(parsed.model(), changed)) {
+        this.createRun(repoId, parsed, branchRef, commitSha, actorId, "push", null, null, extra);
       }
+    }
+  }
 
-      this.createRun(repoId, parsed, branchRef, commitSha, actorId, "push", null);
+  /**
+   * The changed files of a push or pull request, worked out once and only when a filter needs them.
+   */
+  private static final class ChangedFiles {
+    private final java.util.function.Supplier<@Nullable List<String>> loader;
+    private boolean loaded;
+    private @Nullable List<String> files;
+
+    ChangedFiles(final java.util.function.Supplier<@Nullable List<String>> loader) {
+      this.loader = loader;
+    }
+
+    @Nullable List<String> get() {
+      if (!this.loaded) {
+        this.files = this.loader.get();
+        this.loaded = true;
+      }
+      return this.files;
+    }
+  }
+
+  private boolean passesPushPaths(final WorkflowModel model, final ChangedFiles changed) {
+    final var push = this.getPushTrigger(model);
+    if (push == null || !PathFilters.isFiltered(push.paths(), push.pathsIgnore())) {
+      return true;
+    }
+    warnIfBothPathFilters("push", push.paths(), push.pathsIgnore());
+    return PathFilters.allows(changed.get(), push.paths(), push.pathsIgnore());
+  }
+
+  private static void warnIfBothPathFilters(
+      final String event, final @Nullable List<String> paths, final @Nullable List<String> ignore) {
+    if (paths != null && !paths.isEmpty() && ignore != null && !ignore.isEmpty()) {
+      log.warn("on.{} uses both paths and paths-ignore; only paths is applied", event);
     }
   }
 
@@ -308,6 +390,7 @@ public class WorkflowTriggerService {
     return payload;
   }
 
+  /** A pull request was opened (or its head moved): the workflows listening for it start. */
   @Transactional
   public void triggerOnPullRequest(
       final UUID repoId,
@@ -315,6 +398,22 @@ public class WorkflowTriggerService {
       final String targetBranch,
       final String sourceSha,
       final @Nullable UUID actorId) {
+    this.triggerOnPullRequest(repoId, sourceBranch, targetBranch, sourceSha, actorId, "opened");
+  }
+
+  /**
+   * A pull request event. {@code action} is what GitHub reports: opened, synchronize, reopened or
+   * closed. A workflow only starts when its {@code types} (default opened, synchronize, reopened)
+   * contain it and its branch and path filters match.
+   */
+  @Transactional
+  public void triggerOnPullRequest(
+      final UUID repoId,
+      final String sourceBranch,
+      final String targetBranch,
+      final String sourceSha,
+      final @Nullable UUID actorId,
+      final String action) {
 
     final var repo =
         this.repoLookup
@@ -331,18 +430,217 @@ public class WorkflowTriggerService {
 
     final var ownerUsername = repo.ownerUsername();
     final var repoName = repo.name();
-    final var branchRef = "refs/heads/" + sourceBranch;
-
     final var workflows = this.parserService.parseWorkflows(ownerUsername, repoName, sourceSha);
+    final var changed =
+        new ChangedFiles(
+            () -> this.pullRequestFiles(ownerUsername, repoName, targetBranch, sourceSha));
 
     for (final var parsed : workflows) {
-      if (!this.hasPullRequestTrigger(parsed.model(), targetBranch)) {
-        continue;
+      if (this.hasPullRequestTrigger(parsed.model(), targetBranch, action)
+          && passesPullRequestPaths(parsed.model(), changed)) {
+        this.createRun(
+            repoId,
+            parsed,
+            "refs/heads/" + sourceBranch,
+            sourceSha,
+            actorId,
+            "pull_request",
+            null,
+            targetBranch,
+            Map.of("action", action));
       }
-
-      this.createRun(
-          repoId, parsed, branchRef, sourceSha, actorId, "pull_request", null, targetBranch);
     }
+  }
+
+  /**
+   * Files a pull request changes. A merged pull request runs at the target tip, which is the merge
+   * itself, so its files are what that commit changed against its first parent.
+   */
+  private @Nullable List<String> pullRequestFiles(
+      final String owner, final String repoName, final String targetBranch, final String sha) {
+    final var targetTip =
+        this.parserService.resolveSha(owner, repoName, "refs/heads/" + targetBranch);
+    return sha.equals(targetTip)
+        ? this.parserService.changedFiles(owner, repoName, null, sha)
+        : this.parserService.changedFilesOfPullRequest(owner, repoName, targetBranch, sha);
+  }
+
+  private static boolean passesPullRequestPaths(
+      final WorkflowModel model, final ChangedFiles changed) {
+    final var pr = model.on() == null ? null : model.on().pullRequest();
+    if (pr == null || !PathFilters.isFiltered(pr.paths(), pr.pathsIgnore())) {
+      return true;
+    }
+    warnIfBothPathFilters("pull_request", pr.paths(), pr.pathsIgnore());
+    return PathFilters.allows(changed.get(), pr.paths(), pr.pathsIgnore());
+  }
+
+  /** Activity types a {@code pull_request} trigger without {@code types} reacts to. */
+  static final List<String> DEFAULT_PULL_REQUEST_TYPES =
+      List.of("opened", "synchronize", "reopened");
+
+  /** Every release activity type GitNode reports; the others (edited, deleted, ...) never fire. */
+  static final List<String> RELEASE_TYPES =
+      List.of("created", "published", "released", "prereleased");
+
+  /**
+   * A branch or tag was created. Runs the workflows with {@code on: create}, read at the new ref
+   * (as GitHub does), with {@code ref} and {@code ref_type} in the event payload.
+   */
+  @Transactional
+  public void triggerOnRefCreated(
+      final UUID repoId,
+      final String refType,
+      final String refName,
+      final @Nullable String sha,
+      final @Nullable UUID actorId) {
+
+    final var repo = this.repoLookup.findById(repoId).orElse(null);
+    if (repo == null) {
+      return;
+    }
+    final var fullRef = refPrefix(refType) + refName;
+    final var commit =
+        sha != null
+            ? sha
+            : this.parserService.resolveSha(repo.ownerUsername(), repo.name(), fullRef);
+    if (commit == null) {
+      log.debug(
+          "Created ref {} of {}/{} is gone already", fullRef, repo.ownerUsername(), repo.name());
+      return;
+    }
+
+    for (final var parsed :
+        this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), commit)) {
+      if (parsed.model().on() != null && parsed.model().on().create() != null) {
+        this.createRun(
+            repoId,
+            parsed,
+            fullRef,
+            commit,
+            actorId,
+            "create",
+            null,
+            null,
+            refPayload(repo, refType, refName));
+      }
+    }
+  }
+
+  /**
+   * A branch or tag was deleted. Runs the workflows with {@code on: delete} read from the default
+   * branch, because the deleted ref no longer exists (as on GitHub).
+   */
+  @Transactional
+  public void triggerOnRefDeleted(
+      final UUID repoId, final String refType, final String refName, final @Nullable UUID actorId) {
+
+    final var repo = this.repoLookup.findById(repoId).orElse(null);
+    if (repo == null || repo.defaultBranch() == null) {
+      return;
+    }
+    final var defaultRef = "refs/heads/" + repo.defaultBranch();
+    final var commit = this.parserService.resolveSha(repo.ownerUsername(), repo.name(), defaultRef);
+    if (commit == null) {
+      return;
+    }
+
+    for (final var parsed :
+        this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), commit)) {
+      if (parsed.model().on() != null && parsed.model().on().deleted() != null) {
+        this.createRun(
+            repoId,
+            parsed,
+            refPrefix(refType) + refName,
+            commit,
+            actorId,
+            "delete",
+            null,
+            null,
+            refPayload(repo, refType, refName));
+      }
+    }
+  }
+
+  private static String refPrefix(final String refType) {
+    return "tag".equals(refType) ? "refs/tags/" : "refs/heads/";
+  }
+
+  private static Map<String, Object> refPayload(
+      final dev.gitnode.os.repo.api.RepoLookupPort.RepoRef repo,
+      final String refType,
+      final String refName) {
+    final var payload = new java.util.LinkedHashMap<String, Object>();
+    payload.put("ref", refName);
+    payload.put("ref_type", refType);
+    payload.put("master_branch", repo.defaultBranch() == null ? "main" : repo.defaultBranch());
+    return payload;
+  }
+
+  /**
+   * A release was created or published. Runs the workflows with {@code on: release} whose {@code
+   * types} contain one of {@code actions}, once per workflow, read at the release tag (the default
+   * branch when the tag is gone). The first matching action is the one reported.
+   */
+  @Transactional
+  public void triggerOnRelease(
+      final UUID repoId,
+      final String tagName,
+      final @Nullable String releaseName,
+      final boolean prerelease,
+      final boolean draft,
+      final List<String> actions,
+      final @Nullable UUID actorId) {
+
+    final var repo = this.repoLookup.findById(repoId).orElse(null);
+    if (repo == null) {
+      return;
+    }
+    final var tagRef = "refs/tags/" + tagName;
+    final var commit = this.releaseCommit(repo, tagRef);
+    if (commit == null) {
+      return;
+    }
+
+    final var release = new java.util.LinkedHashMap<String, Object>();
+    release.put("tag_name", tagName);
+    release.put("name", releaseName == null ? "" : releaseName);
+    release.put("prerelease", prerelease);
+    release.put("draft", draft);
+
+    for (final var parsed :
+        this.parserService.parseWorkflows(repo.ownerUsername(), repo.name(), commit)) {
+      final var action = releaseActionFor(parsed.model(), actions);
+      if (action != null) {
+        final var extra = new java.util.LinkedHashMap<String, Object>();
+        extra.put("action", action);
+        extra.put("release", release);
+        this.createRun(repoId, parsed, tagRef, commit, actorId, "release", null, null, extra);
+      }
+    }
+  }
+
+  /** The release tag's commit, or the default branch's when the tag is gone; null when neither. */
+  private @Nullable String releaseCommit(
+      final dev.gitnode.os.repo.api.RepoLookupPort.RepoRef repo, final String tagRef) {
+    final var tagged = this.parserService.resolveSha(repo.ownerUsername(), repo.name(), tagRef);
+    if (tagged != null || repo.defaultBranch() == null) {
+      return tagged;
+    }
+    return this.parserService.resolveSha(
+        repo.ownerUsername(), repo.name(), "refs/heads/" + repo.defaultBranch());
+  }
+
+  private static @Nullable String releaseActionFor(
+      final WorkflowModel model, final List<String> actions) {
+    final var trigger = model.on() == null ? null : model.on().release();
+    return trigger == null ? null : firstMatchingReleaseType(trigger.types(), actions);
+  }
+
+  static @Nullable String firstMatchingReleaseType(
+      final @Nullable List<String> wanted, final List<String> actions) {
+    final var types = wanted == null || wanted.isEmpty() ? RELEASE_TYPES : wanted;
+    return actions.stream().filter(types::contains).findFirst().orElse(null);
   }
 
   @Audited(
@@ -851,6 +1149,7 @@ public class WorkflowTriggerService {
     for (final var existing : active) {
       existing.setStatus(WorkflowRunStatus.CANCELLED);
       existing.setConclusion("cancelled");
+      existing.setCompletedAt(java.time.Instant.now());
     }
 
     if (!active.isEmpty()) {
@@ -863,15 +1162,13 @@ public class WorkflowTriggerService {
 
     for (final var runId : runIds) {
       final var jobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(runId);
-      for (final var job : jobs) {
-        if (job.getStatus() == WorkflowJobStatus.QUEUED
-            || job.getStatus() == WorkflowJobStatus.WAITING
-            || job.getStatus() == WorkflowJobStatus.IN_PROGRESS) {
-          job.setStatus(WorkflowJobStatus.CANCELLED);
-          job.setConclusion("cancelled");
-        }
-      }
-      this.jobRepository.saveAll(jobs);
+      jobs.stream()
+          .filter(
+              job ->
+                  job.getStatus() == WorkflowJobStatus.QUEUED
+                      || job.getStatus() == WorkflowJobStatus.WAITING
+                      || job.getStatus() == WorkflowJobStatus.IN_PROGRESS)
+          .forEach(this.jobCancellation::cancel);
     }
   }
 
@@ -984,25 +1281,31 @@ public class WorkflowTriggerService {
   }
 
   boolean hasPullRequestTrigger(final WorkflowModel model, final String branchName) {
+    return this.hasPullRequestTrigger(model, branchName, "opened");
+  }
+
+  boolean hasPullRequestTrigger(
+      final WorkflowModel model, final String branchName, final String action) {
 
     final var on = model.on();
-
     if (on == null || on.pullRequest() == null) {
       return false;
     }
-
     final var pr = on.pullRequest();
+    final var types =
+        pr.types() == null || pr.types().isEmpty() ? DEFAULT_PULL_REQUEST_TYPES : pr.types();
+    return types.contains(action) && pullRequestBranchMatches(pr, branchName);
+  }
 
-    if (pr.branchesIgnore() != null
-        && pr.branchesIgnore().stream().anyMatch(p -> matchesGlob(branchName, p))) {
+  private static boolean pullRequestBranchMatches(
+      final PullRequestTriggerModel pr, final String branchName) {
+
+    if (matchesAny(branchName, pr.branchesIgnore())) {
       return false;
     }
-
-    if (pr.branches() == null || pr.branches().isEmpty()) {
-      return true;
-    }
-
-    return pr.branches().stream().anyMatch(p -> matchesGlob(branchName, p));
+    return pr.branches() == null
+        || pr.branches().isEmpty()
+        || matchesAny(branchName, pr.branches());
   }
 
   private @Nullable PushTriggerModel getPushTrigger(final WorkflowModel model) {

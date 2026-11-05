@@ -37,8 +37,19 @@ optional Go runner for CI/CD. In-app documentation is served at `/docs`.
 
 ### Known limitations
 
+GitNode Actions aims to run GitHub workflows unchanged. What does not work yet, or cannot:
+
 - **Reusable workflows (`on: workflow_call` / `jobs.<id>.uses`) are not supported yet.** The calling job fails with a clear
   message in its log and the jobs that `need` it are skipped. Use composite actions for shared steps meanwhile. Planned.
+- **No GitHub-hosted runners.** Labels such as `ubuntu-latest` are not translated: the job waits for a runner that carries
+  that label. Use `runs-on: [self-hosted, linux]`. A job nobody can take shows the reason in its log.
+- **No `GITHUB_TOKEN`.** `github.token` / `secrets.GITHUB_TOKEN` are not provided; store a token as a secret.
+- `actions/download-artifact` needs a `name` (downloading all artifacts at once is not supported).
+- With `container:`, only `run:` steps run inside the container; `uses:` actions run on the runner machine.
+- Pull request `types` other than opened, synchronize, reopened and closed never fire; neither do release types edited,
+  deleted or unpublished. With both `paths` and `paths-ignore` on one event only `paths` is applied.
+
+See [`docs/actions-compatibility.md`](docs/actions-compatibility.md) for the full supported / unsupported table.
 
 ## Architecture
 

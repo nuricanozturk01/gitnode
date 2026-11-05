@@ -19,7 +19,20 @@ import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
-/** A tag was pushed (created or moved). Deleting a tag does not publish this event. */
+/** A tag was created or moved by a push. {@code beforeSha} is the all-zero sha for a new tag. */
 @NullMarked
 public record RepoTagPushedEvent(
-    UUID repoId, String tagName, String pusherUsername, @Nullable String commitSha) {}
+    UUID repoId,
+    String tagName,
+    String pusherUsername,
+    @Nullable String commitSha,
+    @Nullable String beforeSha) {
+
+  public RepoTagPushedEvent(
+      final UUID repoId,
+      final String tagName,
+      final String pusherUsername,
+      final @Nullable String commitSha) {
+    this(repoId, tagName, pusherUsername, commitSha, null);
+  }
+}

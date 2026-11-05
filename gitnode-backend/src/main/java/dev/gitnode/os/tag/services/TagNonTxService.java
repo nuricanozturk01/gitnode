@@ -15,6 +15,9 @@
  */
 package dev.gitnode.os.tag.services;
 
+import dev.gitnode.os.events.tag.TagCreatedEvent;
+import dev.gitnode.os.events.tag.TagDeletedEvent;
+import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
@@ -43,6 +46,7 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -57,6 +61,8 @@ public class TagNonTxService {
 
   private final GitProvider gitProvider;
   private final ReleaseTxService releaseTxService;
+  private final RepoLookupPort repos;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Cacheable(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public List<TagInfo> getAll(final String owner, final String repoName) throws IOException {
@@ -112,6 +118,12 @@ public class TagNonTxService {
       }
     }
 
+    this.repos
+        .find(owner, repoName)
+        .ifPresent(
+            repo ->
+                this.eventPublisher.publishEvent(new TagCreatedEvent(repo.id(), form.getName())));
+
     return this.get(owner, repoName, form.getName());
   }
 
@@ -133,6 +145,10 @@ public class TagNonTxService {
     }
 
     this.releaseTxService.deleteByTagName(owner, repoName, tagName);
+    this.repos
+        .find(owner, repoName)
+        .ifPresent(
+            repo -> this.eventPublisher.publishEvent(new TagDeletedEvent(repo.id(), tagName)));
   }
 
   private void createAnnotatedTag(

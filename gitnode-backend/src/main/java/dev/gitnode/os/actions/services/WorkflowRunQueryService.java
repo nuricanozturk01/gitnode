@@ -298,6 +298,23 @@ public class WorkflowRunQueryService {
         .toList();
   }
 
+  /** The repository a step belongs to (step, job, run), for access checks on step logs. */
+  public UUID repoIdOfStep(final UUID stepId) {
+
+    final var step =
+        this.stepRepository
+            .findById(stepId)
+            .orElseThrow(() -> new ItemNotFoundException("Workflow step not found: " + stepId));
+    final var job =
+        this.jobRepository
+            .findById(step.getJobId())
+            .orElseThrow(() -> new ItemNotFoundException("Workflow step not found: " + stepId));
+    return this.runRepository
+        .findById(job.getRunId())
+        .orElseThrow(() -> new ItemNotFoundException("Workflow step not found: " + stepId))
+        .getRepoId();
+  }
+
   public boolean isStepCompleted(final UUID stepId) {
 
     return this.stepRepository

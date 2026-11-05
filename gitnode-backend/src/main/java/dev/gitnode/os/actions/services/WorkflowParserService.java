@@ -26,12 +26,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
+import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.filter.PathFilter;
+import org.eclipse.jgit.util.io.NullOutputStream;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
@@ -142,6 +147,109 @@ public class WorkflowParserService {
       log.debug("Cannot read commit message of {} in {}/{}", rev, ownerUsername, repoName);
       return null;
     }
+  }
+
+  /** The commit {@code ref} (a branch ref, tag ref or sha) points to, or null when it is gone. */
+  public @Nullable String resolveSha(
+      final String ownerUsername, final String repoName, final String ref) {
+
+    final var repoPath = Path.of(this.repoRoot, ownerUsername, repoName + ".git");
+    try (Repository gitRepo = new FileRepositoryBuilder().setGitDir(repoPath.toFile()).build()) {
+      final var id = gitRepo.resolve(ref + "^{commit}");
+      return id == null ? null : id.name();
+    } catch (final IOException | RuntimeException e) {
+      log.debug("Cannot resolve {} in {}/{}", ref, ownerUsername, repoName);
+      return null;
+    }
+  }
+
+  /**
+   * Files a push changed: {@code before..after}. When the previous tip is unknown or a new branch
+   * (null or the all-zero sha) the commit is compared with its first parent. Null means the files
+   * could not be determined, and callers then do not filter by path.
+   */
+  public @Nullable List<String> changedFiles(
+      final String ownerUsername,
+      final String repoName,
+      final @Nullable String before,
+      final String after) {
+
+    final var repoPath = Path.of(this.repoRoot, ownerUsername, repoName + ".git");
+    try (Repository gitRepo = new FileRepositoryBuilder().setGitDir(repoPath.toFile()).build();
+        RevWalk revWalk = new RevWalk(gitRepo)) {
+      final var afterId = gitRepo.resolve(after + "^{commit}");
+      if (afterId == null) {
+        return null;
+      }
+      final var newCommit = revWalk.parseCommit(afterId);
+      RevCommit base = null;
+      final var beforeId = isUnknownSha(before) ? null : gitRepo.resolve(before + "^{commit}");
+      if (beforeId != null) {
+        base = revWalk.parseCommit(beforeId);
+      } else if (newCommit.getParentCount() > 0) {
+        base = revWalk.parseCommit(newCommit.getParent(0));
+      }
+      return diffPaths(gitRepo, base, newCommit);
+    } catch (final IOException | RuntimeException e) {
+      log.warn("Cannot list changed files in {}/{}: {}", ownerUsername, repoName, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Files a pull request changes: from the merge base of the target branch and {@code headSha} to
+   * the head, like the three-dot diff GitHub filters on. Null when it cannot be determined.
+   */
+  public @Nullable List<String> changedFilesOfPullRequest(
+      final String ownerUsername,
+      final String repoName,
+      final String targetBranch,
+      final String headSha) {
+
+    final var repoPath = Path.of(this.repoRoot, ownerUsername, repoName + ".git");
+    try (Repository gitRepo = new FileRepositoryBuilder().setGitDir(repoPath.toFile()).build();
+        RevWalk revWalk = new RevWalk(gitRepo)) {
+      final var headId = gitRepo.resolve(headSha + "^{commit}");
+      final var targetId = gitRepo.resolve("refs/heads/" + targetBranch + "^{commit}");
+      if (headId == null || targetId == null) {
+        return null;
+      }
+      final var head = revWalk.parseCommit(headId);
+      final var target = revWalk.parseCommit(targetId);
+      revWalk.setRevFilter(RevFilter.MERGE_BASE);
+      revWalk.markStart(head);
+      revWalk.markStart(target);
+      final var mergeBase = revWalk.next();
+      return diffPaths(gitRepo, mergeBase, head);
+    } catch (final IOException | RuntimeException e) {
+      log.warn(
+          "Cannot list PR changed files in {}/{}: {}", ownerUsername, repoName, e.getMessage());
+      return null;
+    }
+  }
+
+  private static boolean isUnknownSha(final @Nullable String sha) {
+    return sha == null || sha.isBlank() || sha.chars().allMatch(c -> c == '0');
+  }
+
+  private static List<String> diffPaths(
+      final Repository gitRepo, final @Nullable RevCommit base, final RevCommit head)
+      throws IOException {
+
+    final var paths = new java.util.LinkedHashSet<String>();
+    try (DiffFormatter diff = new DiffFormatter(NullOutputStream.INSTANCE)) {
+      diff.setRepository(gitRepo);
+      for (final DiffEntry entry :
+          diff.scan(base == null ? null : base.getTree(), head.getTree())) {
+        if (entry.getChangeType() != DiffEntry.ChangeType.ADD) {
+          paths.add(entry.getOldPath());
+        }
+        if (entry.getChangeType() != DiffEntry.ChangeType.DELETE) {
+          paths.add(entry.getNewPath());
+        }
+      }
+    }
+    return List.copyOf(paths);
   }
 
   private WorkflowModel readModel(final String content) throws IOException {

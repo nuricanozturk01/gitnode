@@ -97,7 +97,11 @@ class WorkflowExecutionServiceTest {
                 new ExpressionEvaluator(),
                 this.repoLookup),
             this.triggerService,
-            this.runnerCommands);
+            new JobCancellation(
+                this.jobRepository,
+                this.stepRepository,
+                this.sseEmitterRegistry,
+                this.runnerCommands));
   }
 
   private static final UUID RUNNER_ID = UUID.randomUUID();

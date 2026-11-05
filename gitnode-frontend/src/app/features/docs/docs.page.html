@@ -538,15 +538,45 @@
 
               <div>
                 <h3 class="docs-subheading">Known limitations</h3>
-                <p class="text-sm text-base-content/70">
-                  <strong class="text-base-content/80">Reusable workflows are not supported yet</strong> (planned). A
-                  job that calls another workflow with
-                  <code class="docs-inline-code">uses: ./.gitnode/workflows/build.yml</code> and declares
-                  <code class="docs-inline-code">on: workflow_call</code> does not run: the job fails and its log says
-                  <code class="docs-inline-code">Reusable workflows are not supported yet</code>. Jobs that
-                  <code class="docs-inline-code">need</code> it are skipped. Until then, repeat the steps in each
-                  workflow or use a composite action (supported) for the shared part.
-                </p>
+                <ul class="text-base-content/70 list-disc space-y-2 pl-5 text-sm">
+                  <li>
+                    <strong class="text-base-content/80">Reusable workflows are not supported yet</strong> (planned). A
+                    job that calls another workflow with
+                    <code class="docs-inline-code">uses: ./.gitnode/workflows/build.yml</code> does not run: the job
+                    fails and its log says
+                    <code class="docs-inline-code">Reusable workflows are not supported yet</code>; jobs that
+                    <code class="docs-inline-code">need</code> it are skipped. Repeat the steps or use a composite
+                    action for the shared part.
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">No GitHub-hosted runners.</strong> Labels such as
+                    <code class="docs-inline-code">ubuntu-latest</code> are not translated: the job waits for a runner
+                    that carries that label. Use <code class="docs-inline-code">runs-on: [self-hosted, linux]</code> or
+                    add the label to your runner. A job nobody can take shows the reason in its log.
+                  </li>
+                  <li>
+                    <strong class="text-base-content/80">No <code class="docs-inline-code">GITHUB_TOKEN</code>.</strong>
+                    <code class="docs-inline-code">github.token</code> and
+                    <code class="docs-inline-code">secrets.GITHUB_TOKEN</code> are not provided; store a token as a
+                    secret instead.
+                  </li>
+                  <li>
+                    <code class="docs-inline-code">actions/download-artifact</code> needs a
+                    <code class="docs-inline-code">name</code>; downloading all artifacts at once is not supported.
+                  </li>
+                  <li>
+                    With <code class="docs-inline-code">container:</code>, only
+                    <code class="docs-inline-code">run:</code> steps run inside the container;
+                    <code class="docs-inline-code">uses:</code> actions run on the runner machine.
+                  </li>
+                  <li>
+                    Pull request <code class="docs-inline-code">types</code> other than opened, synchronize, reopened
+                    and closed (for example labeled or edited) never fire; neither do release types edited, deleted or
+                    unpublished. <code class="docs-inline-code">paths</code> and
+                    <code class="docs-inline-code">paths-ignore</code> together on one event: only
+                    <code class="docs-inline-code">paths</code> is applied. Path filters do not apply to tag pushes.
+                  </li>
+                </ul>
               </div>
 
               <div>
@@ -727,18 +757,27 @@
                     <tbody>
                       <tr>
                         <td><code class="docs-table-code">push</code></td>
-                        <td>Commit pushed to a matching branch</td>
+                        <td>Commit pushed to a matching branch, or a tag pushed</td>
                         <td>
                           <code class="docs-table-code">branches</code>,
-                          <code class="docs-table-code">branches-ignore</code>
+                          <code class="docs-table-code">branches-ignore</code>,
+                          <code class="docs-table-code">tags</code>, <code class="docs-table-code">tags-ignore</code>,
+                          <code class="docs-table-code">paths</code>,
+                          <code class="docs-table-code">paths-ignore</code>
                         </td>
                       </tr>
                       <tr>
                         <td><code class="docs-table-code">pull_request</code></td>
-                        <td>Pull request opened, or new commits pushed to its source branch</td>
                         <td>
-                          <code class="docs-table-code">branches</code>,
-                          <code class="docs-table-code">branches-ignore</code>
+                          Pull request opened, reopened, closed (merged or not), or new commits pushed to its source
+                          branch. <code class="docs-table-code">types</code> picks the activities; the default is
+                          opened, synchronize and reopened
+                        </td>
+                        <td>
+                          <code class="docs-table-code">types</code>, <code class="docs-table-code">branches</code>,
+                          <code class="docs-table-code">branches-ignore</code>,
+                          <code class="docs-table-code">paths</code>,
+                          <code class="docs-table-code">paths-ignore</code>
                         </td>
                       </tr>
                       <tr>
@@ -753,7 +792,38 @@
                           <code class="docs-table-code">timezone</code> is supported)
                         </td>
                         <td>
-                          <code class="docs-table-code">cron</code>, <code class="docs-table-code">timezone</code>
+                          <code class="docs-table-code">cron</code>,
+                          <code class="docs-table-code">timezone</code>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">workflow_run</code></td>
+                        <td>Another workflow finished (chains stop after three levels)</td>
+                        <td>
+                          <code class="docs-table-code">workflows</code>, <code class="docs-table-code">types</code>,
+                          <code class="docs-table-code">branches</code>,
+                          <code class="docs-table-code">branches-ignore</code>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">create</code></td>
+                        <td>A branch or tag was created (read at the new ref)</td>
+                        <td>none</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">delete</code></td>
+                        <td>A branch or tag was deleted (read from the default branch)</td>
+                        <td>none</td>
+                      </tr>
+                      <tr>
+                        <td><code class="docs-table-code">release</code></td>
+                        <td>
+                          A release was created or published. <code class="docs-table-code">types</code>: created,
+                          published, released, prereleased (all by default); one run per workflow, for the first
+                          matching type
+                        </td>
+                        <td>
+                          <code class="docs-table-code">types</code>
                         </td>
                       </tr>
                     </tbody>
@@ -866,9 +936,9 @@
               <div>
                 <h3 class="docs-subheading">Full workflow example</h3>
                 <p class="text-base-content/65 mb-3 text-sm">
-                  Push + PR + manual dispatch, matrix strategy, concurrency, artifacts, and secrets. Branch filters on
-                  <code class="docs-inline-code">push</code> and <code class="docs-inline-code">pull_request</code> are
-                  supported; path/tag filters are not evaluated yet.
+                  Push + PR + manual dispatch, matrix strategy, concurrency, artifacts, and secrets. Branch, tag and
+                  path filters on <code class="docs-inline-code">push</code> and
+                  <code class="docs-inline-code">pull_request</code> are supported.
                 </p>
                 <div class="docs-code-wrap">
                   <button

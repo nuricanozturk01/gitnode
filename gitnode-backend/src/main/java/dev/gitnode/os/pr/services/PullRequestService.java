@@ -25,6 +25,7 @@ import dev.gitnode.os.commit.api.CommitInfo;
 import dev.gitnode.os.commit.api.CommitStats;
 import dev.gitnode.os.commit.api.FileDiff;
 import dev.gitnode.os.events.pr.PullRequestCreatedEvent;
+import dev.gitnode.os.events.pr.PullRequestReopenedEvent;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
 import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.issue.api.RepoMetadataQueryPort;
@@ -273,7 +274,17 @@ public class PullRequestService {
     }
     pr.setStatus(PrStatus.OPEN.name());
     pr.setClosedAt(null);
-    return this.toDetail(this.prRepository.save(pr));
+    final var reopened = this.prRepository.save(pr);
+    this.eventPublisher.publishEvent(
+        new PullRequestReopenedEvent(
+            reopened.getId(),
+            repo.id(),
+            reopened.getNumber(),
+            reopened.getSourceBranch(),
+            reopened.getTargetBranch(),
+            reopened.getSourceSha(),
+            requesterId));
+    return this.toDetail(reopened);
   }
 
   private void assertCanModify(final RepoRef repo, final PullRequest pr, final UUID requesterId) {

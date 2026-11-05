@@ -19,10 +19,28 @@ import java.util.UUID;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
+/**
+ * A branch was pushed to or committed to. {@code beforeSha} is the branch tip before the push: the
+ * all-zero sha when the push created the branch, null when it is not known (a commit made in the
+ * UI). {@code commitSha} is null when the push deleted the branch.
+ */
 @NullMarked
 public record RepoPushedEvent(
-    UUID repoId, String branchName, String pusherUsername, @Nullable String commitSha) {
+    UUID repoId,
+    String branchName,
+    String pusherUsername,
+    @Nullable String commitSha,
+    @Nullable String beforeSha) {
+
+  public RepoPushedEvent(
+      final UUID repoId,
+      final String branchName,
+      final String pusherUsername,
+      final @Nullable String commitSha) {
+    this(repoId, branchName, pusherUsername, commitSha, null);
+  }
+
   public RepoPushedEvent(final UUID repoId, final String branchName, final String pusherUsername) {
-    this(repoId, branchName, pusherUsername, null);
+    this(repoId, branchName, pusherUsername, null, null);
   }
 }

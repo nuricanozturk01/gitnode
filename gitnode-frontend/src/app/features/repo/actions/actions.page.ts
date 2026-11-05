@@ -31,7 +31,16 @@ import {
 const PAGE_SIZE = 20;
 const WORKFLOW_PAGE_SIZE = 20;
 
-export const RUN_EVENT_OPTIONS = ['push', 'pull_request', 'workflow_dispatch', 'schedule'] as const;
+export const RUN_EVENT_OPTIONS = [
+  'push',
+  'pull_request',
+  'workflow_dispatch',
+  'schedule',
+  'workflow_run',
+  'create',
+  'delete',
+  'release',
+] as const;
 export const RUN_STATUS_OPTIONS = ['queued', 'in_progress', 'success', 'failure', 'cancelled'] as const;
 
 /** Adds the workflows that are not in the list yet, keeping the name order of the sidebar. */
@@ -350,6 +359,14 @@ export class ActionsPage {
         return `Manually run${actor}`;
       case 'schedule':
         return 'Scheduled';
+      case 'workflow_run':
+        return `Workflow run${actor}`;
+      case 'create':
+        return `Branch or tag created${actor}`;
+      case 'delete':
+        return `Branch or tag deleted${actor}`;
+      case 'release':
+        return `Release${actor}`;
       default:
         return `${run.triggerEvent}${actor}`;
     }

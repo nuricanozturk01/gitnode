@@ -91,6 +91,7 @@ class ReusableWorkflowGuardTest {
   @Mock private WorkflowJobRepository jobRepository;
   @Mock private WorkflowStepRepository stepRepository;
   @Mock private WorkflowLogRepository logRepository;
+  @Mock private JobCancellation jobCancellation;
   @Mock private RepoLookupPort repoLookup;
   @Mock private ApplicationEventPublisher eventPublisher;
 
@@ -112,7 +113,8 @@ class ReusableWorkflowGuardTest {
             new JobAdvancer(
                 this.definitionRepository, this.parserService, this.evaluator, this.repoLookup),
             this.stepRepository,
-            this.logRepository);
+            this.logRepository,
+            this.jobCancellation);
     lenient()
         .when(this.repoLookup.findById(REPO_ID))
         .thenReturn(

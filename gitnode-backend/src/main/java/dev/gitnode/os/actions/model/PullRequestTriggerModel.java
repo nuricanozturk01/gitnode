@@ -24,4 +24,14 @@ import org.jspecify.annotations.Nullable;
 public record PullRequestTriggerModel(
     @Nullable List<String> branches,
     @JsonProperty("branches-ignore") @Nullable List<String> branchesIgnore,
-    @Nullable List<String> types) {}
+    @Nullable List<String> types,
+    @Nullable List<String> paths,
+    @JsonProperty("paths-ignore") @Nullable List<String> pathsIgnore) {
+
+  public PullRequestTriggerModel(
+      final @Nullable List<String> branches,
+      final @Nullable List<String> branchesIgnore,
+      final @Nullable List<String> types) {
+    this(branches, branchesIgnore, types, null, null);
+  }
+}

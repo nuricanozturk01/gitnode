@@ -61,6 +61,7 @@ class ReleaseTxServiceTest {
   @Mock private RepoCacheInvalidator cacheInvalidator;
   @Mock private CollaboratorAccessPort collaboratorAccess;
   @Mock private dev.gitnode.os.tag.services.ReleaseAssetService assetService;
+  @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
   @InjectMocks private ReleaseTxService releaseTxService;
 

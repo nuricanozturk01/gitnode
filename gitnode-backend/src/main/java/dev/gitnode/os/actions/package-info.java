@@ -17,8 +17,10 @@
     allowedDependencies = {
       "branch :: api",
       "events :: actions",
+      "events :: branch",
       "events :: pr",
       "events :: repo",
+      "events :: tag",
       "githttp :: api",
       "identity :: api",
       "identity :: security",

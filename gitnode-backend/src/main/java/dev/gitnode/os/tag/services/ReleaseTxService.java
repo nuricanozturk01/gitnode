@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.tag.services;
 
+import dev.gitnode.os.events.tag.ReleaseChangedEvent;
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
@@ -45,6 +46,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -64,6 +66,7 @@ public class ReleaseTxService {
   private final RepoCacheInvalidator cacheInvalidator;
   private final CollaboratorAccessPort collaboratorAccess;
   private final ReleaseAssetService assetService;
+  private final ApplicationEventPublisher eventPublisher;
 
   @Audited(
       action = "CREATE_RELEASE",
@@ -92,7 +95,38 @@ public class ReleaseTxService {
         this.releaseMapper.toInfo(
             this.releaseRepository.save(release), this.releaseMapper.toTenantInfo(author));
     this.cacheInvalidator.evictTags(owner, repoName);
+    this.publishReleaseEvent(repo.id(), release, authorId, false);
     return saved;
+  }
+
+  /**
+   * Tells the Actions engine what GitHub would report: "created" for a new release and, once it is
+   * public, "published" plus "released" or "prereleased". A draft that is published later reports
+   * only the public part.
+   */
+  private void publishReleaseEvent(
+      final UUID repoId, final Release release, final UUID actorId, final boolean wasDraft) {
+
+    final var actions = new java.util.ArrayList<String>();
+    if (!wasDraft) {
+      actions.add("created");
+    }
+    if (!release.isDraft()) {
+      actions.add("published");
+      actions.add(release.isPrerelease() ? "prereleased" : "released");
+    }
+    if (actions.isEmpty()) {
+      return;
+    }
+    this.eventPublisher.publishEvent(
+        new ReleaseChangedEvent(
+            repoId,
+            release.getTagName(),
+            release.getName(),
+            release.isPrerelease(),
+            release.isDraft(),
+            List.copyOf(actions),
+            actorId));
   }
 
   public List<ReleaseInfo> getAll(final String owner, final String repoName) {
@@ -199,9 +233,13 @@ public class ReleaseTxService {
             .orElseThrow(() -> new ItemNotFoundException(ERR_RELEASE_NOT_FOUND));
 
     this.assertCanManage(repo, requesterId);
+    final boolean wasDraft = release.isDraft();
     this.applyUpdates(form, release);
     final var updated = this.toInfo(this.releaseRepository.save(release), null);
     this.cacheInvalidator.evictTags(repoOwnerUsername, repo.name());
+    if (wasDraft && !release.isDraft()) {
+      this.publishReleaseEvent(repo.id(), release, requesterId, true);
+    }
     return updated;
   }
 

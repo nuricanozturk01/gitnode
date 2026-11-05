@@ -94,14 +94,16 @@ public class GitPushEventPublisher implements PostReceiveHook {
                             "Publishing push event: {}/{} branch={}", owner, repoName, branch);
                         this.cacheInvalidator.evictBranchScoped(owner, repoName, branch);
                         this.cacheInvalidator.evictBranches(owner, repoName);
+                        final boolean deleted = isZero(command.getNewId());
                         this.eventPublisher.publishEvent(
                             new RepoPushedEvent(
                                 repo.getId(),
                                 branch,
                                 pusherName,
-                                command.getNewId().equals(org.eclipse.jgit.lib.ObjectId.zeroId())
-                                    ? null
-                                    : command.getNewId().name()));
+                                deleted ? null : command.getNewId().name(),
+                                command.getOldId().name()));
+                        this.publishRefLifecycle(
+                            repo.getId(), "branch", branch, command, pusherName);
                       });
 
               final var tagCommands =
@@ -116,22 +118,43 @@ public class GitPushEventPublisher implements PostReceiveHook {
             });
   }
 
-  /** Tag deletions are ignored; created or moved tags can trigger workflows. */
+  private static boolean isZero(final org.eclipse.jgit.lib.ObjectId id) {
+    return id.equals(org.eclipse.jgit.lib.ObjectId.zeroId());
+  }
+
+  /** A pushed ref that did not exist before is "created"; one that is gone now is "deleted". */
+  private void publishRefLifecycle(
+      final java.util.UUID repoId,
+      final String refType,
+      final String refName,
+      final ReceiveCommand command,
+      final String pusherName) {
+
+    if (isZero(command.getOldId()) && !isZero(command.getNewId())) {
+      this.eventPublisher.publishEvent(
+          new dev.gitnode.os.events.repo.RepoRefCreatedEvent(
+              repoId, refType, refName, command.getNewId().name(), pusherName));
+    } else if (isZero(command.getNewId()) && !isZero(command.getOldId())) {
+      this.eventPublisher.publishEvent(
+          new dev.gitnode.os.events.repo.RepoRefDeletedEvent(repoId, refType, refName, pusherName));
+    }
+  }
+
+  /** Created or moved tags can trigger push workflows; created and deleted ones also lifecycle. */
   private void publishTagEvents(
       final java.util.UUID repoId,
       final java.util.List<ReceiveCommand> tagCommands,
       final String pusherName) {
 
     for (final var command : tagCommands) {
-      if (command.getNewId().equals(org.eclipse.jgit.lib.ObjectId.zeroId())) {
+      final var tagName = command.getRefName().substring(Constants.R_TAGS.length());
+      this.publishRefLifecycle(repoId, "tag", tagName, command, pusherName);
+      if (isZero(command.getNewId())) {
         continue;
       }
       this.eventPublisher.publishEvent(
           new dev.gitnode.os.events.repo.RepoTagPushedEvent(
-              repoId,
-              command.getRefName().substring(Constants.R_TAGS.length()),
-              pusherName,
-              command.getNewId().name()));
+              repoId, tagName, pusherName, command.getNewId().name(), command.getOldId().name()));
     }
   }
 

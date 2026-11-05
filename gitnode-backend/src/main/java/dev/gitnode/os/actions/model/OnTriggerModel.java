@@ -36,7 +36,10 @@ public record OnTriggerModel(
     @JsonProperty("pull_request") @Nullable PullRequestTriggerModel pullRequest,
     @JsonProperty("workflow_dispatch") @Nullable WorkflowDispatchModel workflowDispatch,
     @Nullable List<ScheduleModel> schedule,
-    @JsonProperty("workflow_run") @Nullable WorkflowRunTriggerModel workflowRun) {
+    @JsonProperty("workflow_run") @Nullable WorkflowRunTriggerModel workflowRun,
+    @Nullable RefEventTriggerModel create,
+    @JsonProperty("delete") @Nullable RefEventTriggerModel deleted,
+    @Nullable ReleaseTriggerModel release) {
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -45,7 +48,7 @@ public record OnTriggerModel(
       final @Nullable PushTriggerModel push,
       final @Nullable PullRequestTriggerModel pullRequest,
       final @Nullable WorkflowDispatchModel workflowDispatch) {
-    this(push, pullRequest, workflowDispatch, null, null);
+    this(push, pullRequest, workflowDispatch, null, null, null, null, null);
   }
 
   public OnTriggerModel(
@@ -53,7 +56,7 @@ public record OnTriggerModel(
       final @Nullable PullRequestTriggerModel pullRequest,
       final @Nullable WorkflowDispatchModel workflowDispatch,
       final @Nullable List<ScheduleModel> schedule) {
-    this(push, pullRequest, workflowDispatch, schedule, null);
+    this(push, pullRequest, workflowDispatch, schedule, null, null, null, null);
   }
 
   @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
@@ -73,7 +76,7 @@ public record OnTriggerModel(
     if (raw instanceof final Map<?, ?> map) {
       return fromMap(map);
     }
-    return new OnTriggerModel(null, null, null, null, null);
+    return new OnTriggerModel(null, null, null, null, null, null, null, null);
   }
 
   private static OnTriggerModel fromMap(final Map<?, ?> map) {
@@ -86,7 +89,10 @@ public record OnTriggerModel(
         read(map, "pull_request", PullRequestTriggerModel.class),
         read(map, "workflow_dispatch", WorkflowDispatchModel.class),
         schedule,
-        read(map, "workflow_run", WorkflowRunTriggerModel.class));
+        read(map, "workflow_run", WorkflowRunTriggerModel.class),
+        read(map, "create", RefEventTriggerModel.class),
+        read(map, "delete", RefEventTriggerModel.class),
+        read(map, "release", ReleaseTriggerModel.class));
   }
 
   /** Absent key → null (trigger not used); key without value → an empty trigger. */

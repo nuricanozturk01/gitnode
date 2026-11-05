@@ -7,8 +7,6 @@ Bu dosya yapılanı, **geriye kalanı** ve her biri için planı tutar. Kod değ
 
 - `uses:` içeren bir **job** (reusable workflow) çalıştırılmaz. Sessizce geçmesin diye job **başarısız** olur, nedeni job'un
   log'unda yazar, ona `needs` ile bağlı job'lar atlanır (aşağıda "Yapılanlar").
-- `paths` / `paths-ignore` yok sayılır, workflow her push'ta çalışır.
-- `on: release`, `create`, `delete` olan workflow'lar hiç tetiklenmez.
 
 ## Yapılanlar
 
@@ -36,15 +34,29 @@ Bu dosya yapılanı, **geriye kalanı** ve her biri için planı tutar. Kod değ
 | Sayfalama: run listesi ve workflow listesi (backend + frontend + e2e) | ✅ |
 | DB index'leri (`V074`), büyük/küçük harf yüzünden kullanılmayan 3 index düzeltildi | ✅ |
 | CI e2e: admin parolası yoksa senaryo atlanır, secret'tan okunur | ✅ |
+| Docker build-push: `cache-from`/`cache-to` (`type=gha,mode=max`) virgülden bölünmüyor; `type=gha` uyarıyla atlanır | ✅ |
+| Eşleşen runner yoksa iş log'unda "Waiting for a runner" adımı (`runs-on` hatası UI'da görünür) | ✅ |
+| İptal: çalışan job'a runner'a `JOB_CANCELLED` gider, runner süreç grubunu öldürür (`internal/proc`), adımlar kapanır, runner BUSY'den çıkar, geç gelen "tamamlandı" iptali ezmez; `cancel-in-progress` aynı yolu kullanır (`JobCancellation`) | ✅ |
+| `GET /api/actions/steps/{stepId}/logs` repo erişimini denetler (public repo herkese, private owner/collaborator) | ✅ |
+| İstemci kopması (SSE) artık "Unhandled exception" loglamaz | ✅ |
+| Runner Docker imajı (`gitnode-runner/Dockerfile`, `.gitnode/workflows/deploy-runner.yml`); UI ve docs `docker run` komutunu gösterir | ✅ (imaj Repsy'e henüz gönderilmedi) |
+| Docs ve README'de "Known limitations": reusable workflow | ✅ |
+| `paths` / `paths-ignore` (push ve PR): değişen dosyalar JGit ile (`WorkflowParserService.changedFiles`, `changedFilesOfPullRequest`), glob kuralları `PathFilters`; dosyalar bulunamazsa filtre uygulanmaz | ✅ |
+| `pull_request.types` (`opened`, `synchronize`, `reopened`, `closed`; varsayılan ilk üçü); `PullRequestReopenedEvent` eklendi, `closed` birleştirilmiş PR için de çalışır | ✅ |
+| `push` olayında `before` sha (`RepoPushedEvent.beforeSha`) ve event payload'unda `before` | ✅ |
+| `create` / `delete` trigger'ları (git push, UI ve API ile branch/tag; `RepoRefCreatedEvent`, `RepoRefDeletedEvent`) | ✅ |
+| `release` trigger'ı (`created`, `published`, `released`, `prereleased`; `ReleaseChangedEvent`); workflow başına tek run | ✅ |
+| UI: run filtresi ve alt başlıkta `workflow_run`, `create`, `delete`, `release` | ✅ |
+| Uyumluluk dokümanı `docs/actions-compatibility.md`; README ve docs sayfasında "Known limitations" | ✅ |
 
 Doğrulama: backend `./mvnw -o -pl gitnode-backend -am verify` (1118 test, checkstyle, jacoco, mimari), Go `golangci-lint` + `go test ./...`,
 frontend `eslint` + `ng test` (50) + `ng build`, e2e API (164), uyumluluk derlemi (11 workflow).
 
 ## Geriye kalanlar ve planları
 
-Sıralama olmazsa olmazdan başlar.
+Tek kalan özellik reusable workflow (aşağıdaki 1. madde).
 
-### 1. Reusable workflow (`workflow_call`): en kritik
+### 1. Reusable workflow (`workflow_call`): en kritik (ertelendi: yaklaşık 2026-12-05'te yapılacak)
 
 **Sorun:** `jobs.<id>.uses: ./.gitnode/workflows/x.yml` ayrıştırılıyor ama çalıştırılmıyor (şimdilik açık hata ile başarısız oluyor).
 
@@ -64,33 +76,11 @@ Sıralama olmazsa olmazdan başlar.
 - **Mevcut durum:** koruma yapıldı (`WorkflowTriggerService.createUnsupportedCallJob`). Bu özellik gelince o metot kaldırılır,
   `ReusableWorkflowGuardTest` gerçek genişletme testleriyle değiştirilir.
 
-### 2. `paths` / `paths-ignore` ve `pull_request.types`
+### Tamamlananlar (eski 2, 3, 4)
 
-**Sorun:** `PushTriggerModel` ve `PullRequestTriggerModel` bu alanları tanımıyor, workflow her push'ta çalışır.
-
-**Plan**
-- Modele `paths`, `paths-ignore` (push ve PR), PR için `types` (varsayılan `opened`, `synchronize`, `reopened`).
-- Değişen dosyalar: `WorkflowParserService`'e JGit ile `changedFiles(owner, repo, before, after)`; push için `before..after`,
-  yeni branch'te varsayılan branch'e göre; PR için base..head. `RepoPushedEvent`'te önceki sha yoksa eklenir.
-- Eşleme: mevcut `matchesGlob` (`**`, `*`, `!` dışlama). GitHub kuralı: `paths` varsa en az bir dosya eşleşmeli,
-  `paths-ignore` varsa tüm dosyalar ignore'a uyuyorsa çalışmaz; ikisi aynı olayda birlikte kullanılamaz.
-- PR `types`: `PullRequestCreatedEvent` dışında durum olaylarını (`PullRequestStatusChangedEvent`) dinleyip `closed`, `reopened` ayırmak gerekir.
-- Test: filtre matrisi birim testi, JGit ile gerçek repo üzerinde değişen-dosya testi.
-
-### 3. `release`, `create`, `delete` trigger'ları
-
-**Plan**
-- `create`/`delete`: `BranchCreatedEvent`, `BranchDeletedEvent` ve tag olayları zaten var; dinleyici + `WorkflowTriggerService` metodu + payload (`ref`, `ref_type`).
-- `release`: yayın olayı `gitnode-events`'te yoksa eklenir (`RepoReleasePublishedEvent`), `types: [published, created, released, prereleased]`.
-  Payload: `release.tag_name`, `release.name`, `release.prerelease`.
-- Modele `release`, `create`, `delete`. Workflow'lar varsayılan branch'ten okunur (GitHub gibi).
-- Test: model ayrıştırma, tür filtresi, tetikleme (`WorkflowRunTriggerTest` kalıbı).
-
-### 4. Uyumluluk dokümanı
-
-`docs/` altına "Desteklenenler / desteklenmeyenler" tablosu. Kaynak: bu dosyadaki tablolar ve uyumluluk derlemi.
-Teknik olarak imkânsız olanlar açık yazılır: GitHub-hosted imajlardaki hazır araçlar, `GITHUB_TOKEN` ile GitHub.com API çağrıları,
-Marketplace action'larının GitHub'a özel API'leri.
+`paths` / `paths-ignore`, `pull_request.types`, `create` / `delete` / `release` ve uyumluluk dokümanı yapıldı ("Yapılanlar" tablosuna bak).
+Bilerek bırakılanlar: `paths` ve `paths-ignore` aynı olayda birlikte verilirse yalnız `paths` uygulanır; tag push'larında path filtresi yoktur;
+PR `labeled`/`edited`/... ve release `edited`/`deleted`/`unpublished` türleri hiç tetiklenmez; `release` aynı anda birden çok türe uyarsa workflow başına tek run (ilk eşleşen tür).
 
 ## Bilinen sınırlar (şu an böyle çalışıyor)
 
@@ -101,7 +91,7 @@ Marketplace action'larının GitHub'a özel API'leri.
 - `ubuntu-latest` gibi GitHub-hosted etiketler çevrilmez; iş, o etiketi taşıyan runner'ı bekler.
 - Eski `workflow-detail` sayfası yeni arayüze taşınmadı (artık linklenmiyor).
 - Workflow listesi her sayfa isteğinde git ağacından yeniden ayrıştırılır (sayfalama bellek içi dilimleme).
-- `GET /api/actions/steps/{stepId}/logs` için repo erişim kontrolü yok; step UUID'sini bilen her oturum açmış kullanıcı okuyabilir.
+- `POST /api/actions/steps/{stepId}/logs` (runner'ın log yazması): herhangi bir geçerli runner token'ı herhangi bir step'e yazabilir; token step'in job'una bağlanmıyor.
 - `JobDispatcher` / `JobAdvancer` içinde job tanımı çözümü run düzeyindeki workflow'a bakar (reusable workflow eklenirken değişecek).
 
 ## Nasıl doğrulanır
@@ -133,7 +123,7 @@ CI e2e (`.github/workflows/e2e.yaml`) canlı API'ye karşı koşar; admin gerekt
 
 ## Yarın nereden devam
 
-1. Bu dosyadaki **Geriye kalanlar** bölümünden hangisi istenirse onu yap; sormadan ekleme yok.
+1. Tek kalan iş: reusable workflow (yaklaşık 2026-12-05). Sormadan ekleme yok.
 2. Çalışan ortam gerekirse: Postgres/Redis container'ları (`gn-verify-pg` :15433, `gn-verify-redis` :16379), backend :8080, runner, `ng serve` :4200.
    Kapandıysa "Nasıl doğrulanır" bölümündeki komutlarla ve `gitnode-demo-environment` hafıza notundaki ortam değişkenleriyle yeniden açılır.
 3. Kod commit edildi (`git log`); yalnızca `actions.md` güncellemesi commit bekliyor.

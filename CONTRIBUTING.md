@@ -18,47 +18,35 @@ Use `./mvnw` (Maven is bundled).
 
 ### Base app — Frontend + Backend
 
-**1. Once per clone:** install the shared events module (the backend depends on it).
+**1. Once per clone:**
 
 ```bash
-./mvnw install -DskipTests -pl gitnode-events
+make dev-setup
 ```
 
-**2. Start Postgres and Redis** (Docker):
-
-```bash
-make infra
-```
-
-**3. Set the backend environment.** These variables have no default and the backend does not start without them
-(the three OAuth2 providers only need placeholder values):
-
-```bash
-export GITNODE_JWT_SECRET=$(openssl rand -hex 32)
-export GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123
-export ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)
-export OAUTH2_GOOGLE_CLIENT_ID=x OAUTH2_GOOGLE_CLIENT_SECRET=x
-export OAUTH2_GITHUB_CLIENT_ID=x OAUTH2_GITHUB_CLIENT_SECRET=x
-export OAUTH2_GITLAB_CLIENT_ID=x OAUTH2_GITLAB_CLIENT_SECRET=x
-```
+It starts Postgres and Redis (Docker), installs the shared events module the backend depends on, runs `pnpm install`
+in `gitnode-frontend`, `gitnode-admin-panel` and `e2e`, and writes `.env.local` (gitignored) with the backend settings:
 
 | Variable                           | Why                                                                                     |
 |------------------------------------|-----------------------------------------------------------------------------------------|
-| `GITNODE_JWT_SECRET`               | Required. Signs login tokens.                                                           |
-| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Creates the user `admin` on first start. Without it no admin exists (a warning is logged). To log in, the password needs a digit, a lowercase and an uppercase letter. |
+| `GITNODE_JWT_SECRET`               | Required, no default. Signs login tokens: base64 that decodes to at least 32 bytes (`openssl rand -base64 32`). |
+| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Creates the user `admin` on first start (`Admin123`). Without it no admin exists (a warning is logged). To log in, a password needs a digit, a lowercase and an uppercase letter. |
 | `ACTIONS_ENCRYPTION_KEY`           | Needed for Actions secrets (the e2e secrets test fails without it).                     |
-| `OAUTH2_*`                         | Required by the config; use real values only to try social login.                       |
 
 Postgres and Redis defaults match `make infra` (`localhost:5432`, `admin` / `admin123`, `localhost:6379`).
 Git data goes to `~/.gitnode`; set `GITNODE_GIT_REPO__ROOT` to use another directory.
 
-**4. Start the backend** (same terminal, so it sees the variables):
+**2. Start the backend** (it loads `.env.local` itself):
 
 ```bash
 make dev-backend            # http://localhost:8080, SSH on :2222
 ```
 
-**5. Start the frontend** (second terminal):
+Without the Makefile: export the variables from `.env.local`, run `make infra` and
+`./mvnw install -DskipTests -pl gitnode-events` once, then
+`./mvnw spring-boot:run -pl gitnode-backend -Dspring-boot.run.profiles=local`.
+
+**3. Start the frontend** (second terminal):
 
 ```bash
 cd gitnode-frontend
@@ -86,8 +74,10 @@ Log in with the same `admin` account.
 
 ```bash
 make up                     # Postgres + Redis + the published GitNode image → http://localhost:8080, SSH :2222
-make down                   # stop and remove the containers
-make purge                  # down + delete volumes and network (deletes data)
+make stop                   # stop the containers, keep the data
+make start                  # start them again
+make down                   # remove the containers: this also deletes the database
+make purge                  # down + delete volumes and network
 ```
 
 `make up` runs the image named `IMAGE` in the `Makefile`, **not your working tree**. It sets no admin password,

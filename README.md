@@ -9,49 +9,79 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.x-6DB33F?style=flat-square&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Angular](https://img.shields.io/badge/Angular-21-DD0031?style=flat-square&logo=angular)](https://angular.dev)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-336791?style=flat-square&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE.txt)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE.txt)
 <a href="https://status.gitnode.dev" target="_blank" rel="noopener noreferrer"><img src="https://api.cronbeat.dev/badge/A1HG1-tT7Jvw49lO_2d8tmVU/uptime.svg?range=90d" alt="GitNode uptime"></a>
 
-[Features](#features) · [Architecture](#architecture) · [Quick start](#quick-start) · [Production](#production) · [Configuration](#configuration) · [Contributing](#contributing)
+[Run it](#run-it) · [CI/CD runner](#cicd-runner) · [Features](#features) · [Architecture](#architecture) · [Production](#production) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
 ---
 
-GitNode is an open-source, self-hosted alternative to GitHub: repositories, code review, issues, CI/CD and project
-management on infrastructure you control. One Spring Boot backend, an Angular web app, an optional admin panel and an
-optional Go runner for CI/CD. In-app documentation is served at `/docs`.
+GitNode is a self-hosted Git platform: repositories, pull requests, issues, CI/CD and project boards on your own
+server. One Spring Boot backend, an Angular web app, an optional admin panel and an optional Go runner for CI/CD.
+In-app documentation is served at `/docs`.
+
+## Run it
+
+Needs [Docker](https://docs.docker.com/get-docker/) and `make`.
+
+```bash
+make up
+```
+
+Open <http://localhost:8080> and register an account. Git over SSH is on `localhost:2222`.
+
+| Command | Does |
+|---|---|
+| `make stop` / `make start` | Stop and start again, data is kept |
+| `make down` | Remove the containers. **This deletes the database** |
+| `make purge` | `make down` plus all volumes and the network: deletes all data |
+
+`make up` runs the published GitNode image with throwaway credentials from the `Makefile` and creates no admin user.
+For a real deployment see [Production](#production). To work on the code, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## CI/CD runner
+
+Workflows live in `.gitnode/workflows/` and run on a self-hosted runner. In the web UI open
+**Settings → Actions → Self-hosted runners** and generate a token. The page shows this command ready to copy:
+
+```bash
+docker run -d --init --name my-runner --restart unless-stopped \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v gitnode-runner-data:/data \
+  repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:latest \
+  --server-url <GitNode URL> --token <token> --name my-runner --labels self-hosted,linux
+```
+
+`--server-url` must be reachable from inside the container, so not `localhost`. As a plain binary instead:
+`make runner-build`, then `./gitnode-runner/dist/gitnode-runner start --server-url <GitNode URL> --token <token>`.
+
+Workflows are meant to run unchanged from GitHub Actions. What differs:
+
+- **Reusable workflows (`workflow_call`) are not supported yet.** The calling job fails with a clear message.
+- **No GitHub-hosted runners.** `ubuntu-latest` is not translated; use `runs-on: [self-hosted, linux]`.
+- **No `GITHUB_TOKEN`.** Store a token as a secret.
+
+Full list: [docs/actions-compatibility.md](docs/actions-compatibility.md).
 
 ## Features
 
 | Area | Highlights |
 |---|---|
-| **Repositories** | Public/private repos, forks, branch protection, tags and releases; Git over HTTP(S) and SSH |
-| **Code review** | Pull requests (merge / squash / rebase), reviewers, approvals, inline comments, required checks, CODEOWNERS, auto-merge |
-| **Planning** | Issues with labels and milestones; Kanban projects with tasks and branch / PR linking |
-| **CI/CD** | YAML workflows, matrix jobs, encrypted secrets, artifacts, live logs, self-hosted Go runner |
-| **Collaboration** | Collaborator roles and permissions, Teams (owner-scoped roles on all of an owner's repositories), Git-backed wiki, discussions, snippets, signed webhooks with retries, notifications |
+| **Repositories** | Public and private repos, forks, branch protection, tags and releases, Git over HTTP(S) and SSH |
+| **Code review** | Pull requests (merge, squash, rebase), reviewers, approvals, inline comments, required checks, CODEOWNERS, auto-merge |
+| **Planning** | Issues with labels and milestones, project boards with tasks |
+| **CI/CD** | YAML workflows, matrix jobs, encrypted secrets, artifacts, live logs, self-hosted runners |
+| **Collaboration** | Collaborator roles, teams, Git-backed wiki, discussions, snippets, signed webhooks with retries, notifications |
 | **Security** | JWT, OAuth2 (Google, GitHub, GitLab), SAML 2.0, LDAP, two-factor (TOTP), SSH keys, rate limiting, audit log |
 | **AI (opt-in)** | PR review and text suggestions with your own key: OpenAI, Anthropic, Gemini, Ollama |
 | **Operations** | Admin panel, GitHub import, health and metrics endpoints (Spring Actuator) |
 
-### Known limitations
-
-GitNode Actions aims to run GitHub workflows unchanged. What does not work yet, or cannot:
-
-- **Reusable workflows (`on: workflow_call` / `jobs.<id>.uses`) are not supported yet.** The calling job fails with a clear
-  message in its log and the jobs that `need` it are skipped. Use composite actions for shared steps meanwhile. Planned.
-- **No GitHub-hosted runners.** Labels such as `ubuntu-latest` are not translated: the job waits for a runner that carries
-  that label. Use `runs-on: [self-hosted, linux]`. A job nobody can take shows the reason in its log.
-- **No `GITHUB_TOKEN`.** `github.token` / `secrets.GITHUB_TOKEN` are not provided; store a token as a secret.
-- `actions/download-artifact` needs a `name` (downloading all artifacts at once is not supported).
-- With `container:`, only `run:` steps run inside the container; `uses:` actions run on the runner machine.
-- Pull request `types` other than opened, synchronize, reopened and closed never fire; neither do release types edited,
-  deleted or unpublished. With both `paths` and `paths-ignore` on one event only `paths` is applied.
-
-See [`docs/actions-compatibility.md`](docs/actions-compatibility.md) for the full supported / unsupported table.
-
 ## Architecture
+
+<details>
+<summary><b>Diagram</b></summary>
 
 ```mermaid
 flowchart TD
@@ -130,10 +160,12 @@ class node_admin,node_database toneRose
 class node_ai_provider,node_ldap toneIndigo
 ```
 
-GitNode is a **Spring Modulith modular monolith**. Each bounded context (repositories, pull requests, issues, tasks,
-actions, identity, ...) is a module with a public API. Modules react to each other through **domain events** and ask
-each other questions through **ports**; persistence stays inside the owning module. `GitNodeArchitectureTest` enforces
-these rules. Details: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
+</details>
+
+GitNode is a **Spring Modulith modular monolith**. Each area (repositories, pull requests, issues, actions, identity,
+...) is a module with a public API. Modules react to each other through **domain events** and ask each other through
+**ports**; persistence stays inside the owning module. `GitNodeArchitectureTest` enforces this, see
+[CONTRIBUTING.md](CONTRIBUTING.md#architecture-rules).
 
 | Layer | Technology |
 |---|---|
@@ -142,36 +174,21 @@ these rules. Details: **[ARCHITECTURE.md](ARCHITECTURE.md)**.
 | Frontend | Angular 21, Tailwind CSS 4, DaisyUI 5 |
 | Runner | Go 1.24 |
 
-## Quick start
-
-Requires Docker and `make`.
-
-```bash
-make up                # Postgres + Redis + GitNode, http://localhost:8080
-```
-
-Web app and API: http://localhost:8080 · Git over SSH: `localhost:2222`. Development setup and all Make targets:
-**[CONTRIBUTING.md](CONTRIBUTING.md)**.
-
-**Go runner** (single static binary): `cd gitnode-runner && make build`, then
-`./dist/gitnode-runner start --server-url <url> --token <runner-token> --executor docker`.
-
 ## Production
 
-`make up` uses throwaway development credentials. For a real deployment:
+`make up` is for trying GitNode out. For a real deployment:
 
-1. **Set your own secrets**: `GITNODE_JWT_SECRET` (32+ characters), `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`, the database
-   password, and the two encryption keys (`make actions-encryption-key`, `make ai-encryption-key`). Keep them stable:
-   changing an encryption key makes stored secrets unreadable.
-2. **Put HTTPS in front** (reverse proxy such as Caddy or nginx) and set `GITNODE_FRONTEND_BASE_URL` and
+1. **Set your own secrets.** `GITNODE_JWT_SECRET` (base64, at least 32 bytes: `openssl rand -base64 32`),
+   `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` (creates the first admin user, named `admin` by default; without it no admin exists), the database
+   password, and the two encryption keys (`make actions-encryption-key`, `make ai-encryption-key`). Keep the keys
+   stable: changing one makes the data it encrypted unreadable.
+2. **Put HTTPS in front** (a reverse proxy such as Caddy or nginx) and set `GITNODE_FRONTEND_BASE_URL` and
    `GITNODE_CORS_ALLOWED_ORIGINS` to the public URLs. Expose port `2222` for Git over SSH if you use it.
-3. **Persist and back up** PostgreSQL and the repository volume (`GITNODE_GIT_REPO__ROOT`). Back both up together.
-4. **Enable only what you use**: SAML and LDAP are off until `GITNODE_SSO_SAML_ENABLED` / `GITNODE_SSO_LDAP_ENABLED` are
-   `true`. Health: `/actuator/health`; metrics: `/actuator/metrics` (requires authentication).
+3. **Persist and back up** PostgreSQL and the repository directory (`GITNODE_GIT_REPO__ROOT`). Back both up together.
+4. **Turn on only what you use.** SAML and LDAP stay off until `GITNODE_SSO_SAML_ENABLED` /
+   `GITNODE_SSO_LDAP_ENABLED` are `true`. Health: `/actuator/health`; metrics: `/actuator/metrics` (needs a login).
 
-**Scaling:** app instances are stateless (JWT sessions; cache, rate limits and runtime state in Redis). With more than
-one instance, share the repository path and `gitnode.actions.artifacts.local-path` over a network filesystem (NFS, EFS,
-or a `ReadWriteMany` volume).
+The `app` target in the [`Makefile`](Makefile) is a working example of the container and its environment.
 
 ## Configuration
 
@@ -179,8 +196,8 @@ Everything is an environment variable. The ones you will almost always set:
 
 | Variable | Description |
 |---|---|
-| `GITNODE_JWT_SECRET` | **Required.** Secret for signing JWTs |
-| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Password of the first platform admin |
+| `GITNODE_JWT_SECRET` | **Required.** Base64 secret for signing JWTs, at least 32 bytes decoded |
+| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Password of the first admin user |
 | `GITNODE_GIT_REPO__ROOT` | Storage path for Git repositories (mount a volume) |
 | `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | PostgreSQL connection |
 | `SPRING_DATA_REDIS_HOST` / `_PORT` | Redis connection |
@@ -192,7 +209,7 @@ Everything is an environment variable. The ones you will almost always set:
 
 | Variable                                | Required | Default                                       | Description                                                    |
 |-----------------------------------------|----------|-----------------------------------------------|----------------------------------------------------------------|
-| `GITNODE_JWT_SECRET`                    | ✅        | —                                             | Min 32-char secret for JWT signing                             |
+| `GITNODE_JWT_SECRET`                    | ✅        | —                                             | Base64 secret for JWT signing, at least 32 bytes decoded (`openssl rand -base64 32`) |
 | `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`      | ✅ prod   | —                                             | Bootstrap admin password (empty skips bootstrap)               |
 | `GITNODE_BOOTSTRAP_ADMIN_USERNAME`      |          | `admin`                                       | First-start platform admin username                            |
 | `GITNODE_BOOTSTRAP_ADMIN_ENABLED`       |          | `true`                                        | Run bootstrap admin creation on startup                        |
@@ -225,6 +242,10 @@ Everything is an environment variable. The ones you will almost always set:
 
 </details>
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## License
 
-[MIT](LICENSE.txt)
+[Apache License 2.0](LICENSE.txt)

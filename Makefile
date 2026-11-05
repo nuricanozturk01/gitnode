@@ -66,7 +66,9 @@ down: app-stop infra-down
 start: infra-start
 	docker start $(APP_NAME)
 
-stop: app-stop infra-stop
+stop:
+	-docker stop $(APP_NAME)
+	-docker stop $(POSTGRES_NAME) $(REDIS_NAME)
 
 restart: stop start
 
@@ -161,13 +163,9 @@ dev-setup:
 	@$(MAKE) infra
 	@./mvnw -q install -DskipTests -pl gitnode-events
 	@test -f $(DEV_ENV) || { \
-		echo "GITNODE_JWT_SECRET=$$(openssl rand -hex 32)" > $(DEV_ENV); \
+		echo "GITNODE_JWT_SECRET=$$(openssl rand -base64 32)" > $(DEV_ENV); \
 		echo "GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123" >> $(DEV_ENV); \
 		echo "ACTIONS_ENCRYPTION_KEY=$$(openssl rand -base64 32)" >> $(DEV_ENV); \
-		for p in GOOGLE GITHUB GITLAB; do \
-			echo "OAUTH2_$${p}_CLIENT_ID=x" >> $(DEV_ENV); \
-			echo "OAUTH2_$${p}_CLIENT_SECRET=x" >> $(DEV_ENV); \
-		done; \
 		echo "Created $(DEV_ENV) (gitignored)."; \
 	}
 	@cd gitnode-frontend && pnpm install
@@ -298,7 +296,7 @@ help:
 	@echo "  make up                → Postgres + Redis + app container"
 	@echo "  make down              → Stop & remove all containers"
 	@echo "  make start             → Start stopped containers"
-	@echo "  make stop              → Stop containers (keep them)"
+	@echo "  make stop              → Stop containers (keep them and their data)"
 	@echo "  make restart           → stop + start"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make infra             → Start Postgres + Redis (docker run)"

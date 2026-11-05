@@ -2,17 +2,17 @@
 
 Platform admin UI — stats, users, orgs, SSO.
 
-**Optional.** Needs backend admin API on. Run profile: [CONTRIBUTING.md](../CONTRIBUTING.md#full-app--admin)
+**Optional.** Needs the backend running (its admin API is always on). Run profile: [CONTRIBUTING.md](../CONTRIBUTING.md#full-app--admin)
 
 ## Run
 
 ```bash
-# 1. Enable admin API in application-local.yaml → gitnode.admin.enabled: true
+make dev-setup                          # once (creates .env.local, installs dependencies)
 make dev-backend                        # terminal 1
-cd gitnode-admin-panel && pnpm start  # terminal 2 → :4300
+cd gitnode-admin-panel && pnpm start    # terminal 2 → :4300
 ```
 
-Login: `admin` / `Admin123`
+Login: `admin` / `Admin123` (the password in `.env.local`, `GITNODE_BOOTSTRAP_ADMIN_PASSWORD`)
 
 ## Scripts
 
@@ -21,5 +21,3 @@ Login: `admin` / `Admin123`
 | `pnpm start` | Dev server :4300 |
 | `pnpm build` | Production build |
 | `pnpm lint`  | ESLint           |
-
-Backend flag (on by default): disable with `GITNODE_ADMIN_ENABLED=false` or `gitnode.admin.enabled: false`

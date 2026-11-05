@@ -537,6 +537,19 @@
               </div>
 
               <div>
+                <h3 class="docs-subheading">Known limitations</h3>
+                <p class="text-sm text-base-content/70">
+                  <strong class="text-base-content/80">Reusable workflows are not supported yet</strong> (planned). A
+                  job that calls another workflow with
+                  <code class="docs-inline-code">uses: ./.gitnode/workflows/build.yml</code> and declares
+                  <code class="docs-inline-code">on: workflow_call</code> does not run: the job fails and its log says
+                  <code class="docs-inline-code">Reusable workflows are not supported yet</code>. Jobs that
+                  <code class="docs-inline-code">need</code> it are skipped. Until then, repeat the steps in each
+                  workflow or use a composite action (supported) for the shared part.
+                </p>
+              </div>
+
+              <div>
                 <h3 class="docs-subheading">Auto-injected environment variables</h3>
                 <p class="text-base-content/65 mb-3 text-sm">
                   Every job receives these shell environment variables when the run provides the underlying data. Use

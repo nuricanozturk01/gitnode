@@ -35,6 +35,11 @@ optional Go runner for CI/CD. In-app documentation is served at `/docs`.
 | **AI (opt-in)** | PR review and text suggestions with your own key: OpenAI, Anthropic, Gemini, Ollama |
 | **Operations** | Admin panel, GitHub import, Prometheus / Grafana metrics, health endpoints |
 
+### Known limitations
+
+- **Reusable workflows (`on: workflow_call` / `jobs.<id>.uses`) are not supported yet.** The calling job fails with a clear
+  message in its log and the jobs that `need` it are skipped. Use composite actions for shared steps meanwhile. Planned.
+
 ## Architecture
 
 ```mermaid

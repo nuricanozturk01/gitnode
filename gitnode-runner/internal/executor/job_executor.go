@@ -247,7 +247,12 @@ func (e *JobExecutor) runOneStep(
 	defer restore()
 
 	conclusion, outputs, execErr := e.runStep(stepCtx, sc, step, jctx, streamer, workDir, rt, jobStatus)
-	if execErr != nil {
+	switch {
+	case ctx.Err() != nil && (execErr != nil || conclusion == statusFailure):
+		// The job was cancelled (or timed out) while the step ran: the step did not fail by itself.
+		streamer.Emit("step cancelled", "warn")
+		conclusion = statusCancelled
+	case execErr != nil:
 		streamer.Emit(fmt.Sprintf("step error: %v", execErr), "error")
 		conclusion = statusFailure
 	}

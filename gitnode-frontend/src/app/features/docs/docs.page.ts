@@ -191,7 +191,7 @@ jobs:
     name: dist-bundle
     path: dist/`;
 
-  readonly actionsRunnerCmd = `docker run -d --name my-runner --restart unless-stopped \\
+  readonly actionsRunnerCmd = `docker run -d --init --name my-runner --restart unless-stopped \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
   -v gitnode-runner-data:/data \\
   repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:latest \\

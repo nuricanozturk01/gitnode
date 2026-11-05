@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -288,4 +289,40 @@ func TestResolveSubDir(t *testing.T) {
 	assert.Error(t, err)
 	_, err = resolveSubDir(root, "../missing-sibling")
 	assert.Error(t, err)
+}
+
+// A built-in action that fails because the job was cancelled is reported as cancelled, not as a
+// failed step with "step error: ... build failed".
+func TestJob_cancelledActionStepIsCancelledNotFailed(t *testing.T) {
+	bin := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(bin, "docker"), []byte("#!/bin/sh\nsleep 30\n"), 0o755))
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	rec := newRecorder()
+	exec := New(workspace.New(t.TempDir()), actions.NewRegistry("http://localhost", "tok"),
+		rec.send, "shell", zap.NewNop())
+	login := protocol.StepPayload{
+		ID: "login", Key: "login", Uses: "docker/login-action@v3",
+		With: map[string]string{"username": "u", "password": "p"},
+	}
+	exec.Execute(context.Background(), protocol.JobPayload{ID: "job-c", RunID: "run-c", Steps: []protocol.StepPayload{login}})
+
+	// Cancel only once the action is running its (hanging) docker command.
+	require.Eventually(t, func() bool {
+		rec.mu.Lock()
+		defer rec.mu.Unlock()
+		for _, m := range rec.msgs {
+			if m.Type == protocol.TypeLog && strings.Contains(string(m.Data), "Logging in") {
+				return true
+			}
+		}
+		return false
+	}, 10*time.Second, 50*time.Millisecond)
+	require.True(t, exec.Cancel("job-c"))
+	o := rec.outcome(t)
+
+	assert.Equal(t, "cancelled", o.steps["login"].conclusion)
+	assert.Equal(t, "cancelled", o.conclusion)
+	assert.NotContains(t, o.log("login"), "step error")
+	assert.Contains(t, o.log("login"), "step cancelled")
 }

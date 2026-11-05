@@ -115,7 +115,7 @@ export class UserSettingsPage {
   }
 
   runnerStartCommand(token: RegistrationToken): string {
-    return `docker run -d --name my-runner --restart unless-stopped \\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\n  -v gitnode-runner-data:/data \\\n  repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:latest \\\n  --server-url ${this.serverUrl} \\\n  --token ${token.token} \\\n  --name my-runner \\\n  --labels self-hosted,linux`;
+    return `docker run -d --init --name my-runner --restart unless-stopped \\\n  -v /var/run/docker.sock:/var/run/docker.sock \\\n  -v gitnode-runner-data:/data \\\n  repo.repsy.io/nuricanozturk/gitnode-runner/gitnode-runner:latest \\\n  --server-url ${this.serverUrl} \\\n  --token ${token.token} \\\n  --name my-runner \\\n  --labels self-hosted,linux`;
   }
 
   readonly activeTab = signal<UserSettingsTab>(DEFAULT_USER_SETTINGS_TAB);

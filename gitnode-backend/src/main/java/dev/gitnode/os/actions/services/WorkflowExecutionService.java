@@ -51,6 +51,8 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Slf4j
 @Service
@@ -98,7 +100,7 @@ public class WorkflowExecutionService {
 
     this.eventPublisher.publishEvent(
         new WorkflowJobStartedEvent(jobId, job.getRunId(), run.getRepoId(), job.getName()));
-    this.runStatusSseRegistry.notify(job.getRunId());
+    this.notifyRun(job.getRunId());
 
     log.info("Job claimed: jobId={}, runnerId={}", jobId, runnerId);
   }
@@ -114,6 +116,7 @@ public class WorkflowExecutionService {
     step.setStatus("running");
     step.setStartedAt(Instant.now());
     this.stepRepository.save(step);
+    this.notifyRunOfStep(step);
   }
 
   @Transactional
@@ -133,6 +136,7 @@ public class WorkflowExecutionService {
     this.stepRepository.save(step);
 
     this.sseEmitterRegistry.complete(stepId);
+    this.notifyRunOfStep(step);
   }
 
   @Transactional
@@ -174,7 +178,7 @@ public class WorkflowExecutionService {
         new WorkflowJobCompletedEvent(
             jobId, job.getRunId(), run.getRepoId(), job.getName(), effective));
 
-    this.runStatusSseRegistry.notify(job.getRunId());
+    this.notifyRun(job.getRunId());
     final var allJobs = this.jobRepository.findAllByRunIdOrderByCreatedAtAsc(job.getRunId());
     final var current = this.advanceWaitingJobs(run, allJobs);
     this.maybeCompleteRun(run, current);
@@ -211,7 +215,7 @@ public class WorkflowExecutionService {
     this.eventPublisher.publishEvent(
         new WorkflowRunCompletedEvent(
             run.getId(), run.getRepoId(), run.getWorkflowName(), "cancelled"));
-    this.runStatusSseRegistry.complete(run.getId());
+    this.closeRunStream(run.getId());
 
     log.info("Run cancelled: runId={}", runId);
   }
@@ -235,7 +239,7 @@ public class WorkflowExecutionService {
     }
 
     this.runRepository.delete(run);
-    this.runStatusSseRegistry.complete(runId);
+    this.closeRunStream(runId);
 
     log.info("Run deleted: runId={}", runId);
   }
@@ -293,7 +297,7 @@ public class WorkflowExecutionService {
     this.jobRepository.saveAll(reset);
     this.jobRepository.saveAll(changed);
     this.announceQueued(run, reset, changed);
-    this.runStatusSseRegistry.notify(run.getId());
+    this.notifyRun(run.getId());
 
     log.info("Run re-run: runId={}, attempt={}, jobs={}", runId, run.getRunAttempt(), reset.size());
   }
@@ -513,9 +517,42 @@ public class WorkflowExecutionService {
     this.eventPublisher.publishEvent(
         new WorkflowRunCompletedEvent(
             run.getId(), run.getRepoId(), run.getWorkflowName(), conclusion));
-    this.runStatusSseRegistry.complete(run.getId());
+    this.closeRunStream(run.getId());
 
     log.info("Run completed: runId={}, conclusion={}", run.getId(), conclusion);
+  }
+
+  /** The run's pages refetch when told; a step starting or finishing changes what they show. */
+  private void notifyRunOfStep(final WorkflowStep step) {
+    this.jobRepository.findById(step.getJobId()).ifPresent(job -> this.notifyRun(job.getRunId()));
+  }
+
+  /** Tells the pages of a run that something changed, once the change is committed. */
+  private void notifyRun(final UUID runId) {
+    afterCommit(() -> this.runStatusSseRegistry.notify(runId));
+  }
+
+  /** Tells the pages of a run that it is over and closes their stream, once committed. */
+  private void closeRunStream(final UUID runId) {
+    afterCommit(() -> this.runStatusSseRegistry.complete(runId));
+  }
+
+  /**
+   * A page that refetches on the notification must find the new state, so the notification waits
+   * for the commit of the surrounding transaction.
+   */
+  private static void afterCommit(final Runnable action) {
+    if (TransactionSynchronizationManager.isSynchronizationActive()) {
+      TransactionSynchronizationManager.registerSynchronization(
+          new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+              action.run();
+            }
+          });
+    } else {
+      action.run();
+    }
   }
 
   private void markRunnerOnlineIfIdle(final UUID runnerId) {

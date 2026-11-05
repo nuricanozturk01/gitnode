@@ -326,6 +326,8 @@ export class RunDetailPage {
     this.syncClock(isRunActive(run.status));
     if (isRunActive(run.status)) {
       this.startStreaming();
+      // Safety net: if a live event is missed, the page still catches up within a few seconds.
+      this.startPolling();
     } else {
       this.stopStreaming();
       this.stopPolling();

@@ -144,6 +144,22 @@ class WorkflowExecutionServiceTest {
   }
 
   @Test
+  @DisplayName(
+      "a step starting or finishing tells the run's pages, so they do not show stale steps")
+  void stepEventsNotifyTheRun() {
+    final var step = buildStep();
+    when(this.stepRepository.findById(STEP_ID)).thenReturn(Optional.of(step));
+    when(this.stepRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(this.jobRepository.findById(JOB_ID))
+        .thenReturn(Optional.of(buildJob(WorkflowJobStatus.IN_PROGRESS)));
+
+    this.service.handleStepStarted(STEP_ID);
+    this.service.handleStepCompleted(STEP_ID, "success");
+
+    verify(this.runStatusSseRegistry, org.mockito.Mockito.times(2)).notify(RUN_ID);
+  }
+
+  @Test
   @DisplayName("handleStepCompleted sets step completed and closes SSE emitter")
   void handleStepCompleted_setsCompletedAndClosesSse() {
     final var step = buildStep();

@@ -191,6 +191,13 @@ func buildConfig(
 		cfg.ServerURL = serverURL
 	}
 	if token != "" {
+		if token != cfg.Token {
+			// A different registration token than the one this config registered with means the
+			// runner is being set up again (for example after it was deleted on the server): forget
+			// the old identity and register anew. The same token on a restart keeps it.
+			cfg.RunnerID = ""
+			cfg.RunnerToken = ""
+		}
 		cfg.Token = token
 	}
 	if name != "" {

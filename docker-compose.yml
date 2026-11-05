@@ -46,41 +46,6 @@ services:
     networks:
       - gitnode
 
-  prometheus:
-    container_name: gitnode-prometheus
-    image: prom/prometheus:v3.4.0
-    profiles:
-      - monitoring
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-    ports:
-      - "9090:9090"
-    networks:
-      - gitnode
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.retention.time=7d"
-
-  grafana:
-    container_name: gitnode-grafana
-    image: grafana/grafana:12.0.1
-    profiles:
-      - monitoring
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: admin
-      GF_USERS_ALLOW_SIGN_UP: "false"
-    volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-    ports:
-      - "3000:3000"
-    networks:
-      - gitnode
-    depends_on:
-      prometheus:
-        condition: service_started
-
   runner:
     container_name: gitnode-runner
     build:

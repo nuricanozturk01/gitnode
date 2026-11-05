@@ -4,8 +4,6 @@
 NETWORK        := gitnode
 POSTGRES_NAME  := gitnode-postgres
 REDIS_NAME     := gitnode-redis
-PROMETHEUS_NAME:= gitnode-prometheus
-GRAFANA_NAME   := gitnode-grafana
 APP_NAME       := gitnode
 RUNNER_NAME    := gitnode-runner
 RUNNER_DIR     := gitnode-runner
@@ -14,15 +12,11 @@ LDAP_IMAGE     := ghcr.io/rroemhild/docker-test-openldap:master
 LDAP_PORT      := 389
 IMAGE          := repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
 POSTGRES_IMAGE := gitnode-postgres-pgaudit
-PROMETHEUS_IMAGE := prom/prometheus:v3.4.0
-GRAFANA_IMAGE  := grafana/grafana:12.0.1
 
 POSTGRES_DB    := gitnode
 POSTGRES_USER  := admin
 POSTGRES_PASS  := admin123
 REDIS_PORT     := 6379
-PROMETHEUS_PORT := 9090
-GRAFANA_PORT   := 3000
 
 JWT_SECRET     := 995a44f7111b23ebed8ad37e8b9cbe380dd5022f8b3bf67b16c8e223456f74a0
 GIT_REPO_ROOT  := /data/repos
@@ -44,14 +38,13 @@ GITLAB_CLIENT_SECRET := YOUR_SECRET
 # ──────────────────────────────────────────────────────────────────────────────
 .PHONY: all up down start stop restart \
   infra infra-down infra-stop infra-start \
-  monitoring monitoring-down \
   app app-stop \
   runner-build runner-build-all \
   ldap-up ldap-down \
   dev-setup dev-backend \
   actions-encryption-key ai-encryption-key saml-keygen \
   test test-backend test-runner test-lint verify \
-  logs logs-db logs-redis logs-prometheus logs-grafana \
+  logs logs-db logs-redis \
   ps build purge help
 
 LOCAL_CONFIG := gitnode-backend/src/main/resources/application-local.yaml
@@ -66,7 +59,6 @@ up: infra app
 	@echo "  GitNode stack is up"
 	@echo "  App         → http://localhost:$(HTTP_PORT)"
 	@echo "  SSH         → localhost:$(SSH_PORT)"
-	@echo "  Monitoring  → optional: make monitoring"
 	@echo ""
 
 down: app-stop infra-down
@@ -121,36 +113,6 @@ infra-start:
 
 infra-down:
 	-docker rm -f $(POSTGRES_NAME) $(REDIS_NAME)
-
-# ── Observability (optional) ──────────────────────────────────────────────────
-
-monitoring:
-	@docker network inspect $(NETWORK) >/dev/null 2>&1 || docker network create $(NETWORK)
-	@docker start $(PROMETHEUS_NAME) 2>/dev/null || docker run -d \
-		--name $(PROMETHEUS_NAME) \
-		--network $(NETWORK) \
-		--add-host host.docker.internal:host-gateway \
-		-p $(PROMETHEUS_PORT):9090 \
-		-v $$(pwd)/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro \
-		$(PROMETHEUS_IMAGE) \
-		  --config.file=/etc/prometheus/prometheus.yml \
-		  --storage.tsdb.retention.time=7d
-	@docker start $(GRAFANA_NAME) 2>/dev/null || docker run -d \
-		--name $(GRAFANA_NAME) \
-		--network $(NETWORK) \
-		-p $(GRAFANA_PORT):3000 \
-		-e GF_SECURITY_ADMIN_PASSWORD=admin \
-		-e GF_USERS_ALLOW_SIGN_UP=false \
-		-v $$(pwd)/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro \
-		$(GRAFANA_IMAGE)
-	@echo ""
-	@echo "  Monitoring stack is up"
-	@echo "  Prometheus  → http://localhost:$(PROMETHEUS_PORT)"
-	@echo "  Grafana     → http://localhost:$(GRAFANA_PORT)  (admin / admin)"
-	@echo ""
-
-monitoring-down:
-	-docker stop $(PROMETHEUS_NAME) $(GRAFANA_NAME)
 
 # ── App container ─────────────────────────────────────────────────────────────
 
@@ -242,12 +204,6 @@ logs-db:
 logs-redis:
 	docker logs -f $(REDIS_NAME)
 
-logs-prometheus:
-	docker logs -f $(PROMETHEUS_NAME)
-
-logs-grafana:
-	docker logs -f $(GRAFANA_NAME)
-
 # ── Runner (Go agent) ─────────────────────────────────────────────────────────
 
 runner-build:
@@ -334,8 +290,6 @@ help:
 	@echo "  make restart           → stop + start"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make infra             → Start Postgres + Redis (docker run)"
-	@echo "  make monitoring        → Start Prometheus + Grafana (optional)"
-	@echo "  make monitoring-down   → Stop Prometheus + Grafana"
 	@echo "  make infra-down        → Remove Postgres + Redis containers"
 	@echo "  make infra-stop        → Stop Postgres + Redis"
 	@echo "  make infra-start       → Start stopped Postgres + Redis"
@@ -345,8 +299,6 @@ help:
 	@echo "  make logs              → Follow app logs"
 	@echo "  make logs-db           → Follow Postgres logs"
 	@echo "  make logs-redis        → Follow Redis logs"
-	@echo "  make logs-prometheus   → Follow Prometheus logs"
-	@echo "  make logs-grafana      → Follow Grafana logs"
 	@echo "  ──────────────────────────────────────────────────────"
 	@echo "  make build             → Rebuild Postgres image (no cache)"
 	@echo "  make ps                → Show running containers"

@@ -245,24 +245,18 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus,circuitbreakers
+        include: health,info,metrics,circuitbreakers
       base-path: /actuator
   endpoint:
     health:
       show-details: when-authorized
       probes:
         enabled: true
-    prometheus:
-      enabled: ${GITNODE_OBSERVABILITY_ENABLED:true}
   health:
     livenessstate:
       enabled: true
     readinessstate:
       enabled: true
-  prometheus:
-    metrics:
-      export:
-        enabled: ${GITNODE_OBSERVABILITY_ENABLED:true}
   metrics:
     tags:
       application: gitnode

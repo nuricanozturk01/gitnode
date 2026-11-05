@@ -65,9 +65,6 @@ public class SecurityConfig {
   @Value("${gitnode.cors.allowed-origins}")
   private List<String> allowedOrigins;
 
-  @Value("${GITNODE_OBSERVABILITY_ENABLED:true}")
-  private boolean observabilityEnabled;
-
   @Bean
   public SecurityFilterChain doFilter(final HttpSecurity http) throws Exception {
 
@@ -123,9 +120,6 @@ public class SecurityConfig {
     auth.requestMatchers("/saml2/**", "/login/saml2/**").permitAll();
 
     auth.requestMatchers("/actuator/health", "/actuator/info").permitAll();
-    if (this.observabilityEnabled) {
-      auth.requestMatchers("/actuator/prometheus").permitAll();
-    }
     auth.requestMatchers("/actuator/**").authenticated();
 
     auth.requestMatchers(HttpMethod.POST, "/api/admin/auth/login").permitAll();

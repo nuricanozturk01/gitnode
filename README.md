@@ -33,7 +33,7 @@ optional Go runner for CI/CD. In-app documentation is served at `/docs`.
 | **Collaboration** | Collaborator roles and permissions, Teams (owner-scoped roles on all of an owner's repositories), Git-backed wiki, discussions, snippets, signed webhooks with retries, notifications |
 | **Security** | JWT, OAuth2 (Google, GitHub, GitLab), SAML 2.0, LDAP, two-factor (TOTP), SSH keys, rate limiting, audit log |
 | **AI (opt-in)** | PR review and text suggestions with your own key: OpenAI, Anthropic, Gemini, Ollama |
-| **Operations** | Admin panel, GitHub import, Prometheus / Grafana metrics, health endpoints |
+| **Operations** | Admin panel, GitHub import, health and metrics endpoints (Spring Actuator) |
 
 ### Known limitations
 
@@ -148,7 +148,6 @@ Requires Docker and `make`.
 
 ```bash
 make up                # Postgres + Redis + GitNode, http://localhost:8080
-make monitoring        # optional: Prometheus (9090) and Grafana (3000)
 ```
 
 Web app and API: http://localhost:8080 · Git over SSH: `localhost:2222`. Development setup and all Make targets:
@@ -168,7 +167,7 @@ Web app and API: http://localhost:8080 · Git over SSH: `localhost:2222`. Develo
    `GITNODE_CORS_ALLOWED_ORIGINS` to the public URLs. Expose port `2222` for Git over SSH if you use it.
 3. **Persist and back up** PostgreSQL and the repository volume (`GITNODE_GIT_REPO__ROOT`). Back both up together.
 4. **Enable only what you use**: SAML and LDAP are off until `GITNODE_SSO_SAML_ENABLED` / `GITNODE_SSO_LDAP_ENABLED` are
-   `true`. Health: `/actuator/health`; metrics: `/actuator/prometheus`.
+   `true`. Health: `/actuator/health`; metrics: `/actuator/metrics` (requires authentication).
 
 **Scaling:** app instances are stateless (JWT sessions; cache, rate limits and runtime state in Redis). With more than
 one instance, share the repository path and `gitnode.actions.artifacts.local-path` over a network filesystem (NFS, EFS,
@@ -202,7 +201,6 @@ Everything is an environment variable. The ones you will almost always set:
 | `GITNODE_FRONTEND_BASE_URL`             |          | `http://localhost:4200`                       | Base URL returned after OAuth2/SAML redirects                  |
 | `GITNODE_CORS_ALLOWED_ORIGINS`          |          | `http://localhost:4200,http://localhost:4300` | CORS origins — add admin panel URL for admin access            |
 | `GITNODE_AUDIT_ENABLED`                 |          | `true`                                        | Application audit log                                          |
-| `GITNODE_OBSERVABILITY_ENABLED`         |          | `true`                                        | Prometheus `/actuator/prometheus`                              |
 | `GITNODE_ACTIONS_ENABLED`               |          | `true`                                        | CI/CD Actions engine                                           |
 | `GITNODE_ADMIN_MODULITH_EVENTS_ENABLED` |          | `false`                                       | Admin panel event publication viewer                           |
 | `GITNODE_ADMIN_PGAUDIT_ENABLED`         |          | `false`                                       | Admin panel pgAudit log viewer                                 |

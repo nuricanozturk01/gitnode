@@ -2,7 +2,7 @@
 
 Platform admin UI — stats, users, orgs, SSO.
 
-**Optional.** Needs backend admin API on. Run profile: [CONTRIBUTING.md](../CONTRIBUTING.md#full-app--grafana--admin)
+**Optional.** Needs backend admin API on. Run profile: [CONTRIBUTING.md](../CONTRIBUTING.md#full-app--admin)
 
 ## Run
 

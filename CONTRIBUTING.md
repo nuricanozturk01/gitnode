@@ -1,205 +1,201 @@
 # Contributing to GitNode
 
-How to run and develop GitNode locally.
+How to run GitNode locally and what a pull request has to pass.
 
 ## Prerequisites
 
-Java **25** · Node **24** · pnpm **10** · Docker **20+** · Go **1.24+** (runner only)
+Java **25** · Node **24** · pnpm **10** · Docker · Go **1.24** (runner only)
 
 ```bash
 corepack enable && corepack prepare pnpm@10 --activate
 ```
 
-Maven bundled — use `./mvnw`.
+Use `./mvnw` (Maven is bundled).
 
 ---
 
-## How it works
-
-GitNode is split into optional layers. Start only what you need.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  Frontend (:4200)          Admin panel (:4300)          │  ← Angular dev servers (optional admin)
-├─────────────────────────────────────────────────────────┤
-│  Backend (:8080, SSH :2222)                             │  ← Spring Boot API + Git
-├─────────────────────────────────────────────────────────┤
-│  Postgres + Redis                                       │  ← required infra
-├─────────────────────────────────────────────────────────┤
-│  Prometheus (:9090) + Grafana (:3000)                   │  ← optional monitoring
-└─────────────────────────────────────────────────────────┘
-```
-
-| Layer                | Port                    | Required?                                                    |
-|----------------------|-------------------------|--------------------------------------------------------------|
-| Postgres + Redis     | 5432, 6379              | Yes                                                          |
-| Backend              | 8080, 2222              | Yes                                                          |
-| Frontend             | 4200                    | Dev only (prod: embedded in backend image)                   |
-| Admin API            | `/api/admin/**` on 8080 | On by default — disable with `GITNODE_ADMIN_ENABLED=false` |
-| Admin panel UI       | 4300                    | Optional — needs admin API                                   |
-| Prometheus + Grafana | 9090, 3000              | Optional                                                     |
-
----
-
-## Run profiles
+## Run locally
 
 ### Base app — Frontend + Backend
 
-Minimum for daily dev. No Grafana, no admin panel.
+**1. Once per clone:** install the shared events module (the backend depends on it).
 
 ```bash
-make dev-setup                    # once: infra + deps + local config
-make dev-backend                  # terminal 1 → :8080
-cd gitnode-frontend && pnpm start   # terminal 2 → :4200
+./mvnw install -DskipTests -pl gitnode-events
 ```
 
-Docker (production image, no frontend dev server):
+**2. Start Postgres and Redis** (Docker):
 
 ```bash
-make up                           # Postgres + Redis + app container → :8080
+make infra
 ```
 
-### Full app — + Grafana + Admin
-
-Everything enabled.
-
-**Local dev:**
+**3. Set the backend environment.** These variables have no default and the backend does not start without them
+(the three OAuth2 providers only need placeholder values):
 
 ```bash
-make dev-setup
-make dev-backend                  # terminal 1 → :8080 (admin API on by default)
-make monitoring                   # terminal 2 — Prometheus + Grafana
-cd gitnode-frontend && pnpm start       # terminal 3 → :4200
-cd gitnode-admin-panel && pnpm start    # terminal 4 → :4300
+export GITNODE_JWT_SECRET=$(openssl rand -hex 32)
+export GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123
+export ACTIONS_ENCRYPTION_KEY=$(openssl rand -base64 32)
+export OAUTH2_GOOGLE_CLIENT_ID=x OAUTH2_GOOGLE_CLIENT_SECRET=x
+export OAUTH2_GITHUB_CLIENT_ID=x OAUTH2_GITHUB_CLIENT_SECRET=x
+export OAUTH2_GITLAB_CLIENT_ID=x OAUTH2_GITLAB_CLIENT_SECRET=x
 ```
 
-**Docker:**
+| Variable                           | Why                                                                                     |
+|------------------------------------|-----------------------------------------------------------------------------------------|
+| `GITNODE_JWT_SECRET`               | Required. Signs login tokens.                                                           |
+| `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` | Creates the user `admin` on first start. Without it no admin exists (a warning is logged). To log in, the password needs a digit, a lowercase and an uppercase letter. |
+| `ACTIONS_ENCRYPTION_KEY`           | Needed for Actions secrets (the e2e secrets test fails without it).                     |
+| `OAUTH2_*`                         | Required by the config; use real values only to try social login.                       |
+
+Postgres and Redis defaults match `make infra` (`localhost:5432`, `admin` / `admin123`, `localhost:6379`).
+Git data goes to `~/.gitnode`; set `GITNODE_GIT_REPO__ROOT` to use another directory.
+
+**4. Start the backend** (same terminal, so it sees the variables):
 
 ```bash
-make up                           # admin API on by default
-make monitoring
-cd gitnode-admin-panel && pnpm start    # admin UI — separate dev server
+make dev-backend            # http://localhost:8080, SSH on :2222
 ```
 
-**Disable admin API (Docker):** `ADMIN_ENABLED=false make up` on first start, or
-`make app-stop && ADMIN_ENABLED=false make app` if the container already exists.
+**5. Start the frontend** (second terminal):
 
-Local dev admin login (from `application-local.yaml.example`): `admin` / `Admin123`
+```bash
+cd gitnode-frontend
+pnpm install
+pnpm start                  # http://localhost:4200
+```
+
+Log in with `admin` / `Admin123` (or the password you set).
+
+### Full app — + Admin
+
+The admin API is always on in the backend. Start the admin panel as well (third terminal):
+
+```bash
+cd gitnode-admin-panel
+pnpm install
+pnpm start                  # http://localhost:4300
+```
+
+Log in with the same `admin` account.
 
 ---
 
-## Makefile reference
-
-### Setup & dev
-
-| Command             | Runs                                                                           |
-|---------------------|--------------------------------------------------------------------------------|
-| `make dev-setup`    | Local config template + Postgres/Redis + `pnpm install` (frontend, admin, e2e) |
-| `make dev-backend`  | Backend with `local` profile → http://localhost:8080                           |
-| `make test`         | Backend unit tests + runner tests + frontend/admin/e2e lint                    |
-| `make test-backend` | `./mvnw test`                                                                  |
-| `make test-runner`  | Go tests in `gitnode-runner/`                                                |
-| `make test-lint`    | ESLint on all JS/TS workspaces                                                 |
-| `make verify`       | Full backend CI gate (checkstyle, fmt, spotbugs)                               |
-
-### Docker — core stack
-
-| Command           | Runs                                                |
-|-------------------|-----------------------------------------------------|
-| `make up`         | Postgres + Redis + app container (:8080, SSH :2222) |
-| `make down`       | Stop and remove app + infra containers              |
-| `make infra`      | Postgres + Redis only                               |
-| `make infra-down` | Stop and remove infra containers                    |
-| `make app`        | App container only (infra must be up)               |
-| `make app-stop`   | Stop and remove app container                       |
-| `make ps`         | List running GitNode containers                   |
-| `make logs`       | Follow app container logs                           |
-| `make logs-db`    | Follow Postgres logs                                |
-| `make logs-redis` | Follow Redis logs                                   |
-| `make purge`      | Stop all + delete volumes ⚠️                        |
-
-### Docker — optional
-
-| Command                                         | Runs                                                                               |
-|-------------------------------------------------|------------------------------------------------------------------------------------|
-| `make monitoring`                               | Prometheus (:9090) + Grafana (:3000)                                               |
-| `make monitoring-down`                          | Stop Prometheus + Grafana                                                          |
-| `make logs-prometheus`                          | Follow Prometheus logs                                                             |
-| `make logs-grafana`                             | Follow Grafana logs                                                                |
-| `ADMIN_ENABLED=false make up`                   | Stack without admin API (first start)                                              |
-| `make app-stop && ADMIN_ENABLED=false make app` | Recreate app without admin API                                                     |
-| `make ldap-up`                                  | OpenLDAP test container (LDAP E2E)                                                 |
-| `make ldap-down`                                | Stop OpenLDAP container                                                            |
-| `make saml-keygen`                              | SAML signing keys → `~/.gitnode/saml/`                                           |
-| `make actions-encryption-key`                   | Actions workflow secrets vault AES-256 key → `~/.gitnode/actions-encryption-key` |
-
-### Runner
-
-| Command                 | Runs                                        |
-|-------------------------|---------------------------------------------|
-| `make runner-build`     | Go runner binary → `gitnode-runner/dist/` |
-| `make runner-build-all` | Runner binaries for all platforms           |
-
-Run `make help` for the full list.
-
----
-
-## URLs
-
-| Service           | URL                                   |
-|-------------------|---------------------------------------|
-| App / API         | http://localhost:8080                 |
-| Frontend (dev)    | http://localhost:4200                 |
-| Admin panel (dev) | http://localhost:4300                 |
-| SSH Git           | localhost:2222                        |
-| Prometheus        | http://localhost:9090                 |
-| Grafana           | http://localhost:3000 (admin / admin) |
-
----
-
-## Local config
+## Run in Docker
 
 ```bash
-cp gitnode-backend/src/main/resources/application-local.yaml.example \
-   gitnode-backend/src/main/resources/application-local.yaml
+make up                     # Postgres + Redis + the published GitNode image → http://localhost:8080, SSH :2222
+make down                   # stop and remove the containers
+make purge                  # down + delete volumes and network (deletes data)
 ```
 
-`make dev-setup` does this automatically. File is gitignored.
+`make up` runs the image named `IMAGE` in the `Makefile`, **not your working tree**. It sets no admin password,
+so no `admin` user exists. To test your own code use the local run above.
 
-Admin API is **on by default** (`gitnode.admin.enabled: true` in the example). To disable locally:
+---
 
-```yaml
-gitnode:
-  admin:
-    enabled: false
-```
+## Before you open a pull request
+
+CI (`.github/workflows/mr-check.yml`) runs these. Run them locally first.
+
+| Area                              | Command                                                                          |
+|-----------------------------------|----------------------------------------------------------------------------------|
+| Backend + events                  | `./mvnw verify` (tests, architecture rules, checkstyle, format check)            |
+| Backend format (fixes your code)  | `./mvnw com.spotify.fmt:fmt-maven-plugin:format`                                 |
+| Runner                            | `cd gitnode-runner && make fmt-check test lint build`                            |
+| Frontend, admin panel, e2e        | `pnpm install`, then `pnpm lint` in each of the three folders                    |
+| Frontend unit tests               | `cd gitnode-frontend && pnpm test --watch=false`                                 |
+| Whitespace and line endings       | `.editorconfig`: UTF-8, LF, 2 spaces (tabs in Go), newline at end of file        |
+
+Shortcuts: `make verify` is `./mvnw verify`. `make test` runs the backend tests, the runner tests and all three
+lints, with no server needed.
+
+---
+
+## Architecture rules
+
+The backend is a modular monolith ([Spring Modulith](https://spring.io/projects/spring-modulith)). Each folder under
+`gitnode-backend/src/main/java/dev/gitnode/os/` (`actions`, `repo`, `pr`, `tag`, ...) is a module.
+`GitNodeArchitectureTest` enforces the boundaries and fails the build when you cross them.
+
+- **A module may only use the modules listed in `allowedDependencies`** in its `package-info.java`. Do not add an
+  entry just to make the build pass: reach the other module through its `api` package or an event instead.
+- **Modules talk through `api` packages and domain events.** Events are plain records in the `gitnode-events`
+  module, grouped in named interfaces (`events :: repo`, `events :: tag`, ...). A new cross-module reaction usually
+  means a new event record there.
+- Controllers never use repositories. Services never use controllers.
+- An `api` package never exposes JPA entities.
+- The `repo` and `identity` repositories may only be used by `repo`, `identity`, `githttp`, `ssh`, `auth`, `profile`
+  and `admin`. Other modules go through the `api` ports. Known exceptions are frozen in
+  `src/test/resources/archunit_store`; new violations fail.
+- `gitnode-events` records are plain data: they must not depend on `shared`, `pr`, `issue` or `auth`.
+
+Run only the boundary check: `./mvnw test -pl gitnode-backend -Dtest=GitNodeArchitectureTest`.
+
+### Code style (checked by `./mvnw verify`)
+
+- Formatting is google-java-format through `fmt-maven-plugin`: run the format command above, do not hand-format.
+- Checkstyle (`config/checkstyle.xml`) fails the build on, among others: cyclomatic complexity above 7, magic
+  numbers, non-`final` parameters, member access without `this.`, star imports, lines over 120 characters,
+  one-letter `catch` variable names, `System.out`/`System.err.println`, JetBrains annotations (use `org.jspecify`) and JUnit 4.
+- Database changes are Flyway migrations: `gitnode-backend/src/main/resources/db/migration/V0NN__description.sql`.
 
 ---
 
 ## Tests
 
 ```bash
-make test                         # no server needed
-
-# E2E — backend must be running
-make dev-backend
-cd e2e && pnpm test:e2e
+make test                          # backend + runner tests and lints, no server needed
 ```
 
-See [e2e/README.md](e2e/README.md) for API-only and scenario commands.
+**E2E** (Playwright, HTTP only) needs the backend running as in [Run locally](#run-locally), with
+`GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123` and `ACTIONS_ENCRYPTION_KEY` set. The tests log in as `admin` / `Admin123`.
+
+```bash
+cd e2e
+pnpm install
+pnpm test:e2e:api                  # REST tests only
+pnpm test:e2e                      # API, scenario, teardown (needs git on PATH)
+```
+
+See [e2e/README.md](e2e/README.md) for SAML and LDAP runs.
 
 ---
 
-## Module READMEs
+## Runner
 
-| Path                                                               | What                    |
-|--------------------------------------------------------------------|-------------------------|
-| [gitnode-backend/README.md](gitnode-backend/README.md)         | Backend modules, Flyway |
-| [gitnode-frontend/README.md](gitnode-frontend/README.md)       | Angular SPA scripts     |
-| [gitnode-admin-panel/README.md](gitnode-admin-panel/README.md) | Admin UI                |
-| [gitnode-runner/README.md](gitnode-runner/README.md)           | CI/CD runner agent      |
-| [monitoring/README.md](monitoring/README.md)                       | Prometheus + Grafana    |
-| [e2e/README.md](e2e/README.md)                                     | Playwright tests        |
+The CI/CD agent is a Go program in `gitnode-runner/`.
+
+```bash
+make runner-build                  # → gitnode-runner/dist/gitnode-runner
+make test-runner                   # Go tests
+```
+
+Generate a registration token in the web UI (**Settings → Actions → Self-hosted runners**), then:
+
+```bash
+./gitnode-runner/dist/gitnode-runner start --server-url http://localhost:8080 --token <token> --labels self-hosted,linux
+```
+
+`make runner-build-all` builds Linux amd64/arm64, macOS arm64 and Windows amd64.
+
+---
+
+## Useful Make targets
+
+Run `make help` for all of them.
+
+| Command                       | Does                                                         |
+|-------------------------------|--------------------------------------------------------------|
+| `make infra` / `infra-down`   | Start / remove Postgres and Redis                            |
+| `make infra-stop` / `infra-start` | Stop / start them without removing                      |
+| `make logs-db`, `logs-redis`  | Follow Postgres / Redis logs                                 |
+| `make ps`                     | List GitNode containers                                      |
+| `make ldap-up` / `ldap-down`  | OpenLDAP test server for the LDAP e2e                        |
+| `make saml-keygen`            | SAML signing keys in `~/.gitnode/saml/`                      |
+| `make actions-encryption-key` | New Actions secrets key in `~/.gitnode/actions-encryption-key` |
+| `make ai-encryption-key`      | New AI key encryption key in `~/.gitnode/ai-encryption-key`  |
 
 ---
 
@@ -208,12 +204,24 @@ See [e2e/README.md](e2e/README.md) for API-only and scenario commands.
 ```
 gitnode/
 ├── gitnode-backend/      API + Git (Spring Boot)
+├── gitnode-events/       Shared domain events
 ├── gitnode-frontend/     Main UI (Angular, :4200)
 ├── gitnode-admin-panel/  Platform admin UI (Angular, :4300)
 ├── gitnode-runner/       CI/CD agent (Go)
-├── gitnode-events/       Shared domain events
-├── e2e/                    Playwright tests
-├── monitoring/             Prometheus + Grafana config
-├── docker-compose.yml      Postgres + Redis (+ monitoring profile)
-└── Makefile                All commands above
+├── e2e/                  Playwright tests
+├── config/               Checkstyle rules
+├── docs/                 Actions compatibility
+├── docker-compose.yml    Postgres + Redis (+ runner profile)
+└── Makefile              Commands above
 ```
+
+## Module READMEs
+
+| Path                                                           | What                    |
+|----------------------------------------------------------------|-------------------------|
+| [gitnode-backend/README.md](gitnode-backend/README.md)         | Backend                 |
+| [gitnode-frontend/README.md](gitnode-frontend/README.md)       | Angular app scripts     |
+| [gitnode-admin-panel/README.md](gitnode-admin-panel/README.md) | Admin UI                |
+| [gitnode-runner/README.md](gitnode-runner/README.md)           | CI/CD runner agent      |
+| [e2e/README.md](e2e/README.md)                                 | Playwright tests        |
+| [docs/actions-compatibility.md](docs/actions-compatibility.md) | GitHub Actions support  |

@@ -39,9 +39,9 @@ RUN mvn package -pl gitnode-backend -am -DskipTests -Derrorprone.skip=true
 FROM eclipse-temurin:25-jre-alpine
 
 LABEL org.opencontainers.image.title="GitNode"
-LABEL org.opencontainers.image.description="Self-hosted Git hosting platform with enterprise SSO, observability, and audit logging"
+LABEL org.opencontainers.image.description="Self-hosted Git hosting platform with enterprise SSO and audit logging"
 LABEL org.opencontainers.image.source="https://github.com/nuricanozturk01/gitnode"
-LABEL org.opencontainers.image.features="git-hosting,saml-sso,ldap-sso,prometheus,audit-log"
+LABEL org.opencontainers.image.features="git-hosting,saml-sso,ldap-sso,audit-log"
 
 RUN addgroup -g 1001 -S forge && adduser -u 1001 -S forge -G forge
 

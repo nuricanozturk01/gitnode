@@ -12,7 +12,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue?style=flat-square)](LICENSE.txt)
 <a href="https://status.gitnode.dev" target="_blank" rel="noopener noreferrer"><img src="https://api.cronbeat.dev/badge/A1HG1-tT7Jvw49lO_2d8tmVU/uptime.svg?range=90d" alt="GitNode uptime"></a>
 
-[Run it](#run-it) · [CI/CD runner](#cicd-runner) · [Features](#features) · [Architecture](#architecture) · [Production](#production) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
+[Run it](#run-it) · [CI/CD runner](#cicd-runner) · [Features](#features) · [Screenshots](#screenshots) · [Architecture](#architecture) · [Production](#production) · [Configuration](#configuration) · [Contributing](CONTRIBUTING.md)
 
 </div>
 
@@ -77,6 +77,206 @@ Full list: [docs/actions-compatibility.md](docs/actions-compatibility.md).
 | **Security** | JWT, OAuth2 (Google, GitHub, GitLab), SAML 2.0, LDAP, two-factor (TOTP), SSH keys, rate limiting, audit log |
 | **AI (opt-in)** | PR review and text suggestions with your own key: OpenAI, Anthropic, Gemini, Ollama |
 | **Operations** | Admin panel, GitHub import, health and metrics endpoints (Spring Actuator) |
+
+## Screenshots
+
+<p align="center">
+  <img src="images/screenshots/dashboard/01-dashboard.png" alt="GitNode dashboard" width="900">
+</p>
+
+### Repositories
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/repository/03-code-browser.png" alt="Code browser">
+      <br><sub><b>Code browser.</b> Files, README, languages, tags and the latest release.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/repository/05-file-view.png" alt="File view">
+      <br><sub><b>File view.</b> Syntax highlighting, copy, and edit in the browser.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/repository/06b-web-editor-fullscreen.png" alt="Web editor, full screen">
+      <br><sub><b>Web editor, full screen.</b> File tree, tabs and commit, with the whole window to write in.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/repository/09-commit-diff.png" alt="Commit diff">
+      <br><sub><b>Commit diff.</b> What a commit changed, line by line.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/repository/07-branches.png" alt="Branches">
+      <br><sub><b>Branches.</b> Branch list with the default and protected branches.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/repository/10-releases.png" alt="Releases">
+      <br><sub><b>Releases.</b> Tagged releases with notes.</sub>
+    </td>
+  </tr>
+</table>
+
+### Code review
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/code-review/01-pull-requests.png" alt="Pull requests">
+      <br><sub><b>Pull requests.</b> Open, merged and closed pull requests at a glance.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/code-review/02-pull-request-conversation.png" alt="Pull request activity">
+      <br><sub><b>Pull request activity.</b> Reviewers, comments and merge requirements.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/code-review/03-pull-request-files.png" alt="Files changed">
+      <br><sub><b>Files changed.</b> The diff of the pull request, ready to review.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/code-review/05-pull-request-draft.png" alt="Draft pull request">
+      <br><sub><b>Draft pull request.</b> Work in progress, not ready for review yet.</sub>
+    </td>
+  </tr>
+</table>
+
+### Planning
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/planning/01-issues.png" alt="Issues">
+      <br><sub><b>Issues.</b> Labels, milestones and assignees.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/planning/02-issue-detail.png" alt="Issue">
+      <br><sub><b>Issue.</b> Description, discussion and metadata.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/planning/05-project-board.png" alt="Project board">
+      <br><sub><b>Project board.</b> Kanban board with columns and tasks.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/planning/06-task-detail.png" alt="Task">
+      <br><sub><b>Task.</b> A task linked to an issue and a branch.</sub>
+    </td>
+  </tr>
+</table>
+
+### Collaboration
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/collaboration/02-discussion-answered.png" alt="Discussions">
+      <br><sub><b>Discussions.</b> Q&A with an accepted answer.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/collaboration/04-wiki-home.png" alt="Wiki">
+      <br><sub><b>Wiki.</b> A Git-backed wiki with page history.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/collaboration/08-snippet-detail.png" alt="Snippets">
+      <br><sub><b>Snippets.</b> Share code, with revisions and comments.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/collaboration/09-team.png" alt="Team">
+      <br><sub><b>Team.</b> Invite people and set their roles.</sub>
+    </td>
+  </tr>
+</table>
+
+### CI/CD: Actions
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/actions/01-workflows.png" alt="Workflows">
+      <br><sub><b>Workflows.</b> Every workflow and its runs, with filters.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/actions/02-run-summary.png" alt="Run summary">
+      <br><sub><b>Run summary.</b> Trigger, actor, duration and the job graph.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/actions/03-run-live-logs.png" alt="Live logs">
+      <br><sub><b>Live logs.</b> Step logs stream while the job runs.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/actions/04-run-finished.png" alt="Finished run">
+      <br><sub><b>Finished run.</b> Build and push to a registry, with secrets masked.</sub>
+    </td>
+  </tr>
+</table>
+
+### Account and security
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/account/01-profile.png" alt="Profile">
+      <br><sub><b>Profile.</b> Contribution graph and your repositories, projects and snippets.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/account/08-notifications.png" alt="Notifications">
+      <br><sub><b>Notifications.</b> Reviews, comments and assignments in one place.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/account/04-settings-ssh-keys.png" alt="SSH keys">
+      <br><sub><b>SSH keys.</b> Push over SSH with your own keys.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/account/03-settings-security.png" alt="Security">
+      <br><sub><b>Security.</b> Password and two-factor authentication.</sub>
+    </td>
+  </tr>
+</table>
+
+### Admin panel
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/admin/01-dashboard.png" alt="Dashboard">
+      <br><sub><b>Dashboard.</b> Platform statistics and activity.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/admin/02-users.png" alt="Users">
+      <br><sub><b>Users.</b> Search, disable and manage accounts.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/admin/06-organization-sso.png" alt="Organizations">
+      <br><sub><b>Organizations.</b> Per-organization SAML single sign-on and LDAP.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/admin/07-system-health.png" alt="System health">
+      <br><sub><b>System health.</b> Live status of the database, cache and core services.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="images/screenshots/admin/08-audit-logs.png" alt="Audit log">
+      <br><sub><b>Audit log.</b> Who did what, and when.</sub>
+    </td>
+    <td width="50%"></td>
+  </tr>
+</table>
+
+More pages (settings, imports, wiki history, release details, ...) are in [`images/screenshots/`](images/screenshots).
 
 ## Architecture
 

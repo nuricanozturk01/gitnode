@@ -522,7 +522,8 @@ test.describe('SCN-ACTIONS-PUBLIC-READ — unauthenticated read on public repo',
   test('GET workflows — 200 without auth on public repo', async ({ owner, publicRepo }) => {
     const resp = await anonRequest.get(workflowsApi(owner.username, publicRepo.name));
     expect(resp.status()).toBe(200);
-    expect(Array.isArray(await resp.json())).toBe(true);
+    const body = (await resp.json()) as { content: unknown[] };
+    expect(Array.isArray(body.content)).toBe(true);
   });
 
   test('GET runs — 200 without auth on public repo', async ({ owner, publicRepo }) => {

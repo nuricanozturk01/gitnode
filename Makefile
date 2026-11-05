@@ -24,6 +24,7 @@ REPOS_VOLUME   := gitnode-repos
 POSTGRES_LOGS_VOLUME := gitnode-postgres-logs
 SPRING_PROFILE := os
 
+DEV_ENV    := .env.local
 HTTP_PORT  := 8080
 SSH_PORT   := 2222
 
@@ -47,8 +48,6 @@ GITLAB_CLIENT_SECRET := YOUR_SECRET
   logs logs-db logs-redis \
   ps build purge help
 
-LOCAL_CONFIG := gitnode-backend/src/main/resources/application-local.yaml
-LOCAL_CONFIG_EXAMPLE := gitnode-backend/src/main/resources/application-local.yaml.example
 
 all: up
 
@@ -159,8 +158,18 @@ app-stop:
 # ── Local development ─────────────────────────────────────────────────────────
 
 dev-setup:
-	@test -f $(LOCAL_CONFIG) || (cp $(LOCAL_CONFIG_EXAMPLE) $(LOCAL_CONFIG) && echo "Created $(LOCAL_CONFIG) from example.")
 	@$(MAKE) infra
+	@./mvnw -q install -DskipTests -pl gitnode-events
+	@test -f $(DEV_ENV) || { \
+		echo "GITNODE_JWT_SECRET=$$(openssl rand -hex 32)" > $(DEV_ENV); \
+		echo "GITNODE_BOOTSTRAP_ADMIN_PASSWORD=Admin123" >> $(DEV_ENV); \
+		echo "ACTIONS_ENCRYPTION_KEY=$$(openssl rand -base64 32)" >> $(DEV_ENV); \
+		for p in GOOGLE GITHUB GITLAB; do \
+			echo "OAUTH2_$${p}_CLIENT_ID=x" >> $(DEV_ENV); \
+			echo "OAUTH2_$${p}_CLIENT_SECRET=x" >> $(DEV_ENV); \
+		done; \
+		echo "Created $(DEV_ENV) (gitignored)."; \
+	}
 	@cd gitnode-frontend && pnpm install
 	@cd gitnode-admin-panel && pnpm install
 	@cd e2e && pnpm install
@@ -168,10 +177,13 @@ dev-setup:
 	@echo "  Dev setup complete"
 	@echo "  1. make dev-backend          → API at http://localhost:8080"
 	@echo "  2. cd gitnode-frontend && pnpm start  → UI at http://localhost:4200"
-	@echo "  Bootstrap admin: admin / Admin123"
+	@echo "  Admin login: admin / Admin123 (from $(DEV_ENV))"
 	@echo ""
 
+# Reads $(DEV_ENV) (created by dev-setup) so the backend has its required settings.
 dev-backend:
+	@test -f $(DEV_ENV) || { echo "$(DEV_ENV) not found. Run: make dev-setup"; exit 1; }
+	set -a; . ./$(DEV_ENV); set +a; \
 	./mvnw spring-boot:run -pl gitnode-backend -Dspring-boot.run.profiles=local
 
 # ── Tests (no running server required) ────────────────────────────────────────
@@ -312,8 +324,8 @@ help:
 	@echo "  make actions-encryption-key → Actions secrets vault key (~/.gitnode/actions-encryption-key)"
 	@echo "  make ai-encryption-key      → AI API key encryption key (~/.gitnode/ai-encryption-key)"
 	@echo "  ──────────────────────────────────────────────────────"
-	@echo "  make dev-setup         → Infra + pnpm install + local config template"
-	@echo "  make dev-backend       → Run backend with local profile (:8080)"
+	@echo "  make dev-setup         → Infra + events module + $(DEV_ENV) + pnpm install"
+	@echo "  make dev-backend       → Run backend with local profile and $(DEV_ENV) (:8080)"
 	@echo "  make test              → Backend + runner + frontend lint"
 	@echo "  make test-backend      → ./mvnw test"
 	@echo "  make test-runner       → Go tests"

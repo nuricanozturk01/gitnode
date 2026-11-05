@@ -1,6 +1,6 @@
 <div align="center">
 
-<h1><img src="images/icon.png" width="44" valign="middle" /> &nbsp;<b>Git</b>Node</h1>
+<h1><img src="images/gitnode-mark.svg" width="44" valign="middle" /> &nbsp;<b>Git</b>Node</h1>
 
 <p><b>A self-hosted Git platform — repositories, code review, CI/CD and project management on your own infrastructure.</b></p>
 

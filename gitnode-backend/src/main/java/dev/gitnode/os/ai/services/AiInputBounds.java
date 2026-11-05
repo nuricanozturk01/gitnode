@@ -40,8 +40,8 @@ public final class AiInputBounds {
   static final int DIFF_MAX_LINES_PER_FILE = 80;
   static final int DIFF_MAX_HUNKS_PER_FILE = 6;
 
-  static final int CODEBASE_MAIN_MAX_COMPLETION_TOKENS = 4096;
-  static final int CODEBASE_SECURITY_MAX_COMPLETION_TOKENS = 2048;
+  static final int CODEBASE_MAIN_MAX_COMPLETION_TOKENS = 6144;
+  static final int CODEBASE_SECURITY_MAX_COMPLETION_TOKENS = 3072;
 
   static final int TEST_CONNECTION_MAX_COMPLETION_TOKENS = 16;
 

@@ -238,6 +238,7 @@ public class JobAdvancer {
     if (run.getInputs() != null) {
       run.getInputs().forEach((k, v) -> ctx.put("inputs." + k, v != null ? v : ""));
     }
+    ctx.putAll(EventPayloads.eventContext(run.getEventPayload()));
     if (job.getMatrixValues() != null) {
       job.getMatrixValues().forEach((k, v) -> ctx.put("matrix." + k, v != null ? v : ""));
     }

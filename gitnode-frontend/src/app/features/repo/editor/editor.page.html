@@ -1,4 +1,4 @@
-<section class="ed" aria-label="Web editor">
+<section class="ed" [class.ed--full]="fullscreen()" aria-label="Web editor">
   <header class="ed-bar">
     <div class="ed-title">
       <lucide-icon name="pencil" class="size-4" aria-hidden="true"></lucide-icon>
@@ -14,6 +14,21 @@
         (click)="treeOpen.set(!treeOpen())"
       >
         Files
+      </button>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm gap-1"
+        [attr.aria-pressed]="fullscreen()"
+        [attr.aria-label]="fullscreen() ? 'Exit full screen' : 'Full screen'"
+        [title]="fullscreen() ? 'Exit full screen (Esc)' : 'Full screen'"
+        (click)="toggleFullscreen()"
+      >
+        <lucide-icon
+          [name]="fullscreen() ? 'minimize-2' : 'maximize-2'"
+          class="size-4"
+          aria-hidden="true"
+        ></lucide-icon>
+        <span class="hidden sm:inline">{{ fullscreen() ? 'Exit full screen' : 'Full screen' }}</span>
       </button>
       <button type="button" class="btn btn-primary btn-sm" [disabled]="!dirty()" (click)="openCommit()">
         Commit changes @if (dirty()) { ({{ changes().length }}) }

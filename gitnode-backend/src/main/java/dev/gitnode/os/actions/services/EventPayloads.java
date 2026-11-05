@@ -58,6 +58,34 @@ final class EventPayloads {
     return payload;
   }
 
+  /**
+   * The scalar values of the event payload as {@code github.event.*} expression keys, so that
+   * {@code github.event.inputs.suite} or {@code github.event.pull_request.head.ref} resolve in a
+   * job's {@code if:}. Lists are left out; null payload gives an empty map.
+   */
+  static Map<String, String> eventContext(final @Nullable Map<String, Object> event) {
+
+    final var out = new LinkedHashMap<String, String>();
+    if (event != null) {
+      flattenInto("github.event", event, out);
+    }
+    return out;
+  }
+
+  private static void flattenInto(
+      final String prefix, final Map<?, ?> map, final Map<String, String> out) {
+
+    for (final var entry : map.entrySet()) {
+      final var key = prefix + "." + entry.getKey();
+      final var value = entry.getValue();
+      if (value instanceof final Map<?, ?> nested) {
+        flattenInto(key, nested, out);
+      } else if (value != null && !(value instanceof Iterable<?>)) {
+        out.put(key, String.valueOf(value));
+      }
+    }
+  }
+
   private static Map<String, Object> repository(final RepoRef repo) {
     final var map = new LinkedHashMap<String, Object>();
     map.put("name", repo.name());

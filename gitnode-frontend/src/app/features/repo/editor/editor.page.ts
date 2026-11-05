@@ -97,6 +97,8 @@ export class EditorPage implements OnDestroy {
   readonly openPaths = signal<string[]>([]);
   readonly activePath = signal<string | null>(null);
   readonly treeOpen = signal(true);
+  /** The editor covers the whole window; the page, its navigation and its scrollbar are hidden. */
+  readonly fullscreen = signal(false);
 
   readonly commitOpen = signal(false);
   readonly message = signal('');
@@ -137,6 +139,7 @@ export class EditorPage implements OnDestroy {
       if (this.owner() && this.repoName()) void this.start();
     });
     void import('highlight.js').then((m) => this.hljs.set(m.default));
+    effect(() => document.body.classList.toggle('overflow-hidden', this.fullscreen()));
   }
 
   private languageOf(path: string, hljs: HLJSApi): string | null {
@@ -167,6 +170,7 @@ export class EditorPage implements OnDestroy {
 
   ngOnDestroy(): void {
     window.removeEventListener('beforeunload', this.beforeUnload);
+    document.body.classList.remove('overflow-hidden');
   }
 
   private computeChanges(): EditorChange[] {
@@ -401,6 +405,7 @@ export class EditorPage implements OnDestroy {
       this.openCommit();
     }
     if (event.key === 'Escape' && this.commitOpen() && !this.committing()) this.commitOpen.set(false);
+    else if (event.key === 'Escape' && this.fullscreen() && !this.commitOpen()) this.fullscreen.set(false);
   }
 
   async commit(): Promise<void> {
@@ -442,6 +447,10 @@ export class EditorPage implements OnDestroy {
     } finally {
       this.committing.set(false);
     }
+  }
+
+  toggleFullscreen(): void {
+    this.fullscreen.update((on) => !on);
   }
 
   async exit(): Promise<void> {

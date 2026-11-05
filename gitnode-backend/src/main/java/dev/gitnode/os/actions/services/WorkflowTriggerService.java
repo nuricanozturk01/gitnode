@@ -675,13 +675,59 @@ public class WorkflowTriggerService {
       if (!hasDispatchTrigger) {
         continue;
       }
-      this.createRun(repoId, parsed, ref, null, actorId, "workflow_dispatch", inputs);
+      this.createRun(
+          repoId,
+          parsed,
+          ref,
+          null,
+          actorId,
+          "workflow_dispatch",
+          withDispatchDefaults(parsed.model(), inputs));
       started = true;
       log.info("Manual dispatch queued: repo={} workflow={} ref={}", repoId, workflowFilePath, ref);
     }
     if (!started) {
       this.explainWhyNothingStarted(ownerUsername, repoName, ref, workflowFilePath);
     }
+  }
+
+  /**
+   * The dispatch inputs with the workflow's defaults filled in for those not given, as GitHub does:
+   * an explicit {@code default}, else the first option of a {@code choice}.
+   */
+  static Map<String, String> withDispatchDefaults(
+      final WorkflowModel model, final @Nullable Map<String, String> given) {
+
+    final var result = new java.util.LinkedHashMap<String, String>();
+    if (given != null) {
+      result.putAll(given);
+    }
+    final var dispatch = model.on() == null ? null : model.on().workflowDispatch();
+    if (dispatch != null && dispatch.inputs() != null) {
+      dispatch.inputs().forEach((name, input) -> fillDefault(result, name, input));
+    }
+    return result;
+  }
+
+  private static void fillDefault(
+      final Map<String, String> inputs,
+      final String name,
+      final dev.gitnode.os.actions.model.WorkflowDispatchModel.DispatchInputModel input) {
+
+    final var value = inputs.get(name);
+    final var fallback = value == null || value.isEmpty() ? defaultOf(input) : null;
+    if (fallback != null) {
+      inputs.put(name, fallback);
+    }
+  }
+
+  private static @Nullable String defaultOf(
+      final dev.gitnode.os.actions.model.WorkflowDispatchModel.DispatchInputModel input) {
+    if (input.defaultValue() != null) {
+      return input.defaultValue();
+    }
+    final var options = input.options();
+    return options == null || options.isEmpty() ? null : options.get(0);
   }
 
   /** A workflow that is not valid YAML is the usual reason a dispatch starts nothing; say so. */
@@ -1108,12 +1154,14 @@ public class WorkflowTriggerService {
       ctx.put("github.ref", run.getTriggerRef());
     }
     ctx.put("github.event_name", run.getTriggerEvent());
+    ctx.put("github.workflow", run.getWorkflowName());
     if (run.getTriggerSha() != null) {
       ctx.put("github.sha", run.getTriggerSha());
     }
     if (run.getInputs() != null) {
       run.getInputs().forEach((k, v) -> ctx.put("inputs." + k, v != null ? v : ""));
     }
+    ctx.putAll(EventPayloads.eventContext(run.getEventPayload()));
     return ctx;
   }
 

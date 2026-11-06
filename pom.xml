@@ -17,7 +17,6 @@
     <checkstyle.config.location>config/checkstyle.xml</checkstyle.config.location>
 
     <!-- Dependency Versions -->
-    <guava.version>33.5.0-jre</guava.version>
     <java-jwt.version>4.5.0</java-jwt.version>
     <mapstruct.version>1.6.3</mapstruct.version>
     <maven.version>3.9.12</maven.version>

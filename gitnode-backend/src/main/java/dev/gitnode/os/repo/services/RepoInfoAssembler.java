@@ -43,11 +43,6 @@ public class RepoInfoAssembler {
     return this.mapper.toDto(repo, this.ownersOf(List.of(repo)));
   }
 
-  public List<RepoInfo> toDtos(final Collection<Repo> repos) {
-    final var owners = this.ownersOf(repos);
-    return repos.stream().map(repo -> this.mapper.toDto(repo, owners)).toList();
-  }
-
   public Page<RepoInfo> toDtoPage(final Page<Repo> page) {
     final var owners = this.ownersOf(page.getContent());
     return page.map(repo -> this.mapper.toDto(repo, owners));

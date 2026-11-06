@@ -16,6 +16,8 @@
 package dev.gitnode.os.notification.services;
 
 import dev.gitnode.os.notification.dtos.NotificationInfo;
+import dev.gitnode.os.shared.cluster.ClusterEventBus;
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +42,11 @@ public class NotificationSseRegistry {
 
   private static final int MAX_EMITTERS_PER_USER = 5;
 
+  static final String PUSH_CHANNEL = "gitnode:sse:notif:";
+  static final String CLOSE_CHANNEL = "gitnode:sse:notif-close:";
+
   private final ObjectMapper objectMapper;
+  private final ClusterEventBus bus;
 
   /**
    * CopyOnWriteArrayList per user: safe for concurrent push() reads and compute() writes. Max 5
@@ -49,8 +55,21 @@ public class NotificationSseRegistry {
   private final ConcurrentHashMap<UUID, CopyOnWriteArrayList<SseEmitter>> emitters =
       new ConcurrentHashMap<>();
 
+  @PostConstruct
+  void listenToCluster() {
+    this.bus.subscribe(
+        PUSH_CHANNEL + "*",
+        (channel, payload) -> this.deliver(idOf(channel, PUSH_CHANNEL), payload));
+    this.bus.subscribe(
+        CLOSE_CHANNEL + "*", (channel, _) -> this.closeLocal(idOf(channel, CLOSE_CHANNEL)));
+  }
+
+  SseEmitter newEmitter(final long timeoutMillis) {
+    return new SseEmitter(timeoutMillis);
+  }
+
   public SseEmitter subscribe(final UUID recipientId) {
-    final var emitter = new SseEmitter(TimeUnit.HOURS.toMillis(1));
+    final var emitter = this.newEmitter(TimeUnit.HOURS.toMillis(1));
 
     this.emitters.compute(
         recipientId,
@@ -75,17 +94,23 @@ public class NotificationSseRegistry {
     return emitter;
   }
 
+  /** Pushes to the user's streams on every instance. */
   public void push(final UUID recipientId, final NotificationInfo dto) {
-    final var list = this.emitters.get(recipientId);
-    if (list == null || list.isEmpty()) {
-      return;
-    }
-
     final String payload;
     try {
       payload = this.objectMapper.writeValueAsString(dto);
     } catch (final JacksonException e) {
       log.warn("Failed to serialize notification for SSE push: {}", e.getMessage());
+      return;
+    }
+    if (!this.bus.publish(PUSH_CHANNEL + recipientId, payload)) {
+      this.deliver(recipientId, payload);
+    }
+  }
+
+  private void deliver(final UUID recipientId, final String payload) {
+    final var list = this.emitters.get(recipientId);
+    if (list == null || list.isEmpty()) {
       return;
     }
 
@@ -118,6 +143,12 @@ public class NotificationSseRegistry {
 
   /** Ends every open stream of a user, for example when the account was disabled. */
   public void closeAll(final UUID recipientId) {
+    if (!this.bus.publish(CLOSE_CHANNEL + recipientId, "")) {
+      this.closeLocal(recipientId);
+    }
+  }
+
+  private void closeLocal(final UUID recipientId) {
     final var removed = this.emitters.remove(recipientId);
     if (removed == null) {
       return;
@@ -129,6 +160,10 @@ public class NotificationSseRegistry {
         // already closed
       }
     }
+  }
+
+  private static UUID idOf(final String channel, final String prefix) {
+    return UUID.fromString(channel.substring(prefix.length()));
   }
 
   private void remove(final UUID recipientId, final SseEmitter emitter) {

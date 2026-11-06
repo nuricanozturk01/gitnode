@@ -8,7 +8,6 @@ import ch.qos.logback.core.Layout;
 import ch.qos.logback.core.LayoutBase;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Strings;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.StringWriter;
@@ -55,9 +54,7 @@ public class SlackAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
   public void setIconEmoji(final @NonNull String iconEmojiArg) {
     this.iconEmoji = iconEmojiArg;
 
-    if (!Strings.isNullOrEmpty(this.iconEmoji)
-        && this.iconEmoji.startsWith(":")
-        && !this.iconEmoji.endsWith(":")) {
+    if (this.iconEmoji != null && this.iconEmoji.startsWith(":") && !this.iconEmoji.endsWith(":")) {
       this.iconEmoji += ":";
     }
   }

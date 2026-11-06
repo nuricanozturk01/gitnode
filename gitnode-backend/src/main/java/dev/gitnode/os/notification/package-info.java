@@ -25,6 +25,7 @@
       "events :: team",
       "identity :: api",
       "repo :: dtos",
+      "shared :: cluster",
       "shared :: errorhandling-exceptions"
     })
 package dev.gitnode.os.notification;

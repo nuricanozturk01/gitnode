@@ -13,11 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os.actions.dtos.request;
-
-import jakarta.validation.constraints.NotNull;
-import java.util.UUID;
-import org.jspecify.annotations.NullMarked;
-
 @NullMarked
-public record JobClaimRequest(@NotNull UUID runnerId) {}
+@NamedInterface("cluster")
+package dev.gitnode.os.shared.cluster;
+
+import org.jspecify.annotations.NullMarked;
+import org.springframework.modulith.NamedInterface;

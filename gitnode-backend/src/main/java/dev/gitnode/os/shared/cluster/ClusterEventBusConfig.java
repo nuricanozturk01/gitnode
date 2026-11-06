@@ -13,21 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package dev.gitnode.os.identity.services;
+package dev.gitnode.os.shared.cluster;
 
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 
+@Configuration
 @NullMarked
-public final class TenantAuthGuard {
+class ClusterEventBusConfig {
 
-  private TenantAuthGuard() {}
-
-  public static void requireEnabled(final Tenant tenant) {
-
-    if (!tenant.isEnabled()) {
-      throw new AccessNotAllowedException("userDisabled");
-    }
+  /** Own container so listeners of other features are unaffected by cluster subscriptions. */
+  @Bean
+  RedisMessageListenerContainer clusterEventContainer(final RedisConnectionFactory factory) {
+    final var container = new RedisMessageListenerContainer();
+    container.setConnectionFactory(factory);
+    return container;
   }
 }

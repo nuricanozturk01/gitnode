@@ -16,6 +16,8 @@
 package dev.gitnode.os.actions.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.gitnode.os.actions.entities.Runner;
 import dev.gitnode.os.actions.entities.RunnerStatus;
 import dev.gitnode.os.actions.entities.WorkflowJob;
@@ -46,7 +48,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -91,22 +92,18 @@ public class JobDispatcher {
   @Value("${gitnode.actions.runner.heartbeat-timeout-seconds:60}")
   private int heartbeatTimeoutSeconds;
 
-  private record CachedWorkflow(WorkflowModel model, Instant cachedAt) {}
-
   private static final Duration YAML_CACHE_TTL = Duration.ofMinutes(5);
+  private static final long YAML_CACHE_MAX_RUNS = 500;
   private static final int DEFAULT_JOB_TIMEOUT_MINUTES = 30;
 
-  private final ConcurrentHashMap<UUID, CachedWorkflow> yamlCache = new ConcurrentHashMap<>();
-  private final DispatchDiagnostics diagnostics = new DispatchDiagnostics();
+  /** Parsed workflow per run; bounded in size and age so it cannot grow without limit. */
+  private final Cache<UUID, WorkflowModel> yamlCache =
+      Caffeine.newBuilder()
+          .maximumSize(YAML_CACHE_MAX_RUNS)
+          .expireAfterWrite(YAML_CACHE_TTL)
+          .build();
 
-  @Scheduled(fixedDelay = 300_000)
-  public void evictExpiredYamlCache() {
-    final var now = Instant.now();
-    this.yamlCache
-        .entrySet()
-        .removeIf(
-            e -> Duration.between(e.getValue().cachedAt(), now).compareTo(YAML_CACHE_TTL) >= 0);
-  }
+  private final DispatchDiagnostics diagnostics = new DispatchDiagnostics();
 
   @Scheduled(fixedDelayString = "${gitnode.actions.dispatch.interval-ms:2000}")
   @Transactional
@@ -155,7 +152,6 @@ public class JobDispatcher {
   private void reportStuckJobs() {
 
     final var recent = this.jobRepository.findRecentQueued(STUCK_SAMPLE_SIZE);
-    this.diagnostics.retainOnly(recent.stream().map(WorkflowJob::getId).toList());
     if (recent.isEmpty()) {
       return;
     }
@@ -323,10 +319,9 @@ public class JobDispatcher {
    * that copy existed fall back to the definition.
    */
   private @Nullable WorkflowModel resolveWorkflowModel(final WorkflowRun run) {
-    final var cached = this.yamlCache.get(run.getId());
-    if (cached != null
-        && Duration.between(cached.cachedAt(), Instant.now()).compareTo(YAML_CACHE_TTL) < 0) {
-      return cached.model();
+    final var cached = this.yamlCache.getIfPresent(run.getId());
+    if (cached != null) {
+      return cached;
     }
     final var content = this.workflowContentOf(run);
     if (content == null) {
@@ -334,7 +329,7 @@ public class JobDispatcher {
     }
     final var model = this.parserService.parseFromContent(content);
     if (model != null) {
-      this.yamlCache.put(run.getId(), new CachedWorkflow(model, Instant.now()));
+      this.yamlCache.put(run.getId(), model);
     }
     return model;
   }

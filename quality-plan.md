@@ -112,7 +112,7 @@ Yeni bağımlılık **yok**; `DistributedLockService` kullanılır.
 3. Test: iki `SchedulerLockAspect` örneği aynı Redis'e (Testcontainers) aynı anda; sadece biri çalışır. Kilit çökmede TTL ile düşer.
 - **Kabul:** `WorkflowScheduler` iki instance'ta aynı dakikada tek run üretir (e2e/integration testi).
 
-### S2: SSE olaylarını instance'lar arası yayma (Redis Pub/Sub) `[ ]`  (~3 g)
+### S2: SSE olaylarını instance'lar arası yayma (Redis Pub/Sub) `[x]` (2026-11-06: `shared.cluster.ClusterEventBus` + `RedisClusterEventBus` (kendi `RedisMessageListenerContainer`'ı). `SseEmitterRegistry`, `RunStatusSseRegistry`, `NotificationSseRegistry` public imzaları aynı; yayın `gitnode:sse:{step,step-done,run,run-done,notif,notif-close}:<id>` kanallarına gider, her instance yalnız elindeki emitter'lara iletir; bus erişilemezse yerel teslime düşer. Gerçek 2-instance denemesi: bildirim (davet A'da, akış B'de) ve run durumu (iptal A'da, akış B'de) B'ye ulaştı; step log akışı da gerçek runner'la denendi: Go runner A'ya bağlı, iş A'da çalıştı, log satırları B'deki akışa doğru JSON biçiminde ulaştı ve adım bitince akış kapandı; frontend `data:` satırını `JSON.parse` ediyor, biçim uyumlu. Tasarım kararı: abonelik kaydı (Redis SET) yapılmadı, her mesaj tüm instance'lara gider ve yerel map araması ile elenir; yüksek log hacminde ölçülüp gerekirse eklenir)  (~3 g)
 Sorun: log satırı runner'ın bağlı olduğu instance A'da gelir (`WorkflowExecutionService:427,438`), tarayıcı SSE'si instance B'de açık olabilir.
 
 Tasarım (mevcut `RedisMessageListenerContainer` kalıbını yeniden kullan):
@@ -125,7 +125,7 @@ Tasarım (mevcut `RedisMessageListenerContainer` kalıbını yeniden kullan):
 5. Yeniden bağlanma: SSE `Last-Event-ID` desteği — log satırı numarası (`lineNum`) zaten var; istemci kaçırdığını DB'den çekebilsin (mevcut log endpoint'i ile birleştir). Kontrol et, yoksa not al ve sor.
 - **Kabul:** 2 instance + LB; tarayıcı B'de, runner A'da; log satırları ve run durumu canlı akar. Birim: `ClusterEventBus` fake ile registry davranışı; entegrasyon: Testcontainers Redis ile iki context.
 
-### S3: Süreç içi cache/durum sınırları `[ ]`  (~0.5 g)
+### S3: Süreç içi cache/durum sınırları `[x]` (2026-11-06: `caffeine` bağımlılığı eklendi. `JobDispatcher.yamlCache` → Caffeine (500 run, 5 dk yazımdan sonra); elle TTL, `CachedWorkflow` kaydı ve `@Scheduled evictExpiredYamlCache` kalktı. `DispatchDiagnostics.lastWarned` → Caffeine (10.000 iş üst sınırı, aralık kadar `expireAfterWrite`, test saatini ticker olarak kullanır); `retainOnly` kalktı (sınır ve süre dolumu zaten temizler). `RunnerSessionRegistry` WS doğası gereği yerel kalır. Doğrulama: birim testi (12.000 iş → ≤10.000), gerçek runner ile 3 workflow başarıyla koştu, e2e API 165 + senaryo 135, log'da 0 ERROR)  (~0.5 g)
 - `JobDispatcher.yamlCache` (ConcurrentHashMap + 5 dk el yapımı TTL + scheduled evict) → **Caffeine** (`maximumSize`, `expireAfterWrite`). Bağımlılık: `com.github.ben-manes.caffeine:caffeine` (Boot zaten yönetir).
 - `DispatchDiagnostics.lastWarned` → Caffeine (`expireAfterWrite 1h`, `maximumSize`); `retainOnly` mantığı kalkar.
 - `RunnerSessionRegistry`: yerel kalır (WS bağlantısı doğası gereği yerel). Ek: "runner hangi instance'ta" bilgisi gerekmez, çünkü dispatch kanalı runnerId bazlı ve **bağlı olan instance** dinler (doğrula: `RunnerDispatchListener` bağlı olmayan runner için mesajı sessizce düşürüyor mu? Düşürüyorsa sorun yok, çünkü bağlı instance alır).
@@ -176,7 +176,7 @@ Eşik **artımlı** yükselir; ani sıçrama PR akışını tıkar.
 - PIT mutation testi yalnız `ExpressionEngine` ve `auth` için (nightly, bloklamaz).
 - **Kabul:** eşik tablosu sprint sprint `pom.xml`'e işlenir; hedef sonunda ≥ 70/60.
 
-### Q4: Ölü kod temizliği `[ ]`  (~1 g)
+### Q4: Ölü kod temizliği `[x]` (2026-11-06: `dependency:analyze` (eklenti 3.9.0, 3.7.0 Java 25 bayt kodunu okuyamıyor): starter/`runtime` sürücü bulguları yanlış pozitif. Kaldırıldı: `guava` (tek kullanım `SlackAppender`'da `Strings.isNullOrEmpty`, JDK ile değişti; OpenSAML üzerinden geçişli olarak zaten gelir) ve `spring-security-ldap` (hiç import edilmiyor; `spring-ldap-core` kalır). `eddsa` SSH sunucusunda kullanılıyor, `commons-codec` 9 dosyada, kalır. Silinen sınıflar: `JobClaimRequest`, `TenantAuthGuard`. Silinen çağrılmayan metotlar: `IssueService.countOpenIssues` (+ 3 boşuna evict, `REPO_ISSUE_OPEN_COUNT`), `RepoInfoAssembler.toDtos`. Bilerek kalanlar: `ServerMessage.ping()` (runner protokolü), `SlackAppender.setIconEmoji` (logback XML ile çağrılır), `SchedulerLockAspect.around` (AOP). DB nesneleri silinmedi (D6). Doğrulama: `verify`, gerçek açılış, e2e API 165 + senaryo 135, log'da 0 ERROR)  (~1 g)
 - `mvn dependency:analyze` (kullanılmayan bağımlılık): aday `eddsa`, `guava`, `commons-codec` kullanımı doğrula.
 - Kullanılmayan public sınıf/metot: IDE "unused declaration" + `jdeps`, SpotBugs `UPM_UNCALLED_PRIVATE_METHOD`, `URF_UNREAD_FIELD`.
 - Kullanılmayan endpoint: frontend + `e2e/api` çağrılarıyla çapraz kontrol (graphify grafiği yardımcı olabilir: `graphify-out/` varsa).

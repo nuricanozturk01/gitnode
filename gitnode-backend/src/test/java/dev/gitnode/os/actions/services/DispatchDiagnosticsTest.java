@@ -162,12 +162,11 @@ class DispatchDiagnosticsTest {
   }
 
   @Test
-  @DisplayName("jobs that left the queue are forgotten and warned about again if re-queued")
-  void retainOnly_forgets() {
-    final var id = UUID.randomUUID();
-    this.diagnostics.warn(job(id), "x");
-    this.diagnostics.retainOnly(List.of());
-    this.diagnostics.warn(job(id), "x");
-    assertThat(this.appender.list).hasSize(2);
+  @DisplayName("the number of tracked jobs is capped")
+  void trackedJobs_areCapped() {
+    for (int i = 0; i < 12_000; i++) {
+      this.diagnostics.warn(job(UUID.randomUUID()), "x");
+    }
+    assertThat(this.diagnostics.trackedJobs()).isLessThanOrEqualTo(10_000);
   }
 }

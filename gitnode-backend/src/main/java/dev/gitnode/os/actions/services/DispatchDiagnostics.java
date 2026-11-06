@@ -15,17 +15,15 @@
  */
 package dev.gitnode.os.actions.services;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import dev.gitnode.os.actions.entities.Runner;
 import dev.gitnode.os.actions.entities.RunnerStatus;
 import dev.gitnode.os.actions.entities.WorkflowJob;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -42,9 +40,12 @@ final class DispatchDiagnostics {
 
   private static final Duration DEFAULT_INTERVAL = Duration.ofMinutes(1);
 
-  private final Map<UUID, Instant> lastWarned = new ConcurrentHashMap<>();
+  private static final long MAX_TRACKED_JOBS = 10_000;
+
+  /** Jobs warned about within the interval; entries expire by themselves, the size is capped. */
+  private final Cache<UUID, Boolean> recentlyWarned;
+
   private final Supplier<Instant> clock;
-  private final Duration interval;
 
   DispatchDiagnostics() {
     this(Instant::now, DEFAULT_INTERVAL);
@@ -52,22 +53,24 @@ final class DispatchDiagnostics {
 
   DispatchDiagnostics(final Supplier<Instant> clock, final Duration interval) {
     this.clock = clock;
-    this.interval = interval;
+    this.recentlyWarned =
+        Caffeine.newBuilder()
+            .maximumSize(MAX_TRACKED_JOBS)
+            .expireAfterWrite(interval)
+            .ticker(() -> Duration.between(Instant.EPOCH, clock.get()).toNanos())
+            .build();
   }
 
-  /** Forgets jobs that are no longer queued so the map cannot grow without bound. */
-  void retainOnly(final Collection<UUID> queuedJobIds) {
-    this.lastWarned.keySet().retainAll(new HashSet<>(queuedJobIds));
+  long trackedJobs() {
+    this.recentlyWarned.cleanUp();
+    return this.recentlyWarned.estimatedSize();
   }
 
   /** Logs a warning for the job unless one was logged within the interval. */
   void warn(final WorkflowJob job, final String reason) {
-    final Instant now = this.clock.get();
-    final Instant previous = this.lastWarned.get(job.getId());
-    if (previous != null && Duration.between(previous, now).compareTo(this.interval) < 0) {
+    if (this.recentlyWarned.asMap().putIfAbsent(job.getId(), Boolean.TRUE) != null) {
       return;
     }
-    this.lastWarned.put(job.getId(), now);
     log.warn(
         "Job '{}' ({}) is queued and not being picked up: {}. Required labels={}",
         job.getName(),

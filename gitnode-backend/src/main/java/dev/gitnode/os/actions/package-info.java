@@ -25,6 +25,7 @@
       "identity :: api",
       "repo :: api",
       "shared :: audit-annotations",
+      "shared :: cluster",
       "shared :: errorhandling-exceptions",
       "shared :: lock",
       "shared :: ratelimit"

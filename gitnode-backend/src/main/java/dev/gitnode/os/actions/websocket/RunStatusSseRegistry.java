@@ -15,27 +15,48 @@
  */
 package dev.gitnode.os.actions.websocket;
 
+import dev.gitnode.os.shared.cluster.ClusterEventBus;
+import jakarta.annotation.PostConstruct;
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+/**
+ * Status changes of a workflow run. {@link #notify} and {@link #complete} reach the streams held by
+ * any instance through the cluster bus.
+ */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 @NullMarked
 public class RunStatusSseRegistry {
 
+  static final String UPDATED_CHANNEL = "gitnode:sse:run:";
+  static final String DONE_CHANNEL = "gitnode:sse:run-done:";
+
   private final ConcurrentHashMap<UUID, List<SseEmitter>> emitters = new ConcurrentHashMap<>();
 
+  private final ClusterEventBus bus;
+
+  @PostConstruct
+  void listenToCluster() {
+    this.bus.subscribe(
+        UPDATED_CHANNEL + "*", (channel, _) -> this.notifyLocal(idOf(channel, UPDATED_CHANNEL)));
+    this.bus.subscribe(
+        DONE_CHANNEL + "*", (channel, _) -> this.completeLocal(idOf(channel, DONE_CHANNEL)));
+  }
+
   public SseEmitter subscribe(final UUID runId) {
-    final var emitter = new SseEmitter(TimeUnit.MINUTES.toMillis(30));
+    final var emitter = this.newEmitter(TimeUnit.MINUTES.toMillis(30));
     final var list = this.emitters.computeIfAbsent(runId, _ -> new CopyOnWriteArrayList<>());
     list.add(emitter);
 
@@ -47,7 +68,23 @@ public class RunStatusSseRegistry {
     return emitter;
   }
 
+  SseEmitter newEmitter(final long timeoutMillis) {
+    return new SseEmitter(timeoutMillis);
+  }
+
   public void notify(final UUID runId) {
+    if (!this.bus.publish(UPDATED_CHANNEL + runId, "")) {
+      this.notifyLocal(runId);
+    }
+  }
+
+  public void complete(final UUID runId) {
+    if (!this.bus.publish(DONE_CHANNEL + runId, "")) {
+      this.completeLocal(runId);
+    }
+  }
+
+  private void notifyLocal(final UUID runId) {
     final var list = this.emitters.get(runId);
     if (list == null || list.isEmpty()) {
       return;
@@ -63,7 +100,7 @@ public class RunStatusSseRegistry {
     }
   }
 
-  public void complete(final UUID runId) {
+  private void completeLocal(final UUID runId) {
     final var list = this.emitters.remove(runId);
     if (list == null) {
       return;
@@ -80,6 +117,10 @@ public class RunStatusSseRegistry {
         log.debug("SSE stream of run {} was already completed", runId);
       }
     }
+  }
+
+  private static UUID idOf(final String channel, final String prefix) {
+    return UUID.fromString(channel.substring(prefix.length()));
   }
 
   @Scheduled(fixedDelay = 30_000)

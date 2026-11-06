@@ -31,7 +31,6 @@ import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.audit.annotations.Audited;
-import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
@@ -46,8 +45,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -76,16 +73,6 @@ public class IssueService implements IssueQueryService {
   private final IssueLabelRepository labelRepository;
   private final dev.gitnode.os.issue.repositories.IssueMilestoneRepository milestoneRepository;
 
-  @Cacheable(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
-  public int countOpenIssues(final String owner, final String repoName) {
-    final var repo =
-        this.repoLookup
-            .find(owner, repoName)
-            .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
-    return this.issueRepository.countByRepoIdAndStatus(repo.id(), IssueStatus.OPEN.name());
-  }
-
-  @CacheEvict(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "CREATE_ISSUE",
       entityType = "ISSUE",
@@ -214,10 +201,6 @@ public class IssueService implements IssueQueryService {
             this.commentRepository.findAllByIssueIdOrderByCreatedAtAsc(issue.getId(), pageable)));
   }
 
-  @CacheEvict(
-      cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT,
-      key = "#owner + ':' + #repoName",
-      condition = "#form.status != null")
   @Transactional
   public IssueDetail update(
       final String owner,
@@ -390,7 +373,6 @@ public class IssueService implements IssueQueryService {
     }
   }
 
-  @CacheEvict(cacheNames = CacheNames.REPO_ISSUE_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "DELETE_ISSUE",
       entityType = "ISSUE",

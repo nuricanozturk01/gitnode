@@ -17,6 +17,7 @@ package dev.gitnode.os.actions.websocket;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
 
+import dev.gitnode.os.shared.cluster.InMemoryClusterEventBus;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,10 +25,16 @@ import org.junit.jupiter.api.Test;
 @DisplayName("RunStatusSseRegistry")
 class RunStatusSseRegistryTest {
 
+  private static RunStatusSseRegistry registry() {
+    final var registry = new RunStatusSseRegistry(new InMemoryClusterEventBus());
+    registry.listenToCluster();
+    return registry;
+  }
+
   @Test
   @DisplayName("notifying a run whose stream already completed does not throw")
   void notifyAfterEmitterCompleted() {
-    final var registry = new RunStatusSseRegistry();
+    final var registry = registry();
     final var runId = UUID.randomUUID();
     registry.subscribe(runId).complete();
 
@@ -37,7 +44,7 @@ class RunStatusSseRegistryTest {
   @Test
   @DisplayName("completing a run whose stream already completed does not throw (deleting a run)")
   void completeAfterEmitterCompleted() {
-    final var registry = new RunStatusSseRegistry();
+    final var registry = registry();
     final var runId = UUID.randomUUID();
     registry.subscribe(runId).complete();
 
@@ -47,7 +54,7 @@ class RunStatusSseRegistryTest {
   @Test
   @DisplayName("the keep-alive does not throw for a stream that already completed")
   void heartbeatAfterEmitterCompleted() {
-    final var registry = new RunStatusSseRegistry();
+    final var registry = registry();
     registry.subscribe(UUID.randomUUID()).complete();
 
     assertThatCode(registry::sendHeartbeat).doesNotThrowAnyException();
@@ -56,7 +63,7 @@ class RunStatusSseRegistryTest {
   @Test
   @DisplayName("a completed stream is dropped so later events skip it")
   void completedStreamsAreDropped() {
-    final var registry = new RunStatusSseRegistry();
+    final var registry = registry();
     final var runId = UUID.randomUUID();
     registry.subscribe(runId).complete();
     registry.notify(runId);

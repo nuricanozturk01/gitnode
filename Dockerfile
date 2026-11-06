@@ -43,31 +43,27 @@ LABEL org.opencontainers.image.description="Self-hosted Git hosting platform wit
 LABEL org.opencontainers.image.source="https://github.com/nuricanozturk01/gitnode"
 LABEL org.opencontainers.image.features="git-hosting,saml-sso,ldap-sso,audit-log"
 
-RUN addgroup -g 1001 -S forge && adduser -u 1001 -S forge -G forge
+RUN apk add --no-cache tini postgresql18 redis \
+    && addgroup -g 1001 -S forge && adduser -u 1001 -S forge -G forge
 
 WORKDIR /app
 
 COPY --from=backend-build /app/gitnode-backend/target/gitnode-backend.jar app.jar
+COPY docker/entrypoint.sh /app/entrypoint.sh
 
-RUN mkdir -p /data/repos /var/log/gitnode && chown forge:forge /data/repos /var/log/gitnode
+RUN chmod 755 /app/entrypoint.sh \
+    && mkdir -p /data/repos /var/log/gitnode \
+    && chown -R forge:forge /data /var/log/gitnode
 
 USER forge
 
+# Everything GitNode keeps (repositories, and in zero-config mode the embedded PostgreSQL,
+# Redis and generated secrets) lives under /data. Mount a volume here.
+VOLUME /data
+
 EXPOSE 8080 2222
 
-ENTRYPOINT ["java", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-XX:+UseZGC", \
-  "-XX:+ZGenerational", \
-  "-XX:MaxRAMPercentage=75", \
-  "-XX:+OptimizeStringConcat", \
-  "-XX:+UseStringDeduplication", \
-  "-XX:StringDeduplicationAgeThreshold=1", \
-  "-XX:+UseCompressedOops", \
-  "-XX:+UseCompressedClassPointers", \
-  "-XX:CompressedClassSpaceSize=64m", \
-  "-XX:+HeapDumpOnOutOfMemoryError", \
-  "-XX:HeapDumpPath=/var/log/gitnode", \
-  "-XX:+ExitOnOutOfMemoryError", \
-  "-Xlog:gc*:file=/var/log/gitnode/gc.log:time,uptime:filecount=5,filesize=10m", \
-  "-jar", "app.jar"]
+# Zero-config:  docker run -p 8080:8080 -p 2222:2222 -v gitnode-data:/data <image>
+# External DB:  set SPRING_DATASOURCE_URL (and/or SPRING_DATA_REDIS_HOST); the embedded
+#               PostgreSQL / Redis are then not started. See docker/entrypoint.sh.
+ENTRYPOINT ["/sbin/tini", "--", "/app/entrypoint.sh"]

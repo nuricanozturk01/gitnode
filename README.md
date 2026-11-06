@@ -41,6 +41,20 @@ Open <http://localhost:8080> and register an account. Git over SSH is on `localh
 `make up` runs the published GitNode image with throwaway credentials from the `Makefile` and creates no admin user.
 For a real deployment see [Production](#production). To work on the code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+### One command, no setup
+
+The image brings its own PostgreSQL and Redis, so a single `docker run` is enough:
+
+```bash
+docker run -d --name gitnode -p 8080:8080 -p 2222:2222 -v gitnode-data:/data \
+  repo.repsy.io/nuricanozturk/gitnode/gitnode-os:latest
+docker logs gitnode   # first start prints the generated admin password
+```
+
+Open <http://localhost:8080> and sign in as `admin`. Everything (repositories, database, generated secrets) lives in the `gitnode-data` volume, so removing and re-running the container keeps your data. Set `GITNODE_BOOTSTRAP_ADMIN_PASSWORD` to choose the admin password yourself.
+
+Set `SPRING_DATASOURCE_URL` and/or `SPRING_DATA_REDIS_HOST` to use your own PostgreSQL / Redis; the embedded one is then not started. This image is built for `http://localhost:8080`; for another host name build with `--build-arg API_URL=https://your-host`.
+
 ## CI/CD runner
 
 Workflows live in `.gitnode/workflows/` and run on a self-hosted runner. In the web UI open

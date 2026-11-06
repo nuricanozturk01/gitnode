@@ -48,6 +48,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,6 +63,13 @@ public class WorkflowExecutionService {
 
   /** Length of the log level column. */
   private static final int MAX_LEVEL_LENGTH = 8;
+
+  private static final int DEFAULT_MAX_LOG_LINE_CHARS = 262_144;
+  private static final String LINE_TRUNCATED = " ... [line truncated]";
+
+  /** One log line is cut to this many characters so a runaway line cannot fill memory or disk. */
+  @Value("${gitnode.limits.log-line-chars:262144}")
+  private int maxLogLineChars = DEFAULT_MAX_LOG_LINE_CHARS;
 
   private static final Set<WorkflowJobStatus> TERMINAL_STATUSES =
       Set.of(
@@ -422,20 +430,27 @@ public class WorkflowExecutionService {
 
     final var now = Instant.now();
     final var storedLevel = normalizeLevel(level);
+    final var line = this.limitLine(content);
     if (!this.stepRepository.existsById(stepId)) {
       log.warn("LOG for unknown stepId={}, dropping DB write but broadcasting SSE", stepId);
-      this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, storedLevel, now));
+      this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, line, storedLevel, now));
       return;
     }
 
     final var logRecord = new WorkflowLog();
     logRecord.setStepId(stepId);
     logRecord.setLineNumber(lineNumber);
-    logRecord.setContent(content);
+    logRecord.setContent(line);
     logRecord.setLevel(storedLevel);
     this.logRepository.save(logRecord);
 
-    this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, content, storedLevel, now));
+    this.sseEmitterRegistry.broadcast(stepId, new LogLine(lineNumber, line, storedLevel, now));
+  }
+
+  private String limitLine(final String content) {
+    return content.length() <= this.maxLogLineChars
+        ? content
+        : content.substring(0, this.maxLogLineChars) + LINE_TRUNCATED;
   }
 
   /** The log level as stored: "info" when missing, cut to the column's length. */

@@ -25,6 +25,7 @@
       "identity :: persistence",
       "shared :: audit-annotations",
       "shared :: cache",
+      "shared :: configs",
       "shared :: errorhandling-exceptions",
       "shared :: git-provider",
       "shared :: ratelimit"

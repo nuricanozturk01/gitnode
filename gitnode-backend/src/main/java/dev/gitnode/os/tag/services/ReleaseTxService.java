@@ -278,6 +278,19 @@ public class ReleaseTxService {
     this.cacheInvalidator.evictTags(owner, repoName);
   }
 
+  /** Every release of the repository keyed by tag name, in one query (for listing tags). */
+  public java.util.Map<String, ReleaseInfo> mapByTagName(final UUID repoId) {
+
+    final var latestId = this.effectiveLatestId(repoId);
+    final var releases = this.releaseRepository.findAllByRepoIdOrderByCreatedAtDesc(repoId);
+    final var authors = this.authors(releases);
+    final var byTag = new java.util.HashMap<String, ReleaseInfo>();
+    for (final var release : releases) {
+      byTag.putIfAbsent(release.getTagName(), this.toInfo(release, latestId, authors));
+    }
+    return byTag;
+  }
+
   public Optional<ReleaseInfo> findByRepoIdAndTagName(final UUID repoId, final String tagName) {
 
     return this.releaseRepository

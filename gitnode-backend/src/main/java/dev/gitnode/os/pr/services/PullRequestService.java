@@ -555,7 +555,10 @@ public class PullRequestService {
                             pr.getAssigneeIds().stream()))
                 .collect(java.util.stream.Collectors.toSet()));
 
-    return prs.map(pr -> this.toInfo(repo, pr, labelsById, milestonesById, accounts));
+    final var commentCounts = this.commentCountsOf(prs.getContent());
+
+    return prs.map(
+        pr -> this.toInfo(repo, pr, labelsById, milestonesById, accounts, commentCounts));
   }
 
   public PrDetail get(final String owner, final String repoName, final int number) {
@@ -918,14 +921,26 @@ public class PullRequestService {
         commitStats);
   }
 
+  /** Comment counts of the given pull requests in one query. */
+  private Map<UUID, Long> commentCountsOf(final List<PullRequest> prs) {
+    final Map<UUID, Long> counts = new HashMap<>();
+    if (!prs.isEmpty()) {
+      this.commentRepository
+          .countByPrIds(prs.stream().map(PullRequest::getId).toList())
+          .forEach(row -> counts.put((UUID) row[0], (Long) row[1]));
+    }
+    return counts;
+  }
+
   private PrInfo toInfo(
       final RepoRef repo,
       final PullRequest pr,
       final Map<UUID, PrMetadata.Label> labelsById,
       final Map<UUID, PrMetadata.Milestone> milestonesById,
-      final Map<UUID, TenantRef> accounts) {
+      final Map<UUID, TenantRef> accounts,
+      final Map<UUID, Long> commentCounts) {
 
-    final var commentCount = (int) this.commentRepository.countByPrId(pr.getId());
+    final var commentCount = commentCounts.getOrDefault(pr.getId(), 0L).intValue();
     final var author = this.toAuthorInfo(accounts, pr.getAuthorId());
     final var mergedBy =
         pr.getMergedById() != null ? this.toAuthorInfoOrNull(accounts, pr.getMergedById()) : null;

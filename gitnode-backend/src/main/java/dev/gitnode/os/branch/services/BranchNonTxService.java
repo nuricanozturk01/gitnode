@@ -20,8 +20,6 @@ import static java.util.Comparator.comparing;
 import dev.gitnode.os.branch.api.BranchForm;
 import dev.gitnode.os.branch.api.BranchInfo;
 import dev.gitnode.os.branch.api.BranchProtocolService;
-import dev.gitnode.os.events.branch.BranchCreatedEvent;
-import dev.gitnode.os.events.branch.BranchDeletedEvent;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -42,7 +40,6 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -55,7 +52,7 @@ public class BranchNonTxService implements BranchProtocolService {
 
   private final BranchTxService branchTxService;
   private final GitProvider gitProvider;
-  private final ApplicationEventPublisher eventPublisher;
+  private final BranchEventPublisher eventPublisher;
   private final BranchProtectionService branchProtection;
 
   @Override
@@ -72,7 +69,7 @@ public class BranchNonTxService implements BranchProtocolService {
       this.checkCreateResult(result);
 
       final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
-      this.eventPublisher.publishEvent(new BranchCreatedEvent(repo.id(), form.getName()));
+      this.eventPublisher.created(repo.id(), form.getName());
 
       return this.get(owner, repoName, form.getName());
     }
@@ -98,7 +95,7 @@ public class BranchNonTxService implements BranchProtocolService {
       this.checkDeleteResult(result);
     }
 
-    this.eventPublisher.publishEvent(new BranchDeletedEvent(repo.id(), branchName));
+    this.eventPublisher.deleted(repo.id(), branchName);
   }
 
   @Override

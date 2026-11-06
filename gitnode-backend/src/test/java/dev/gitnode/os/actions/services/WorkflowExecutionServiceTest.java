@@ -263,6 +263,21 @@ class WorkflowExecutionServiceTest {
   }
 
   @Test
+  @DisplayName("ingestLog cuts a runaway line before storing and broadcasting it")
+  void ingestLog_truncatesVeryLongLines() {
+    when(this.stepRepository.existsById(STEP_ID)).thenReturn(true);
+    when(this.logRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    final var huge = "x".repeat(300_000);
+
+    this.service.ingestLog(STEP_ID, 1, huge, "info");
+
+    final var saved = org.mockito.ArgumentCaptor.forClass(WorkflowLog.class);
+    verify(this.logRepository).save(saved.capture());
+    assertThat(saved.getValue().getContent()).hasSizeLessThan(huge.length());
+    assertThat(saved.getValue().getContent()).endsWith("[line truncated]");
+  }
+
+  @Test
   @DisplayName("handleJobCompleted marks WAITING jobs QUEUED when their needs are met")
   void handleJobCompleted_advancesWaitingJobs() {
     final var completedJob = buildJob(WorkflowJobStatus.IN_PROGRESS);

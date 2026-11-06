@@ -76,6 +76,11 @@ class BranchNonTxServiceCacheTest {
     GitProvider gitProvider() {
       return mock(GitProvider.class);
     }
+
+    @Bean
+    BranchEventPublisher branchEventPublisher() {
+      return mock(BranchEventPublisher.class);
+    }
   }
 
   @Autowired BranchNonTxService service;

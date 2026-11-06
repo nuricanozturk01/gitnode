@@ -23,8 +23,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.branch.api.BranchForm;
-import dev.gitnode.os.events.branch.BranchCreatedEvent;
-import dev.gitnode.os.events.branch.BranchDeletedEvent;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException;
@@ -46,7 +44,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -57,7 +54,7 @@ class BranchNonTxServiceTest {
 
   @Mock private BranchTxService branchTxService;
   @Mock private GitProvider gitProvider;
-  @Mock private ApplicationEventPublisher eventPublisher;
+  @Mock private BranchEventPublisher eventPublisher;
 
   @InjectMocks private BranchNonTxService branchNonTxService;
   @Mock private BranchProtectionService branchProtection;
@@ -107,7 +104,7 @@ class BranchNonTxServiceTest {
 
     assertThat(info.name()).isEqualTo("feature");
     assertThat(info.isDefault()).isFalse();
-    verify(eventPublisher).publishEvent(any(BranchCreatedEvent.class));
+    verify(eventPublisher).created(any(UUID.class), any(String.class));
   }
 
   @Test
@@ -135,7 +132,7 @@ class BranchNonTxServiceTest {
 
     branchNonTxService.delete("owner", "demo", "feature");
 
-    verify(eventPublisher).publishEvent(any(BranchDeletedEvent.class));
+    verify(eventPublisher).deleted(any(UUID.class), any(String.class));
     assertThat(git.getRepository().findRef("refs/heads/feature")).isNull();
   }
 

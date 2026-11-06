@@ -15,8 +15,6 @@
  */
 package dev.gitnode.os.tag.services;
 
-import dev.gitnode.os.events.tag.TagCreatedEvent;
-import dev.gitnode.os.events.tag.TagDeletedEvent;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.cache.CacheNames;
@@ -25,12 +23,12 @@ import dev.gitnode.os.shared.errorhandling.exceptions.ItemAlreadyExistsException
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
+import dev.gitnode.os.tag.dtos.ReleaseInfo;
 import dev.gitnode.os.tag.dtos.TagInfo;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jgit.lib.Constants;
@@ -46,7 +44,6 @@ import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -62,7 +59,7 @@ public class TagNonTxService {
   private final GitProvider gitProvider;
   private final ReleaseTxService releaseTxService;
   private final RepoLookupPort repos;
-  private final ApplicationEventPublisher eventPublisher;
+  private final TagEventPublisher eventPublisher;
 
   @Cacheable(cacheNames = CacheNames.TAGS, key = "#owner + ':' + #repoName")
   public List<TagInfo> getAll(final String owner, final String repoName) throws IOException {
@@ -78,8 +75,10 @@ public class TagNonTxService {
         return List.of();
       }
 
+      final var releases = this.releaseTxService.mapByTagName(repo.id());
+
       return refs.stream()
-          .map(ref -> this.buildTagInfo(gitRepo, walk, ref, repo.id()))
+          .map(ref -> this.buildTagInfo(gitRepo, walk, ref, releases::get))
           .sorted((a, b) -> b.taggerDate().compareTo(a.taggerDate()))
           .toList();
     }
@@ -94,7 +93,11 @@ public class TagNonTxService {
         final var walk = new RevWalk(gitRepo)) {
 
       final var ref = this.getTagRef(gitRepo, tagName);
-      return this.buildTagInfo(gitRepo, walk, ref, repo.id());
+      return this.buildTagInfo(
+          gitRepo,
+          walk,
+          ref,
+          name -> this.releaseTxService.findByRepoIdAndTagName(repo.id(), name).orElse(null));
     }
   }
 
@@ -120,9 +123,7 @@ public class TagNonTxService {
 
     this.repos
         .find(owner, repoName)
-        .ifPresent(
-            repo ->
-                this.eventPublisher.publishEvent(new TagCreatedEvent(repo.id(), form.getName())));
+        .ifPresent(repo -> this.eventPublisher.created(repo.id(), form.getName()));
 
     return this.get(owner, repoName, form.getName());
   }
@@ -147,8 +148,7 @@ public class TagNonTxService {
     this.releaseTxService.deleteByTagName(owner, repoName, tagName);
     this.repos
         .find(owner, repoName)
-        .ifPresent(
-            repo -> this.eventPublisher.publishEvent(new TagDeletedEvent(repo.id(), tagName)));
+        .ifPresent(repo -> this.eventPublisher.deleted(repo.id(), tagName));
   }
 
   private void createAnnotatedTag(
@@ -212,7 +212,10 @@ public class TagNonTxService {
   }
 
   private TagInfo buildTagInfo(
-      final Repository gitRepo, final RevWalk walk, final Ref ref, final UUID repoId) {
+      final Repository gitRepo,
+      final RevWalk walk,
+      final Ref ref,
+      final java.util.function.Function<String, @Nullable ReleaseInfo> releaseLookup) {
 
     try {
       final var peeledRef = gitRepo.getRefDatabase().peel(ref);
@@ -227,8 +230,7 @@ public class TagNonTxService {
       final var taggerIdent =
           isAnnotated ? this.extractTaggerIdent(walk, ref) : commit.getAuthorIdent();
 
-      final var release =
-          this.releaseTxService.findByRepoIdAndTagName(repoId, tagName).orElse(null);
+      final var release = releaseLookup.apply(tagName);
 
       return TagInfo.builder()
           .name(tagName)

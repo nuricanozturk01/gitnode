@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.OnDelete;
@@ -64,11 +65,13 @@ public class Issue {
   @JoinColumn(name = "milestone_id")
   private IssueMilestone milestone;
 
+  @BatchSize(size = 50)
   @ElementCollection
   @CollectionTable(name = "issue_assignees", joinColumns = @JoinColumn(name = "issue_id"))
   @Column(name = "tenant_id", nullable = false)
   private Set<UUID> assigneeIds = new HashSet<>();
 
+  @BatchSize(size = 50)
   @ManyToMany
   @JoinTable(
       name = "issue_label_assignments",

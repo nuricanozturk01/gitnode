@@ -19,6 +19,7 @@ import dev.gitnode.os.events.repo.RepoRenameRollbackRequstedEvent;
 import dev.gitnode.os.events.repo.RepoRenamedEvent;
 import dev.gitnode.os.repo.services.RepoService;
 import dev.gitnode.os.repo.services.RepoStorageService;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
@@ -33,14 +34,14 @@ public class RepoRenamedEventListener {
   private final RepoStorageService repoStorageService;
   private final RepoService repoService;
 
-  @Async
+  @Async(AsyncConfig.REPO_EVENT_EXECUTOR)
   @EventListener
   public void onRepoNameChanged(final RepoRenamedEvent event) {
 
     this.repoStorageService.renameRepo(event.repoOwner(), event.oldRepoName(), event.newRepoName());
   }
 
-  @Async
+  @Async(AsyncConfig.REPO_EVENT_EXECUTOR)
   @EventListener
   public void onRepoRenameIOExceptionOccurred(final RepoRenameRollbackRequstedEvent event) {
 

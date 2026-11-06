@@ -37,8 +37,10 @@ import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -161,9 +163,22 @@ public class IssueService implements IssueQueryService {
                     repo.id(), validStatus, pageable)
                 : this.issueRepository.findAllByLabel(repo.id(), validStatus, labelId, pageable);
 
+    final var commentCounts = this.commentCountsOf(issuePage.getContent());
+
     return PageResponse.from(
         this.issueMapper.toInfoPage(
-            issuePage, issue -> this.commentRepository.countByIssueId(issue.getId())));
+            issuePage, issue -> commentCounts.getOrDefault(issue.getId(), 0L).intValue()));
+  }
+
+  /** Comment counts of the given issues in one query. */
+  private Map<UUID, Long> commentCountsOf(final List<Issue> issues) {
+    final Map<UUID, Long> counts = new HashMap<>();
+    if (!issues.isEmpty()) {
+      this.commentRepository
+          .countByIssueIds(issues.stream().map(Issue::getId).toList())
+          .forEach(row -> counts.put((UUID) row[0], (Long) row[1]));
+    }
+    return counts;
   }
 
   public IssueDetail get(final String owner, final String repoName, final int number) {

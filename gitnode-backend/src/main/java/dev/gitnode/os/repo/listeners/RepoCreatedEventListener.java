@@ -20,6 +20,7 @@ import dev.gitnode.os.events.repo.RepoDeletedEvent;
 import dev.gitnode.os.events.repo.RepoInitRollbackRequestedEvent;
 import dev.gitnode.os.repo.services.RepoService;
 import dev.gitnode.os.repo.services.RepoStorageService;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.context.event.EventListener;
@@ -47,7 +48,7 @@ public class RepoCreatedEventListener {
     this.repoStorageService.deleteRepo(event.repoOwner(), event.repoName());
   }
 
-  @Async
+  @Async(AsyncConfig.REPO_EVENT_EXECUTOR)
   @EventListener
   public void onIOExceptionOccurredOnRepoCreating(final RepoInitRollbackRequestedEvent event) {
 

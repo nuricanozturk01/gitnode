@@ -145,6 +145,11 @@ spring:
       hibernate:
         globally_quoted_identifiers: true
         default_schema: ${app.schema}
+        # Write many rows per round trip and load lazy collections/proxies of a page together.
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        default_batch_fetch_size: 50
 
   servlet:
     multipart:

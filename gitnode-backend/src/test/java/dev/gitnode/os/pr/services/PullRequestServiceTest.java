@@ -324,7 +324,8 @@ class PullRequestServiceTest {
             any(),
             any()))
         .thenReturn(page);
-    when(commentRepository.countByPrId(pr.getId())).thenReturn(2L);
+    when(commentRepository.countByPrIds(any()))
+        .thenReturn(java.util.List.<Object[]>of(new Object[] {pr.getId(), 2L}));
     when(prFinder.findTenants(any()))
         .thenReturn(java.util.Map.of(pr.getAuthorId(), bob(pr.getAuthorId())));
     when(prMapper.toAuthorInfo(bob(pr.getAuthorId()))).thenReturn(authorInfo());

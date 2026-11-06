@@ -17,6 +17,7 @@ package dev.gitnode.os.shared.audit.services;
 
 import dev.gitnode.os.shared.audit.entities.AuditLog;
 import dev.gitnode.os.shared.audit.repositories.AuditLogRepository;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -34,7 +35,7 @@ public class AuditLogService {
 
   private final AuditLogRepository auditLogRepository;
 
-  @Async
+  @Async(AsyncConfig.AUDIT_EXECUTOR)
   @Transactional(propagation = Propagation.REQUIRES_NEW)
   public void log(
       final @Nullable String actorUsername,

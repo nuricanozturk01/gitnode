@@ -16,6 +16,7 @@
 package dev.gitnode.os.webhook.services;
 
 import dev.gitnode.os.shared.circuitbreaker.DistributedCircuitBreakerGuard;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import dev.gitnode.os.webhook.entities.WebhookDeadLetter;
 import dev.gitnode.os.webhook.entities.WebhookEventType;
 import dev.gitnode.os.webhook.repositories.WebhookDeadLetterRepository;
@@ -91,7 +92,7 @@ public class WebhookDeliveryService {
             .register(meterRegistry);
   }
 
-  @Async
+  @Async(AsyncConfig.WEBHOOK_EXECUTOR)
   public void deliver(
       final UUID id,
       final String url,

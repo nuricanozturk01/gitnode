@@ -24,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -40,6 +41,11 @@ public interface PrCommentRepository extends JpaRepository<PullRequestComment, U
   Page<PullRequestComment> findAllByPrIdOrderByCreatedAtAsc(UUID prId, Pageable pageable);
 
   long countByPrId(UUID prId);
+
+  /** Comment counts of many pull requests in one query (rows of {prId, count}). */
+  @Query(
+      "SELECT c.pr.id, count(c) FROM PullRequestComment c WHERE c.pr.id IN :prIds GROUP BY c.pr.id")
+  List<Object[]> countByPrIds(@Param("prIds") java.util.Collection<UUID> prIds);
 
   @Query(
       "SELECT count(c) FROM PullRequestComment c WHERE c.pr.id = :prId"

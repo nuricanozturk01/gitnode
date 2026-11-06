@@ -17,10 +17,12 @@ package dev.gitnode.os;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.domain.Dependency;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaMethod;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -222,6 +224,29 @@ public class ModuleBoundaryRulesTest {
                     if (toLayer == null || toLayer >= fromLayer) {
                       events.add(SimpleConditionEvent.violated(dep, dep.getDescription()));
                     }
+                  }
+                }
+              });
+
+  /** R14: every {@code @Async} names its executor, so work never lands in a shared default pool. */
+  @ArchTest
+  static final ArchRule asyncNamesItsExecutor =
+      methods()
+          .that()
+          .areAnnotatedWith(org.springframework.scheduling.annotation.Async.class)
+          .should(
+              new ArchCondition<JavaMethod>("name an executor in @Async") {
+                @Override
+                public void check(final JavaMethod method, final ConditionEvents events) {
+                  final String executor =
+                      method
+                          .getAnnotationOfType(
+                              org.springframework.scheduling.annotation.Async.class)
+                          .value();
+                  if (executor.isBlank()) {
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            method, method.getFullName() + " uses @Async without an executor"));
                   }
                 }
               });

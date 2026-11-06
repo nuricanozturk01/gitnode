@@ -20,6 +20,7 @@ import dev.gitnode.os.migration.dtos.MigrationForm;
 import dev.gitnode.os.migration.dtos.MigrationStatus;
 import dev.gitnode.os.migration.entities.MigrationJob;
 import dev.gitnode.os.migration.repositories.MigrationJobRepository;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,7 +38,7 @@ public class GitMigrationService {
   private final CloudMigrationService cloudMigrationService;
   private final TenantQueryPort tenants;
 
-  @Async
+  @Async(AsyncConfig.MIGRATION_EXECUTOR)
   public void migrate(final MigrationForm form, final UUID tenantId, final UUID jobId) {
 
     final var tenant =

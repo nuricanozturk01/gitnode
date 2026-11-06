@@ -225,6 +225,9 @@ docker exec <ctr> jcmd 1 GC.heap_info
 docker exec <ctr> jcmd 1 JFR.start duration=60s filename=/var/log/gitnode/rec.jfr
 ```
 
+nvim -u NONE -N /etc/hostname
+Uploads (artifacts, caches, release assets) are streamed to disk and never held in memory. Multipart parts are first written to the JVM temp directory; point `SPRING_SERVLET_MULTIPART_LOCATION` at a volume with enough space when uploads are large. One runner log line is cut at `gitnode.limits.log-line-chars` (default 262144).
+
 The JGit pack window cache is capped via `gitnode.git.window-cache.packed-git-limit-mb` (default 128) and `gitnode.git.window-cache.delta-base-cache-limit-mb` (default 16).
 
 ## Adding a module

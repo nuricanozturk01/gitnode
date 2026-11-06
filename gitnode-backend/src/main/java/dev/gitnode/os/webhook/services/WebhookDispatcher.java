@@ -37,6 +37,7 @@ import dev.gitnode.os.events.task.TaskDeletedEvent;
 import dev.gitnode.os.events.task.TaskUpdatedEvent;
 import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import dev.gitnode.os.webhook.entities.WebhookEventType;
 import dev.gitnode.os.webhook.repositories.ProjectWebhookRepository;
 import dev.gitnode.os.webhook.repositories.UserWebhookRepository;
@@ -125,14 +126,14 @@ public class WebhookDispatcher {
   // ── Branch events (non-transactional — use @EventListener) ────────────
 
   @EventListener
-  @Async
+  @Async(AsyncConfig.WEBHOOK_EXECUTOR)
   void onBranchCreated(final BranchCreatedEvent event) {
     this.dispatch(
         event.repoId(), WebhookEventType.BRANCH_CREATED, Map.of("branchName", event.branchName()));
   }
 
   @EventListener
-  @Async
+  @Async(AsyncConfig.WEBHOOK_EXECUTOR)
   void onBranchDeleted(final BranchDeletedEvent event) {
     this.dispatch(
         event.repoId(), WebhookEventType.BRANCH_DELETED, Map.of("branchName", event.branchName()));

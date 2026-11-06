@@ -65,6 +65,7 @@ public class PullRequest {
   @Column(name = "merged_by_id")
   private UUID mergedById;
 
+  @org.hibernate.annotations.BatchSize(size = 50)
   @jakarta.persistence.ElementCollection
   @jakarta.persistence.CollectionTable(
       name = "pr_reviewers",
@@ -72,6 +73,7 @@ public class PullRequest {
   @Column(name = "tenant_id", nullable = false)
   private Set<UUID> reviewerIds = new HashSet<>();
 
+  @org.hibernate.annotations.BatchSize(size = 50)
   @jakarta.persistence.ElementCollection
   @jakarta.persistence.CollectionTable(
       name = "pr_assignees",
@@ -79,6 +81,7 @@ public class PullRequest {
   @Column(name = "tenant_id", nullable = false)
   private Set<UUID> assigneeIds = new HashSet<>();
 
+  @org.hibernate.annotations.BatchSize(size = 50)
   @jakarta.persistence.ElementCollection
   @jakarta.persistence.CollectionTable(
       name = "pr_label_assignments",

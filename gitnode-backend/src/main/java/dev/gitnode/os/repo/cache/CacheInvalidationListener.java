@@ -19,6 +19,7 @@ import dev.gitnode.os.events.branch.BranchDeletedEvent;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
 import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.repo.services.RepoOwnerResolver;
+import dev.gitnode.os.shared.configs.AsyncConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -58,7 +59,7 @@ public class CacheInvalidationListener {
   }
 
   @EventListener
-  @Async
+  @Async(AsyncConfig.REPO_EVENT_EXECUTOR)
   void onBranchDeleted(final BranchDeletedEvent event) {
     this.repoRepository
         .findById(event.repoId())

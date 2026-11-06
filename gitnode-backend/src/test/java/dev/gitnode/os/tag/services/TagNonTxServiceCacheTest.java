@@ -78,8 +78,8 @@ class TagNonTxServiceCacheTest {
     }
 
     @Bean
-    org.springframework.context.ApplicationEventPublisher eventPublisher() {
-      return mock(org.springframework.context.ApplicationEventPublisher.class);
+    TagEventPublisher eventPublisher() {
+      return mock(TagEventPublisher.class);
     }
   }
 

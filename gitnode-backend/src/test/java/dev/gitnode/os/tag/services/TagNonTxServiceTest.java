@@ -57,7 +57,7 @@ class TagNonTxServiceTest {
   @Mock private GitProvider gitProvider;
   @Mock private ReleaseTxService releaseTxService;
   @Mock private dev.gitnode.os.repo.api.RepoLookupPort repos;
-  @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
+  @Mock private TagEventPublisher eventPublisher;
 
   @InjectMocks private TagNonTxService tagNonTxService;
 

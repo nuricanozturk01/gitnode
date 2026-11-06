@@ -20,6 +20,7 @@
       "events :: tag",
       "identity :: api",
       "repo :: api",
+      "shared :: configs",
       "shared :: errorhandling-exceptions",
       "shared :: ratelimit"
     })

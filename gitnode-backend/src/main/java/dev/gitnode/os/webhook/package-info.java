@@ -28,6 +28,7 @@
       "repo :: api",
       "shared :: audit-annotations",
       "shared :: circuitbreaker",
+      "shared :: configs",
       "shared :: errorhandling-exceptions",
       "shared :: lock",
       "shared :: ratelimit",

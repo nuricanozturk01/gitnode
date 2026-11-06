@@ -61,6 +61,9 @@ USER forge
 # Redis and generated secrets) lives under /data. Mount a volume here.
 VOLUME /data
 
+# The image bundles the Angular SPA; the "os" profile serves it (SpaWebMvcConfig). Override to change.
+ENV SPRING_PROFILES_ACTIVE=os
+
 EXPOSE 8080 2222
 
 # Zero-config:  docker run -p 8080:8080 -p 2222:2222 -v gitnode-data:/data <image>

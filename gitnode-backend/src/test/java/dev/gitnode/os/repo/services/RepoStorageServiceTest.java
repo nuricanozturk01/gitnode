@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import dev.gitnode.os.events.repo.RepoInitRollbackRequestedEvent;
@@ -63,6 +64,18 @@ class RepoStorageServiceTest {
     Path repoPath = repoRoot.resolve("alice").resolve("demo.git");
     assertThat(Files.exists(repoPath)).isTrue();
     verify(gitProvider).createJGitRepo(repoPath);
+  }
+
+  @Test
+  @DisplayName("initRepo is idempotent when the repository already exists")
+  void initRepo_skips_whenAlreadyInitialized() throws IOException {
+    Path repoPath = repoRoot.resolve("alice").resolve("demo.git");
+    Files.createDirectories(repoPath);
+    Files.writeString(repoPath.resolve("HEAD"), "ref: refs/heads/main\n");
+
+    repoStorageService.initRepo("alice", "demo");
+
+    verify(gitProvider, never()).createJGitRepo(any(Path.class));
   }
 
   @Test

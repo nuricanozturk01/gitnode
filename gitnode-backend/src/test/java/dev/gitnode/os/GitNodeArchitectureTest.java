@@ -21,7 +21,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import com.tngtech.archunit.library.freeze.FreezingArchRule;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.springframework.modulith.core.ApplicationModules;
@@ -82,16 +81,15 @@ public class GitNodeArchitectureTest {
    */
   @ArchTest
   static final ArchRule persistenceStaysInsideModule =
-      FreezingArchRule.freeze(
-          noClasses()
-              .that()
-              .resideOutsideOfPackages("..repo..", "..identity..")
-              .and()
-              .resideInAnyPackage("dev.gitnode.os.(*)..")
-              .should()
-              .dependOnClassesThat()
-              .resideInAnyPackage(
-                  "dev.gitnode.os.repo.repositories..", "dev.gitnode.os.identity.repositories.."));
+      noClasses()
+          .that()
+          .resideOutsideOfPackages("..repo..", "..identity..")
+          .and()
+          .resideInAnyPackage("dev.gitnode.os.(*)..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage(
+              "dev.gitnode.os.repo.repositories..", "dev.gitnode.os.identity.repositories..");
 
   /** R3: event contracts are plain records and know nothing about the modules. */
   @ArchTest

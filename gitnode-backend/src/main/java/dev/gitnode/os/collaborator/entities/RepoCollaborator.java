@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.jspecify.annotations.Nullable;
@@ -58,6 +59,7 @@ public class RepoCollaborator {
   @Column(name = "invited_by_id", nullable = false)
   private UUID invitedById;
 
+  @BatchSize(size = 50)
   @ElementCollection(targetClass = CollaboratorPermission.class, fetch = FetchType.EAGER)
   @CollectionTable(
       name = "repo_collaborator_permissions",

@@ -292,21 +292,22 @@ Karar bekliyor (D9). Öneri:
 - Cache düzeltmeleri: `WikiService.save` self-invocation (`load` özel metoduna ayrıldı), `PrFinder.countOpen` (package-private, hiç çağrılmıyordu, cache çalışmıyordu) ve boşuna evict eden `REPO_PR_OPEN_COUNT` kaldırıldı. Başka self-invocation/`@Async` tuzağı yok (taramayla doğrulandı).
 - Gerçek çalıştırmada bulunup düzeltilenler (birim testler yakalamıyordu): `OrganizationRepository` metodunun toplu yeniden adlandırmayla bozulması (uygulama açılmıyordu), `SchedulerLockAspect` argüman bağlama hatası.
 - e2e sonucu: API 165/165, senaryo 132 + merge-lock 3, UI 64, admin UI 5 (LDAP/SAML kasıtlı kapalı). Bellek: backend `-Xmx512m` ile tüm paketi geçti. Bir koşuda tek bir senaryo testi flaky göründü (6+4 tekrarda ve 4 tam koşuda tekrarlanmadı).
+- Ek düzeltme: `RepoStorageService.initRepo` idempotent yapıldı (asenkron `RepoCreatedEventListener` her e2e koşusunda `Repository already exists` hatası basıyordu; artık log'da 0 ERROR).
 - Bilinçli/bilgi notları: sahibi silinen kayıtta başkasının verisine bağlı kolonlar `SET NULL` (örn. issue assignee, PR merged_by) — başkasının verisini silmemek için. `notification.entity_id` çok biçimli (tablo yok), silinmiş varlığa işaret eden bildirimler kalabilir.
 
-### A4: `collaborator` modülünü bitir `[ ]`  (~2 g)
+### A4: `collaborator` modülünü bitir `[x]` (zaten izoleydi: dışarıdan kimse iç sınıflarını import etmiyor, port uygulaması modülde, JPA ilişkisi yok; yapılan: `permissions` EAGER koleksiyonuna `@BatchSize(50)`; port uygulamasını `adapters`'a taşımak kozmetik olduğu için yapılmadı)  (~2 g)
 - Refactor yapılmamış tek domain modülü (13 dosya; `repo.api`, `repo.dtos`, `identity.api`, `team.api` zaten izinli).
 - `CollaboratorAccessPort` (`repo.api` içinde tanımlı) uygulaması burada; repo→collaborator yönlü bağ olay/port ile ters çevrilmiş mi doğrula.
 - Aynı A2 kuralları: entity/repository sızıntısı yok; `events :: collaborator` sözleşmesi.
 
-### A5: Çift yönlü bağ / döngü avı `[ ]`  (~2 g)
+### A5: Çift yönlü bağ / döngü avı `[x]` (döngü yok; R13: 8 katmanlı tablo `ModuleBoundaryRulesTest.LAYERS`, modül yalnız alt katmana bağımlı; mutasyonla doğrulandı. Tüm ArchUnit kuralları artık sıkı, `FreezingArchRule` ve `archunit_store` kaldırıldı)  (~2 g)
 - Tarama betiği (zsh'de `[ a \< b ]` hata veriyor; **bash** ile yaz) ile modül çiftleri arası iki yönlü import listesi çıkar; `pr↔repo`, `actions↔repo`, `pr↔commit/branch` şüpheli.
 - Her çift için yön seç: alt seviye modül (repo/identity/commit/branch) üst seviyeyi (pr/actions/issue) **bilmez**; üst→alt port, alt→üst olay.
 - Katman sıralaması belgele ve ArchUnit `layeredArchitecture` ile zorla:
   `shared` (çekirdek) < `identity` < `repo` < `commit, branch, tree` < `pr, issue, tag, task, wiki, snippet, discussion, filecomment, team, collaborator` < `actions, webhook, notification, ai, migration` < `auth, profile, admin` (kenar).
 - **Kabul:** R8 (döngü yok) yeşil, dondurulmuş ihlal yok.
 
-### A6: Kural seti, ADR ve doküman `[ ]`  (~1.5 g)
+### A6: Kural seti, ADR ve doküman `[~]` (yapıldı: `docs/adr/0001-modular-monolith-rules.md` + CONTRIBUTING "Adding a module"; ARCHITECTURE.md üretimi karar gereği iptal; kalan: `@ApplicationModuleTest` izolasyon testleri — Spring bağlamı + DB gerektirir, ayrı iş)  (~1.5 g)
 - `docs/adr/` altında kısa ADR'ler: (1) modül sınırı = `api`+`events`+named interface, (2) olay mı port mu karar ağacı (senkron cevap gerekiyorsa port; "oldu" bildirimi ise olay), (3) `shared` kapalı çekirdek, (4) JPA ilişki yerine UUID id, (5) uydu modül politikası.
 - `ARCHITECTURE.md` üretimini (Documenter/PlantUML) `make architecture` hedefine bağla; CI'da güncel mi diye diff kontrolü (`mr-check.yml`).
 - Yeni modül şablonu: `CONTRIBUTING.md` içinde "yeni modül nasıl eklenir" (package-info + `api` + izin listesi + test).

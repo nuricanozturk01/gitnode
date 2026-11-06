@@ -226,3 +226,12 @@ docker exec <ctr> jcmd 1 JFR.start duration=60s filename=/var/log/gitnode/rec.jf
 ```
 
 The JGit pack window cache is capped via `gitnode.git.window-cache.packed-git-limit-mb` (default 128) and `gitnode.git.window-cache.delta-base-cache-limit-mb` (default 16).
+
+## Adding a module
+
+1. Create `dev.gitnode.os.<module>` with `package-info.java` (`@ApplicationModule(allowedDependencies = {...})`, every entry an explicit `module :: namedInterface`).
+2. Expose what others need only through `<module>.api` (annotate the package `@NamedInterface("api")`) and events through `dev.gitnode.os.events.<module>`.
+3. Keep entities, repositories and services package-internal in spirit: reference other modules by UUID and call their ports.
+4. Add the module to the layer table in `ModuleBoundaryRulesTest` (it may only depend on lower layers).
+5. Any column that references `tenant` or `repositories` gets a foreign key with `ON DELETE CASCADE` (or `SET NULL`) and an index in a Flyway migration.
+6. Run `./mvnw verify`; the architecture tests explain any violation. See `docs/adr/0001-modular-monolith-rules.md`.

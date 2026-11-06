@@ -50,6 +50,11 @@ public class RepoStorageService {
 
     final var repoPath = Path.of(this.repoRoot, repoOwner, repoName + ".git");
 
+    if (Files.exists(repoPath.resolve("HEAD"))) {
+      log.debug("Repo already initialized for {}/{}, skipping", repoOwner, repoName);
+      return;
+    }
+
     try {
       log.info("Repo Creating for {}, repo name: {}", repoOwner, repoName);
 

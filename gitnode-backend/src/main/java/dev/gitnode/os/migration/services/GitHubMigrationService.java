@@ -43,6 +43,7 @@ public class GitHubMigrationService implements CloudMigrationService {
   private final ApplicationEventPublisher eventPublisher;
 
   @Override
+  @SuppressWarnings("checkstyle:IllegalCatch") // async boundary: job is marked FAILED
   public void process(final MigrationJob job, final String accessToken, final TenantRef tenant) {
 
     this.updateStatus(job, MigrationStatus.IN_PROGRESS, null);

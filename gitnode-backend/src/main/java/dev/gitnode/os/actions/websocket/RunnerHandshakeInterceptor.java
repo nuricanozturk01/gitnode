@@ -40,6 +40,7 @@ public class RunnerHandshakeInterceptor implements HandshakeInterceptor {
   private final RunnerTokenService runnerTokenService;
 
   @Override
+  @SuppressWarnings("checkstyle:IllegalCatch") // any failure rejects the handshake
   public boolean beforeHandshake(
       final ServerHttpRequest request,
       final ServerHttpResponse response,

@@ -25,6 +25,7 @@ import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -90,8 +91,8 @@ public class LogStreamController {
     for (final var line : this.runQueries.logLines(stepId)) {
       try {
         emitter.send(SseEmitter.event().data(line));
-      } catch (final Exception ignored) {
-        break;
+      } catch (final IOException | IllegalStateException _) {
+        break; // client disconnected or the emitter is already complete
       }
     }
 

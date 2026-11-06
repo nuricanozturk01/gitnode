@@ -28,6 +28,7 @@ public class RunnerTokenGitAdapter implements RunnerTokenPort {
   private final RunnerTokenService runnerTokenService;
 
   @Override
+  @SuppressWarnings("checkstyle:IllegalCatch") // any validation failure means invalid token
   public boolean isValid(final String token) {
     try {
       this.runnerTokenService.validate(token);

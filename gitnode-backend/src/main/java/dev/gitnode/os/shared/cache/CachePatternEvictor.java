@@ -30,6 +30,7 @@ public class CachePatternEvictor {
 
   private final StringRedisTemplate redisTemplate;
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // cache eviction is best effort
   public void evict(final String region, final String keyPattern) {
     try {
       final var redisPattern = region + "::" + keyPattern;

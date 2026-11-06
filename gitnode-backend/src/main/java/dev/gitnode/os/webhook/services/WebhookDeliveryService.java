@@ -28,6 +28,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
@@ -44,6 +45,7 @@ import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
@@ -126,12 +128,13 @@ public class WebhookDeliveryService {
       }
       payload.put("data", data);
       return this.objectMapper.writeValueAsString(payload);
-    } catch (final Exception ex) {
+    } catch (final JacksonException ex) {
       log.error("{} payload serialization failed id={}: {}", logLabel, id, ex.getMessage());
       return null;
     }
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // delivery retries and dead-letters on any failure
   private void attemptDeliveryWithRetry(
       final UUID id,
       final String url,
@@ -231,6 +234,7 @@ public class WebhookDeliveryService {
     spec.retrieve().toBodilessEntity();
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // delivery retries and dead-letters on any failure
   private void saveDeadLetter(
       final UUID webhookId,
       final String url,
@@ -257,7 +261,7 @@ public class WebhookDeliveryService {
       mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
       final var bytes = mac.doFinal(body.getBytes(StandardCharsets.UTF_8));
       return "sha256=" + HexFormat.of().formatHex(bytes);
-    } catch (final Exception ex) {
+    } catch (final GeneralSecurityException ex) {
       throw new RuntimeException("HMAC-SHA256 computation failed", ex);
     }
   }

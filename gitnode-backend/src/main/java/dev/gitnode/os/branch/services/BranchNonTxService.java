@@ -327,6 +327,7 @@ public class BranchNonTxService implements BranchProtocolService {
   /** Commits counted per side stop at this many, shown as "500+" by the UI. */
   static final int MAX_DIVERGENCE = 500;
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // divergence is optional decoration
   private BranchInfo withDivergence(
       final Repository gitRepo, final BranchInfo info, final @Nullable Ref defaultRef) {
     if (info.isDefault() || defaultRef == null || defaultRef.getObjectId() == null) {

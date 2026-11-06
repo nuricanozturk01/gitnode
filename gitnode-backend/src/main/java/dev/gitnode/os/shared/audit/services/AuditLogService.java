@@ -37,6 +37,7 @@ public class AuditLogService {
 
   @Async(AsyncConfig.AUDIT_EXECUTOR)
   @Transactional(propagation = Propagation.REQUIRES_NEW)
+  @SuppressWarnings("checkstyle:IllegalCatch") // auditing must never break the caller
   public void log(
       final @Nullable String actorUsername,
       final String action,

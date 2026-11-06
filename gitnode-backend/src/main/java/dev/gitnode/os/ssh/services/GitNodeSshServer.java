@@ -116,6 +116,7 @@ public class GitNodeSshServer {
     }
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // any failure means authentication failed
   private PublickeyAuthenticator buildPublicKeyAuthenticator() {
     return (username, key, session) -> {
       try {

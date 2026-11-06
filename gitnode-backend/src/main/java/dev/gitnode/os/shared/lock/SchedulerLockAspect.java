@@ -51,6 +51,7 @@ public class SchedulerLockAspect {
     return this.run(pjp, lock);
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // lock backend outage is handled by failOpen
   Object run(final ProceedingJoinPoint pjp, final SchedulerLock lock) throws Throwable {
     final String key = KEY_PREFIX + lock.name();
     final String owner = this.lockService.generateOwner();

@@ -30,6 +30,7 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrations;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 @Slf4j
 @Service
@@ -64,12 +65,14 @@ public class SamlMetadataService {
     } catch (final CallNotPermittedException ex) {
       log.warn("SAML metadata circuit OPEN for {}", metadataUri);
       throw new BadRequestException("idpMetadataFetchFailed");
-    } catch (final RuntimeException ex) {
+    } catch (final RestClientException | NullPointerException ex) {
       log.warn("Failed to fetch SAML metadata from {}: {}", metadataUri, ex.getMessage());
       throw new BadRequestException("idpMetadataFetchFailed");
     }
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // XML/metadata libraries throw arbitrary runtime errors; rewrapped
   public void validateMetadataXml(final String metadataXml) {
 
     if (metadataXml.isBlank()) {

@@ -1000,6 +1000,7 @@ public class WorkflowTriggerService {
    * silently dropping the job. Returns the jobs that now stand in for the placeholder.
    */
   @Transactional
+  @SuppressWarnings("checkstyle:IllegalCatch") // matrix evaluation errors fail the placeholder job
   public List<WorkflowJob> expandDynamicMatrix(
       final WorkflowRun run,
       final WorkflowJob placeholder,

@@ -5,6 +5,8 @@ Not: "10/10" bir AI puanıdır, garanti edilemez; bu yüzden her eksen için **k
 Bu doküman yarın kaldığımız yerden devam etmek için yazıldı. Her görev: ID, dosyalar, adımlar, kabul kriteri.
 Durum kutuları: `[ ]` yapılmadı, `[~]` kısmen, `[x]` bitti.
 
+**Devam noktası (2026-11-06):** deploy edilebilir durumda (`./mvnw verify` 1215 test yeşil, e2e api 168/168, commit atılmadı). Biten: P2, P3, M1, M2, Q1. Sıradaki: Q2 → P4 → M4 (bilerek ertelendi) → S6/S5/S4 → Q5/Q3 → A6 kalanı. Yerel yığın: bellekteki `gitnode-demo-environment` (Postgres 15433, Redis 16379, jar :8080).
+
 Kural (memory): istenmeyen özellik ekleme; boşluk bulursan not al, sor; gerçek çalıştırmayla doğrula (`make dev-backend`, `e2e/`).
 
 ---
@@ -135,7 +137,7 @@ Tasarım (mevcut `RedisMessageListenerContainer` kalıbını yeniden kullan):
 
 ## 4. FAZ C: Kod kalitesi
 
-### Q1: Hata modeli ve `catch` temizliği `[ ]` (2026-11-06: başlandı, YARIM, kod geri alındı. Tasarım kararı: `ErrorHandler` tek `problem()` yardımcısıyla `application/problem+json` döner; aynı mesaj kodu `detail` VE eski istemciler için `message` alanında gider (frontend/admin okuyucuları zaten `object.message` okuyor), artı `traceId`; `RequestIdFilter` (`X-Request-Id`, MDC `requestId`). Frontend'de string varsayan yerler güncellenmeli: `pr-detail.page.ts:1019`, `pr-merge-requirements.component.ts:94`, `task-detail.page.ts:451`; admin: `login.page.ts:68`. Önce e2e'de mevcut gövde kilitlenmeli. Kalan: yutulan ~12 catch, geniş catch daraltma, checkstyle `IllegalCatch`)  (~3-4 g)
+### Q1: Hata modeli ve `catch` temizliği `[x]` (2026-11-06 BİTTİ. `ErrorHandler` tek `problem()` ile `application/problem+json` (kod `detail` + eski istemciler için `message`, + `traceId`); `RequestIdFilter` (`X-Request-Id`, MDC `requestId`); frontend `pr-detail`/`pr-merge-requirements` `parseBackendErrorCode`; e2e `api/shared/error-contract.spec.ts`; `ErrorHandlerTest` parametrik. Yutulan catch = 0. `config/checkstyle.xml` `IllegalCatch` AÇIK ve 0 ihlal: dar tipe inenler (crypto → `GeneralSecurityException|IllegalArgumentException`, Redis → `DataAccessException`, JSON, tarih parse, RestClient) + 53 gerekçeli `@SuppressWarnings("checkstyle:IllegalCatch") // neden` (scheduler döngüsü, WS/hook/async sınırı, best-effort import, AI sağlayıcı, kütüphane sarmalama). Plandaki "≤ 20" hedefi tutmadı (53): sınırlar tek tek gerekçeli, ileride daraltılabilir. `ExternalServiceException`/`ConflictException` EKLENMEDİ: kullanım yeri yok (ölü kod olurdu), çakışma için `ItemAlreadyExistsException` var. Doğrulama: `./mvnw verify` 1215 test yeşil, e2e api 168/168, scenario 129 geçti / 0 hata (4 atlanan bilinçli: LDAP/SAML bayrağı vb.))  (~3-4 g)
 1. `shared/errorhandling/exceptions` mevcut tipleri envantere al; eksikler: `ExternalServiceException`, `ConflictException`. `ErrorHandler`'ı **RFC 7807 `ProblemDetail`** + `traceId` döndürecek şekilde güncelle (frontend/e2e sözleşmesi bozulmasın: önce mevcut hata gövdesini e2e'de kilitle, sonra geçiş; geçiş kararı D3).
 2. 61 `catch` sınıflandırma tablosu (kategori → eylem):
    - **Sınır, kalabilir** (scheduler döngüsü, executor/Async, WS handler, SSH sunucu, Slack appender, audit aspect): `log.error(msg, ex)` (stack dahil) + sayaç metriği. Dosyalar: `JobDispatcher:279,297`, `RunnerWebSocketHandler:74,241`, `GitNodeSshServer:130`, `WebhookDlqRetryScheduler:135`, `AiCodeReviewRunner:53`, `CommitContributionBackfill:76`, `AuditAspect:58,83,98`, `AuditLogService:55`, `SlackAppender:73`, `DistributedLockService:53`, `CachePatternEvictor:41`.

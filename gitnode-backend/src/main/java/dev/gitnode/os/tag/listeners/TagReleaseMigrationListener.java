@@ -16,6 +16,7 @@
 package dev.gitnode.os.tag.listeners;
 
 import dev.gitnode.os.events.tag.TagReleaseMigrationRequestedEvent;
+import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.tag.dtos.CreateReleaseForm;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
 import dev.gitnode.os.tag.services.ReleaseTxService;
@@ -75,6 +76,8 @@ public class TagReleaseMigrationListener {
         .forEach(release -> this.createRelease(release, event, tenantUsername, repoName));
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // best effort import: one bad item must not abort the migration
   private void createRelease(
       final Map<String, Object> release,
       final TagReleaseMigrationRequestedEvent event,
@@ -105,7 +108,7 @@ public class TagReleaseMigrationListener {
 
     try {
       this.tagNonTxService.get(tenantUsername, repoName, tagName);
-    } catch (final Exception _) {
+    } catch (final ItemNotFoundException _) {
       final var tagBody = (String) release.getOrDefault("tag_name", tagName);
       final var tagMsg = (String) release.get("body");
       log.debug("Tag {} bulunamadı, oluşturuluyor...", tagBody);

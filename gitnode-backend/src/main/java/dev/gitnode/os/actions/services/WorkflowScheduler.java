@@ -79,6 +79,8 @@ public class WorkflowScheduler {
     return model.on().schedule();
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // scheduler loop: one bad workflow must not stop the rest
   private void fire(
       final WorkflowDefinition definition, final ScheduleModel schedule, final Instant minute) {
 

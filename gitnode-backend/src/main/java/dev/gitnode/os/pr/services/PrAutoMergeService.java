@@ -112,6 +112,7 @@ public class PrAutoMergeService {
    * purpose: a failed merge rolls back only its own transaction, and the follow-up that switches
    * auto-merge off still commits.
    */
+  @SuppressWarnings("checkstyle:IllegalCatch") // merge attempt failures are retried next run
   public void attempt(final UUID prId) {
     final var pr = this.pullRequests.findById(prId).orElse(null);
     if (pr == null || !isWaiting(pr)) {

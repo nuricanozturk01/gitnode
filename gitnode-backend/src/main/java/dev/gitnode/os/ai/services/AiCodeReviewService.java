@@ -231,6 +231,8 @@ public class AiCodeReviewService {
     return this.toDto(savedReview, 0, DEFAULT_PAGE_SIZE);
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // external AI provider; failure is recorded on the review
   public void executeReviewTask(
       final UUID reviewId,
       final String ownerUsername,
@@ -404,6 +406,8 @@ public class AiCodeReviewService {
     }
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // external AI provider; failure is recorded on the review
   private void parseCommentLine(final AiCodeReview review, final String line) {
     try {
       if (!line.startsWith("FILE:")) {

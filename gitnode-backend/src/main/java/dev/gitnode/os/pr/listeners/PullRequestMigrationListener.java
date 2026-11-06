@@ -53,6 +53,8 @@ public class PullRequestMigrationListener {
     prs.forEach(pr -> this.createPr(pr, event));
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // best effort import: one bad item must not abort the migration
   private void createPr(
       final Map<String, Object> pr, final PullRequestMigrationRequestedEvent event) {
 
@@ -80,6 +82,8 @@ public class PullRequestMigrationListener {
     }
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // best effort import: one bad item must not abort the migration
   private void ensureBranchExists(
       final String tenantUsername,
       final String repoName,
@@ -107,6 +111,8 @@ public class PullRequestMigrationListener {
     }
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // best effort import: one bad item must not abort the migration
   private void closePrAndCleanup(
       final String tenantUsername,
       final String repoName,

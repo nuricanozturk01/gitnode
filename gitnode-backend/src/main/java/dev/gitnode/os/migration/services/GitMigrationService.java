@@ -39,6 +39,7 @@ public class GitMigrationService {
   private final TenantQueryPort tenants;
 
   @Async(AsyncConfig.MIGRATION_EXECUTOR)
+  @SuppressWarnings("checkstyle:IllegalCatch") // marks the job FAILED, then rethrows
   public void migrate(final MigrationForm form, final UUID tenantId, final UUID jobId) {
 
     final var tenant =

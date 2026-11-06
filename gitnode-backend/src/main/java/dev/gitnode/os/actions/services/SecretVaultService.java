@@ -21,6 +21,7 @@ import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import jakarta.annotation.PostConstruct;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
@@ -137,7 +138,7 @@ public class SecretVaultService {
       final byte[] ciphertext =
           cipher.doFinal(plaintext.getBytes(java.nio.charset.StandardCharsets.UTF_8));
       return Base64.getEncoder().encodeToString(ciphertext);
-    } catch (final Exception ex) {
+    } catch (final GeneralSecurityException | IllegalArgumentException ex) {
       throw new ErrorOccurredException("Secret encryption failed: " + ex.getMessage());
     }
   }
@@ -149,7 +150,7 @@ public class SecretVaultService {
       final Cipher cipher = Cipher.getInstance(ALGORITHM);
       cipher.init(Cipher.DECRYPT_MODE, this.aesKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
       return new String(cipher.doFinal(ciphertext), java.nio.charset.StandardCharsets.UTF_8);
-    } catch (final Exception ex) {
+    } catch (final GeneralSecurityException | IllegalArgumentException ex) {
       throw new ErrorOccurredException("Secret decryption failed: " + ex.getMessage());
     }
   }

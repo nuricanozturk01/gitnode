@@ -79,7 +79,8 @@ public class NotificationSseRegistry {
             final var oldest = list.remove(0);
             try {
               oldest.complete();
-            } catch (final Exception ignored) {
+            } catch (final IllegalStateException _) {
+              // already closed
             }
           }
           list.add(emitter);
@@ -156,7 +157,7 @@ public class NotificationSseRegistry {
     for (final var emitter : removed) {
       try {
         emitter.complete();
-      } catch (final RuntimeException ignored) {
+      } catch (final IllegalStateException _) {
         // already closed
       }
     }

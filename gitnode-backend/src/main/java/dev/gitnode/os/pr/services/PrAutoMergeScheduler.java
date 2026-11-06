@@ -35,6 +35,8 @@ public class PrAutoMergeScheduler {
 
   @SchedulerLock(name = "pr-auto-merge", ttlSeconds = 120)
   @Scheduled(fixedDelayString = "${gitnode.pr.auto-merge.interval:PT15S}")
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // scheduler loop: one bad pull request must not stop the rest
   public void run() {
     for (final var id : this.pullRequests.findAutoMergeCandidateIds()) {
       try {

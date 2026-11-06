@@ -67,6 +67,7 @@ public class CommitContributionBackfill {
     }
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // backfill loop: failure marks the repo unindexable
   private void backfill(final Pending repo) {
     try (final var git = this.gitProvider.open(repo.owner(), repo.name())) {
       final var head = git.resolve(Constants.R_HEADS + repo.branch() + "^{commit}");

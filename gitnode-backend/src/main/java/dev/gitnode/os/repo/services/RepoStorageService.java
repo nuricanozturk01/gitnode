@@ -122,6 +122,7 @@ public class RepoStorageService {
     }
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // cleans up the partial fork, then rethrows
   public void forkRepo(
       final String sourceOwner,
       final String sourceName,

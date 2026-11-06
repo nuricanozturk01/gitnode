@@ -94,6 +94,8 @@ public class SamlRegistrationBuilder {
             : this.defaultSpEntityId);
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // SSO config errors degrade to "registration unavailable"
   public @Nullable RelyingPartyRegistration buildFromLegacy(
       final String registrationId, final String metadataUri, final String spEntityId) {
 
@@ -130,6 +132,8 @@ public class SamlRegistrationBuilder {
     return builder.build();
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // SSO config errors degrade to "registration unavailable"
   private void applySigningCredentials(final RelyingPartyRegistration.Builder builder) {
 
     if (this.spSigningKeyPath.isBlank() || this.spSigningCertPath.isBlank()) {

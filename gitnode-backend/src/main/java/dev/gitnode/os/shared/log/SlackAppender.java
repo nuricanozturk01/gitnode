@@ -60,6 +60,7 @@ public class SlackAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
   }
 
   @Override
+  @SuppressWarnings("checkstyle:IllegalCatch") // a logging appender must never throw
   protected void append(final @NonNull ILoggingEvent evt) {
     try {
       if (this.webhookUri != null && !this.webhookUri.isEmpty()) {

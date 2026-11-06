@@ -16,6 +16,7 @@
   <module name="SuppressWarningsFilter"/>
 
   <module name="TreeWalker">
+    <module name="IllegalCatch"/>
     <module name="Regexp">
       <property name="format" value="org\.jetbrains\.annotations\.NotNull"/>
       <property name="illegalPattern" value="true"/>

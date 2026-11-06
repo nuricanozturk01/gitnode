@@ -158,6 +158,7 @@ public class GitPushEventPublisher implements PostReceiveHook {
     }
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // hook boundary: must never fail the push
   private String @Nullable [] resolveOwnerAndRepo(final java.io.File gitDir) {
     try {
       final var root = Path.of(this.repoRoot).toAbsolutePath().normalize();

@@ -61,6 +61,7 @@ public class RepoMigrationService implements RepoImportPort {
     this.migrateFromGithub(repoName, owner, tenant, accessToken);
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // cleans up, then rethrows or wraps
   void migrateFromGithub(
       final String repoName, final String owner, final TenantRef tenant, final String accessToken)
       throws IOException {
@@ -97,6 +98,7 @@ public class RepoMigrationService implements RepoImportPort {
     this.repoService.save(repoObj);
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // cleans up, then rethrows or wraps
   private void cloneAndMoveRepo(
       final String owner,
       final String repoName,
@@ -132,7 +134,8 @@ public class RepoMigrationService implements RepoImportPort {
 
     try {
       Files.move(tmpDir, targetPath);
-    } catch (final Exception _) {
+    } catch (final IOException _) {
+      // rename across file systems is not possible; fall back to copy + delete
       FileSystemUtils.copyRecursively(tmpDir, targetPath);
       FileSystemUtils.deleteRecursively(tmpDir);
     }

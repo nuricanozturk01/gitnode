@@ -19,6 +19,7 @@ import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.entities.Repo;
 import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -110,7 +111,7 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
       }
 
       return this.writeForbidden(response);
-    } catch (final Exception _) {
+    } catch (final TokenExpiredException _) {
       return this.writeUnauthorized(response);
     }
   }

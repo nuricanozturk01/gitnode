@@ -45,6 +45,7 @@ public class AuditAspect {
   private final AuditLogService auditLogService;
 
   @AfterReturning(value = "@annotation(audited)", returning = "returnValue")
+  @SuppressWarnings("checkstyle:IllegalCatch") // auditing must never break the audited call
   public void afterAuditedMethod(
       final JoinPoint jp, final Audited audited, final @Nullable Object returnValue) {
     try {
@@ -72,20 +73,19 @@ public class AuditAspect {
     if (sig == null) {
       return context;
     }
-    try {
-      final var paramNames = sig.getParameterNames();
-      final var args = jp.getArgs();
-      if (paramNames != null) {
-        for (int i = 0; i < paramNames.length; i++) {
-          context.setVariable(paramNames[i], args[i]);
-        }
+    // names are null when the class was compiled without parameter names; SpEL references to
+    // parameters then resolve to null
+    final var paramNames = sig.getParameterNames();
+    final var args = jp.getArgs();
+    if (paramNames != null) {
+      for (int i = 0; i < paramNames.length; i++) {
+        context.setVariable(paramNames[i], args[i]);
       }
-    } catch (final Exception ignored) {
-      // param names unavailable; SpEL expressions referencing params will resolve to null
     }
     return context;
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // auditing must never break the audited call
   private @Nullable String evalSpEL(
       final @Nullable String spel, final StandardEvaluationContext context, final String label) {
     if (spel == null || spel.isBlank()) {

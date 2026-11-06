@@ -126,6 +126,8 @@ public class SshKeyService {
     return "SHA256:" + Base64.getEncoder().withoutPadding().encodeToString(hash);
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // parsing libraries throw arbitrary runtime errors; rewrapped
   private String resolveFingerprint(final String publicKey) {
 
     try {

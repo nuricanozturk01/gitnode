@@ -23,15 +23,15 @@ import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.TooManyRequestsException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ValidationException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.MDC;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
@@ -42,338 +42,127 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.server.MethodNotAllowedException;
 import org.springframework.web.server.MissingRequestValueException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
-@RequiredArgsConstructor
 @NullMarked
 public class ErrorHandler {
 
   private static final String ERR_VALIDATION = "validationError";
   private static final String ERR_ERROR_OCCURRED = "errorOccurred";
-  private static final String ERR_ILLEGAL_ARGUMENT = "Invalid method argument";
+  private static final MediaType PROBLEM = MediaType.APPLICATION_PROBLEM_JSON;
 
-  @ExceptionHandler(MissingRequestValueException.class)
-  ResponseEntity<String> handleException(
-      final MissingRequestValueException ex, final HttpServletRequest request) {
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
+  /**
+   * One place that shapes every error body (RFC 7807 problem+json). The code goes into {@code
+   * detail} and, for clients that predate problem bodies, into {@code message} as well.
+   */
+  private static ResponseEntity<ProblemDetail> problem(
+      final HttpStatus status, final @Nullable String code) {
+    final var body = ProblemDetail.forStatus(status);
+    if (code != null) {
+      body.setDetail(code);
+      body.setProperty("message", code);
+    }
+    final String traceId = MDC.get(RequestIdFilter.MDC_KEY);
+    if (traceId != null) {
+      body.setProperty("traceId", traceId);
+    }
+    return ResponseEntity.status(status).contentType(PROBLEM).body(body);
   }
 
+  @ExceptionHandler(AccessNotAllowedException.class)
+  ResponseEntity<ProblemDetail> forbidden(final AccessNotAllowedException ex) {
+    log.debug("Access not allowed", ex);
+    return problem(HttpStatus.FORBIDDEN, ex.getMessage());
+  }
+
+  @ExceptionHandler(ItemAlreadyExistsException.class)
+  ResponseEntity<ProblemDetail> conflict(final ItemAlreadyExistsException ex) {
+    log.debug("Item already exists", ex);
+    return problem(HttpStatus.CONFLICT, ex.getMessage());
+  }
+
+  @ExceptionHandler({
+    BadRequestException.class,
+    ValidationException.class,
+    HttpMessageNotReadableException.class,
+    MissingRequestValueException.class
+  })
+  ResponseEntity<ProblemDetail> badRequest(final Exception ex) {
+    log.debug("Bad request", ex);
+    return problem(HttpStatus.BAD_REQUEST, ex.getMessage());
+  }
+
+  @ExceptionHandler({
+    ConversionFailedException.class,
+    ItemNotFoundException.class,
+    NoResourceFoundException.class
+  })
+  ResponseEntity<ProblemDetail> notFound(final Exception ex) {
+    log.debug("Item not found", ex);
+    return problem(HttpStatus.NOT_FOUND, ex.getMessage());
+  }
+
+  @ExceptionHandler(ErrorOccurredException.class)
+  ResponseEntity<ProblemDetail> errorOccurred(final ErrorOccurredException ex) {
+    log.debug("An error occurred", ex);
+    final var message = ex.getMessage();
+    return problem(
+        HttpStatus.INTERNAL_SERVER_ERROR, message != null ? message : ERR_ERROR_OCCURRED);
+  }
+
+  @ExceptionHandler(TokenExpiredException.class)
+  ResponseEntity<ProblemDetail> unauthorized(final TokenExpiredException ex) {
+    log.debug("Token expired", ex);
+    return problem(HttpStatus.UNAUTHORIZED, ex.getMessage());
+  }
+
+  @ExceptionHandler(TooManyRequestsException.class)
+  ResponseEntity<ProblemDetail> tooManyRequests(final TooManyRequestsException ex) {
+    log.debug("Rate limit exceeded", ex);
+    return problem(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage());
+  }
+
+  @ExceptionHandler({
+    HttpRequestMethodNotSupportedException.class,
+    HttpMediaTypeNotAcceptableException.class,
+    MethodArgumentNotValidException.class,
+    MethodNotAllowedException.class
+  })
+  ResponseEntity<ProblemDetail> badRequestNoDetail(final Exception ex) {
+    log.debug("Invalid request", ex);
+    return problem(HttpStatus.BAD_REQUEST, null);
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  ResponseEntity<ProblemDetail> missingParameter(final MissingServletRequestParameterException ex) {
+    log.debug("Missing parameter", ex);
+    return problem(HttpStatus.BAD_REQUEST, ex.getParameterName());
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  ResponseEntity<ProblemDetail> unsupportedMediaType(final HttpMediaTypeNotSupportedException ex) {
+    log.debug("Unsupported media type", ex);
+    return problem(HttpStatus.BAD_REQUEST, ERR_VALIDATION);
+  }
+
+  /** Last resort for anything not handled above. */
   @ExceptionHandler(Throwable.class)
-  @Nullable ResponseEntity<Object> defaultExceptionHandler(
-      final Throwable ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("An exception occurred", ex);
-      return null;
-    }
-
-    if (ex
-        instanceof org.springframework.web.context.request.async.AsyncRequestNotUsableException) {
+  @Nullable ResponseEntity<ProblemDetail> unhandled(
+      final Throwable ex, final HttpServletRequest request) {
+    if (ex instanceof AsyncRequestNotUsableException) {
       // The client went away while a stream (SSE) was open; nothing to answer and not an error.
       log.debug("Client disconnected on {} {}", request.getMethod(), request.getRequestURI());
       return null;
     }
-
     if (ex instanceof final HttpClientErrorException exception) {
       log.error(exception.getResponseBodyAsString());
     }
-
     log.error("Unhandled exception on {} {}", request.getMethod(), request.getRequestURI(), ex);
-
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ERR_ERROR_OCCURRED);
-  }
-
-  @ExceptionHandler(AccessNotAllowedException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final AccessNotAllowedException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Access not allowed", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.FORBIDDEN)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(ItemAlreadyExistsException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final ItemAlreadyExistsException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Item already exists", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.CONFLICT)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(BadRequestException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final BadRequestException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Bad request", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(ConversionFailedException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final ConversionFailedException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Conversion failed", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(ErrorOccurredException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final ErrorOccurredException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("An error occurred", ex);
-
-      return null;
-    }
-
-    final var exceptionMessage = ex.getMessage();
-    final var messageText = exceptionMessage != null ? exceptionMessage : ERR_ERROR_OCCURRED;
-
-    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(messageText);
-  }
-
-  @ExceptionHandler(HttpMessageNotReadableException.class)
-  ResponseEntity<String> handleException(
-      final HttpMessageNotReadableException ex, final HttpServletRequest request) {
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-  @Nullable ResponseEntity<Void> handleException(
-      final HttpRequestMethodNotSupportedException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Wrong request method", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .build();
-  }
-
-  @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
-  @Nullable ResponseEntity<Void> handleException(
-      final HttpMediaTypeNotAcceptableException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Wrong mime type", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .build();
-  }
-
-  @ExceptionHandler(ItemNotFoundException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final ItemNotFoundException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Item not found", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(TokenExpiredException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final TokenExpiredException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("token expired", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(TooManyRequestsException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final TooManyRequestsException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Rate limit exceeded", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final org.springframework.web.servlet.resource.NoResourceFoundException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Item not found", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
-  }
-
-  @ExceptionHandler(MethodArgumentNotValidException.class)
-  @Nullable ResponseEntity<Void> handleException(
-      final MethodArgumentNotValidException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug(ERR_ILLEGAL_ARGUMENT, ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .build();
-  }
-
-  @ExceptionHandler(MethodNotAllowedException.class)
-  @Nullable ResponseEntity<Void> handleException(
-      final MethodNotAllowedException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug(ERR_ILLEGAL_ARGUMENT, ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .build();
-  }
-
-  @ExceptionHandler(MissingServletRequestParameterException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final MissingServletRequestParameterException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug(ERR_ILLEGAL_ARGUMENT, ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getParameterName());
-  }
-
-  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final HttpMediaTypeNotSupportedException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug(ERR_ILLEGAL_ARGUMENT, ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ERR_VALIDATION);
-  }
-
-  @ExceptionHandler(ValidationException.class)
-  @Nullable ResponseEntity<String> handleException(
-      final ValidationException ex,
-      final HttpServletRequest request,
-      final @Nullable HttpServletResponse response) {
-
-    if (response == null) {
-      log.debug("Invalid request", ex);
-
-      return null;
-    }
-
-    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(ex.getMessage());
+    return problem(HttpStatus.INTERNAL_SERVER_ERROR, ERR_ERROR_OCCURRED);
   }
 }

@@ -20,6 +20,7 @@ import java.util.function.BiConsumer;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.listener.PatternTopic;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
@@ -47,13 +48,15 @@ public class RedisClusterEventBus implements ClusterEventBus {
     try {
       this.redis.convertAndSend(channel, payload);
       return true;
-    } catch (final RuntimeException ex) {
+    } catch (final DataAccessException ex) {
       log.warn("Cluster event bus unavailable, delivering locally: {}", ex.getMessage());
       return false;
     }
   }
 
   @Override
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // handler boundary: one bad handler must not kill the listener
   public void subscribe(final String channelPattern, final BiConsumer<String, String> handler) {
     this.clusterEventContainer.addMessageListener(
         (message, _) -> {

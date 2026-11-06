@@ -168,6 +168,7 @@ public class HttpGitAuthenticationFilter implements Filter {
     return new String[] {parts[0].toLowerCase(Locale.getDefault()), parts[1]};
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // any failure becomes an authentication failure
   private String authenticate(final String authHeader) {
     try {
       final var credentials = decodeCredentials(authHeader);

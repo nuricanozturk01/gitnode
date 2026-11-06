@@ -65,6 +65,8 @@ public class DynamicRelyingPartyRegistrationRepository
     return null;
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // a broken org config must not break login for others
   private @Nullable RelyingPartyRegistration findOrganizationRegistration(
       final String registrationId) {
 

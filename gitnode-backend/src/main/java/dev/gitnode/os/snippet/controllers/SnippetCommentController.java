@@ -87,10 +87,6 @@ public class SnippetCommentController {
     if (authHeader == null || authHeader.isBlank()) {
       return null;
     }
-    try {
-      return this.jwtUtils.extractUserId(authHeader);
-    } catch (final Exception _) {
-      return null;
-    }
+    return this.jwtUtils.tryExtractUserId(authHeader);
   }
 }

@@ -19,6 +19,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { LucideAngularModule } from 'lucide-angular';
 import { PullRequestService } from '../../../core/pull-request/services/pull-request.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { parseBackendErrorCode } from '../../../shared/utils/api-error.utils';
 import type { MergeStrategy, PrMergeRequirements } from '../../../domain/pull-request/models/pr-conflict.model';
 
 const CHECK_LABELS: Record<string, string> = {
@@ -91,7 +92,7 @@ export class PrMergeRequirementsComponent {
       this.blocked.emit(!updated.satisfied && !updated.canBypass);
       this.toast.success(updated.autoMergeStrategy ? 'Auto-merge enabled' : 'Auto-merge disabled');
     } catch (err) {
-      const message = err instanceof HttpErrorResponse && typeof err.error === 'string' ? err.error : null;
+      const message = err instanceof HttpErrorResponse ? parseBackendErrorCode(err.error) : null;
       this.toast.error(message ?? 'Could not change auto-merge');
     } finally {
       this.autoMergeBusy.set(false);

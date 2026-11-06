@@ -61,6 +61,8 @@ final class AiChatCompleter {
     }
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // provider SDKs throw arbitrary runtime errors; rewrapped
   private static String invokeProvider(
       final ChatModel chatModel, final String systemPrompt, final String boundedPrompt) {
     try {

@@ -144,6 +144,7 @@ public class TreeController {
   }
 
   @GetMapping("/archive/{branch}")
+  @SuppressWarnings("checkstyle:IllegalCatch") // streaming response: headers are already sent
   public ResponseEntity<StreamingResponseBody> downloadBranchArchive(
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader,

@@ -31,6 +31,7 @@ import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -180,7 +181,8 @@ public class WorkflowRunController {
         || status == WorkflowRunStatus.SKIPPED) {
       try {
         emitter.send(SseEmitter.event().name("run_completed").data(runId.toString()));
-      } catch (final Exception ignored) {
+      } catch (final IOException | IllegalStateException _) {
+        // the client already went away; the stream is completed below anyway
       }
       emitter.complete();
     }

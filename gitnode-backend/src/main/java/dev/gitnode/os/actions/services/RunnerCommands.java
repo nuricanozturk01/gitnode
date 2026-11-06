@@ -15,12 +15,14 @@
  */
 package dev.gitnode.os.actions.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.gitnode.os.actions.websocket.ServerMessage;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -51,7 +53,7 @@ class RunnerCommands {
             this.redisTemplate.convertAndSend(
                 JobDispatcher.DISPATCH_CHANNEL_PREFIX + runnerId, json);
             log.info("Cancel sent to runner: jobId={}, runnerId={}", jobId, runnerId);
-          } catch (final Exception ex) {
+          } catch (final JsonProcessingException | DataAccessException ex) {
             log.error("Failed to send cancel: jobId={}, runnerId={}", jobId, runnerId, ex);
           }
         };

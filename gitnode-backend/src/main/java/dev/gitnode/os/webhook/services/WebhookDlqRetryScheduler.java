@@ -106,6 +106,7 @@ public class WebhookDlqRetryScheduler {
         .collect(Collectors.toMap(Webhook::getId, w -> w));
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // scheduler loop: failure counts as a retry
   private void processEntry(final WebhookDeadLetter dl, final Map<UUID, Webhook> webhookMap) {
     final var webhook = webhookMap.get(dl.getWebhookId());
     if (webhook == null) {

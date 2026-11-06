@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.actions.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -54,6 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -244,6 +246,8 @@ public class JobDispatcher {
     }
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // dispatch must never break the caller; failure is logged
   private void assignJob(final WorkflowJob job, final Runner runner) {
 
     try {
@@ -274,7 +278,7 @@ public class JobDispatcher {
                   jobId,
                   runnerId,
                   stepCount);
-            } catch (final Exception ex) {
+            } catch (final JsonProcessingException | DataAccessException ex) {
               log.error(
                   "Failed to publish dispatch message: jobId={}, runnerId={}", jobId, runnerId, ex);
             }

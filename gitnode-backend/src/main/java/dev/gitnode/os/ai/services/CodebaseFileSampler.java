@@ -307,6 +307,7 @@ final class CodebaseFileSampler {
     return List.copyOf(ranked);
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // unreadable files are skipped
   private List<FileSnippet> loadSnippets(
       final Repository gitRepo, final List<FileCandidate> candidates, final SamplingStats stats)
       throws IOException {

@@ -80,7 +80,7 @@ public class JwtUtils implements TokenService {
 
     try {
       return this.extractUserId(token);
-    } catch (RuntimeException ex) {
+    } catch (final TokenExpiredException ex) {
       return null;
     }
   }

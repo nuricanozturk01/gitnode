@@ -200,12 +200,12 @@ class AuditAspectTest {
     }
 
     @Test
-    @DisplayName("entityId is null when JoinPoint signature throws inside SpEL resolution")
-    void entityId_isNull_whenSignatureThrows() {
+    @DisplayName("entityId is null when parameter names are unavailable")
+    void entityId_isNull_whenParameterNamesUnavailable() {
       JoinPoint jp = mock(JoinPoint.class);
       MethodSignature sig = mock(MethodSignature.class);
       when(jp.getSignature()).thenReturn(sig);
-      when(sig.getParameterNames()).thenThrow(new IllegalStateException("proxy error"));
+      when(sig.getParameterNames()).thenReturn(null);
 
       auditAspect.afterAuditedMethod(jp, audited("ACTION", "REPO", "#id.toString()"), null);
 

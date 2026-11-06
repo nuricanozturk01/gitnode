@@ -68,6 +68,7 @@ type PrDetailTab = (typeof PR_DETAIL_TABS)[number];
 const DEFAULT_PR_DETAIL_TAB: PrDetailTab = 'conversation';
 
 import { BranchService } from '../../../core/branch/services/branch.service';
+import { parseBackendErrorCode } from '../../../shared/utils/api-error.utils';
 import { PrConflictsComponent } from './pr-conflicts.component';
 import { PrMergeRequirementsComponent } from './pr-merge-requirements.component';
 import { PrMetadataComponent } from './pr-metadata.component';
@@ -1016,7 +1017,8 @@ export class PrDetailPage {
       this.pr.set(updated);
       this.toast.success('Pull request merged');
     } catch (err) {
-      const msg = err instanceof HttpErrorResponse ? (err.error as string) : 'Merge failed';
+      const msg =
+        err instanceof HttpErrorResponse ? (parseBackendErrorCode(err.error) ?? 'Merge failed') : 'Merge failed';
       this.mergeError.set(msg);
       this.toast.error(msg);
     } finally {

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -448,13 +449,13 @@ public class PgAuditLogReaderService {
 
     try {
       return LOG_TIMESTAMP.parse(raw, Instant::from);
-    } catch (RuntimeException ex) {
+    } catch (final DateTimeException ex) {
       try {
         return LocalDateTime.parse(
                 raw.substring(0, FALLBACK_TS_LENGTH),
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS"))
             .toInstant(ZoneOffset.UTC);
-      } catch (RuntimeException ignored) {
+      } catch (final DateTimeException | IndexOutOfBoundsException ignored) {
         return null;
       }
     }

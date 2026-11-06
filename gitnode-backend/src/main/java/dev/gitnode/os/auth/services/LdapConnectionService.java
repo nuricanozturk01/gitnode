@@ -36,6 +36,8 @@ public class LdapConnectionService {
     return new LdapTemplate(this.buildContextSource(organization));
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // any connection failure is reported as ldapConnectionFailed
   public void testConnection(final Organization organization) {
 
     this.requireConfigured(organization);

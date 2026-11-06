@@ -23,6 +23,7 @@ import dev.gitnode.os.ai.entities.UserAiSettings;
 import dev.gitnode.os.ai.repositories.UserAiSettingsRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import jakarta.annotation.PostConstruct;
+import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
@@ -164,7 +165,7 @@ public class UserAiSettingsService {
     try {
       final var decrypted = this.decrypt(settings.getApiKey(), iv);
       return this.copyWithApiKey(settings, decrypted);
-    } catch (final Exception e) {
+    } catch (final ErrorOccurredException e) {
       log.error("Failed to decrypt AI API key for tenant {}", settings.getTenantId());
       throw new ErrorOccurredException("Failed to decrypt AI API key");
     }
@@ -316,7 +317,7 @@ public class UserAiSettingsService {
           cipher.doFinal(plainKey.getBytes(java.nio.charset.StandardCharsets.UTF_8));
       return new EncryptedKey(
           Base64.getEncoder().encodeToString(encrypted), Base64.getEncoder().encodeToString(iv));
-    } catch (final Exception e) {
+    } catch (final GeneralSecurityException | IllegalArgumentException e) {
       throw new ErrorOccurredException("Failed to encrypt API key");
     }
   }
@@ -331,7 +332,7 @@ public class UserAiSettingsService {
       final var cipher = Cipher.getInstance(ALGORITHM);
       cipher.init(Cipher.DECRYPT_MODE, this.aesKey, new GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv));
       return new String(cipher.doFinal(encrypted), java.nio.charset.StandardCharsets.UTF_8);
-    } catch (final Exception e) {
+    } catch (final GeneralSecurityException | IllegalArgumentException e) {
       throw new ErrorOccurredException("Failed to decrypt API key");
     }
   }

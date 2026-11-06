@@ -20,6 +20,7 @@ public class ProtectedBranchReceiveHook implements PreReceiveHook {
   private String repoRoot;
 
   @Override
+  @SuppressWarnings("checkstyle:IllegalCatch") // fail closed: any check failure rejects the push
   public void onPreReceive(final ReceivePack pack, final Collection<ReceiveCommand> commands) {
     final var root = Path.of(this.repoRoot).toAbsolutePath().normalize();
     final var directory = pack.getRepository().getDirectory().toPath().toAbsolutePath().normalize();

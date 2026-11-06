@@ -373,6 +373,7 @@ public class PullRequestService {
   }
 
   /** Asks the code owners of the changed files to review; never fails the pull request itself. */
+  @SuppressWarnings("checkstyle:IllegalCatch") // code owner review request is optional
   private void requestCodeOwners(
       final String owner, final String repoName, final RepoRef repo, final PullRequest pr) {
     try {

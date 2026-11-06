@@ -47,6 +47,7 @@ public class DistributedLockService {
     return Boolean.TRUE.equals(acquired);
   }
 
+  @SuppressWarnings("checkstyle:IllegalCatch") // unlock is best effort; the lock expires by TTL
   public void unlock(final String key, final String owner) {
     try {
       this.redisTemplate.execute(RELEASE_SCRIPT, Collections.singletonList(key), owner);

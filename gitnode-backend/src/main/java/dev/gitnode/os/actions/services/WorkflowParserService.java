@@ -137,6 +137,7 @@ public class WorkflowParserService {
   }
 
   /** The commit message of {@code rev} (a sha or ref), or null when it cannot be read. */
+  @SuppressWarnings("checkstyle:IllegalCatch") // JGit failures degrade to "unknown" (null)
   public @Nullable String readCommitMessage(
       final String ownerUsername, final String repoName, final @Nullable String rev) {
 
@@ -155,6 +156,7 @@ public class WorkflowParserService {
   }
 
   /** The commit {@code ref} (a branch ref, tag ref or sha) points to, or null when it is gone. */
+  @SuppressWarnings("checkstyle:IllegalCatch") // JGit failures degrade to "unknown" (null)
   public @Nullable String resolveSha(
       final String ownerUsername, final String repoName, final String ref) {
 
@@ -173,6 +175,7 @@ public class WorkflowParserService {
    * (null or the all-zero sha) the commit is compared with its first parent. Null means the files
    * could not be determined, and callers then do not filter by path.
    */
+  @SuppressWarnings("checkstyle:IllegalCatch") // JGit failures degrade to "unknown" (null)
   public @Nullable List<String> changedFiles(
       final String ownerUsername,
       final String repoName,
@@ -205,6 +208,7 @@ public class WorkflowParserService {
    * Files a pull request changes: from the merge base of the target branch and {@code headSha} to
    * the head, like the three-dot diff GitHub filters on. Null when it cannot be determined.
    */
+  @SuppressWarnings("checkstyle:IllegalCatch") // JGit failures degrade to "unknown" (null)
   public @Nullable List<String> changedFilesOfPullRequest(
       final String ownerUsername,
       final String repoName,

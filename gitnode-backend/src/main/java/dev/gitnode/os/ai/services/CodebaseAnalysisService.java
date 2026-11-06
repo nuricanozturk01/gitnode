@@ -148,6 +148,8 @@ public class CodebaseAnalysisService {
   }
 
   @Transactional
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // external AI provider; failure is recorded on the analysis
   public void executeAnalysisTask(
       final UUID analysisId,
       final String ownerUsername,
@@ -214,6 +216,8 @@ public class CodebaseAnalysisService {
             repoName));
   }
 
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // external AI provider; failure is recorded on the analysis
   private void mergeSecurityAnalysis(
       final AiProviderService providerService,
       final dev.gitnode.os.ai.entities.UserAiSettings decrypted,

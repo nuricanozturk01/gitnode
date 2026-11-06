@@ -31,6 +31,7 @@ public class AiCodeReviewRunner {
   private final AiCodeReviewService reviewService;
 
   @Async("aiReviewExecutor")
+  @SuppressWarnings("checkstyle:IllegalCatch") // async boundary: marks the review failed
   public void executeReview(
       final UUID reviewId,
       final String ownerUsername,

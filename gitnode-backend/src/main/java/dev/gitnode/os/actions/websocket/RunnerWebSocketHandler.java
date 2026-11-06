@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.gitnode.os.actions.entities.RunnerStatus;
 import dev.gitnode.os.actions.repositories.RunnerRepository;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
+import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -61,6 +62,8 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
   }
 
   @Override
+  @SuppressWarnings(
+      "checkstyle:IllegalCatch") // WS boundary: a bad message must not close the session
   protected void handleTextMessage(final WebSocketSession session, final TextMessage message) {
 
     final var runnerId = extractRunnerId(session);
@@ -238,7 +241,8 @@ public class RunnerWebSocketHandler extends TextWebSocketHandler {
   private static void closeQuietly(final WebSocketSession session) {
     try {
       session.close(CloseStatus.POLICY_VIOLATION);
-    } catch (final Exception ignored) {
+    } catch (final IOException _) {
+      // the connection is already gone
     }
   }
 }

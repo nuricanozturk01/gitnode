@@ -20,9 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.repo.entities.Repo;
-import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoAdminPort;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -39,7 +37,7 @@ import org.springframework.data.domain.PageRequest;
 @DisplayName("AdminRepoService unit tests")
 class AdminRepoServiceTest {
 
-  @Mock private RepoRepository repoRepository;
+  @Mock private RepoAdminPort repos;
 
   @InjectMocks private AdminRepoService adminRepoService;
 
@@ -48,14 +46,14 @@ class AdminRepoServiceTest {
   void listRepos_usesFindAll_whenNoFilters() {
     var pageable = PageRequest.of(0, 20);
     var repo = sampleRepo("alice", "demo");
-    when(repoRepository.findAllWithOwner(pageable)).thenReturn(new PageImpl<>(List.of(repo)));
+    when(repos.list(pageable, "", "")).thenReturn(new PageImpl<>(List.of(repo)));
 
     var page = adminRepoService.listRepos(pageable, "  ", null);
 
     assertThat(page.getContent()).hasSize(1);
     assertThat(page.getContent().get(0).fullName()).isEqualTo("alice/demo");
     assertThat(page.getContent().get(0).ownerUsername()).isEqualTo("alice");
-    verify(repoRepository).findAllWithOwner(pageable);
+    verify(repos).list(pageable, "", "");
   }
 
   @Test
@@ -63,26 +61,31 @@ class AdminRepoServiceTest {
   void listRepos_usesSearch_whenFiltersPresent() {
     var pageable = PageRequest.of(0, 10);
     var repo = sampleRepo("bob", "api");
-    when(repoRepository.searchWithOwner("api", "bob", pageable))
-        .thenReturn(new PageImpl<>(List.of(repo)));
+    when(repos.list(pageable, "api", "bob")).thenReturn(new PageImpl<>(List.of(repo)));
 
     var page = adminRepoService.listRepos(pageable, " api ", " bob ");
 
     assertThat(page.getContent()).hasSize(1);
     assertThat(page.getContent().get(0).name()).isEqualTo("api");
-    verify(repoRepository).searchWithOwner(eq("api"), eq("bob"), eq(pageable));
+    verify(repos).list(eq(pageable), eq("api"), eq("bob"));
   }
 
   @Test
   @DisplayName("maps repo flags and metadata into summary")
   void listRepos_mapsRepoFields() {
     var pageable = PageRequest.of(0, 5);
-    var repo = sampleRepo("carol", "private-app");
-    repo.setPrivate(true);
-    repo.setArchived(true);
-    repo.setDescription("Internal app");
-    repo.setDefaultBranch("develop");
-    when(repoRepository.findAllWithOwner(pageable)).thenReturn(new PageImpl<>(List.of(repo)));
+    var repo =
+        new RepoAdminPort.AdminRepoRow(
+            UUID.randomUUID(),
+            "carol",
+            "private-app",
+            true,
+            true,
+            "develop",
+            "Internal app",
+            Instant.EPOCH,
+            Instant.EPOCH);
+    when(repos.list(pageable, "", "")).thenReturn(new PageImpl<>(List.of(repo)));
 
     var summary = adminRepoService.listRepos(pageable, null, null).getContent().get(0);
 
@@ -93,16 +96,17 @@ class AdminRepoServiceTest {
     assertThat(summary.createdAt()).isEqualTo(Instant.EPOCH);
   }
 
-  private static Repo sampleRepo(final String ownerUsername, final String name) {
-    var owner = new Tenant();
-    owner.setUsername(ownerUsername);
-
-    var repo = new Repo();
-    repo.setId(UUID.randomUUID());
-    repo.setOwner(owner);
-    repo.setName(name);
-    repo.setCreatedAt(Instant.EPOCH);
-    repo.setUpdatedAt(Instant.EPOCH);
-    return repo;
+  private static RepoAdminPort.AdminRepoRow sampleRepo(
+      final String ownerUsername, final String name) {
+    return new RepoAdminPort.AdminRepoRow(
+        UUID.randomUUID(),
+        ownerUsername,
+        name,
+        false,
+        false,
+        "main",
+        null,
+        Instant.EPOCH,
+        Instant.EPOCH);
   }
 }

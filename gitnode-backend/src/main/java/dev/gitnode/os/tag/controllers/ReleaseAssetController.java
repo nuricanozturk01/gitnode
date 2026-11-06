@@ -16,7 +16,7 @@
 
 package dev.gitnode.os.tag.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
@@ -54,7 +54,7 @@ public class ReleaseAssetController {
 
   private final ReleaseAssetService assets;
   private final ReleaseTxService releases;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
 
   @GetMapping

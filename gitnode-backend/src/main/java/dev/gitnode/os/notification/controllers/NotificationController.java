@@ -16,7 +16,7 @@
 package dev.gitnode.os.notification.controllers;
 
 import dev.gitnode.os.identity.api.TenantQueryPort;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.notification.dtos.NotificationInfo;
 import dev.gitnode.os.notification.services.NotificationService;
 import dev.gitnode.os.notification.services.NotificationSseRegistry;
@@ -48,7 +48,7 @@ public class NotificationController {
 
   private final NotificationService notificationService;
   private final NotificationSseRegistry sseRegistry;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final TenantQueryPort tenantRepository;
 
   @GetMapping

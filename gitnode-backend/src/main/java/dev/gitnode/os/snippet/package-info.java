@@ -18,10 +18,11 @@
     allowedDependencies = {
       "events :: snippet",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *"
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.snippet;
 

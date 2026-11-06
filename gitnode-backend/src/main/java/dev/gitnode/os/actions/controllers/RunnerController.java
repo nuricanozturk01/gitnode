@@ -21,7 +21,7 @@ import dev.gitnode.os.actions.dtos.response.RegistrationTokenResponse;
 import dev.gitnode.os.actions.dtos.response.RunnerRegistrationResponse;
 import dev.gitnode.os.actions.dtos.response.RunnerResponse;
 import dev.gitnode.os.actions.services.RunnerRegistryService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -47,7 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RunnerController {
 
   private final RunnerRegistryService runnerRegistryService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @PostMapping("/actions/runners/registration-token")
   @RateLimit(limit = 10, windowSeconds = 3600, key = "runner.reg-token")

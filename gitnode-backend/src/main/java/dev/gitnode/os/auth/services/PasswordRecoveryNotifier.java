@@ -16,10 +16,10 @@
 
 package dev.gitnode.os.auth.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantAccount;
 
 /** Delivers a password recovery code to its owner (for example by e-mail). */
 public interface PasswordRecoveryNotifier {
 
-  void send(Tenant tenant, String code);
+  void send(TenantAccount tenant, String code);
 }

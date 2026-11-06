@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.repo.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.repo.api.RepoImportPort;
 import dev.gitnode.os.repo.entities.Repo;
 import dev.gitnode.os.repo.repositories.RepoRepository;
@@ -43,7 +43,7 @@ public class RepoMigrationService implements RepoImportPort {
   private static final String DEFAULT_BRANCH = "main";
 
   private final RepoRepository repoService;
-  private final TenantRepository tenantRepository;
+  private final TenantQueryPort tenantRepository;
   private final RepoStorageService gitProvider;
 
   @Value("${gitnode.git.repo-root}")
@@ -62,17 +62,17 @@ public class RepoMigrationService implements RepoImportPort {
   }
 
   void migrateFromGithub(
-      final String repoName, final String owner, final Tenant tenant, final String accessToken)
+      final String repoName, final String owner, final TenantRef tenant, final String accessToken)
       throws IOException {
 
-    final var targetPath = Path.of(this.repoRoot, tenant.getUsername(), repoName + ".git");
+    final var targetPath = Path.of(this.repoRoot, tenant.username(), repoName + ".git");
     final var tmpDir = Files.createTempDirectory("gitnode-migration-");
 
     try {
       this.cloneAndMoveRepo(owner, repoName, tmpDir, targetPath, accessToken);
       this.createRepo(tenant, repoName);
     } catch (final Exception e) {
-      this.gitProvider.deleteRepo(tenant.getUsername(), repoName);
+      this.gitProvider.deleteRepo(tenant.username(), repoName);
       throw e;
     } finally {
       if (Files.exists(tmpDir)) {
@@ -81,16 +81,16 @@ public class RepoMigrationService implements RepoImportPort {
     }
   }
 
-  private void createRepo(final Tenant tenant, final String repoName) {
+  private void createRepo(final TenantRef tenant, final String repoName) {
 
-    final var repoOpt = this.repoService.findByOwnerIdAndName(tenant.getId(), repoName);
+    final var repoOpt = this.repoService.findByOwnerIdAndName(tenant.id(), repoName);
 
     if (repoOpt.isPresent()) {
       return;
     }
 
     final var repoObj = new Repo();
-    repoObj.setOwner(tenant);
+    repoObj.setOwnerId(tenant.id());
     repoObj.setName(repoName);
     repoObj.setDefaultBranch(DEFAULT_BRANCH);
 

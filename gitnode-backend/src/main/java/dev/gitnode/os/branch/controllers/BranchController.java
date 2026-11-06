@@ -19,15 +19,17 @@ import dev.gitnode.os.branch.api.BranchForm;
 import dev.gitnode.os.branch.api.BranchInfo;
 import dev.gitnode.os.branch.dtos.DefaultBranchForm;
 import dev.gitnode.os.branch.services.BranchNonTxService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.shared.pagination.ListPaging;
 import jakarta.validation.Valid;
 import java.io.IOException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +41,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -47,9 +50,14 @@ import org.springframework.web.bind.annotation.RestController;
 @NullMarked
 public class BranchController {
 
+  private static final int DEFAULT_LIST_MAX = 1000;
+
+  @Value("${gitnode.limits.list-max-items:1000}")
+  private int listMax = DEFAULT_LIST_MAX;
+
   private final BranchNonTxService branchNonTxService;
   private final dev.gitnode.os.branch.services.BranchProtectionService branchProtection;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
 
   @PostMapping
@@ -99,6 +107,8 @@ public class BranchController {
   public ResponseEntity<List<BranchInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
+      @RequestParam(required = false) final @Nullable Integer page,
+      @RequestParam(required = false) final @Nullable Integer size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader)
       throws IOException {
@@ -106,13 +116,16 @@ public class BranchController {
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var protectedNames = this.branchProtection.protectedBranchNames(owner, repo);
+    final int limit = ListPaging.size(size, this.listMax);
+    final var result =
+        this.branchNonTxService.getPage(owner, repo, ListPaging.offset(page, limit), limit);
     final var branches =
-        this.branchNonTxService.getAll(owner, repo).stream()
+        result.items().stream()
             .map(
                 branch ->
                     branch.toBuilder().isProtected(protectedNames.contains(branch.name())).build())
             .toList();
-    return ResponseEntity.ok(branches);
+    return ListPaging.withTotal(branches, result.total());
   }
 
   @GetMapping("/{branch}")

@@ -36,6 +36,7 @@ import dev.gitnode.os.actions.repositories.WorkflowStepRepository;
 import dev.gitnode.os.actions.websocket.RunnerSessionRegistry;
 import dev.gitnode.os.actions.websocket.ServerMessage;
 import dev.gitnode.os.repo.api.RepoLookupPort;
+import dev.gitnode.os.shared.lock.SchedulerLock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -139,6 +140,7 @@ public class JobDispatcher {
    * newest queued jobs are not being picked up (no ONLINE runner, runner of another owner, missing
    * labels). Without this a stuck job just stays "queued" with nothing in the logs.
    */
+  @SchedulerLock(name = "dispatch-housekeeping", ttlSeconds = 120)
   @Scheduled(fixedDelayString = "${gitnode.actions.dispatch.housekeeping-ms:60000}")
   @Transactional
   public void housekeeping() {

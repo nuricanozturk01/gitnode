@@ -18,8 +18,8 @@ package dev.gitnode.os.auth.services;
 
 import dev.gitnode.os.auth.entities.RefreshToken;
 import dev.gitnode.os.auth.repositories.RefreshTokenRepository;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TokenService;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import java.time.Duration;
 import java.time.Instant;
@@ -45,11 +45,11 @@ public class RefreshTokenService {
   static final Duration RACE_GRACE = Duration.ofSeconds(15);
 
   private final RefreshTokenRepository tokens;
-  private final JwtUtils jwtUtils;
+  private final TokenService jwtUtils;
 
   /** Starts a new login family and returns its first refresh token. */
   @Transactional
-  public String issue(final Tenant tenant) {
+  public String issue(final TenantAccount tenant) {
     return this.issue(tenant, UUID.randomUUID());
   }
 
@@ -106,13 +106,13 @@ public class RefreshTokenService {
         "Refresh token reuse detected for user {}; revoked {} tokens", stored.getUserId(), revoked);
   }
 
-  private String issue(final Tenant tenant, final UUID familyId) {
+  private String issue(final TenantAccount tenant, final UUID familyId) {
     final var id = UUID.randomUUID();
     final var token = new RefreshToken();
     token.setId(id);
     token.setFamilyId(familyId);
     token.setUserId(tenant.getId());
-    token.setExpiresAt(Instant.now().plusSeconds(JwtUtils.REFRESH_EXPIRATION_SECONDS));
+    token.setExpiresAt(Instant.now().plusSeconds(TokenService.REFRESH_EXPIRATION_SECONDS));
     this.tokens.save(token);
     return this.jwtUtils.generateRefreshToken(tenant, id, familyId);
   }
@@ -124,8 +124,8 @@ public class RefreshTokenService {
   /** Loads the user for a rotation and rejects disabled or missing accounts. */
   @FunctionalInterface
   public interface TenantLookup {
-    Tenant find(UUID userId);
+    TenantAccount find(UUID userId);
   }
 
-  public record Rotation(Tenant tenant, String refreshToken) {}
+  public record Rotation(TenantAccount tenant, String refreshToken) {}
 }

@@ -19,9 +19,18 @@
       "actions :: api",
       "auth :: api",
       "events :: profile",
-      "identity :: *",
-      "repo :: *",
-      "shared :: *",
+      "identity :: api",
+      "identity :: dto",
+      "repo :: api",
+      "repo :: dtos",
+      "shared :: audit-annotations",
+      "shared :: audit-entities",
+      "shared :: audit-repositories",
+      "shared :: audit-specifications",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: lock",
+      "shared :: ratelimit",
       "webhook :: api"
     })
 package dev.gitnode.os.admin;

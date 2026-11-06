@@ -23,8 +23,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.entities.Repo;
@@ -48,7 +48,7 @@ class RepoServicePermissionTest {
   private static final UUID USER_ID = UUID.randomUUID();
 
   @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantQueryPort tenantRepository;
   @Mock private CollaboratorAccessPort collaboratorAccessPort;
 
   @InjectMocks private RepoService repoService;
@@ -63,10 +63,10 @@ class RepoServicePermissionTest {
     repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
     repo.setPrivate(true);
     when(repoRepository.findByOwnerUsernameAndName("alice", "repo")).thenReturn(Optional.of(repo));
-    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findByUsername("alice")).thenReturn(Optional.of(ref(owner)));
   }
 
   @Test
@@ -169,5 +169,10 @@ class RepoServicePermissionTest {
 
     verify(collaboratorAccessPort, never()).hasPermission(any(), any(), any());
     verify(collaboratorAccessPort, never()).isActiveCollaborator(any(), any());
+  }
+
+  private static dev.gitnode.os.identity.api.TenantQueryPort.TenantRef ref(final Tenant t) {
+    return new dev.gitnode.os.identity.api.TenantQueryPort.TenantRef(
+        t.getId(), t.getUsername(), t.getEmail() == null ? "" : t.getEmail(), null, null, true);
   }
 }

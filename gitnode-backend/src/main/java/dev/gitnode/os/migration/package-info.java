@@ -19,7 +19,6 @@
       "events :: pr",
       "events :: tag",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "shared :: errorhandling-exceptions",
       "shared :: ratelimit"

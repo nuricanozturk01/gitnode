@@ -25,7 +25,7 @@ import dev.gitnode.os.ai.services.AiCodeReviewService;
 import dev.gitnode.os.ai.services.CodebaseAnalysisService;
 import dev.gitnode.os.ai.services.CommitSuggestionService;
 import dev.gitnode.os.ai.services.PrDescriptionService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoQueryPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
@@ -56,7 +56,7 @@ public class AiFeatureController {
   private final PrDescriptionService prDescriptionService;
   private final AiCodeReviewService codeReviewService;
   private final CodebaseAnalysisService codebaseAnalysisService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoQueryPort repoService;
   private final RepoAccessPort repoAccess;
 

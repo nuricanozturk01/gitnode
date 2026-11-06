@@ -22,8 +22,8 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.time.Instant;
@@ -43,7 +43,7 @@ import org.springframework.data.domain.PageRequest;
 @DisplayName("AdminUserService unit tests")
 class AdminUserServiceTest {
 
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
   @Mock private PlatformAdminService platformAdminService;
   @Mock private org.springframework.context.ApplicationEventPublisher events;
 
@@ -98,8 +98,7 @@ class AdminUserServiceTest {
   @DisplayName("listUsers returns all users when query is blank")
   void listUsers_returnsAll_whenQueryBlank() {
     var tenant = tenant("alice", true);
-    when(tenantRepository.findAllByOrderByCreatedAtDesc(any()))
-        .thenReturn(new PageImpl<>(List.of(tenant)));
+    when(tenantRepository.findAllNewestFirst(any())).thenReturn(new PageImpl<>(List.of(tenant)));
 
     var page = adminUserService.listUsers(PageRequest.of(0, 10), "  ");
 
@@ -111,8 +110,7 @@ class AdminUserServiceTest {
   @DisplayName("listUsers searches by username when query provided")
   void listUsers_searches_whenQueryProvided() {
     var tenant = tenant("bob", true);
-    when(tenantRepository.findAllByUsernameContainingIgnoreCaseOrderByCreatedAtDesc(
-            eq("bob"), any()))
+    when(tenantRepository.searchByUsernameNewestFirst(eq("bob"), any()))
         .thenReturn(new PageImpl<>(List.of(tenant)));
 
     var page = adminUserService.listUsers(PageRequest.of(0, 10), " bob ");

@@ -20,7 +20,7 @@ import dev.gitnode.os.collaborator.dtos.InviteCollaboratorForm;
 import dev.gitnode.os.collaborator.dtos.InviteLinkResponse;
 import dev.gitnode.os.collaborator.dtos.UpdateCollaboratorPermissionsForm;
 import dev.gitnode.os.collaborator.services.CollaboratorService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
@@ -47,7 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CollaboratorController {
 
   private final CollaboratorService collaboratorService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @PostMapping
   @RateLimit(limit = 50, windowSeconds = 3600, key = "collaborator.invite")

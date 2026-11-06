@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.notification.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.notification.dtos.NotificationPreferenceInfo;
 import dev.gitnode.os.notification.entities.NotificationType;
 import dev.gitnode.os.notification.services.NotificationPreferenceService;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationPreferenceController {
 
   private final NotificationPreferenceService preferenceService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping
   public ResponseEntity<List<NotificationPreferenceInfo>> getAll(

@@ -15,6 +15,7 @@
  */
 package dev.gitnode.os.snippet.services;
 
+import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +33,11 @@ import org.springframework.util.FileSystemUtils;
 @NullMarked
 public class SnippetFileStorageService {
 
+  private static final long DEFAULT_MAX_FILE_BYTES = 10_485_760L;
+
+  @Value("${gitnode.limits.snippet-file-bytes:10485760}")
+  private long maxFileBytes = DEFAULT_MAX_FILE_BYTES;
+
   @Value("${gitnode.git.repo-root}")
   private String repoRoot;
 
@@ -48,11 +54,18 @@ public class SnippetFileStorageService {
     }
   }
 
+  private String readBounded(final Path path) throws IOException {
+    if (Files.size(path) > this.maxFileBytes) {
+      throw new BadRequestException("fileTooLarge: limit is " + this.maxFileBytes + " bytes");
+    }
+    return Files.readString(path, StandardCharsets.UTF_8);
+  }
+
   public String readFile(final String username, final UUID snippetId, final UUID fileId) {
 
     final var path = this.snippetFilePath(username, snippetId, fileId);
     try {
-      return Files.readString(path, StandardCharsets.UTF_8);
+      return this.readBounded(path);
     } catch (final IOException e) {
       log.error("Failed to read snippet file {}", path, e);
       throw new ErrorOccurredException("Failed to read snippet file");
@@ -84,7 +97,7 @@ public class SnippetFileStorageService {
 
     final var path = this.revisionFilePath(username, snippetId, revisionId, revisionFileId);
     try {
-      return Files.readString(path, StandardCharsets.UTF_8);
+      return this.readBounded(path);
     } catch (final IOException e) {
       log.error("Failed to read revision file {}", path, e);
       throw new ErrorOccurredException("Failed to read revision file");

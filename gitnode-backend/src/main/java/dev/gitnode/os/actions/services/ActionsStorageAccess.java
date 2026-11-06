@@ -17,7 +17,7 @@ package dev.gitnode.os.actions.services;
 
 import dev.gitnode.os.actions.repositories.RunnerRepository;
 import dev.gitnode.os.actions.repositories.WorkflowRunRepository;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
@@ -53,7 +53,7 @@ public class ActionsStorageAccess {
   private final WorkflowRunRepository runRepository;
   private final RepoLookupPort repoLookup;
   private final RepoAccessPort repoAccess;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   /** What the caller wants to do with the storage. */
   public enum Mode {

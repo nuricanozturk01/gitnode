@@ -24,10 +24,8 @@ import dev.gitnode.os.admin.dtos.TimeSeriesPoint;
 import dev.gitnode.os.admin.dtos.UploadActivityResponse;
 import dev.gitnode.os.admin.dtos.UploadActivityStat;
 import dev.gitnode.os.auth.api.OrganizationAdminPort;
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.repo.repositories.RepoRepository;
-import dev.gitnode.os.repo.repositories.RepoStatRow;
-import dev.gitnode.os.repo.services.RepoStorageService;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.repo.api.RepoAdminPort;
 import dev.gitnode.os.shared.cache.CacheNames;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -62,9 +60,8 @@ public class AdminStatsService {
   private static final String UPLOAD_NOTE =
       "Upload activity uses new repository creation as a proxy; estimated bytes come from on-disk repo size.";
 
-  private final TenantRepository tenantRepository;
-  private final RepoRepository repoRepository;
-  private final RepoStorageService repoStorageService;
+  private final TenantAccountStore tenantRepository;
+  private final RepoAdminPort repos;
   private final AdminPlatformSettingsService adminPlatformSettingsService;
   private final OrganizationAdminPort organizationAdminPort;
 
@@ -114,11 +111,12 @@ public class AdminStatsService {
 
     final var normalizedPeriod = this.normalizePeriod(period);
     final var since = this.periodStart(normalizedPeriod);
-    final var rows = this.repoRepository.findRepoStatsSince(since);
+    final var rows = this.repos.createdSince(since);
 
     final var byOwner =
         rows.stream()
-            .collect(Collectors.groupingBy(RepoStatRow::ownerUsername, Collectors.counting()))
+            .collect(
+                Collectors.groupingBy(RepoAdminPort.RepoStat::ownerUsername, Collectors.counting()))
             .entrySet()
             .stream()
             .map(entry -> new RepoActivityStat(entry.getKey(), entry.getValue()))
@@ -128,7 +126,8 @@ public class AdminStatsService {
     return new RepoActivityResponse(
         new PeriodStats(normalizedPeriod, rows.size()),
         byOwner,
-        this.buildRepoTimeSeries(rows.stream().map(RepoStatRow::createdAt).toList(), since));
+        this.buildRepoTimeSeries(
+            rows.stream().map(RepoAdminPort.RepoStat::createdAt).toList(), since));
   }
 
   @Caching(
@@ -149,13 +148,12 @@ public class AdminStatsService {
 
     final var normalizedPeriod = this.normalizePeriod(period);
     final var since = this.periodStart(normalizedPeriod);
-    final var rows = this.repoRepository.findRepoStatsSince(since);
+    final var rows = this.repos.createdSince(since);
 
     final Map<String, UploadActivityStat> byOwner = new LinkedHashMap<>();
 
-    for (final RepoStatRow row : rows) {
-      final var estimatedBytes =
-          this.repoStorageService.calculateRepoStorageBytes(row.ownerUsername(), row.name());
+    for (final RepoAdminPort.RepoStat row : rows) {
+      final var estimatedBytes = this.repos.repoStorageBytes(row.ownerUsername(), row.name());
       final var existing = byOwner.get(row.ownerUsername());
 
       if (existing == null) {
@@ -179,7 +177,8 @@ public class AdminStatsService {
     return new UploadActivityResponse(
         new PeriodStats(normalizedPeriod, rows.size()),
         sortedByOwner,
-        this.buildRepoTimeSeries(rows.stream().map(RepoStatRow::createdAt).toList(), since),
+        this.buildRepoTimeSeries(
+            rows.stream().map(RepoAdminPort.RepoStat::createdAt).toList(), since),
         UPLOAD_NOTE);
   }
 
@@ -190,15 +189,15 @@ public class AdminStatsService {
 
     return new AdminStatsOverview(
         this.tenantRepository.count(),
-        this.tenantRepository.countByEnabledTrue(),
-        this.repoRepository.count(),
-        this.repoStorageService.calculateTotalStorageBytes(),
+        this.tenantRepository.countEnabled(),
+        this.repos.count(),
+        this.repos.totalStorageBytes(),
         true,
         STORAGE_NOTE,
-        this.tenantRepository.countByCreatedAtAfter(dayStart),
-        this.tenantRepository.countByCreatedAtAfter(weekStart),
-        this.repoRepository.countByCreatedAtAfter(dayStart),
-        this.repoRepository.countByCreatedAtAfter(weekStart),
+        this.tenantRepository.countCreatedAfter(dayStart),
+        this.tenantRepository.countCreatedAfter(weekStart),
+        this.repos.countCreatedAfter(dayStart),
+        this.repos.countCreatedAfter(weekStart),
         this.organizationAdminPort.countOrganizations(),
         this.organizationAdminPort.countSsoEnabledOrganizations());
   }

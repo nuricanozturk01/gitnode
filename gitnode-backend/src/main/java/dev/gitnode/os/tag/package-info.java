@@ -18,10 +18,14 @@
     allowedDependencies = {
       "events :: tag",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: cache",
-      "shared :: *"
+      "shared :: audit-annotations",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: pagination",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.tag;
 

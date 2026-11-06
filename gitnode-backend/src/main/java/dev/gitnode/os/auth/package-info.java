@@ -14,7 +14,17 @@
  * limitations under the License.
  */
 @NullMarked
-@ApplicationModule(allowedDependencies = {"events :: profile", "identity :: *", "shared :: *"})
+@ApplicationModule(
+    allowedDependencies = {
+      "events :: profile",
+      "identity :: api",
+      "identity :: dto",
+      "identity :: utils",
+      "shared :: audit-annotations",
+      "shared :: audit-services",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
+    })
 package dev.gitnode.os.auth;
 
 import org.jspecify.annotations.NullMarked;

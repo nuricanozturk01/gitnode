@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.repo.configs;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.entities.Repo;
 import dev.gitnode.os.repo.repositories.RepoRepository;
@@ -36,7 +36,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 public class RepoAccessInterceptor implements HandlerInterceptor {
 
   private final RepoRepository repoRepository;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final CollaboratorAccessPort collaboratorAccessPort;
 
   @Override
@@ -87,7 +87,7 @@ public class RepoAccessInterceptor implements HandlerInterceptor {
 
     try {
       final var requesterId = this.jwtUtils.extractUserId(authHeader);
-      final boolean isOwner = repo.getOwner().getId().equals(requesterId);
+      final boolean isOwner = repo.getOwnerId().equals(requesterId);
 
       if (isOwner) {
         return true;

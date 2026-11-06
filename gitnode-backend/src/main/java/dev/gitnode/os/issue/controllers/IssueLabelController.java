@@ -1,6 +1,6 @@
 package dev.gitnode.os.issue.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.issue.dtos.IssueLabelForm;
 import dev.gitnode.os.issue.dtos.IssueLabelInfo;
 import dev.gitnode.os.issue.services.IssueLabelService;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class IssueLabelController {
   private final IssueLabelService labels;
-  private final JwtUtils jwt;
+  private final TokenUserResolver jwt;
   private final RepoAccessPort repos;
 
   @GetMapping

@@ -18,9 +18,9 @@ package dev.gitnode.os.auth.configs;
 import dev.gitnode.os.auth.dtos.AccountType;
 import dev.gitnode.os.auth.entities.Account;
 import dev.gitnode.os.auth.repositories.AccountRepository;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.identity.api.TokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -57,9 +57,9 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
   private static final String EXPIRES_IN = "expires_in";
   private static final String REFRESH_EXPIRES_IN = "refresh_expires_in";
 
-  private final JwtUtils jwtUtils;
+  private final TokenService jwtUtils;
   private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
-  private final TenantRepository tenantRepository;
+  private final TenantAccountStore tenantRepository;
   private final AccountRepository accountRepository;
 
   @Value("${gitnode.frontend.base-url}")
@@ -99,15 +99,15 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
             .queryParam(TOKEN, this.jwtUtils.generateToken(tenant))
             .queryParam(REFRESH_TOKEN, this.refreshTokens.issue(tenant))
             .queryParam(USERNAME, tenant.getUsername())
-            .queryParam(EXPIRES_IN, JwtUtils.ACCESS_EXPIRATION_SECONDS)
-            .queryParam(REFRESH_EXPIRES_IN, JwtUtils.REFRESH_EXPIRATION_SECONDS)
+            .queryParam(EXPIRES_IN, TokenService.ACCESS_EXPIRATION_SECONDS)
+            .queryParam(REFRESH_EXPIRES_IN, TokenService.REFRESH_EXPIRATION_SECONDS)
             .build()
             .toUriString();
 
     response.sendRedirect(redirectUrl);
   }
 
-  private Tenant createUserFromOAuth(final OAuthProviderInfo providerInfo) {
+  private TenantAccount createUserFromOAuth(final OAuthProviderInfo providerInfo) {
 
     final var tenant =
         this.saveTenant(providerInfo.email(), providerInfo.username(), providerInfo.avatarUrl());
@@ -122,9 +122,10 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     return tenant;
   }
 
-  private Tenant saveTenant(final String email, final String username, final String avatarUrl) {
+  private TenantAccount saveTenant(
+      final String email, final String username, final String avatarUrl) {
 
-    final var tenant = new Tenant();
+    final var tenant = this.tenantRepository.newAccount();
     tenant.setUsername(username);
     tenant.setEmail(email);
     tenant.setAvatarUrl(avatarUrl);
@@ -132,7 +133,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     return this.tenantRepository.save(tenant);
   }
 
-  private void saveAccount(final OAuthProviderInfo providerInfo, final Tenant tenant) {
+  private void saveAccount(final OAuthProviderInfo providerInfo, final TenantAccount tenant) {
 
     final var account = new Account();
     account.setAccountType(providerInfo.accountType().toString());
@@ -140,7 +141,7 @@ public class CustomOauth2SuccessHandler implements AuthenticationSuccessHandler 
     account.setUsername(providerInfo.username());
     account.setEmail(providerInfo.email());
     account.setAvatarUrl(providerInfo.avatarUrl());
-    account.setTenant(tenant);
+    account.setTenantId(tenant.getId());
     account.setCreatedAt(Instant.now());
 
     this.accountRepository.save(account);

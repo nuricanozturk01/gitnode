@@ -17,9 +17,12 @@
 @ApplicationModule(
     allowedDependencies = {
       "events :: branch",
-      "identity :: security",
+      "identity :: api",
       "repo :: api",
-      "shared :: *"
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: pagination"
     })
 package dev.gitnode.os.branch;
 

@@ -19,6 +19,7 @@ import dev.gitnode.os.actions.entities.WorkflowArtifact;
 import dev.gitnode.os.actions.repositories.WorkflowArtifactRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.lock.SchedulerLock;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -117,6 +118,7 @@ public class ArtifactStoreService {
     return this.artifactRepository.findAllByRunIdOrderByCreatedAtDesc(runId, pageable);
   }
 
+  @SchedulerLock(name = "artifact-cleanup", ttlSeconds = 3600, failOpen = true)
   @Scheduled(cron = "0 0 2 * * *")
   @Transactional
   public void cleanupExpiredArtifacts() {

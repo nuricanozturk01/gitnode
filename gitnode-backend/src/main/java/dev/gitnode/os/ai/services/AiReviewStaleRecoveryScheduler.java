@@ -19,6 +19,7 @@ import static dev.gitnode.os.ai.entities.ReviewStatus.PENDING;
 
 import dev.gitnode.os.ai.entities.ReviewStatus;
 import dev.gitnode.os.ai.repositories.AiCodeReviewRepository;
+import dev.gitnode.os.shared.lock.SchedulerLock;
 import java.time.Duration;
 import java.time.Instant;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class AiReviewStaleRecoveryScheduler {
 
   private final AiCodeReviewRepository reviewRepository;
 
+  @SchedulerLock(name = "ai-review-stale-recovery", ttlSeconds = 300)
   @Scheduled(fixedDelay = 60_000, initialDelay = 60_000)
   @Transactional
   public void recoverStalePendingReviews() {

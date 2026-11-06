@@ -1,6 +1,6 @@
 package dev.gitnode.os.issue.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.issue.dtos.IssueCommentForm;
 import dev.gitnode.os.issue.dtos.IssueCommentInfo;
 import dev.gitnode.os.issue.dtos.IssueCommentUpdateForm;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class IssueController {
 
   private final IssueService issueService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
 
   @PostMapping

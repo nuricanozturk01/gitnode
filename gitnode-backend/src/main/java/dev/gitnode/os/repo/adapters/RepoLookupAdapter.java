@@ -18,6 +18,7 @@ package dev.gitnode.os.repo.adapters;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.entities.Repo;
 import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.services.RepoOwnerResolver;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,15 +33,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class RepoLookupAdapter implements RepoLookupPort {
 
   private final RepoRepository repos;
+  private final RepoOwnerResolver owners;
 
   @Override
   public Optional<RepoRef> find(final String owner, final String repoName) {
-    return this.repos.findByOwnerUsernameAndName(owner, repoName).map(RepoLookupAdapter::toRef);
+    return this.repos.findByOwnerUsernameAndName(owner, repoName).map(this::toRef);
   }
 
   @Override
   public Optional<RepoRef> findById(final UUID repoId) {
-    return this.repos.findByIdWithOwner(repoId).map(RepoLookupAdapter::toRef);
+    return this.repos.findById(repoId).map(this::toRef);
   }
 
   @Override
@@ -58,8 +60,12 @@ public class RepoLookupAdapter implements RepoLookupPort {
     if (repoIds.isEmpty()) {
       return java.util.Map.of();
     }
-    return this.repos.findAllById(repoIds).stream()
-        .map(RepoLookupAdapter::toRef)
+    final var found = this.repos.findAllById(repoIds);
+    final var ownerRefs =
+        this.owners.owners(found.stream().map(Repo::getOwnerId).distinct().toList());
+    return found.stream()
+        .filter(repo -> ownerRefs.containsKey(repo.getOwnerId()))
+        .map(repo -> toRef(repo, ownerRefs.get(repo.getOwnerId()).username()))
         .collect(java.util.stream.Collectors.toMap(RepoRef::id, ref -> ref));
   }
 
@@ -72,11 +78,15 @@ public class RepoLookupAdapter implements RepoLookupPort {
         .collect(java.util.stream.Collectors.toMap(row -> (UUID) row[0], row -> (UUID) row[1]));
   }
 
-  private static RepoRef toRef(final Repo repo) {
+  private RepoRef toRef(final Repo repo) {
+    return toRef(repo, this.owners.username(repo.getOwnerId()));
+  }
+
+  private static RepoRef toRef(final Repo repo, final String ownerUsername) {
     return new RepoRef(
         repo.getId(),
-        repo.getOwner().getId(),
-        repo.getOwner().getUsername(),
+        repo.getOwnerId(),
+        ownerUsername,
         repo.getName(),
         repo.isPrivate(),
         repo.getDefaultBranch(),

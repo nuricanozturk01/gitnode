@@ -16,7 +16,7 @@
 package dev.gitnode.os.wiki.controllers;
 
 import dev.gitnode.os.identity.api.TenantQueryPort;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
@@ -52,7 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WikiController {
 
   private final WikiService wiki;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoAccess;
   private final TenantQueryPort tenants;
 

@@ -20,8 +20,14 @@
       "events :: pr",
       "events :: profile",
       "events :: repo",
-      "identity :: *",
-      "shared :: *"
+      "identity :: api",
+      "identity :: model",
+      "identity :: persistence",
+      "shared :: audit-annotations",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.repo;
 

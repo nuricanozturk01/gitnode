@@ -51,7 +51,7 @@ class RepoServiceGitAccessTest {
     final var repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
     repo.setPrivate(isPrivate);
     when(repoRepository.findByOwnerUsernameAndName("alice", "repo")).thenReturn(Optional.of(repo));
     return repo;

@@ -19,11 +19,14 @@
       "commit :: api",
       "events :: ai",
       "events :: pr",
-      "identity :: security",
+      "identity :: api",
       "pr :: api",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *"
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: lock",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.ai;
 

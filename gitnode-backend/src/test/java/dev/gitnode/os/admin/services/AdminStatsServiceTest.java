@@ -22,10 +22,8 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.admin.dtos.RepoActivityStat;
 import dev.gitnode.os.auth.api.OrganizationAdminPort;
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.repo.repositories.RepoRepository;
-import dev.gitnode.os.repo.repositories.RepoStatRow;
-import dev.gitnode.os.repo.services.RepoStorageService;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.repo.api.RepoAdminPort;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -41,9 +39,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("AdminStatsService unit tests")
 class AdminStatsServiceTest {
 
-  @Mock private TenantRepository tenantRepository;
-  @Mock private RepoRepository repoRepository;
-  @Mock private RepoStorageService repoStorageService;
+  @Mock private TenantAccountStore tenantRepository;
+  @Mock private RepoAdminPort repos;
   @Mock private OrganizationAdminPort organizationAdminPort;
   @Mock private AdminPlatformSettingsService adminPlatformSettingsService;
 
@@ -59,11 +56,11 @@ class AdminStatsServiceTest {
   void getOverview_returnsAggregatedTotals() {
 
     when(tenantRepository.count()).thenReturn(10L);
-    when(tenantRepository.countByEnabledTrue()).thenReturn(9L);
-    when(repoRepository.count()).thenReturn(4L);
-    when(repoStorageService.calculateTotalStorageBytes()).thenReturn(1024L);
-    when(tenantRepository.countByCreatedAtAfter(any(Instant.class))).thenReturn(2L, 5L);
-    when(repoRepository.countByCreatedAtAfter(any(Instant.class))).thenReturn(1L, 3L);
+    when(tenantRepository.countEnabled()).thenReturn(9L);
+    when(repos.count()).thenReturn(4L);
+    when(repos.totalStorageBytes()).thenReturn(1024L);
+    when(tenantRepository.countCreatedAfter(any(Instant.class))).thenReturn(2L, 5L);
+    when(repos.countCreatedAfter(any(Instant.class))).thenReturn(1L, 3L);
     when(organizationAdminPort.countOrganizations()).thenReturn(2L);
     when(organizationAdminPort.countSsoEnabledOrganizations()).thenReturn(1L);
 
@@ -89,11 +86,11 @@ class AdminStatsServiceTest {
   void getOverview_alwaysReturnsFreshFlag() {
 
     when(tenantRepository.count()).thenReturn(10L);
-    when(tenantRepository.countByEnabledTrue()).thenReturn(9L);
-    when(repoRepository.count()).thenReturn(4L);
-    when(repoStorageService.calculateTotalStorageBytes()).thenReturn(1024L);
-    when(tenantRepository.countByCreatedAtAfter(any(Instant.class))).thenReturn(0L);
-    when(repoRepository.countByCreatedAtAfter(any(Instant.class))).thenReturn(0L);
+    when(tenantRepository.countEnabled()).thenReturn(9L);
+    when(repos.count()).thenReturn(4L);
+    when(repos.totalStorageBytes()).thenReturn(1024L);
+    when(tenantRepository.countCreatedAfter(any(Instant.class))).thenReturn(0L);
+    when(repos.countCreatedAfter(any(Instant.class))).thenReturn(0L);
     when(organizationAdminPort.countOrganizations()).thenReturn(0L);
     when(organizationAdminPort.countSsoEnabledOrganizations()).thenReturn(0L);
 
@@ -105,9 +102,10 @@ class AdminStatsServiceTest {
   @DisplayName("getRepoActivity groups repos by owner for period")
   void getRepoActivity_groupsByOwner() {
 
-    final var row = new RepoStatRow("alice", "demo", Instant.now().minus(2, ChronoUnit.HOURS));
+    final var row =
+        new RepoAdminPort.RepoStat("alice", "demo", Instant.now().minus(2, ChronoUnit.HOURS));
 
-    when(repoRepository.findRepoStatsSince(any(Instant.class))).thenReturn(List.of(row));
+    when(repos.createdSince(any(Instant.class))).thenReturn(List.of(row));
 
     final var response = adminStatsService.getRepoActivity("day", false);
 
@@ -121,10 +119,11 @@ class AdminStatsServiceTest {
   @DisplayName("getUploadActivity aggregates storage bytes by owner")
   void getUploadActivity_aggregatesByOwner() {
 
-    final var row = new RepoStatRow("alice", "demo", Instant.now().minus(2, ChronoUnit.HOURS));
+    final var row =
+        new RepoAdminPort.RepoStat("alice", "demo", Instant.now().minus(2, ChronoUnit.HOURS));
 
-    when(repoRepository.findRepoStatsSince(any(Instant.class))).thenReturn(List.of(row));
-    when(repoStorageService.calculateRepoStorageBytes("alice", "demo")).thenReturn(2048L);
+    when(repos.createdSince(any(Instant.class))).thenReturn(List.of(row));
+    when(repos.repoStorageBytes("alice", "demo")).thenReturn(2048L);
 
     final var response = adminStatsService.getUploadActivity("week", false);
 
@@ -139,7 +138,7 @@ class AdminStatsServiceTest {
   @DisplayName("getRepoActivity normalizes unknown period to week")
   void getRepoActivity_normalizesUnknownPeriod() {
 
-    when(repoRepository.findRepoStatsSince(any(Instant.class))).thenReturn(List.of());
+    when(repos.createdSince(any(Instant.class))).thenReturn(List.of());
 
     final var response = adminStatsService.getRepoActivity("month", false);
 

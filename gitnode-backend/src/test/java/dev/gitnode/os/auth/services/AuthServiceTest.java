@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,9 +29,9 @@ import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.dtos.LoginInfo;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
@@ -38,6 +39,7 @@ import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +54,7 @@ class AuthServiceTest {
 
   private static final String VALID_PASSWORD = "Pass1word";
 
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
   @Mock private JwtUtils jwtUtils;
   @Mock private PasswordRecoveryNotifier recoveryNotifier;
   @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
@@ -62,6 +64,11 @@ class AuthServiceTest {
       new dev.gitnode.os.identity.services.PasswordHasher();
 
   @InjectMocks private AuthService authService;
+
+  @BeforeEach
+  void provideNewAccounts() {
+    lenient().when(tenantRepository.newAccount()).thenAnswer(inv -> new Tenant());
+  }
 
   @Test
   @DisplayName("register throws BadRequestException when username already exists")

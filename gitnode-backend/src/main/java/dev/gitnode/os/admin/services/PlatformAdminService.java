@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.admin.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantAccount;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -100,7 +100,7 @@ public class PlatformAdminService {
     return this.bootstrapAdminEnabled;
   }
 
-  private @Nullable Tenant currentTenant() {
+  private @Nullable TenantAccount currentTenant() {
 
     final Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
@@ -110,7 +110,7 @@ public class PlatformAdminService {
 
     final var principal = authentication.getPrincipal();
 
-    if (principal instanceof Tenant tenant) {
+    if (principal instanceof TenantAccount tenant) {
       return tenant;
     }
 

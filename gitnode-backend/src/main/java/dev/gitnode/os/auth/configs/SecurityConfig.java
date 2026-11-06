@@ -20,8 +20,7 @@ import static org.springframework.security.config.http.SessionCreationPolicy.STA
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
-import org.jspecify.annotations.Nullable;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -52,15 +51,13 @@ public class SecurityConfig {
   private static final List<String> ALLOWED_HEADERS =
       List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin");
   private static final List<String> EXPOSED_HEADERS =
-      List.of("Authorization", "Content-Disposition");
+      List.of("Authorization", "Content-Disposition", "X-Total-Count");
 
   private final CustomOauth2SuccessHandler successHandler;
   private final JwtAuthenticationFilter jwtAuthenticationFilter;
   private final CustomAuthenticationEntryPoint authenticationEntryPoint;
 
-  @Nullable
-  @Autowired(required = false)
-  private SamlAuthenticationSuccessHandler samlSuccessHandler;
+  private final ObjectProvider<SamlAuthenticationSuccessHandler> samlSuccessHandler;
 
   @Value("${gitnode.cors.allowed-origins}")
   private List<String> allowedOrigins;
@@ -79,8 +76,9 @@ public class SecurityConfig {
         .sessionManagement(s -> s.sessionCreationPolicy(STATELESS))
         .addFilterBefore(this.jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-    if (this.samlSuccessHandler != null) {
-      http.saml2Login(saml2 -> saml2.successHandler(this.samlSuccessHandler));
+    final var saml = this.samlSuccessHandler.getIfAvailable();
+    if (saml != null) {
+      http.saml2Login(saml2 -> saml2.successHandler(saml));
     }
 
     return http.build();

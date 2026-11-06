@@ -15,7 +15,6 @@
  */
 package dev.gitnode.os.repo.entities;
 
-import dev.gitnode.os.identity.entities.Tenant;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -32,8 +31,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
@@ -46,10 +43,8 @@ public class Repo {
   @Column(name = "id", nullable = false)
   private UUID id;
 
-  @ManyToOne(fetch = FetchType.LAZY, optional = false)
-  @OnDelete(action = OnDeleteAction.CASCADE)
-  @JoinColumn(name = "owner_id", nullable = false)
-  private Tenant owner;
+  @Column(name = "owner_id", nullable = false)
+  private UUID ownerId;
 
   @Column(name = "name", nullable = false, length = 100)
   private String name;

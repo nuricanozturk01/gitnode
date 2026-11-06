@@ -23,11 +23,11 @@ import dev.gitnode.os.auth.entities.Account;
 import dev.gitnode.os.auth.entities.Organization;
 import dev.gitnode.os.auth.repositories.AccountRepository;
 import dev.gitnode.os.auth.repositories.OrganizationRepository;
+import dev.gitnode.os.identity.api.PasswordHashing;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.identity.api.TokenService;
 import dev.gitnode.os.identity.dtos.LoginInfo;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.identity.services.JwtUtils;
-import dev.gitnode.os.identity.services.TenantAuthGuard;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -56,9 +56,9 @@ public class LdapAuthService {
 
   private final OrganizationRepository organizationRepository;
   private final LdapConnectionService ldapConnectionService;
-  private final TenantRepository tenantRepository;
+  private final TenantAccountStore tenantRepository;
   private final AccountRepository accountRepository;
-  private final JwtUtils jwtUtils;
+  private final TokenService jwtUtils;
   private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
 
   @Transactional
@@ -98,7 +98,7 @@ public class LdapAuthService {
 
     this.upsertAccount(organization, username, tenant, groups);
 
-    TenantAuthGuard.requireEnabled(tenant);
+    PasswordHashing.requireEnabled(tenant);
 
     return this.buildLoginInfo(tenant);
   }
@@ -158,9 +158,9 @@ public class LdapAuthService {
     }
   }
 
-  private Tenant createTenantFromLdap(final String username, final LdapUserInfo userInfo) {
+  private TenantAccount createTenantFromLdap(final String username, final LdapUserInfo userInfo) {
 
-    final var tenant = new Tenant();
+    final var tenant = this.tenantRepository.newAccount();
     tenant.setUsername(username);
     tenant.setEmail(userInfo.email().toLowerCase(Locale.getDefault()));
     tenant.setDisplayName(userInfo.displayName());
@@ -223,7 +223,7 @@ public class LdapAuthService {
   private void upsertAccount(
       final Organization organization,
       final String username,
-      final Tenant tenant,
+      final TenantAccount tenant,
       final List<String> groups) {
 
     final var groupsCsv = groups.isEmpty() ? null : String.join(",", groups);
@@ -248,29 +248,30 @@ public class LdapAuthService {
             () -> this.saveAccount(username, tenant, groupsCsv));
   }
 
-  private void saveAccount(final String username, final Tenant tenant, final String groupsCsv) {
+  private void saveAccount(
+      final String username, final TenantAccount tenant, final String groupsCsv) {
 
     final var account = new Account();
     account.setAccountType(AccountType.LDAP.name());
     account.setSubjectId(username);
     account.setUsername(username);
     account.setEmail(tenant.getEmail());
-    account.setTenant(tenant);
+    account.setTenantId(tenant.getId());
     account.setCreatedAt(Instant.now());
     account.setLdapGroups(groupsCsv);
 
     this.accountRepository.save(account);
   }
 
-  private LoginInfo buildLoginInfo(final Tenant tenant) {
+  private LoginInfo buildLoginInfo(final TenantAccount tenant) {
 
     return LoginInfo.builder()
         .token(this.jwtUtils.generateToken(tenant))
         .refreshToken(this.refreshTokens.issue(tenant))
         .email(tenant.getEmail())
         .username(tenant.getUsername())
-        .expiresIn(JwtUtils.ACCESS_EXPIRATION_SECONDS)
-        .refreshExpiresIn(JwtUtils.REFRESH_EXPIRATION_SECONDS)
+        .expiresIn(TokenService.ACCESS_EXPIRATION_SECONDS)
+        .refreshExpiresIn(TokenService.REFRESH_EXPIRATION_SECONDS)
         .build();
   }
 

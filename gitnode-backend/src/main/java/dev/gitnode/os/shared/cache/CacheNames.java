@@ -25,7 +25,6 @@ public final class CacheNames {
   public static final String TAGS = "repo:tags";
 
   public static final String REPO_META = "repo:meta";
-  public static final String REPO_PR_OPEN_COUNT = "repo:pr:open-count";
   public static final String REPO_ISSUE_OPEN_COUNT = "repo:issue:open-count";
 
   public static final String WIKI_PAGES = "wiki:pages";

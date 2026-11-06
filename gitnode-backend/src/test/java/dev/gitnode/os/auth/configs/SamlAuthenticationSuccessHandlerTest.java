@@ -18,6 +18,7 @@ package dev.gitnode.os.auth.configs;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -25,8 +26,8 @@ import static org.mockito.Mockito.when;
 import dev.gitnode.os.auth.entities.Account;
 import dev.gitnode.os.auth.repositories.AccountRepository;
 import dev.gitnode.os.auth.repositories.OrganizationRepository;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.identity.services.JwtUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,7 +53,7 @@ class SamlAuthenticationSuccessHandlerTest {
 
   @Mock private JwtUtils jwtUtils;
   @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
   @Mock private AccountRepository accountRepository;
   @Mock private OrganizationRepository organizationRepository;
   @Mock private HttpServletRequest request;
@@ -63,6 +64,7 @@ class SamlAuthenticationSuccessHandlerTest {
 
   @BeforeEach
   void setUp() {
+    lenient().when(tenantRepository.newAccount()).thenAnswer(inv -> new Tenant());
 
     ReflectionTestUtils.setField(handler, "frontendBaseUrl", "http://localhost:4200");
     ReflectionTestUtils.setField(handler, "defaultEmailAttribute", "email");

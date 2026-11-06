@@ -16,7 +16,7 @@
 package dev.gitnode.os.tree.controllers;
 
 import dev.gitnode.os.identity.api.TenantQueryPort;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -77,7 +77,7 @@ public class TreeController {
   private final RepoAccessPort repoService;
   private final TenantQueryPort tenantRepository;
   private final ChangeCommitService changeCommitService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping({"/tree/{branch}", "/tree/{branch}/**"})
   public ResponseEntity<TreeResponse> getTree(
@@ -118,7 +118,7 @@ public class TreeController {
   }
 
   @GetMapping("/raw/{branch}/**")
-  public ResponseEntity<byte[]> getRaw(
+  public ResponseEntity<StreamingResponseBody> getRaw(
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final String branch,
@@ -137,7 +137,10 @@ public class TreeController {
 
     final var mediaType = MediaTypeFactory.getMediaType(fileName).orElse(MediaType.TEXT_PLAIN);
 
-    return ResponseEntity.ok().contentType(mediaType).body(content);
+    return ResponseEntity.ok()
+        .contentType(mediaType)
+        .contentLength(content.size())
+        .body(content.body());
   }
 
   @GetMapping("/archive/{branch}")

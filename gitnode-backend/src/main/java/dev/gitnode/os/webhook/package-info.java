@@ -25,9 +25,12 @@
       "events :: snippet",
       "events :: task",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
-      "shared :: *",
+      "shared :: audit-annotations",
+      "shared :: circuitbreaker",
+      "shared :: errorhandling-exceptions",
+      "shared :: lock",
+      "shared :: ratelimit",
       "task :: api"
     })
 package dev.gitnode.os.webhook;

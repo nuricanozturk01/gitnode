@@ -18,10 +18,11 @@
     allowedDependencies = {
       "branch :: api",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: events",
-      "shared :: *"
+      "shared :: audit-annotations",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.ssh;
 

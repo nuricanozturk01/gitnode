@@ -18,10 +18,11 @@
     allowedDependencies = {
       "events :: collaborator",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *",
+      "shared :: audit-annotations",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit",
       "team :: api"
     })
 package dev.gitnode.os.collaborator;

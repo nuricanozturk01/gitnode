@@ -17,7 +17,7 @@ package dev.gitnode.os.actions.controllers;
 
 import dev.gitnode.os.actions.dtos.response.SecretResponse;
 import dev.gitnode.os.actions.services.SecretVaultService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
@@ -50,7 +50,7 @@ public class SecretController {
   private final SecretVaultService secretVaultService;
   private final RepoLookupPort repoLookup;
   private final RepoAccessPort repoService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping
   public ResponseEntity<List<SecretResponse>> list(

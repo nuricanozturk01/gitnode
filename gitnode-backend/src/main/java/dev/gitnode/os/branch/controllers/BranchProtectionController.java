@@ -2,7 +2,7 @@ package dev.gitnode.os.branch.controllers;
 
 import dev.gitnode.os.branch.entities.BranchProtectionRule;
 import dev.gitnode.os.branch.services.BranchProtectionService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/repos/{owner}/{repo}/branch-protections")
 @RequiredArgsConstructor
 public class BranchProtectionController {
-  private final JwtUtils jwt;
+  private final TokenUserResolver jwt;
   private final RepoAccessPort access;
   private final RepoLookupPort repos;
   private final BranchProtectionService protection;

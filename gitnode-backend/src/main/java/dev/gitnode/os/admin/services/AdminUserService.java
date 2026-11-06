@@ -17,8 +17,8 @@ package dev.gitnode.os.admin.services;
 
 import dev.gitnode.os.admin.dtos.AdminUserDetail;
 import dev.gitnode.os.admin.dtos.AdminUserSummary;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -36,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 @NullMarked
 public class AdminUserService {
 
-  private final TenantRepository tenantRepository;
+  private final TenantAccountStore tenantRepository;
   private final PlatformAdminService platformAdminService;
   private final org.springframework.context.ApplicationEventPublisher events;
 
@@ -46,11 +46,11 @@ public class AdminUserService {
     final var normalizedQuery = query == null ? "" : query.trim();
 
     if (normalizedQuery.isBlank()) {
-      return this.tenantRepository.findAllByOrderByCreatedAtDesc(pageable).map(this::toSummary);
+      return this.tenantRepository.findAllNewestFirst(pageable).map(this::toSummary);
     }
 
     return this.tenantRepository
-        .findAllByUsernameContainingIgnoreCaseOrderByCreatedAtDesc(normalizedQuery, pageable)
+        .searchByUsernameNewestFirst(normalizedQuery, pageable)
         .map(this::toSummary);
   }
 
@@ -82,14 +82,14 @@ public class AdminUserService {
     return this.toDetail(saved);
   }
 
-  private Tenant requireTenant(final UUID id) {
+  private TenantAccount requireTenant(final UUID id) {
 
     return this.tenantRepository
         .findById(id)
         .orElseThrow(() -> new ItemNotFoundException("userNotExist"));
   }
 
-  private AdminUserSummary toSummary(final Tenant tenant) {
+  private AdminUserSummary toSummary(final TenantAccount tenant) {
 
     return new AdminUserSummary(
         tenant.getId(),
@@ -99,7 +99,7 @@ public class AdminUserService {
         tenant.getCreatedAt());
   }
 
-  private AdminUserDetail toDetail(final Tenant tenant) {
+  private AdminUserDetail toDetail(final TenantAccount tenant) {
 
     return new AdminUserDetail(
         tenant.getId(),

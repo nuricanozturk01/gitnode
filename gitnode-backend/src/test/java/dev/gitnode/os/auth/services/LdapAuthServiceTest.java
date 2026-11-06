@@ -31,9 +31,9 @@ import dev.gitnode.os.auth.entities.Account;
 import dev.gitnode.os.auth.entities.Organization;
 import dev.gitnode.os.auth.repositories.AccountRepository;
 import dev.gitnode.os.auth.repositories.OrganizationRepository;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.dtos.LoginInfo;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
@@ -63,7 +63,7 @@ class LdapAuthServiceTest {
   @Mock private OrganizationRepository organizationRepository;
   @Mock private LdapConnectionService ldapConnectionService;
   @Mock private LdapTemplate ldapTemplate;
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
   @Mock private AccountRepository accountRepository;
   @Mock private JwtUtils jwtUtils;
   @Mock private dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
@@ -72,6 +72,7 @@ class LdapAuthServiceTest {
 
   @BeforeEach
   void setUp() {
+    lenient().when(tenantRepository.newAccount()).thenAnswer(inv -> new Tenant());
 
     final var organization = sampleLdapOrg();
     lenient()

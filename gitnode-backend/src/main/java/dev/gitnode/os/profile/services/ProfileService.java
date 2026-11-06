@@ -18,9 +18,9 @@ package dev.gitnode.os.profile.services;
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
 import dev.gitnode.os.events.profile.TenantDeletingEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.identity.api.TenantInfoMapper;
 import dev.gitnode.os.identity.dtos.TenantInfo;
-import dev.gitnode.os.identity.mappers.TenantMapper;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.UpdateDisplayNameForm;
@@ -48,9 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
 @NullMarked
 public class ProfileService {
 
-  private final TenantRepository tenantRepository;
-  private final dev.gitnode.os.identity.services.PasswordHasher passwordHasher;
-  private final TenantMapper tenantMapper;
+  private final TenantAccountStore tenantRepository;
+  private final dev.gitnode.os.identity.api.PasswordHashing passwordHasher;
+  private final TenantInfoMapper tenantMapper;
   private final ApplicationEventPublisher eventPublisher;
   private static final String USER_NOT_FOUND = "userNotFound";
 

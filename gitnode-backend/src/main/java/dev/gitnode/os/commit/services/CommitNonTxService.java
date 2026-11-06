@@ -53,6 +53,7 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
@@ -62,7 +63,11 @@ import org.springframework.stereotype.Service;
 @NullMarked
 public class CommitNonTxService {
 
-  private static final int MAX_FILES_PER_COMMIT = 50;
+  private static final int DEFAULT_MAX_FILES_PER_COMMIT = 50;
+
+  @Value("${gitnode.limits.commit-diff-max-files:50}")
+  private int maxFilesPerCommit = DEFAULT_MAX_FILES_PER_COMMIT;
+
   private static final int DEFAULT_SHORT_SHA_LENGTH = 7;
 
   private final GitProvider gitProvider;
@@ -192,7 +197,7 @@ public class CommitNonTxService {
       final var newTree = prepareTreeParser(gitRepo, commit.getId());
       final var diffs = formatter.scan(oldTree, newTree);
 
-      if (diffs.size() <= MAX_FILES_PER_COMMIT) {
+      if (diffs.size() <= this.maxFilesPerCommit) {
         return diffs.stream().map(entry -> parseFileDiff(gitRepo, formatter, entry)).toList();
       }
 
@@ -348,7 +353,7 @@ public class CommitNonTxService {
       final var newTree = prepareTreeParser(gitRepo, commit.getId());
       final var diffs = formatter.scan(oldTree, newTree);
 
-      if (diffs.size() > MAX_FILES_PER_COMMIT) {
+      if (diffs.size() > this.maxFilesPerCommit) {
         return new CommitStats(0, 0, diffs.size());
       }
 

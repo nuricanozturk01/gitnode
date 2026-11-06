@@ -15,7 +15,13 @@
  */
 @NullMarked
 @ApplicationModule(
-    allowedDependencies = {"identity :: api", "identity :: security", "repo :: api", "shared :: *"})
+    allowedDependencies = {
+      "identity :: api",
+      "repo :: api",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider"
+    })
 package dev.gitnode.os.commit;
 
 import org.jspecify.annotations.NullMarked;

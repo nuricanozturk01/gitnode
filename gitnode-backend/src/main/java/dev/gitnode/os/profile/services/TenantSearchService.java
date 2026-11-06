@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.profile.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.profile.dtos.TenantSearchResult;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,17 +30,16 @@ import org.springframework.transaction.annotation.Transactional;
 @NullMarked
 public class TenantSearchService {
 
-  private final TenantRepository tenantRepository;
+  private final TenantAccountStore tenantRepository;
 
   public List<TenantSearchResult> search(final String prefix) {
 
-    final var tenants =
-        this.tenantRepository.findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc(prefix);
+    final var tenants = this.tenantRepository.findTop10ByUsernamePrefix(prefix);
 
     return tenants.stream().map(this::toResult).toList();
   }
 
-  private TenantSearchResult toResult(final Tenant t) {
+  private TenantSearchResult toResult(final TenantAccount t) {
 
     final var displayName = t.getDisplayName() != null ? t.getDisplayName() : t.getUsername();
 

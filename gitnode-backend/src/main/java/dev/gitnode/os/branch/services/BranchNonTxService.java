@@ -147,6 +147,50 @@ public class BranchNonTxService implements BranchProtocolService {
     }
   }
 
+  /** One page of branches (default branch first, then by name); {@code total} is the full count. */
+  public record BranchPage(List<BranchInfo> items, int total) {}
+
+  public BranchPage getPage(
+      final String owner, final String repoName, final int offset, final int limit)
+      throws IOException {
+
+    final var repo = this.branchTxService.findRepoByOwnerAndRepoName(owner, repoName);
+
+    try (final var gitRepo = this.gitProvider.open(owner, repoName);
+        final var walk = new RevWalk(gitRepo)) {
+
+      final var refs = gitRepo.getRefDatabase().getRefsByPrefix(Constants.R_HEADS);
+
+      if (refs.isEmpty()) {
+        final var unborn = this.unbornBranchList(gitRepo, repo.defaultBranch());
+        return new BranchPage(unborn, unborn.size());
+      }
+
+      final var defaultName = repo.defaultBranch();
+      final var ordered =
+          refs.stream()
+              .sorted(
+                  comparing(
+                          (org.eclipse.jgit.lib.Ref r) ->
+                              this.shortName(r).equals(defaultName) ? 0 : 1)
+                      .thenComparing(this::shortName))
+              .toList();
+      final int from = Math.min(offset, ordered.size());
+      final int to = (int) Math.min((long) from + limit, ordered.size());
+      final var defaultRef = gitRepo.exactRef(Constants.R_HEADS + defaultName);
+      final var items =
+          ordered.subList(from, to).stream()
+              .map(ref -> this.buildBranchInfo(walk, ref, defaultName))
+              .map(info -> this.withDivergence(gitRepo, info, defaultRef))
+              .toList();
+      return new BranchPage(items, ordered.size());
+    }
+  }
+
+  private String shortName(final org.eclipse.jgit.lib.Ref ref) {
+    return ref.getName().substring(Constants.R_HEADS.length());
+  }
+
   @Override
   public BranchInfo get(final String owner, final String repoName, final String branchName)
       throws IOException {

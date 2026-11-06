@@ -20,7 +20,7 @@ import dev.gitnode.os.filecomment.dtos.FileCommentForm;
 import dev.gitnode.os.filecomment.dtos.FileCommentInfo;
 import dev.gitnode.os.filecomment.dtos.FileCommentUpdateForm;
 import dev.gitnode.os.filecomment.services.FileCommentService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
@@ -50,7 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FileCommentController {
 
   private final FileCommentService service;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
 
   @GetMapping

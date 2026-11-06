@@ -18,7 +18,7 @@ package dev.gitnode.os.actions.controllers;
 import dev.gitnode.os.actions.dtos.request.RunnerGroupRequest;
 import dev.gitnode.os.actions.dtos.response.RunnerGroupResponse;
 import dev.gitnode.os.actions.services.RunnerGroupService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RunnerGroupController {
 
   private final RunnerGroupService groupService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   record PageResponse<T>(List<T> content, long totalElements, int totalPages, int page, int size) {}
 

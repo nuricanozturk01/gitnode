@@ -47,6 +47,11 @@ import org.springframework.stereotype.Service;
 @NullMarked
 public class WorkflowParserService {
 
+  private static final int DEFAULT_WORKFLOW_YAML_BYTES = 1_048_576;
+
+  @Value("${gitnode.limits.workflow-yaml-bytes:1048576}")
+  private int workflowYamlBytes = DEFAULT_WORKFLOW_YAML_BYTES;
+
   static final String WORKFLOW_DIR = ".gitnode/workflows";
   static final ObjectMapper YAML_MAPPER =
       new ObjectMapper(new YAMLFactory())
@@ -275,7 +280,15 @@ public class WorkflowParserService {
 
     final var loader = repo.open(objectId);
 
-    return loader == null ? null : new String(loader.getBytes(), StandardCharsets.UTF_8);
+    if (loader == null) {
+      return null;
+    }
+    if (loader.getSize() > this.workflowYamlBytes) {
+      log.warn(
+          "Workflow file {} exceeds {} bytes, ignoring", objectId.name(), this.workflowYamlBytes);
+      return null;
+    }
+    return new String(loader.getCachedBytes(this.workflowYamlBytes), StandardCharsets.UTF_8);
   }
 
   public @Nullable WorkflowModel parseFromContent(final String yamlContent) {

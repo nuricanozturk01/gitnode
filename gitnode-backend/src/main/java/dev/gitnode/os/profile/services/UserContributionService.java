@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.profile.services;
 
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.profile.dtos.ContributionBreakdown;
 import dev.gitnode.os.profile.dtos.ContributionDay;
 import dev.gitnode.os.profile.dtos.UserContributionsResponse;
@@ -51,7 +51,7 @@ public class UserContributionService {
   private static final int CONTRIBUTION_LEVEL_THREE = 3;
   private static final int CONTRIBUTION_LEVEL_FOUR = 4;
 
-  private final TenantRepository tenantRepository;
+  private final TenantAccountStore tenantRepository;
   private final UserContributionRepository userContributionRepository;
 
   public UserContributionsResponse getContributions(

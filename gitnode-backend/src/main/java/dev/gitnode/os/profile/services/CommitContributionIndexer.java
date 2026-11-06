@@ -17,8 +17,8 @@
 package dev.gitnode.os.profile.services;
 
 import dev.gitnode.os.events.repo.RepoPushedEvent;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import java.io.IOException;
@@ -60,7 +60,7 @@ public class CommitContributionIndexer {
       java.util.regex.Pattern.compile("^(?:\\d+\\+)?([a-z0-9._-]+)@users\\.noreply\\.[a-z0-9.-]+$");
 
   private final RepoLookupPort repos;
-  private final TenantRepository tenants;
+  private final TenantAccountStore tenants;
   private final GitProvider gitProvider;
   private final NamedParameterJdbcTemplate jdbc;
 
@@ -121,7 +121,7 @@ public class CommitContributionIndexer {
   /** Maps lower-cased commit e-mail addresses to the account they count for. */
   private Map<String, UUID> ownersOf(final Set<String> emails) {
     final Map<String, UUID> owners = new HashMap<>();
-    for (final Tenant tenant : this.tenants.findAllByEmailIn(emails)) {
+    for (final TenantAccount tenant : this.tenants.findAllByEmailIn(emails)) {
       owners.put(tenant.getEmail().toLowerCase(Locale.ROOT), tenant.getId());
     }
     this.jdbc.query(
@@ -180,7 +180,7 @@ public class CommitContributionIndexer {
     if (!matcher.matches()) {
       return java.util.Optional.empty();
     }
-    return this.tenants.findByUsername(matcher.group(1)).map(Tenant::getId);
+    return this.tenants.findByUsername(matcher.group(1)).map(TenantAccount::getId);
   }
 
   private String email(final RevCommit commit) {

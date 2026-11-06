@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.webhook.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.webhook.dtos.WebhookForm;
 import dev.gitnode.os.webhook.dtos.WebhookInfo;
@@ -46,7 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class WebhookController {
 
   private final WebhookService webhookService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping
   public ResponseEntity<List<WebhookInfo>> list(

@@ -24,14 +24,13 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.repo.RepoCreatedEvent;
 import dev.gitnode.os.events.repo.RepoDeletedEvent;
+import dev.gitnode.os.identity.api.TenantQueryPort;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.dtos.RepoForm;
 import dev.gitnode.os.repo.dtos.RepoInfo;
 import dev.gitnode.os.repo.dtos.TenantRepoInfo;
 import dev.gitnode.os.repo.entities.Repo;
-import dev.gitnode.os.repo.mappers.RepoMapper;
 import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -58,8 +57,9 @@ import org.springframework.data.domain.PageRequest;
 class RepoServiceTest {
 
   @Mock private RepoRepository repoRepository;
-  @Mock private TenantRepository tenantRepository;
-  @Mock private RepoMapper repoMapper;
+  @Mock private TenantQueryPort tenantRepository;
+  @Mock private RepoInfoAssembler infoAssembler;
+  @Mock private RepoOwnerResolver ownerResolver;
   @Mock private ApplicationEventPublisher eventPublisher;
   @Mock private RepoStorageService repoStorageService;
   @Mock private CollaboratorAccessPort collaboratorAccessPort;
@@ -111,9 +111,9 @@ class RepoServiceTest {
     savedRepo.setName("my-repo");
     RepoInfo expectedInfo = createRepoInfo(savedRepo.getId(), "my-repo");
 
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(tenant)));
     when(repoRepository.save(any(Repo.class))).thenReturn(savedRepo);
-    when(repoMapper.toDto(savedRepo)).thenReturn(expectedInfo);
+    when(infoAssembler.toDto(savedRepo)).thenReturn(expectedInfo);
 
     RepoInfo result = repoService.create(tenantId, form);
 
@@ -123,7 +123,7 @@ class RepoServiceTest {
     assertThat(repoCaptor.getValue().getName()).isEqualTo("my-repo");
     assertThat(repoCaptor.getValue().getDefaultBranch())
         .isEqualTo(RepoService.NEW_REPO_DEFAULT_BRANCH);
-    assertThat(repoCaptor.getValue().getOwner()).isSameAs(tenant);
+    assertThat(repoCaptor.getValue().getOwnerId()).isEqualTo(tenant.getId());
     ArgumentCaptor<RepoCreatedEvent> eventCaptor = ArgumentCaptor.forClass(RepoCreatedEvent.class);
     verify(eventPublisher).publishEvent(eventCaptor.capture());
     assertThat(eventCaptor.getValue().repoOwner()).isEqualTo("alice");
@@ -136,7 +136,7 @@ class RepoServiceTest {
     UUID tenantId = UUID.randomUUID();
     Tenant tenant = new Tenant();
     tenant.setId(tenantId);
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(tenant)));
     when(tenantRepository.findByUsername("owner")).thenReturn(Optional.empty());
 
     assertThatThrownBy(
@@ -156,8 +156,8 @@ class RepoServiceTest {
     Tenant owner = new Tenant();
     owner.setId(tenantId);
     owner.setUsername("owner");
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(tenant));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(tenant)));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     when(repoRepository.findByOwnerIdAndName(owner.getId(), "repo")).thenReturn(Optional.empty());
 
     assertThatThrownBy(
@@ -182,10 +182,10 @@ class RepoServiceTest {
     Repo repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
 
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(caller));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(caller)));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     when(repoRepository.findByOwnerIdAndName(ownerId, "repo")).thenReturn(Optional.of(repo));
 
     assertThatThrownBy(
@@ -206,15 +206,15 @@ class RepoServiceTest {
     Repo repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
     RepoInfo expectedInfo = createRepoInfo(repo.getId(), "repo");
     RepoForm form = RepoForm.builder().name("repo").description("new").build();
 
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(owner));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(owner)));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     when(repoRepository.findByOwnerIdAndName(tenantId, "repo")).thenReturn(Optional.of(repo));
     when(repoRepository.save(repo)).thenReturn(repo);
-    when(repoMapper.toDto(repo)).thenReturn(expectedInfo);
+    when(infoAssembler.toDto(repo)).thenReturn(expectedInfo);
 
     RepoInfo result = repoService.update(tenantId, "owner", "repo", form);
 
@@ -232,16 +232,16 @@ class RepoServiceTest {
     Repo repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
     repo.setTopics(Set.of("java", "spring"));
     RepoInfo expectedInfo = createRepoInfo(repo.getId(), "repo");
     RepoForm form = RepoForm.builder().name("repo").description("new").build();
 
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(owner));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(owner)));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     when(repoRepository.findByOwnerIdAndName(tenantId, "repo")).thenReturn(Optional.of(repo));
     when(repoRepository.save(repo)).thenReturn(repo);
-    when(repoMapper.toDto(repo)).thenReturn(expectedInfo);
+    when(infoAssembler.toDto(repo)).thenReturn(expectedInfo);
 
     repoService.update(tenantId, "owner", "repo", form);
 
@@ -258,16 +258,16 @@ class RepoServiceTest {
     Repo repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
     repo.setTopics(Set.of("old"));
     RepoInfo expectedInfo = createRepoInfo(repo.getId(), "repo");
     RepoForm form = RepoForm.builder().name("repo").description("d").topics(Set.of("go")).build();
 
-    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(owner));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findById(tenantId)).thenReturn(Optional.of(ref(owner)));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     when(repoRepository.findByOwnerIdAndName(tenantId, "repo")).thenReturn(Optional.of(repo));
     when(repoRepository.save(repo)).thenReturn(repo);
-    when(repoMapper.toDto(repo)).thenReturn(expectedInfo);
+    when(infoAssembler.toDto(repo)).thenReturn(expectedInfo);
 
     repoService.update(tenantId, "owner", "repo", form);
 
@@ -289,7 +289,7 @@ class RepoServiceTest {
   void deleteByTenantId_throws_invalidDeleteRequest() {
     Tenant owner = new Tenant();
     owner.setId(UUID.randomUUID());
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     UUID differentTenantId = UUID.randomUUID();
 
     assertThatThrownBy(() -> repoService.delete(differentTenantId, "repo", "owner"))
@@ -307,7 +307,7 @@ class RepoServiceTest {
     Repo repo = new Repo();
     repo.setId(UUID.randomUUID());
     repo.setName("repo");
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(owner));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(owner)));
     when(repoRepository.findByOwnerIdAndName(ownerId, "repo")).thenReturn(Optional.of(repo));
 
     repoService.delete(ownerId, "repo", "owner");
@@ -330,7 +330,8 @@ class RepoServiceTest {
     PageRequest pageable = PageRequest.of(0, 10);
     when(repoRepository.findAllByOwnerUsernameAndIsPrivateFalse("owner", pageable))
         .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
-    when(repoMapper.toDto(r1)).thenReturn(i1);
+    when(infoAssembler.toDtoPage(any()))
+        .thenAnswer(inv -> ((Page<Repo>) inv.getArgument(0)).map(r -> i1));
 
     Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, null);
 
@@ -350,10 +351,11 @@ class RepoServiceTest {
     r1.setPrivate(true);
     RepoInfo i1 = createRepoInfo(r1.getId(), "private-repo");
     PageRequest pageable = PageRequest.of(0, 10);
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(ownerTenant)));
     when(repoRepository.findAllByOwnerUsername("owner", pageable))
         .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
-    when(repoMapper.toDto(r1)).thenReturn(i1);
+    when(infoAssembler.toDtoPage(any()))
+        .thenAnswer(inv -> ((Page<Repo>) inv.getArgument(0)).map(r -> i1));
 
     Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, ownerId);
 
@@ -373,11 +375,12 @@ class RepoServiceTest {
     PageRequest pageable = PageRequest.of(0, 10);
     Tenant ownerTenant = new Tenant();
     ownerTenant.setId(UUID.randomUUID());
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(ownerTenant)));
     when(collaboratorAccessPort.hasTeamAccess(memberId, ownerTenant.getId())).thenReturn(true);
     when(repoRepository.findAllByOwnerUsername("owner", pageable))
         .thenReturn(new PageImpl<>(List.of(r1), pageable, 1));
-    when(repoMapper.toDto(r1)).thenReturn(i1);
+    when(infoAssembler.toDtoPage(any()))
+        .thenAnswer(inv -> ((Page<Repo>) inv.getArgument(0)).map(r -> i1));
 
     Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, memberId);
 
@@ -392,11 +395,13 @@ class RepoServiceTest {
     PageRequest pageable = PageRequest.of(0, 10);
     Tenant ownerTenant = new Tenant();
     ownerTenant.setId(UUID.randomUUID());
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(ownerTenant)));
     when(collaboratorAccessPort.hasTeamAccess(strangerId, ownerTenant.getId())).thenReturn(false);
     when(collaboratorAccessPort.findAcceptedRepoIds(strangerId, "owner")).thenReturn(Set.of());
     when(repoRepository.findAllByOwnerUsernameAndIsPrivateFalse("owner", pageable))
         .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+    when(infoAssembler.toDtoPage(any()))
+        .thenAnswer(inv -> ((Page<Repo>) inv.getArgument(0)).map(r -> (RepoInfo) null));
 
     Page<RepoInfo> result = repoService.findAllByOwner("owner", pageable, strangerId);
 
@@ -461,7 +466,7 @@ class RepoServiceTest {
     RepoInfo expected = createRepoInfo(repo.getId(), "private-repo");
     when(repoRepository.findByOwnerUsernameAndName("owner", "private-repo"))
         .thenReturn(Optional.of(repo));
-    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ownerTenant));
+    when(tenantRepository.findByUsername("owner")).thenReturn(Optional.of(ref(ownerTenant)));
     cacheResult = expected;
 
     RepoInfo result = repoService.findByOwnerAndName("owner", "private-repo", ownerId);
@@ -525,7 +530,7 @@ class RepoServiceTest {
     ArgumentCaptor<Repo> saved = ArgumentCaptor.forClass(Repo.class);
     verify(repoRepository).save(saved.capture());
     assertThat(saved.getValue().isPrivate()).isTrue();
-    assertThat(saved.getValue().getOwner().getId()).isEqualTo(forkerId);
+    assertThat(saved.getValue().getOwnerId()).isEqualTo(forkerId);
   }
 
   @Test
@@ -547,9 +552,9 @@ class RepoServiceTest {
   @DisplayName("fork of an own private repo is still rejected")
   void fork_ownRepoRejected() {
     Repo source = privateSource();
-    stubFork(source.getOwner().getId(), source);
+    stubFork(source.getOwnerId(), source);
 
-    assertThatThrownBy(() -> repoService.fork(source.getOwner().getId(), "owner", "src"))
+    assertThatThrownBy(() -> repoService.fork(source.getOwnerId(), "owner", "src"))
         .hasMessageContaining("cannotForkOwnRepo");
   }
 
@@ -560,7 +565,7 @@ class RepoServiceTest {
     Repo source = new Repo();
     source.setId(UUID.randomUUID());
     source.setName("src");
-    source.setOwner(owner);
+    source.setOwnerId(owner.getId());
     source.setPrivate(true);
     return source;
   }
@@ -569,7 +574,7 @@ class RepoServiceTest {
     Tenant forker = new Tenant();
     forker.setId(forkerId);
     forker.setUsername("forker");
-    when(tenantRepository.findById(forkerId)).thenReturn(Optional.of(forker));
+    when(tenantRepository.findById(forkerId)).thenReturn(Optional.of(ref(forker)));
     when(repoRepository.findByOwnerUsernameAndName("owner", "src")).thenReturn(Optional.of(source));
   }
 
@@ -590,5 +595,10 @@ class RepoServiceTest {
         Instant.EPOCH,
         null,
         0);
+  }
+
+  private static dev.gitnode.os.identity.api.TenantQueryPort.TenantRef ref(final Tenant t) {
+    return new dev.gitnode.os.identity.api.TenantQueryPort.TenantRef(
+        t.getId(), t.getUsername(), t.getEmail() == null ? "" : t.getEmail(), null, null, true);
   }
 }

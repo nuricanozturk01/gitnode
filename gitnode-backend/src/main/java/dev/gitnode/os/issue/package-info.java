@@ -19,10 +19,12 @@
       "commit :: api",
       "events :: issue",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *"
+      "shared :: audit-annotations",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.issue;
 

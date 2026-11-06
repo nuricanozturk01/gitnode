@@ -18,6 +18,7 @@ package dev.gitnode.os.actions.services;
 import dev.gitnode.os.actions.entities.WorkflowCache;
 import dev.gitnode.os.actions.repositories.WorkflowCacheRepository;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
+import dev.gitnode.os.shared.lock.SchedulerLock;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -134,6 +135,7 @@ public class CacheStoreService {
     return Optional.empty();
   }
 
+  @SchedulerLock(name = "cache-cleanup", ttlSeconds = 3600, failOpen = true)
   @Scheduled(cron = "0 30 2 * * *")
   @Transactional
   public void evictByLruAndSizeLimit() {

@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.ssh.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.ssh.dtos.AddSshKeyForm;
 import dev.gitnode.os.ssh.dtos.SshKeyInfo;
@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class SshKeyController {
 
   private final SshKeyService sshKeyService;
-  private final JwtUtils tokenService;
+  private final TokenUserResolver tokenService;
 
   @GetMapping
   public ResponseEntity<List<SshKeyInfo>> listKeys(

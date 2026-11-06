@@ -18,12 +18,13 @@ package dev.gitnode.os.admin.services;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.shared.lock.DistributedLockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -43,12 +44,13 @@ class BootstrapAdminInitializerTest {
 
   private static final String PASSWORD = "bootstrap-secret";
 
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
   @Mock private DistributedLockService lockService;
   @Mock private TransactionTemplate transactionTemplate;
 
   @BeforeEach
   void setUp() {
+    lenient().when(tenantRepository.newAccount()).thenAnswer(inv -> new Tenant());
     when(lockService.generateOwner()).thenReturn("test-owner");
     when(lockService.tryLock(any(), any(), any())).thenReturn(true);
     when(transactionTemplate.execute(any()))

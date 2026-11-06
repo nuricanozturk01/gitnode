@@ -15,8 +15,9 @@
  */
 package dev.gitnode.os.identity.mappers;
 
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantInfoMapper;
 import dev.gitnode.os.identity.dtos.TenantInfo;
-import dev.gitnode.os.identity.entities.Tenant;
 import org.jspecify.annotations.NullMarked;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -24,11 +25,12 @@ import org.mapstruct.MappingConstants;
 
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 @NullMarked
-public interface TenantMapper {
+public interface TenantMapper extends TenantInfoMapper {
 
   @Mapping(
       target = "displayName",
       expression =
           "java(tenant.getDisplayName() != null ? tenant.getDisplayName() : tenant.getUsername())")
-  TenantInfo toTenantInfo(Tenant tenant);
+  @Override
+  TenantInfo toTenantInfo(TenantAccount tenant);
 }

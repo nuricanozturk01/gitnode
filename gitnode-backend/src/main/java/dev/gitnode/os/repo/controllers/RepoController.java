@@ -16,7 +16,7 @@
 package dev.gitnode.os.repo.controllers;
 
 import dev.gitnode.os.events.repo.RepoRenamedEvent;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.repo.dtos.RepoForm;
 import dev.gitnode.os.repo.dtos.RepoInfo;
@@ -47,7 +47,7 @@ import org.springframework.web.bind.annotation.RestController;
 @NullMarked
 public class RepoController {
 
-  private final JwtUtils tokenService;
+  private final TokenUserResolver tokenService;
   private final RepoService repoService;
   private final ApplicationEventPublisher eventPublisher;
 

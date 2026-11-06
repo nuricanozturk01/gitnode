@@ -23,9 +23,11 @@
       "events :: tag",
       "githttp :: api",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
-      "shared :: *"
+      "shared :: audit-annotations",
+      "shared :: errorhandling-exceptions",
+      "shared :: lock",
+      "shared :: ratelimit"
     })
 @NullMarked
 package dev.gitnode.os.actions;

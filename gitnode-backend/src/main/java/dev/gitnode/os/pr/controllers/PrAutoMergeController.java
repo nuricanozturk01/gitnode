@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.pr.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.pr.dtos.MergeStrategy;
 import dev.gitnode.os.pr.dtos.PrMergeRequirements;
 import dev.gitnode.os.pr.services.PrAutoMergeService;
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @NullMarked
 public class PrAutoMergeController {
 
-  private final JwtUtils tokenService;
+  private final TokenUserResolver tokenService;
   private final RepoAccessPort repoService;
   private final PrAutoMergeService autoMerge;
 

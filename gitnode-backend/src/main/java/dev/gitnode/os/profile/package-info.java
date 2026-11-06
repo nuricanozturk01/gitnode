@@ -18,10 +18,12 @@
     allowedDependencies = {
       "events :: profile",
       "events :: repo",
-      "identity :: *",
+      "identity :: api",
+      "identity :: dto",
       "repo :: api",
       "shared :: errorhandling-exceptions",
-      "shared :: git-provider"
+      "shared :: git-provider",
+      "shared :: lock"
     })
 package dev.gitnode.os.profile;
 

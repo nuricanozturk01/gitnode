@@ -49,7 +49,7 @@ WORKDIR /app
 
 COPY --from=backend-build /app/gitnode-backend/target/gitnode-backend.jar app.jar
 
-RUN mkdir -p /data/repos && chown forge:forge /data/repos
+RUN mkdir -p /data/repos /var/log/gitnode && chown forge:forge /data/repos /var/log/gitnode
 
 USER forge
 
@@ -66,4 +66,8 @@ ENTRYPOINT ["java", \
   "-XX:+UseCompressedOops", \
   "-XX:+UseCompressedClassPointers", \
   "-XX:CompressedClassSpaceSize=64m", \
+  "-XX:+HeapDumpOnOutOfMemoryError", \
+  "-XX:HeapDumpPath=/var/log/gitnode", \
+  "-XX:+ExitOnOutOfMemoryError", \
+  "-Xlog:gc*:file=/var/log/gitnode/gc.log:time,uptime:filecount=5,filesize=10m", \
   "-jar", "app.jar"]

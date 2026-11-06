@@ -23,6 +23,7 @@ import dev.gitnode.os.repo.events.TreeCommitEventPublisher;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
+import dev.gitnode.os.shared.git.provider.GitLimits;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import dev.gitnode.os.tree.dtos.BlobResponse;
 import dev.gitnode.os.tree.dtos.EntryType;
@@ -62,14 +63,21 @@ import org.eclipse.jgit.treewalk.filter.PathFilter;
 import org.eclipse.jgit.treewalk.filter.TreeFilter;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @NullMarked
 public class TreeNonTxService {
+
+  private static final int DEFAULT_BLOB_PREVIEW_BYTES = 10_485_760;
+
+  @Value("${gitnode.limits.blob-preview-bytes:10485760}")
+  private int blobPreviewBytes = DEFAULT_BLOB_PREVIEW_BYTES;
 
   private record RawEntry(String name, String entryPath, boolean isTree, String sha, long size) {}
 
@@ -127,7 +135,7 @@ public class TreeNonTxService {
 
           final var objectId = treeWalk.getObjectId(0);
           final var loader = gitRepo.open(objectId);
-          final var bytes = loader.getBytes();
+          final var bytes = GitLimits.readBounded(loader, this.blobPreviewBytes);
           final var isBinary = this.isBinaryContent(bytes);
           final var content = Base64.getEncoder().encodeToString(bytes);
           final var fileName = Path.of(filePath).getFileName().toString();
@@ -148,7 +156,10 @@ public class TreeNonTxService {
     }
   }
 
-  public byte[] getRawContent(
+  /** Resolved blob that can be streamed without buffering it on the heap. */
+  public record RawBlob(long size, StreamingResponseBody body) {}
+
+  public RawBlob getRawContent(
       final String owner, final String repoName, final String branch, final String filePath)
       throws IOException {
 
@@ -169,7 +180,15 @@ public class TreeNonTxService {
             throw new ItemNotFoundException("File not found: " + filePath);
           }
 
-          return gitRepo.open(treeWalk.getObjectId(0)).getBytes();
+          final var objectId = treeWalk.getObjectId(0);
+          final long size = gitRepo.open(objectId).getSize();
+          final StreamingResponseBody body =
+              out -> {
+                try (final var repo = this.gitProvider.open(owner, repoName)) {
+                  repo.open(objectId).copyTo(out);
+                }
+              };
+          return new RawBlob(size, body);
         }
       }
     }

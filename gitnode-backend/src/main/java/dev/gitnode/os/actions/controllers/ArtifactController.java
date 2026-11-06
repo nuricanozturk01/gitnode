@@ -20,7 +20,7 @@ import dev.gitnode.os.actions.entities.WorkflowArtifact;
 import dev.gitnode.os.actions.services.ActionsStorageAccess;
 import dev.gitnode.os.actions.services.ArtifactStoreService;
 import dev.gitnode.os.actions.services.CacheStoreService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -51,7 +51,7 @@ public class ArtifactController {
 
   private final ArtifactStoreService artifactStoreService;
   private final CacheStoreService cacheStoreService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final ActionsStorageAccess storageAccess;
 
   /** URL-encoded key a cache hit was stored under. */

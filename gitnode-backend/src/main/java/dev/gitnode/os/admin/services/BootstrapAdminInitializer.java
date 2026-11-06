@@ -15,8 +15,7 @@
  */
 package dev.gitnode.os.admin.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.shared.lock.DistributedLockService;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,8 +38,8 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
   private static final String BOOTSTRAP_LOCK_KEY = "lock:bootstrap:admin";
   private static final Duration BOOTSTRAP_LOCK_TTL = Duration.ofSeconds(30);
 
-  private final TenantRepository tenantRepository;
-  private final dev.gitnode.os.identity.services.PasswordHasher passwordHasher;
+  private final TenantAccountStore tenantRepository;
+  private final dev.gitnode.os.identity.api.PasswordHashing passwordHasher;
   private final DistributedLockService lockService;
   private final TransactionTemplate transactionTemplate;
   private final boolean enabled;
@@ -48,8 +47,8 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
   private final String password;
 
   public BootstrapAdminInitializer(
-      final TenantRepository tenantRepository,
-      final dev.gitnode.os.identity.services.PasswordHasher passwordHasher,
+      final TenantAccountStore tenantRepository,
+      final dev.gitnode.os.identity.api.PasswordHashing passwordHasher,
       final DistributedLockService lockService,
       final TransactionTemplate transactionTemplate,
       @Value("${gitnode.bootstrap.admin.enabled:true}") final boolean enabled,
@@ -90,7 +89,7 @@ public class BootstrapAdminInitializer implements ApplicationRunner {
               log.info("Bootstrap admin already exists, skipping");
               return null;
             }
-            final var tenant = new Tenant();
+            final var tenant = this.tenantRepository.newAccount();
             tenant.setUsername(normalizedUsername);
             tenant.setEmail(normalizedUsername + BOOTSTRAP_EMAIL_DOMAIN);
             this.passwordHasher.setPassword(tenant, this.password);

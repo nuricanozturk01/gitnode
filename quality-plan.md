@@ -55,7 +55,7 @@ Her görev ayrı PR; `mr-check.yml` yeşil olmadan birleşmez.
 
 ## 2. FAZ A: Ölçüm temeli
 
-### P1: Prometheus metrikleri + dashboard `[ ]`  (~1 g)
+### P1: Prometheus metrikleri + dashboard `[iptal]`  (~1 g)
 - `gitnode-backend/pom.xml`: `io.micrometer:micrometer-registry-prometheus`.
 - `application.yaml` → `management.endpoints.web.exposure.include` içine `prometheus` ekle. **Güvenlik:** endpoint yalnız admin/iç ağ; `SecurityConfig`'te `/actuator/prometheus` için ayrı kural (test yaz: anonim 401/403).
 - Özel metrikler (Micrometer `MeterRegistry`):
@@ -68,12 +68,17 @@ Her görev ayrı PR; `mr-check.yml` yeşil olmadan birleşmez.
 - `config/grafana/gitnode.json` dashboard + `config/prometheus.yml`; `docker-compose.yml` altına opsiyonel `profiles: [observability]`.
 - **Kabul:** `curl /actuator/prometheus` metrik döner; dashboard'da Hikari, executor, GC, heap, SSE paneli dolu.
 
-### Q3 (taban adımı): Kapsam ölçümü `[ ]`  (~0.5 g)
+### Q3 (taban adımı): Kapsam ölçümü `[x]`  (~0.5 g)
 - `mvn verify` sonrası modül bazlı JaCoCo raporu al, tabloyu `docs/` veya bu dosyaya yaz (başlangıç değerleri).
 - CI'da PR yorumu/artifact olarak `jacoco.xml` yükle (`mr-check.yml`).
 - **Kabul:** her modülün başlangıç kapsamı bu dosyada kayıtlı.
 
-### M3: Bellek görünürlüğü `[ ]`  (~0.5 g)
+
+**Q3 taban (2026-11-06, `mvn verify`, INSTRUCTION / BRANCH %):** toplam 59/54 ·
+actions 72/67 · admin 88/66 · ai 32/27 · auth 52/29 · branch 42/34 · collaborator 68/86 · commit 80/56 · discussion 46/55 · filecomment 76/76 · githttp 62/70 · identity 74/59 · issue 58/65 · migration 84/83 · notification 7/12 · pr 39/37 · profile 42/52 · repo 53/58 · shared 34/24 · snippet 70/79 · ssh 47/57 · tag 58/52 · task 37/35 · team 87/94 · tree 79/61 · webhook 69/67 · wiki 82/74.
+(Önceki "zayıf modül" listesi dosya sayısına dayanıyordu; gerçek en zayıflar: notification, ai, shared, pr, task, branch, auth-branch.) CI artık `jacoco-report` artifact yüklüyor.
+
+### M3: Bellek görünürlüğü `[x]`  (~0.5 g)
 - Prod için JVM bayrakları (`Dockerfile` `ENTRYPOINT`): `-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/var/log/gitnode`, `-Xlog:gc*:file=...` (veya `-XX:+ExitOnOutOfMemoryError`; hangisi seçilecek D4).
 - Direct buffer/Netty/JGit pencere önbelleği (`WindowCache`) için ayar: JGit `WindowCacheConfig` (`packedGitLimit`, `deltaBaseCacheLimit`) açıkça ayarla, yoksa varsayılan 10 MB × repo sayısı değil ama toplam sınırı belirsiz → sabitle ve belgele.
 - `jcmd`/JFR nasıl alınır rehberi (`CONTRIBUTING.md` kısa bölüm).
@@ -83,7 +88,7 @@ Her görev ayrı PR; `mr-check.yml` yeşil olmadan birleşmez.
 
 ## 3. FAZ B: Ölçeklenebilirlik kritik yol
 
-### S1: `@Scheduled` için dağıtık kilit `[ ]`  (~1.5 g)
+### S1: `@Scheduled` için dağıtık kilit `[x]` (WorkflowScheduler zaten per-minute Redis dedup yapıyor; webhook DLQ manuel kilidi @Transactional nedeniyle bırakıldı)  (~1.5 g)
 Yeni bağımlılık **yok**; `DistributedLockService` kullanılır.
 
 1. `shared/lock/` altında `@SchedulerLock(name, ttl)` annotation + `SchedulerLockAspect` (`@Around`):
@@ -240,7 +245,7 @@ AI'nın bulguları: "servisler arası sıkı bağ, belirsiz modül sınırı; ar
 - `mvn -q -pl gitnode-backend test -Dtest=GitNodeArchitectureTest` → mevcut durum yeşil mi? Çıktıyı taban olarak kaydet.
 - Eski koda karşı e2e baz çizgisi (memory kuralı: önce eski kodla e2e, sonra refactor; kayıt kısıtı 20/5dk olduğu için tek paylaşılan lifecycle spec).
 
-### A1: Sınırları kırılmaz kılma `[ ]`  (~1 g)
+### A1: Sınırları kırılmaz kılma `[x]` (2026-11-06: `ModuleBoundaryRulesTest` R6-R11, hepsi `FreezingArchRule`. Dondurulmuş taban: R6 = 660 satır (yabancı modül iç paketine bağımlılık), R11 = 1 (`SecurityConfig.samlSuccessHandler` @Autowired alan), R7/R8/R9/R10 = 0. Ör. R6 kaydı: `auth.configs.JwtAuthenticationFilter` → `identity.repositories.TenantRepository` + `identity.services.JwtUtils` (katman sızıntısı; A2/A3'te `identity.api` portuna taşınacak). Frozen liste yalnız azalır, A2-A3'te satır silinir)  (~1 g)
 Önce *ölç ve kilitle*, sonra daralt (regresyon olmasın):
 - Mevcut sızıntıları ArchUnit `FreezingArchRule` ile **dondur** (yeni ihlal eklenemez), her daraltma PR'ında dondurulmuş listeden satır sil.
 - Yeni kurallar:
@@ -253,7 +258,7 @@ AI'nın bulguları: "servisler arası sıkı bağ, belirsiz modül sınırı; ar
 - Kuralları `ApplicationModules.verify()` ile **ayrı** test sınıfında koş ki hata mesajı net olsun.
 - **Kabul:** kurallar CI'da; dondurulmuş ihlal sayısı bu dosyaya yazılı (taban), sadece azalır.
 
-### A2: `identity` ve `repo` yüzeyini daralt `[ ]`  (~4-5 g)  ← en büyük kazanç
+### A2: `identity` ve `repo` yüzeyini daralt `[x]` (2026-11-06; kalan işler A3'e devredildi — aşağıdaki not)
 Hedef: diğer modüller `identity` ve `repo`'yu **yalnız port/api/event üzerinden** kullansın.
 1. **identity.services (54 import)**: kullananları gruplayıp hangi yeteneğin eksik olduğunu çıkar (kullanıcı arama, tenant/slug çözümü, parola, anahtar vb.). Her yetenek için `identity.api` altında port (örn. `TenantQueryPort`, `GitCredentialPort`, `AuthenticatedUser` zaten var) + gerekirse yeni: `UserLookupPort`, `TenantProfilePort`. Tüketiciler portlara geçer; `identity.services` paket-özel (package-private sınıflar) yapılır.
 2. **identity.entities/repositories (18/16)**: tüketiciler entity yerine `*View`/record DTO (api'de) alır. R5 muafiyetinden `profile`, `auth`, `admin` çıkarılır (A3'e bağlı).
@@ -263,12 +268,31 @@ Hedef: diğer modüller `identity` ve `repo`'yu **yalnız port/api/event üzerin
 6. Her adım sonrası: `clean test-compile`, mimari test, e2e (memory uyarısı: `Set.of` tekrarlı eleman istisnası).
 - **Kabul:** `identity.services|entities|repositories|mappers` ve `repo.services|entities|repositories|cache` dışarıdan 0 import; joker `::*` sayısı 0 (shared hariç, o da named).
 
-### A3: Uydu modüller `auth`, `profile`, `admin` karar + uygulama `[ ]`  (~3 g)
+**A2 sonucu (2026-11-06):**
+- `identity.api.TokenUserResolver` portu: `JwtUtils` implement ediyor; 19 modülde 41 dosya artık bu portu kullanıyor. Bu modüllerden `identity :: security` izni kalktı.
+- **Tüm `::*` jokerleri kaldırıldı.** Her modülün `allowedDependencies` listesi Modulith'ten çıkarılan gerçek kullanıma göre açık yazıldı (kullanılmayan izinler de düştü). Artık yeni bir bağımlılık eklemek package-info'yu değiştirmeyi gerektirir.
+- Yeni kural R12: `repo.dtos` entity/repository kullanmaz (ihlal 0).
+- R6 donmuş liste 660 → 404. Kalan 404 satırın tamamı: `auth`, `profile`, `admin` (A3) ve `repo → Tenant` (`Repo.owner` JPA ilişkisi: `Repo`, `RepoMapper`, `RepoService`, `RepoMigrationService`; sahip modül ilişkisi, UUID'ye çevirmek ayrı/riskli iş, A3 sonrası değerlendirilecek).
+- Not: `identity` alt paketleri (`dto, model, persistence, security, mapping, utils`) hâlâ named interface; satellite modüller (auth/profile/admin/repo) bunları kullanıyor. A3 bunları kapatacak.
+
+### A3: Uydu modüller `auth`, `profile`, `admin` `[x]` (2026-11-06, A2 ile birlikte yapıldı)
 Karar bekliyor (D9). Öneri:
 - `auth` (kimlik doğrulama: JWT, OAuth2, SAML, LDAP): **`identity`'nin alt modülü olarak değil, ayrı modül kalsın**, ama yalnız `identity.api` ve `auth.api` yayın yüzeyi; `identity`'ye bağımlılığı port üzerinden (`UserCredentialPort`, `ExternalIdentityPort`). Bugün `auth→identity` 15 import.
 - `profile` (katkı grafiği, backfill): `identity` ve `repo.api`'ye port; kendi tablolarına sahip. R5 muafiyetinden çıkar.
 - `admin` (yönetim paneli): **tüm modüllere okuma yönlü** bir "composition/read-model" modülü; domain modüllerinin `api` portlarından veri çeker, iç servis/repo'ya inmez. `repo :: *` ve `identity :: *` izinleri bu yüzden en geniş olan yer; admin için ayrı `*.api.AdminQueryPort` seti tanımla (her modül kendi admin görünümünü sunar). `admin` hiçbir modül tarafından import edilmez (R12).
 - Sonuç: R5 muaf listesi `repo, identity, githttp, ssh` ile kısalır; sonra sadece `repo`/`identity` (sahipleri).
+
+**A2+A3 sonucu (2026-11-06) — R6 donmuş liste 660 → 0, tüm donmuş listeler boş:**
+- `identity.api`: `TenantAccount` (entity görünümü), `TenantAccountStore` (repository portu), `PasswordHashing`, `TokenIssuer`/`TokenUserResolver`/`TokenService`, `TenantInfoMapper`. `auth`, `profile`, `admin` yalnız bunları (ve `identity :: dto`/`utils`) kullanır; `Tenant`/`TenantRepository`/`JwtUtils`/`PasswordHasher` artık dışarıdan görünmez.
+- `repo.api.RepoAdminPort` (admin için okuma portu). `admin` repo iç sınıflarına dokunmaz.
+- JPA ilişkileri UUID'ye çevrildi: `Repo.owner` → `ownerId`, `auth.Account.tenant` → `tenantId`. Sahip bilgisi `RepoOwnerResolver` + `RepoInfoAssembler` (MapStruct `@Context` ile toplu çözüm, sayfa başına tek sorgu). JPQL'de entity join (`JOIN Tenant o ON o.id = r.ownerId`), Java tipi bağımlılığı yok. Üretilen `RepoMapperImpl`/`TenantMapperImpl` elle okundu, tüm alanlar eşleşiyor.
+- `allowedDependencies` jokersiz ve açık. Yeni `AllowedDependenciesSourceTest` kaynak import'larını izin listesiyle karşılaştırır (Modulith bayt kodunda `CacheNames` gibi sabitler inline olduğu için `shared :: cache` eksikliğini kaçırıyordu; 7 modülde eklendi, IDE'nin gösterdiği hata buydu).
+- R5 muafiyeti yalnız `repo` ve `identity`. R10 `services/adapters/listeners/repositories/events` için; R11 sıfır (`SecurityConfig` `ObjectProvider` kullanıyor); R12 `repo.dtos` entity içermez.
+- Hesap silme denetimi: e2e ile veri üretilip hesap API'den silindi; tüm tablolarda silinen kullanıcı/repo kimliğine referans 0, disk dizinleri silindi. Bu denetim `workflow_run/definition/cache/secret`, `runner*`, `webhook_dead_letters` tablolarında FK olmadığını ve yetim satır kaldığını ortaya çıkardı: **V075** migration (önce yetimleri siler, sonra `ON DELETE CASCADE`/`SET NULL` FK'lar + eksik indeksler). Kalıcı test: `e2e/api/auth/account-delete.spec.ts`.
+- Cache düzeltmeleri: `WikiService.save` self-invocation (`load` özel metoduna ayrıldı), `PrFinder.countOpen` (package-private, hiç çağrılmıyordu, cache çalışmıyordu) ve boşuna evict eden `REPO_PR_OPEN_COUNT` kaldırıldı. Başka self-invocation/`@Async` tuzağı yok (taramayla doğrulandı).
+- Gerçek çalıştırmada bulunup düzeltilenler (birim testler yakalamıyordu): `OrganizationRepository` metodunun toplu yeniden adlandırmayla bozulması (uygulama açılmıyordu), `SchedulerLockAspect` argüman bağlama hatası.
+- e2e sonucu: API 165/165, senaryo 132 + merge-lock 3, UI 64, admin UI 5 (LDAP/SAML kasıtlı kapalı). Bellek: backend `-Xmx512m` ile tüm paketi geçti. Bir koşuda tek bir senaryo testi flaky göründü (6+4 tekrarda ve 4 tam koşuda tekrarlanmadı).
+- Bilinçli/bilgi notları: sahibi silinen kayıtta başkasının verisine bağlı kolonlar `SET NULL` (örn. issue assignee, PR merged_by) — başkasının verisini silmemek için. `notification.entity_id` çok biçimli (tablo yok), silinmiş varlığa işaret eden bildirimler kalabilir.
 
 ### A4: `collaborator` modülünü bitir `[ ]`  (~2 g)
 - Refactor yapılmamış tek domain modülü (13 dosya; `repo.api`, `repo.dtos`, `identity.api`, `team.api` zaten izinli).
@@ -306,7 +330,7 @@ Karar bekliyor (D9). Öneri:
 
 AI analizinin tek somut önerisi "üretimde izle" idi (M3 + P1 bunu karşılar). Aşağısı koddan çıkan gerçek riskler.
 
-### M1: Her okuma için üst sınır `[ ]`  (~2 g)
+### M1: Her okuma için üst sınır `[x]` (blob preview 10MB, workflow YAML 1MB, snippet 10MB, commit diff 50 dosya: hepsi `gitnode.limits.*` property, varsayılanlar kodda; raw endpoint streaming; PR diff dosya sınırı UX etkilediği için eklenmedi; 200MB gerçek-çalıştırma denemesi yapılmadı; dal/etiket/release/PR-commit listeleri opsiyonel page/size + `gitnode.limits.list-max-items` (1000) + X-Total-Count, yanıt şekli değişmedi)
 `ObjectLoader.getBytes()` büyük blob'da tüm içeriği heap'e alır (`getBytes()` JGit'te `LargeObjectException` atmaz; `getCachedBytes(limit)` atar).
 - `TreeNonTxService:130,172`, `FileCommentService:284`, `FileDiffParser:196`, `CodebaseFileSampler:328`: `loader.getCachedBytes(MAX)` ya da `loader.isLarge()` kontrolü; büyükse "dosya çok büyük" yanıtı (blob için akış, M2).
 - Ortak sabit: `shared/git` altında `GitLimits` (blob önizleme, diff, dosya yorumu, AI örnekleme sınırları) + `gitnode.limits.*` property'leri; mevcut dağınık sabitleri (`CodeOwners` 1 MB, `Wiki` 512 KB, `PrConflict` 512 KB) buraya topla.
@@ -352,7 +376,12 @@ Karar önerim: **iki kademe**.
 
 ---
 
-## 8. Açık kararlar (yarın ilk iş: bunlara cevap)
+## 8. Kararlar (2026-11-06 kesinleşti)
+
+**Kesin:** D1 paylaşımlı RWX hacim · D2 evet (Repo*Listener, CacheInvalidationListener → Modulith) · D3 evet, tek PR · D5 `warn` kalsın · D6 sadece raporla · D8 kota/arşiv EKLENMEZ (M2 kota, S6 saklama çıktı) · D9 ayrı modül + port · D10 şimdi hayır · D11 named interface `dtos` · D12 `ARCHITECTURE.md`/`DEVAM_NOTU`/`KOD_HARITASI` gereksiz, A0 ve A6'daki üretim işi iptal (ADR kalır) · **Prometheus/Grafana (P1) iptal** · M3 bitti (Dockerfile bayrakları, `JGitWindowCacheConfig`, CONTRIBUTING notu).
+Kalan açık: D4 (dump+çık uygulandı), D7 (yük testi sonrası).
+
+Aşağıdaki tablo özgün öneri listesidir:
 
 | ID | Soru | Önerim |
 |---|---|---|

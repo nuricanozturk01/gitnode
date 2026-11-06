@@ -20,7 +20,7 @@ import dev.gitnode.os.ai.dtos.TestAiConnectionResponse;
 import dev.gitnode.os.ai.dtos.UpdateAiSettingsRequest;
 import dev.gitnode.os.ai.dtos.UserAiSettingsDto;
 import dev.gitnode.os.ai.services.UserAiSettingsService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AiSettingsController {
 
   private final UserAiSettingsService settingsService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping
   public ResponseEntity<UserAiSettingsDto> get(

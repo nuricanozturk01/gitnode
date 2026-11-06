@@ -16,7 +16,7 @@
 
 package dev.gitnode.os.auth.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantAccount;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +29,7 @@ import org.springframework.stereotype.Component;
 public class LoggingPasswordRecoveryNotifier implements PasswordRecoveryNotifier {
 
   @Override
-  public void send(final Tenant tenant, final String code) {
+  public void send(final TenantAccount tenant, final String code) {
     log.warn(
         "Password recovery requested for user {} but no mail delivery is configured; the code was"
             + " not sent",

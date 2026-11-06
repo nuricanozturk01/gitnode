@@ -21,10 +21,12 @@
 @ApplicationModule(
     allowedDependencies = {
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *"
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.wiki;
 

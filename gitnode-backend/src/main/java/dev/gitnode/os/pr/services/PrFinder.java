@@ -22,12 +22,10 @@ import dev.gitnode.os.pr.repositories.PrRepository;
 import dev.gitnode.os.repo.api.RepoCommandPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
-import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -85,11 +83,5 @@ class PrFinder {
 
   java.util.Map<UUID, TenantRef> findTenants(final java.util.Collection<UUID> ids) {
     return this.tenants.findAllByIds(ids);
-  }
-
-  @Cacheable(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
-  long countOpen(final String owner, final String repoName) {
-    final var repo = this.findRepo(owner, repoName);
-    return this.prRepository.countByRepoIdAndStatus(repo.id(), "OPEN");
   }
 }

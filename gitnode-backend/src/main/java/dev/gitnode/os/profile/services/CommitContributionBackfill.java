@@ -17,6 +17,7 @@
 package dev.gitnode.os.profile.services;
 
 import dev.gitnode.os.shared.git.provider.GitProvider;
+import dev.gitnode.os.shared.lock.SchedulerLock;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class CommitContributionBackfill {
 
   private record Pending(UUID id, String owner, String name, String branch) {}
 
+  @SchedulerLock(name = "commit-backfill", ttlSeconds = 900)
   @Scheduled(initialDelay = 60_000, fixedDelay = 60_000)
   public void backfill() {
     final var pending =

@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.snippet.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
@@ -53,7 +53,7 @@ import org.springframework.web.bind.annotation.RestController;
 @NullMarked
 public class SnippetController {
 
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final SnippetService snippetService;
 
   @PostMapping

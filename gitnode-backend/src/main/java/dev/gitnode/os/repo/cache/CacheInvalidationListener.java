@@ -18,6 +18,7 @@ package dev.gitnode.os.repo.cache;
 import dev.gitnode.os.events.branch.BranchDeletedEvent;
 import dev.gitnode.os.events.pr.PullRequestStatusChangedEvent;
 import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.services.RepoOwnerResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -33,6 +34,7 @@ public class CacheInvalidationListener {
 
   private final RepoCacheInvalidator invalidator;
   private final RepoRepository repoRepository;
+  private final RepoOwnerResolver owners;
 
   @EventListener
   void onPrMerged(final PullRequestStatusChangedEvent event) {
@@ -40,10 +42,10 @@ public class CacheInvalidationListener {
       return;
     }
     this.repoRepository
-        .findByIdWithOwner(event.repoId())
+        .findById(event.repoId())
         .ifPresent(
             repo -> {
-              final var owner = repo.getOwner().getUsername();
+              final var owner = this.owners.username(repo.getOwnerId());
               final var repoName = repo.getName();
               log.debug(
                   "Cache eviction on PR merge: {}/{} target={}",
@@ -59,10 +61,10 @@ public class CacheInvalidationListener {
   @Async
   void onBranchDeleted(final BranchDeletedEvent event) {
     this.repoRepository
-        .findByIdWithOwner(event.repoId())
+        .findById(event.repoId())
         .ifPresent(
             repo -> {
-              final var owner = repo.getOwner().getUsername();
+              final var owner = this.owners.username(repo.getOwnerId());
               final var repoName = repo.getName();
               log.debug(
                   "Cache eviction on branch delete: {}/{} branch={}",

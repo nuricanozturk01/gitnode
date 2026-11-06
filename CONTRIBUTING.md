@@ -215,3 +215,14 @@ gitnode/
 | [gitnode-runner/README.md](gitnode-runner/README.md)           | CI/CD runner agent      |
 | [e2e/README.md](e2e/README.md)                                 | Playwright tests        |
 | [docs/actions-compatibility.md](docs/actions-compatibility.md) | GitHub Actions support  |
+
+## Memory diagnostics
+
+The container JVM writes a heap dump (`/var/log/gitnode/*.hprof`) and exits on `OutOfMemoryError`; GC logs rotate at `/var/log/gitnode/gc.log`. Mount that path as a volume to keep them.
+
+```bash
+docker exec <ctr> jcmd 1 GC.heap_info
+docker exec <ctr> jcmd 1 JFR.start duration=60s filename=/var/log/gitnode/rec.jfr
+```
+
+The JGit pack window cache is capped via `gitnode.git.window-cache.packed-git-limit-mb` (default 128) and `gitnode.git.window-cache.delta-base-cache-limit-mb` (default 16).

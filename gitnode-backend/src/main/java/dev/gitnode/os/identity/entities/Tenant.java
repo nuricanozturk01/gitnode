@@ -34,7 +34,7 @@ import org.jspecify.annotations.Nullable;
 @Setter
 @Entity
 @Table(name = "tenant")
-public class Tenant implements dev.gitnode.os.identity.api.AuthenticatedUser {
+public class Tenant implements dev.gitnode.os.identity.api.TenantAccount {
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
   @Column(name = "id", nullable = false)

@@ -20,10 +20,18 @@
       "commit :: api",
       "events :: pr",
       "identity :: api",
-      "identity :: security",
       "issue :: api",
-      "repo :: *",
-      "shared :: *"
+      "repo :: api",
+      "repo :: cache",
+      "repo :: dtos",
+      "repo :: events",
+      "shared :: audit-annotations",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: lock",
+      "shared :: pagination",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.pr;
 

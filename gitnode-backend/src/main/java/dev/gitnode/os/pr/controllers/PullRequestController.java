@@ -17,7 +17,7 @@ package dev.gitnode.os.pr.controllers;
 
 import dev.gitnode.os.commit.api.CommitInfo;
 import dev.gitnode.os.commit.api.FileDiff;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.pr.dtos.PrConflictInfo;
 import dev.gitnode.os.pr.dtos.PrConflictResolveForm;
 import dev.gitnode.os.pr.dtos.PrDetail;
@@ -32,6 +32,7 @@ import dev.gitnode.os.pr.services.PullRequestService;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
+import dev.gitnode.os.shared.pagination.ListPaging;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -41,6 +42,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,9 +63,14 @@ import org.springframework.web.bind.annotation.RestController;
 @NullMarked
 public class PullRequestController {
 
+  private static final int DEFAULT_LIST_MAX = 1000;
+
+  @Value("${gitnode.limits.list-max-items:1000}")
+  private int listMax = DEFAULT_LIST_MAX;
+
   private final PullRequestService prService;
   private final PrConflictService conflictService;
-  private final JwtUtils tokenService;
+  private final TokenUserResolver tokenService;
   private final RepoAccessPort repoService;
 
   @PostMapping
@@ -223,13 +230,17 @@ public class PullRequestController {
       @PathVariable final String owner,
       @PathVariable final String repo,
       @PathVariable final int number,
+      @RequestParam(required = false) final @Nullable Integer page,
+      @RequestParam(required = false) final @Nullable Integer size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader)
       throws IOException {
 
     final var requesterId = authHeader != null ? this.tokenService.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
-    final var prCommits = this.prService.getPrCommits(owner, repo, number);
+    final int limit = ListPaging.size(size, this.listMax);
+    final var prCommits =
+        this.prService.getPrCommits(owner, repo, number, ListPaging.offset(page, limit), limit);
     return ResponseEntity.ok(prCommits);
   }
 

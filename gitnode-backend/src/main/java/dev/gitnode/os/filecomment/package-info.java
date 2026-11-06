@@ -20,9 +20,10 @@
       "commit :: api",
       "events :: filecomment",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
-      "shared :: *"
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.filecomment;
 

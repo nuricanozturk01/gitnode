@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.migration.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.migration.dtos.MigrationForm;
 import dev.gitnode.os.migration.dtos.MigrationJobResponse;
 import dev.gitnode.os.migration.dtos.MigrationStatus;
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class RepoMigrationController {
 
   private final GitMigrationService migrationService;
-  private final JwtUtils tokenService;
+  private final TokenUserResolver tokenService;
 
   @PostMapping
   @RateLimit(limit = 10, windowSeconds = 3600, key = "migration.create")

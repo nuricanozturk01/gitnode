@@ -15,8 +15,8 @@
  */
 package dev.gitnode.os.profile.controllers;
 
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.identity.dtos.TenantInfo;
-import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.TenantSearchResult;
@@ -60,7 +60,7 @@ public class ProfileController {
   private final TenantSearchService tenantSearchService;
   private final ProfileService profileService;
   private final UserContributionService userContributionService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final TenantEmailService emailService;
 
   @GetMapping("/me")

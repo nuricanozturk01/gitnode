@@ -15,8 +15,9 @@
  */
 package dev.gitnode.os.tag.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
+import dev.gitnode.os.shared.pagination.ListPaging;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.tag.dtos.CreateTagForm;
 import dev.gitnode.os.tag.dtos.TagInfo;
@@ -28,6 +29,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -46,8 +49,13 @@ import org.springframework.web.bind.annotation.RestController;
 @NullMarked
 public class TagController {
 
+  private static final int DEFAULT_LIST_MAX = 1000;
+
+  @Value("${gitnode.limits.list-max-items:1000}")
+  private int listMax = DEFAULT_LIST_MAX;
+
   private final TagNonTxService tagNonTxService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
   private final ReleaseTxService releaseTxService;
 
@@ -55,6 +63,8 @@ public class TagController {
   public ResponseEntity<List<TagInfo>> getAll(
       @PathVariable final String owner,
       @PathVariable final String repo,
+      @RequestParam(required = false) final @Nullable Integer page,
+      @RequestParam(required = false) final @Nullable Integer size,
       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false)
           final @Nullable String authHeader)
       throws IOException {
@@ -62,8 +72,11 @@ public class TagController {
     final var requesterId = authHeader != null ? this.jwtUtils.extractUserId(authHeader) : null;
     this.repoService.assertUserCanAccessRepo(requesterId, owner, repo);
     final var tags = this.tagNonTxService.getAll(owner, repo);
-    if (this.releaseTxService.canManage(owner, repo, requesterId)) return ResponseEntity.ok(tags);
-    return ResponseEntity.ok(tags.stream().map(TagInfo::withoutDraftRelease).toList());
+    final var visible =
+        this.releaseTxService.canManage(owner, repo, requesterId)
+            ? tags
+            : tags.stream().map(TagInfo::withoutDraftRelease).toList();
+    return ListPaging.respond(visible, page, size, this.listMax);
   }
 
   @GetMapping("/{tag}")

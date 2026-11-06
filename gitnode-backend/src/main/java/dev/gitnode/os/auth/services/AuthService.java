@@ -19,12 +19,11 @@ import dev.gitnode.os.auth.dtos.LoginForm;
 import dev.gitnode.os.auth.dtos.RecoverPasswordForm;
 import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
+import dev.gitnode.os.identity.api.PasswordHashing;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.identity.api.TokenService;
 import dev.gitnode.os.identity.dtos.LoginInfo;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.identity.services.JwtUtils;
-import dev.gitnode.os.identity.services.PasswordHasher;
-import dev.gitnode.os.identity.services.TenantAuthGuard;
 import dev.gitnode.os.shared.audit.services.AuditLogService;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
@@ -58,9 +57,9 @@ public class AuthService {
   private static final String AUTH_LOGIN_FAILED = "AUTH_LOGIN_FAILED";
   private static final String ENTITY_TYPE_AUTH = "auth";
 
-  private final TenantRepository tenantRepository;
-  private final JwtUtils jwtUtils;
-  private final PasswordHasher passwordHasher;
+  private final TenantAccountStore tenantRepository;
+  private final TokenService jwtUtils;
+  private final PasswordHashing passwordHasher;
   private final PasswordRecoveryNotifier recoveryNotifier;
   private final dev.gitnode.os.auth.services.RefreshTokenService refreshTokens;
   private final AuditLogService auditLogService;
@@ -78,7 +77,7 @@ public class AuthService {
 
     this.tenantRepository
         .findByUsernameOrEmail(form.getUsernameOrEmail().toLowerCase(Locale.getDefault()))
-        .filter(Tenant::isEnabled)
+        .filter(TenantAccount::isEnabled)
         .ifPresent(
             tenant -> {
               final var code = RandomStringUtils.secure().nextAlphanumeric(RECOVERY_CODE_LENGTH);
@@ -118,7 +117,7 @@ public class AuthService {
                   });
 
       this.checkPassword(tenant, form);
-      TenantAuthGuard.requireEnabled(tenant);
+      PasswordHashing.requireEnabled(tenant);
       this.checkSecondFactor(tenant, form);
 
       final var loginInfo = this.createLoginInfo(tenant);
@@ -131,7 +130,7 @@ public class AuthService {
     }
   }
 
-  private void checkSecondFactor(final Tenant tenant, final LoginForm form) {
+  private void checkSecondFactor(final TenantAccount tenant, final LoginForm form) {
 
     if (!tenant.isTotpEnabled()) {
       return;
@@ -177,7 +176,7 @@ public class AuthService {
                 found ->
                     found.getPasswordRecoveryExpiresAt() != null
                         && found.getPasswordRecoveryExpiresAt().isAfter(Instant.now()))
-            .filter(Tenant::isEnabled)
+            .filter(TenantAccount::isEnabled)
             .orElseThrow(() -> new AccessNotAllowedException("accessDenied"));
 
     this.passwordHasher.setPassword(tenant, form.getPassword());
@@ -202,23 +201,23 @@ public class AuthService {
     this.refreshTokens.revoke(refreshToken);
   }
 
-  private Tenant findEnabledTenant(final UUID tenantId) {
+  private TenantAccount findEnabledTenant(final UUID tenantId) {
 
     final var tenant =
         this.tenantRepository
             .findById(tenantId)
             .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));
 
-    TenantAuthGuard.requireEnabled(tenant);
+    PasswordHashing.requireEnabled(tenant);
 
     return tenant;
   }
 
-  private LoginInfo createLoginInfo(final Tenant tenant) {
+  private LoginInfo createLoginInfo(final TenantAccount tenant) {
     return this.createLoginInfo(tenant, this.refreshTokens.issue(tenant));
   }
 
-  private LoginInfo createLoginInfo(final Tenant tenant, final String refreshToken) {
+  private LoginInfo createLoginInfo(final TenantAccount tenant, final String refreshToken) {
 
     final var accessToken = this.jwtUtils.generateToken(tenant);
 
@@ -227,8 +226,8 @@ public class AuthService {
         .refreshToken(refreshToken)
         .email(tenant.getEmail())
         .username(tenant.getUsername())
-        .expiresIn(JwtUtils.ACCESS_EXPIRATION_SECONDS)
-        .refreshExpiresIn(JwtUtils.REFRESH_EXPIRATION_SECONDS)
+        .expiresIn(TokenService.ACCESS_EXPIRATION_SECONDS)
+        .refreshExpiresIn(TokenService.REFRESH_EXPIRATION_SECONDS)
         .build();
   }
 
@@ -243,7 +242,7 @@ public class AuthService {
     }
   }
 
-  private void checkPassword(final Tenant tenant, final LoginForm form) {
+  private void checkPassword(final TenantAccount tenant, final LoginForm form) {
 
     if (!this.passwordHasher.matches(form.getPassword(), tenant)) {
       throw new AccessNotAllowedException("wrongPassword");
@@ -253,10 +252,10 @@ public class AuthService {
     }
   }
 
-  private Tenant createTenant(
+  private TenantAccount createTenant(
       final String formUsername, final String email, final Optional<String> password) {
 
-    final var tenant = new Tenant();
+    final var tenant = this.tenantRepository.newAccount();
     tenant.setUsername(formUsername);
     tenant.setEmail(email);
     password.ifPresent(p -> this.passwordHasher.setPassword(tenant, p));

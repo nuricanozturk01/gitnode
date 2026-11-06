@@ -25,7 +25,7 @@ import dev.gitnode.os.discussion.dtos.DiscussionUpdateForm;
 import dev.gitnode.os.discussion.dtos.DiscussionVoteInfo;
 import dev.gitnode.os.discussion.entities.DiscussionCategory;
 import dev.gitnode.os.discussion.services.DiscussionService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
@@ -56,7 +56,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class DiscussionController {
 
   private final DiscussionService service;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoAccess;
 
   public record LockForm(boolean locked) {}

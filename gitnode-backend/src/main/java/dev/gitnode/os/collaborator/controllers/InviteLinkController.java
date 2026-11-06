@@ -18,7 +18,7 @@ package dev.gitnode.os.collaborator.controllers;
 import dev.gitnode.os.collaborator.dtos.CollaboratorInfo;
 import dev.gitnode.os.collaborator.dtos.InvitationTokenInfo;
 import dev.gitnode.os.collaborator.services.CollaboratorService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.http.HttpHeaders;
@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InviteLinkController {
 
   private final CollaboratorService collaboratorService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping("/{token}")
   public ResponseEntity<InvitationTokenInfo> getByToken(@PathVariable final String token) {

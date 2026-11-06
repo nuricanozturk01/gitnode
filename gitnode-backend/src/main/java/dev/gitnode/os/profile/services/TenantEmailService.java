@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.profile.services;
 
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
 import java.time.Instant;
@@ -47,7 +47,7 @@ public class TenantEmailService {
   private static final Pattern NOREPLY = Pattern.compile("@users\\.noreply\\.");
 
   private final NamedParameterJdbcTemplate jdbc;
-  private final TenantRepository tenants;
+  private final TenantAccountStore tenants;
 
   public record ExtraEmail(UUID id, String email, Instant createdAt) {}
 

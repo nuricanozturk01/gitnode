@@ -24,7 +24,6 @@
       "events :: profile",
       "events :: team",
       "identity :: api",
-      "identity :: security",
       "repo :: dtos",
       "shared :: errorhandling-exceptions"
     })

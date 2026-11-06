@@ -18,7 +18,8 @@ package dev.gitnode.os.identity.services;
 import static dev.gitnode.os.identity.utils.BearerTokenUtils.getJwtToken;
 import static dev.gitnode.os.identity.utils.BearerTokenUtils.isBearerToken;
 
-import dev.gitnode.os.identity.entities.Tenant;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TokenService;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
@@ -39,10 +40,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @NullMarked
-public class JwtUtils {
-
-  public static final int ACCESS_EXPIRATION_SECONDS = 24 * 3600;
-  public static final int REFRESH_EXPIRATION_SECONDS = 48 * 3600;
+public class JwtUtils implements TokenService {
 
   private static final int ACCESS_EXPIRATION_HOUR = 24;
   private static final int REFRESH_EXPIRATION_HOUR = 48;
@@ -62,6 +60,7 @@ public class JwtUtils {
     return Keys.hmacShaKeyFor(keyBytes);
   }
 
+  @Override
   public UUID extractUserId(final String token) {
 
     try {
@@ -72,6 +71,7 @@ public class JwtUtils {
     }
   }
 
+  @Override
   public @Nullable UUID tryExtractUserId(final @Nullable String token) {
 
     if (token == null || token.isBlank()) {
@@ -95,17 +95,17 @@ public class JwtUtils {
         .getPayload();
   }
 
-  public String generateToken(final Tenant user) {
+  @Override
+  public String generateToken(final TenantAccount user) {
 
     final var claims = Map.of(EMAIL, user.getEmail(), TOKEN_USE, ACCESS);
 
     return this.createToken(claims, user.getId(), ACCESS_EXPIRATION_HOUR);
   }
 
-  /** Identity of a refresh token: who it belongs to, its own id and the rotation family. */
-  public record RefreshClaims(UUID userId, UUID tokenId, UUID familyId) {}
-
-  public String generateRefreshToken(final Tenant user, final UUID tokenId, final UUID familyId) {
+  @Override
+  public String generateRefreshToken(
+      final TenantAccount user, final UUID tokenId, final UUID familyId) {
 
     final var claims =
         Map.of(EMAIL, user.getEmail(), TOKEN_USE, REFRESH, FAMILY, familyId.toString());
@@ -113,6 +113,7 @@ public class JwtUtils {
     return this.createToken(claims, user.getId(), REFRESH_EXPIRATION_HOUR, tokenId);
   }
 
+  @Override
   public RefreshClaims extractRefreshClaims(final String token) {
     try {
       final var claims = this.extractClaims(token, REFRESH);
@@ -156,6 +157,7 @@ public class JwtUtils {
         .compact();
   }
 
+  @Override
   public void verifyAndValidate(final String jwt) {
 
     try {

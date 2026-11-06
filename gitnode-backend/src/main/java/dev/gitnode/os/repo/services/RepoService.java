@@ -17,8 +17,8 @@ package dev.gitnode.os.repo.services;
 
 import dev.gitnode.os.events.repo.RepoCreatedEvent;
 import dev.gitnode.os.events.repo.RepoDeletedEvent;
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantQueryPort;
+import dev.gitnode.os.identity.api.TenantQueryPort.TenantRef;
 import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.GitAccessPort;
@@ -27,7 +27,6 @@ import dev.gitnode.os.repo.api.RepoQueryPort;
 import dev.gitnode.os.repo.dtos.RepoForm;
 import dev.gitnode.os.repo.dtos.RepoInfo;
 import dev.gitnode.os.repo.entities.Repo;
-import dev.gitnode.os.repo.mappers.RepoMapper;
 import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.audit.annotations.Audited;
 import dev.gitnode.os.shared.cache.CacheNames;
@@ -56,8 +55,9 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
   public static final String ERR_REPO_NOT_FOUND = "repoNotFound";
 
   private final RepoRepository repoRepository;
-  private final TenantRepository tenantRepository;
-  private final RepoMapper repoMapper;
+  private final TenantQueryPort tenantRepository;
+  private final RepoOwnerResolver ownerResolver;
+  private final RepoInfoAssembler infoAssembler;
   private final ApplicationEventPublisher eventPublisher;
   private final RepoStorageService repoStorageService;
   private final CollaboratorAccessPort collaboratorAccessPort;
@@ -76,11 +76,11 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     final var repoOpt = this.repoRepository.findByOwnerIdAndName(tenantId, form.getName());
 
     if (repoOpt.isPresent()) {
-      return this.repoMapper.toDto(repoOpt.get());
+      return this.infoAssembler.toDto(repoOpt.get());
     }
 
     final var repoObj = new Repo();
-    repoObj.setOwner(tenant);
+    repoObj.setOwnerId(tenant.id());
     repoObj.setName(form.getName());
     repoObj.setDescription(form.getDescription());
     repoObj.setDefaultBranch(NEW_REPO_DEFAULT_BRANCH);
@@ -89,9 +89,9 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
 
     final var repo = this.repoRepository.save(repoObj);
 
-    this.eventPublisher.publishEvent(new RepoCreatedEvent(tenant.getUsername(), form.getName()));
+    this.eventPublisher.publishEvent(new RepoCreatedEvent(tenant.username(), form.getName()));
 
-    return this.repoMapper.toDto(repo);
+    return this.infoAssembler.toDto(repo);
   }
 
   @CacheEvict(cacheNames = CacheNames.REPO_META, key = "#owner + ':' + #repoName")
@@ -104,18 +104,18 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
 
     final var repo =
         this.repoRepository
-            .findByOwnerIdAndName(repoOwner.getId(), repoName)
+            .findByOwnerIdAndName(repoOwner.id(), repoName)
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     this.checkUpdateAccess(tenant, repoOwner, repo, tenantId, form);
     this.applyFormToRepo(repo, form);
 
-    return this.repoMapper.toDto(this.repoRepository.save(repo));
+    return this.infoAssembler.toDto(this.repoRepository.save(repo));
   }
 
   private void checkUpdateAccess(
-      final Tenant tenant,
-      final Tenant repoOwner,
+      final TenantRef tenant,
+      final TenantRef repoOwner,
       final Repo repo,
       final UUID tenantId,
       final RepoForm form) {
@@ -125,7 +125,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
 
     if (isOwnerOnlyOp) {
       this.checkIsRepoOwner(tenant, repoOwner);
-    } else if (!tenant.getId().equals(repoOwner.getId())) {
+    } else if (!tenant.id().equals(repoOwner.id())) {
       this.checkCollaboratorAndPermission(repo, tenantId);
     }
   }
@@ -201,7 +201,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
 
     final var ownerTenant = this.getTenantByUsername(owner);
 
-    if (!tenantId.equals(ownerTenant.getId())) {
+    if (!tenantId.equals(ownerTenant.id())) {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 
@@ -214,7 +214,8 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     this.repoRepository.deleteById(repo.getId());
     if (forkedFrom != null) {
       this.repoRepository.decrementForkCount(forkedFrom.getId());
-      this.repoInfoCache.evict(forkedFrom.getOwner().getUsername(), forkedFrom.getName());
+      this.repoInfoCache.evict(
+          this.ownerResolver.username(forkedFrom.getOwnerId()), forkedFrom.getName());
     }
 
     this.eventPublisher.publishEvent(new RepoDeletedEvent(owner, repoName));
@@ -232,12 +233,12 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
             .orElseThrow(() -> new ItemNotFoundException(ERR_REPO_NOT_FOUND));
 
     if (sourceRepo.isPrivate()
-        && !sourceRepo.getOwner().getId().equals(tenantId)
+        && !sourceRepo.getOwnerId().equals(tenantId)
         && !this.collaboratorAccessPort.isActiveCollaborator(sourceRepo.getId(), tenantId)) {
       throw new AccessNotAllowedException("repoAccessDenied");
     }
 
-    if (sourceRepo.getOwner().getId().equals(tenantId)) {
+    if (sourceRepo.getOwnerId().equals(tenantId)) {
       throw new AccessNotAllowedException("cannotForkOwnRepo");
     }
 
@@ -246,7 +247,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     }
 
     final var fork = new Repo();
-    fork.setOwner(forker);
+    fork.setOwnerId(forker.id());
     fork.setName(sourceRepoName);
     fork.setDescription(sourceRepo.getDescription());
     fork.setDefaultBranch(sourceRepo.getDefaultBranch());
@@ -257,11 +258,11 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     final var savedFork = this.repoRepository.save(fork);
     this.repoRepository.incrementForkCount(sourceRepo.getId());
     this.repoStorageService.forkRepo(
-        sourceOwner, sourceRepoName, forker.getUsername(), sourceRepoName);
+        sourceOwner, sourceRepoName, forker.username(), sourceRepoName);
 
-    this.eventPublisher.publishEvent(new RepoCreatedEvent(forker.getUsername(), sourceRepoName));
+    this.eventPublisher.publishEvent(new RepoCreatedEvent(forker.username(), sourceRepoName));
 
-    return this.repoMapper.toDto(savedFork);
+    return this.infoAssembler.toDto(savedFork);
   }
 
   public Page<RepoInfo> findAllByOwner(
@@ -270,9 +271,8 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
       final @org.jspecify.annotations.Nullable UUID requesterId) {
 
     if (requesterId != null && this.canListPrivateRepos(owner, requesterId)) {
-      return this.repoRepository
-          .findAllByOwnerUsername(owner, pageable)
-          .map(this.repoMapper::toDto);
+      return this.infoAssembler.toDtoPage(
+          this.repoRepository.findAllByOwnerUsername(owner, pageable));
     }
 
     if (requesterId != null) {
@@ -280,15 +280,13 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
           this.collaboratorAccessPort.findAcceptedRepoIds(requesterId, owner);
 
       if (!collaboratorRepoIds.isEmpty()) {
-        return this.repoRepository
-            .findVisibleReposByOwner(owner, collaboratorRepoIds, pageable)
-            .map(this.repoMapper::toDto);
+        return this.infoAssembler.toDtoPage(
+            this.repoRepository.findVisibleReposByOwner(owner, collaboratorRepoIds, pageable));
       }
     }
 
-    return this.repoRepository
-        .findAllByOwnerUsernameAndIsPrivateFalse(owner, pageable)
-        .map(this.repoMapper::toDto);
+    return this.infoAssembler.toDtoPage(
+        this.repoRepository.findAllByOwnerUsernameAndIsPrivateFalse(owner, pageable));
   }
 
   private boolean canListPrivateRepos(final String owner, final UUID requesterId) {
@@ -296,8 +294,8 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
         .findByUsername(owner)
         .map(
             tenant ->
-                tenant.getId().equals(requesterId)
-                    || this.collaboratorAccessPort.hasTeamAccess(requesterId, tenant.getId()))
+                tenant.id().equals(requesterId)
+                    || this.collaboratorAccessPort.hasTeamAccess(requesterId, tenant.id()))
         .orElse(false);
   }
 
@@ -316,7 +314,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     final boolean isOwner =
         requesterId != null
             && ownerTenant.isPresent()
-            && ownerTenant.get().getId().equals(requesterId);
+            && ownerTenant.get().id().equals(requesterId);
 
     if (isOwner) {
       return this.repoInfoCache.fetch(owner, repoName);
@@ -337,7 +335,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
   public void assertIsRepoOwner(final UUID tenantId, final String owner, final String repoName) {
 
     final var ownerTenant = this.getTenantByUsername(owner);
-    if (!ownerTenant.getId().equals(tenantId)) {
+    if (!ownerTenant.id().equals(tenantId)) {
       throw new AccessNotAllowedException("insufficientPermissions");
     }
   }
@@ -352,7 +350,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     final var repo = this.findByOwnerUsernameAndName(owner, repoName);
     final var ownerTenant = this.getTenantByUsername(owner);
 
-    if (ownerTenant.getId().equals(tenantId)) {
+    if (ownerTenant.id().equals(tenantId)) {
       return; // repo owner always has all permissions
     }
 
@@ -382,7 +380,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
     final var repo = this.findByOwnerUsernameAndName(owner, repoName);
     final var ownerTenant = this.getTenantByUsername(owner);
 
-    if (ownerTenant.getId().equals(tenantId)) {
+    if (ownerTenant.id().equals(tenantId)) {
       return; // repo owner always has all permissions
     }
 
@@ -417,7 +415,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
       final var tenant = this.getTenantById(tenantId);
       final var repoOwner = this.getTenantByUsername(owner);
 
-      if (!tenant.getId().equals(repoOwner.getId())) {
+      if (!tenant.id().equals(repoOwner.id())) {
         if (!this.collaboratorAccessPort.isActiveCollaborator(repo.getId(), tenantId)) {
           throw new AccessNotAllowedException("repoAccessDenied");
         }
@@ -433,7 +431,7 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
             repo ->
                 !repo.isPrivate()
                     || tenantId != null
-                        && (repo.getOwner().getId().equals(tenantId)
+                        && (repo.getOwnerId().equals(tenantId)
                             || this.collaboratorAccessPort.isActiveCollaborator(
                                 repo.getId(), tenantId)))
         .orElse(false);
@@ -445,29 +443,29 @@ public class RepoService implements RepoAccessPort, RepoQueryPort, GitAccessPort
         .findByOwnerUsernameAndName(owner, repoName)
         .map(
             repo ->
-                repo.getOwner().getId().equals(tenantId)
+                repo.getOwnerId().equals(tenantId)
                     || this.collaboratorAccessPort.hasPermission(
                         repo.getId(), tenantId, CollaboratorPermission.PUSH))
         .orElse(false);
   }
 
-  private void checkIsRepoOwner(final Tenant tenant, final Tenant repoOwner) {
+  private void checkIsRepoOwner(final TenantRef tenant, final TenantRef repoOwner) {
 
-    if (tenant.getId().equals(repoOwner.getId())) {
+    if (tenant.id().equals(repoOwner.id())) {
       return;
     }
 
     throw new AccessNotAllowedException("repoAccessDenied");
   }
 
-  private Tenant getTenantById(final UUID tenantId) {
+  private TenantRef getTenantById(final UUID tenantId) {
 
     return this.tenantRepository
         .findById(tenantId)
         .orElseThrow(() -> new ItemNotFoundException("userNotFound"));
   }
 
-  private Tenant getTenantByUsername(final String username) {
+  private TenantRef getTenantByUsername(final String username) {
 
     return this.tenantRepository
         .findByUsername(username)

@@ -15,9 +15,9 @@
  */
 package dev.gitnode.os.auth.services;
 
-import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.identity.services.PasswordHasher;
+import dev.gitnode.os.identity.api.PasswordHashing;
+import dev.gitnode.os.identity.api.TenantAccount;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import java.util.ArrayList;
@@ -44,9 +44,9 @@ public class TwoFactorService {
 
   public record Setup(String secret, String otpAuthUri) {}
 
-  private final TenantRepository tenants;
+  private final TenantAccountStore tenants;
   private final TotpService totp;
-  private final PasswordHasher passwordHasher;
+  private final PasswordHashing passwordHasher;
   private final RefreshTokenService refreshTokens;
 
   public Status status(final UUID userId) {
@@ -117,7 +117,7 @@ public class TwoFactorService {
 
   /** Verifies a login code (TOTP or recovery code) and records it as used. */
   @Transactional
-  public boolean verifyLogin(final Tenant tenant, final String code) {
+  public boolean verifyLogin(final TenantAccount tenant, final String code) {
     final var ok = this.consumeCode(tenant, code);
     if (ok) {
       this.tenants.save(tenant);
@@ -125,7 +125,7 @@ public class TwoFactorService {
     return ok;
   }
 
-  private boolean consumeCode(final Tenant tenant, final String rawCode) {
+  private boolean consumeCode(final TenantAccount tenant, final String rawCode) {
     final var code = rawCode.trim().replace(" ", "").toLowerCase();
     if (tenant.getTotpSecret() == null) {
       return false;
@@ -148,12 +148,12 @@ public class TwoFactorService {
     return false;
   }
 
-  private String[] recoveryHashes(final Tenant tenant) {
+  private String[] recoveryHashes(final TenantAccount tenant) {
     final var stored = tenant.getTotpRecoveryCodes();
     return stored == null || stored.isBlank() ? new String[0] : stored.split("\n");
   }
 
-  private Tenant find(final UUID userId) {
+  private TenantAccount find(final UUID userId) {
     return this.tenants
         .findById(userId)
         .orElseThrow(() -> new AccessNotAllowedException("userNotExist"));

@@ -20,7 +20,7 @@ import dev.gitnode.os.actions.services.RunnerTokenService;
 import dev.gitnode.os.actions.services.WorkflowExecutionService;
 import dev.gitnode.os.actions.services.WorkflowRunQueryService;
 import dev.gitnode.os.actions.websocket.SseEmitterRegistry;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -51,7 +51,7 @@ public class LogStreamController {
   private final WorkflowRunQueryService runQueries;
   private final SseEmitterRegistry sseEmitterRegistry;
   private final RunnerTokenService runnerTokenService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoLookupPort repoLookup;
   private final RepoAccessPort repoAccess;
 

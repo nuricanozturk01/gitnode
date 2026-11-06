@@ -1,6 +1,6 @@
 package dev.gitnode.os.pr.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.pr.services.PrReviewService;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import jakarta.validation.Valid;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class PrReviewController {
   private final PrReviewService reviews;
-  private final JwtUtils jwt;
+  private final TokenUserResolver jwt;
   private final RepoAccessPort repos;
 
   public record ReviewForm(

@@ -18,9 +18,13 @@
     allowedDependencies = {
       "branch :: api",
       "identity :: api",
-      "identity :: security",
-      "repo :: *",
-      "shared :: *"
+      "repo :: api",
+      "repo :: cache",
+      "repo :: events",
+      "shared :: cache",
+      "shared :: errorhandling-exceptions",
+      "shared :: git-provider",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.tree;
 

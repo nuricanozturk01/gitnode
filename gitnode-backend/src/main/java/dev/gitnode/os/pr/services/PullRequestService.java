@@ -46,7 +46,6 @@ import dev.gitnode.os.repo.api.CollaboratorAccessPort;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoLookupPort.RepoRef;
 import dev.gitnode.os.shared.audit.annotations.Audited;
-import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.AccessNotAllowedException;
 import dev.gitnode.os.shared.errorhandling.exceptions.BadRequestException;
 import dev.gitnode.os.shared.errorhandling.exceptions.ErrorOccurredException;
@@ -94,7 +93,6 @@ import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -125,7 +123,6 @@ public class PullRequestService {
   private final RepoMetadataQueryPort repoMetadata;
   private final CodeOwnersService codeOwners;
 
-  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "CREATE_PR",
       entityType = "PULL_REQUEST",
@@ -200,7 +197,6 @@ public class PullRequestService {
     return this.toDetail(this.prRepository.save(pr));
   }
 
-  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "CLOSE_PR",
       entityType = "PULL_REQUEST",
@@ -243,7 +239,6 @@ public class PullRequestService {
             closedById));
   }
 
-  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "REOPEN_PR",
       entityType = "PULL_REQUEST",
@@ -446,7 +441,6 @@ public class PullRequestService {
     return heads;
   }
 
-  @CacheEvict(cacheNames = CacheNames.REPO_PR_OPEN_COUNT, key = "#owner + ':' + #repoName")
   @Audited(
       action = "MERGE_PR",
       entityType = "PULL_REQUEST",
@@ -575,6 +569,16 @@ public class PullRequestService {
 
   public List<CommitInfo> getPrCommits(final String owner, final String repoName, final int number)
       throws IOException {
+    return this.getPrCommits(owner, repoName, number, 0, Integer.MAX_VALUE);
+  }
+
+  public List<CommitInfo> getPrCommits(
+      final String owner,
+      final String repoName,
+      final int number,
+      final int offset,
+      final int limit)
+      throws IOException {
 
     final var repo = this.findRepo(owner, repoName);
     final var pr = this.findPr(repo.id(), number);
@@ -594,6 +598,8 @@ public class PullRequestService {
 
       return StreamSupport.stream(
               Spliterators.spliteratorUnknownSize(walk.iterator(), Spliterator.ORDERED), false)
+          .skip(offset)
+          .limit(limit)
           .map(this::toCommitInfo)
           .toList();
     }

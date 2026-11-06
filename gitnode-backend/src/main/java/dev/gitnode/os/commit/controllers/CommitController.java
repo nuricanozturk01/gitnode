@@ -20,7 +20,7 @@ import dev.gitnode.os.commit.api.CommitInfo;
 import dev.gitnode.os.commit.api.FileDiff;
 import dev.gitnode.os.commit.api.PagedResult;
 import dev.gitnode.os.commit.services.CommitNonTxService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import java.io.IOException;
 import java.util.List;
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommitController {
 
   private final CommitNonTxService commitNonTxService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
 
   @GetMapping

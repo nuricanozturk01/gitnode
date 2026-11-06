@@ -16,7 +16,6 @@
 package dev.gitnode.os.repo.services;
 
 import dev.gitnode.os.repo.dtos.RepoInfo;
-import dev.gitnode.os.repo.mappers.RepoMapper;
 import dev.gitnode.os.repo.repositories.RepoRepository;
 import dev.gitnode.os.shared.cache.CacheNames;
 import dev.gitnode.os.shared.errorhandling.exceptions.ItemNotFoundException;
@@ -32,13 +31,13 @@ import org.springframework.stereotype.Component;
 class RepoInfoCache {
 
   private final RepoRepository repoRepository;
-  private final RepoMapper repoMapper;
+  private final RepoInfoAssembler infoAssembler;
 
   @Cacheable(cacheNames = CacheNames.REPO_META, key = "#owner + ':' + #repoName")
   public RepoInfo fetch(final String owner, final String repoName) {
     return this.repoRepository
         .findByOwnerUsernameAndName(owner, repoName)
-        .map(this.repoMapper::toDto)
+        .map(this.infoAssembler::toDto)
         .orElseThrow(() -> new ItemNotFoundException(RepoService.ERR_REPO_NOT_FOUND));
   }
 

@@ -21,8 +21,8 @@ import dev.gitnode.os.auth.dtos.RecoveryCodeRequestForm;
 import dev.gitnode.os.auth.dtos.RefreshTokenForm;
 import dev.gitnode.os.auth.dtos.RegistrationForm;
 import dev.gitnode.os.auth.services.AuthService;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.identity.dtos.LoginInfo;
-import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 class AuthController {
 
   private final AuthService authService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @PostMapping("/login")
   @RateLimit(limit = 30, windowSeconds = 60, key = "auth.login")

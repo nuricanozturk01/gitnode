@@ -22,8 +22,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.repo.api.RepoLookupPort;
 import dev.gitnode.os.shared.git.provider.GitProvider;
 import java.nio.file.Files;
@@ -48,7 +48,7 @@ class CommitContributionIndexerTest {
   @TempDir Path dir;
 
   private final NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
-  private final TenantRepository tenants = mock(TenantRepository.class);
+  private final TenantAccountStore tenants = mock(TenantAccountStore.class);
   private CommitContributionIndexer indexer;
   private Git git;
   private final UUID repoId = UUID.randomUUID();

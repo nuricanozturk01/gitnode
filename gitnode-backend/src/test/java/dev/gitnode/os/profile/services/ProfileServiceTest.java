@@ -25,10 +25,10 @@ import static org.mockito.Mockito.when;
 
 import dev.gitnode.os.events.profile.TenantDeletedEvent;
 import dev.gitnode.os.events.profile.UsernameChangedEvent;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.dtos.TenantInfo;
 import dev.gitnode.os.identity.entities.Tenant;
 import dev.gitnode.os.identity.mappers.TenantMapper;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.ChangePasswordForm;
 import dev.gitnode.os.profile.dtos.TenantPublicProfileDto;
 import dev.gitnode.os.profile.dtos.UpdateDisplayNameForm;
@@ -54,7 +54,7 @@ import org.springframework.context.ApplicationEventPublisher;
 @DisplayName("ProfileService unit tests")
 class ProfileServiceTest {
 
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
   @Mock private TenantMapper tenantMapper;
   @Mock private ApplicationEventPublisher eventPublisher;
 

@@ -1,6 +1,6 @@
 package dev.gitnode.os.issue.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.issue.dtos.IssueMilestoneForm;
 import dev.gitnode.os.issue.dtos.IssueMilestoneInfo;
 import dev.gitnode.os.issue.services.IssueMilestoneService;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class IssueMilestoneController {
   private final IssueMilestoneService milestones;
-  private final JwtUtils jwt;
+  private final TokenUserResolver jwt;
   private final RepoAccessPort repos;
 
   @GetMapping

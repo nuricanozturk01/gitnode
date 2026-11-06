@@ -16,8 +16,7 @@
 package dev.gitnode.os.admin.services;
 
 import dev.gitnode.os.admin.dtos.AdminRepoSummary;
-import dev.gitnode.os.repo.entities.Repo;
-import dev.gitnode.os.repo.repositories.RepoRepository;
+import dev.gitnode.os.repo.api.RepoAdminPort;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
@@ -31,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @NullMarked
 public class AdminRepoService {
 
-  private final RepoRepository repoRepository;
+  private final RepoAdminPort repos;
 
   @Transactional(readOnly = true)
   public Page<AdminRepoSummary> listRepos(
@@ -40,28 +39,21 @@ public class AdminRepoService {
     final var normalizedQuery = query == null ? "" : query.trim();
     final var normalizedOwner = owner == null ? "" : owner.trim();
 
-    if (normalizedOwner.isBlank() && normalizedQuery.isBlank()) {
-      return this.repoRepository.findAllWithOwner(pageable).map(this::toSummary);
-    }
-
-    return this.repoRepository
-        .searchWithOwner(normalizedQuery, normalizedOwner, pageable)
-        .map(this::toSummary);
+    return this.repos.list(pageable, normalizedQuery, normalizedOwner).map(this::toSummary);
   }
 
-  private AdminRepoSummary toSummary(final Repo repo) {
+  private AdminRepoSummary toSummary(final RepoAdminPort.AdminRepoRow repo) {
 
-    final var ownerUsername = repo.getOwner().getUsername();
     return new AdminRepoSummary(
-        repo.getId(),
-        ownerUsername,
-        repo.getName(),
-        ownerUsername + "/" + repo.getName(),
+        repo.id(),
+        repo.ownerUsername(),
+        repo.name(),
+        repo.ownerUsername() + "/" + repo.name(),
         repo.isPrivate(),
         repo.isArchived(),
-        repo.getDefaultBranch(),
-        repo.getDescription(),
-        repo.getCreatedAt(),
-        repo.getUpdatedAt());
+        repo.defaultBranch(),
+        repo.description(),
+        repo.createdAt(),
+        repo.updatedAt());
   }
 }

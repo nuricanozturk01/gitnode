@@ -18,8 +18,8 @@ package dev.gitnode.os.auth.configs;
 import static dev.gitnode.os.identity.utils.BearerTokenUtils.getJwtToken;
 import static dev.gitnode.os.identity.utils.BearerTokenUtils.isBearerToken;
 
-import dev.gitnode.os.identity.repositories.TenantRepository;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TenantAccountStore;
+import dev.gitnode.os.identity.api.TokenService;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -41,8 +41,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @NullMarked
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-  private final JwtUtils jwtUtils;
-  private final TenantRepository tenantRepository;
+  private final TokenService jwtUtils;
+  private final TenantAccountStore tenantRepository;
 
   @Override
   protected void doFilterInternal(

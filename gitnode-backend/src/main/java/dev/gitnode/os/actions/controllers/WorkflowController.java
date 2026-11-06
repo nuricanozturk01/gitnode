@@ -18,7 +18,7 @@ package dev.gitnode.os.actions.controllers;
 import dev.gitnode.os.actions.dtos.response.WorkflowDetailResponse;
 import dev.gitnode.os.actions.dtos.response.WorkflowSummaryResponse;
 import dev.gitnode.os.actions.services.WorkflowDefinitionService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
@@ -50,7 +50,7 @@ public class WorkflowController {
   private final WorkflowDefinitionService definitionService;
   private final RepoLookupPort repoLookup;
   private final RepoAccessPort repoService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   record PageResponse<T>(List<T> content, long totalElements, int totalPages, int page, int size) {}
 

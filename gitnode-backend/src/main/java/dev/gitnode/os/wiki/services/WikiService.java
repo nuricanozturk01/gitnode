@@ -127,6 +127,13 @@ public class WikiService {
   public WikiPage get(
       final String owner, final String repoName, final String slug, final @Nullable String rev)
       throws IOException {
+    return this.load(owner, repoName, slug, rev);
+  }
+
+  /** Uncached read; also used right after a write, where a cached copy would be stale. */
+  private WikiPage load(
+      final String owner, final String repoName, final String slug, final @Nullable String rev)
+      throws IOException {
     final var path = path(slug);
     try (final var repo = this.git.open(owner, repoName);
         final var walk = new RevWalk(repo)) {
@@ -153,7 +160,7 @@ public class WikiService {
       final String owner, final String repoName, final String slug, final int page)
       throws IOException {
     final var path = path(slug);
-    final var skip = Math.min(Math.max(page, 0), MAX_HISTORY_PAGE) * HISTORY_PAGE_SIZE;
+    final var skip = Math.clamp(page, 0, MAX_HISTORY_PAGE) * HISTORY_PAGE_SIZE;
     try (final var repo = this.git.open(owner, repoName);
         final var walk = new RevWalk(repo)) {
       final var head = repo.exactRef(REF);
@@ -223,7 +230,7 @@ public class WikiService {
       try (final var inserter = repo.newObjectInserter()) {
         final var blob = inserter.insert(Constants.OBJ_BLOB, bytes);
         if (blob.equals(current)) {
-          return this.get(owner, repoName, slug, null);
+          return this.load(owner, repoName, slug, null);
         }
         final var tree = this.treeWith(repo, inserter, parent, path, blob);
         final var defaultMessage = (current == null ? "Create " : "Update ") + titleOf(slug);
@@ -231,7 +238,7 @@ public class WikiService {
       }
     }
     this.evict(owner, repoName, slug);
-    return this.get(owner, repoName, slug, null);
+    return this.load(owner, repoName, slug, null);
   }
 
   public void delete(

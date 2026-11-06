@@ -15,7 +15,7 @@
  */
 package dev.gitnode.os.team.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.dtos.PageResponse;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import dev.gitnode.os.team.dtos.ChangeTeamRoleForm;
@@ -49,7 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class TeamController {
 
   private final TeamService teamService;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   @GetMapping("/me")
   public ResponseEntity<TeamMeInfo> me(

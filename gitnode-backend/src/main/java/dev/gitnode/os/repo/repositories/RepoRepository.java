@@ -39,20 +39,41 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
 
   Optional<Repo> findByOwnerIdAndName(UUID ownerId, String name);
 
-  @Query("SELECT r FROM Repo r JOIN FETCH r.owner WHERE r.id = :id")
-  Optional<Repo> findByIdWithOwner(@Param("id") UUID id);
-
-  Optional<Repo> findByOwnerUsernameAndName(String repoOwner, String repoName);
+  @Query(
+      "SELECT r FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+          + "WHERE o.username = :repoOwner AND r.name = :repoName")
+  Optional<Repo> findByOwnerUsernameAndName(
+      @Param("repoOwner") String repoOwner, @Param("repoName") String repoName);
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query("SELECT r FROM Repo r WHERE r.id = :id")
   Optional<Repo> findByIdForUpdate(UUID id);
 
-  Page<Repo> findAllByOwnerUsername(String ownerUsername, Pageable pageable);
+  @Query(
+      value =
+          "SELECT r FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+              + "WHERE o.username = :ownerUsername",
+      countQuery =
+          "SELECT COUNT(r) FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+              + "WHERE o.username = :ownerUsername")
+  Page<Repo> findAllByOwnerUsername(
+      @Param("ownerUsername") String ownerUsername, Pageable pageable);
 
-  Page<Repo> findAllByOwnerUsernameAndIsPrivateFalse(String ownerUsername, Pageable pageable);
+  @Query(
+      value =
+          "SELECT r FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+              + "WHERE o.username = :ownerUsername AND r.isPrivate = false",
+      countQuery =
+          "SELECT COUNT(r) FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+              + "WHERE o.username = :ownerUsername AND r.isPrivate = false")
+  Page<Repo> findAllByOwnerUsernameAndIsPrivateFalse(
+      @Param("ownerUsername") String ownerUsername, Pageable pageable);
 
-  boolean existsByOwnerUsernameAndName(String ownerUsername, String name);
+  @Query(
+      "SELECT COUNT(r) > 0 FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+          + "WHERE o.username = :ownerUsername AND r.name = :name")
+  boolean existsByOwnerUsernameAndName(
+      @Param("ownerUsername") String ownerUsername, @Param("name") String name);
 
   @Modifying
   @Query("update Repo r set r.defaultBranch = :branchName where r.id = :repoId")
@@ -69,33 +90,51 @@ public interface RepoRepository extends JpaRepository<Repo, UUID> {
   void decrementForkCount(@Param("id") UUID id);
 
   @Query(
-      "SELECT r FROM Repo r WHERE r.owner.username = :ownerUsername "
-          + "AND (r.isPrivate = false OR r.id IN :collaboratorRepoIds)")
+      value =
+          "SELECT r FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+              + "WHERE o.username = :ownerUsername "
+              + "AND (r.isPrivate = false OR r.id IN :collaboratorRepoIds)",
+      countQuery =
+          "SELECT COUNT(r) FROM Repo r JOIN Tenant o ON o.id = r.ownerId "
+              + "WHERE o.username = :ownerUsername "
+              + "AND (r.isPrivate = false OR r.id IN :collaboratorRepoIds)")
   Page<Repo> findVisibleReposByOwner(
       @Param("ownerUsername") String ownerUsername,
       @Param("collaboratorRepoIds") Collection<UUID> collaboratorRepoIds,
       Pageable pageable);
 
-  @Query("SELECT r.id, r.owner.id FROM Repo r WHERE r.id IN :ids")
+  @Query("SELECT r.id, r.ownerId FROM Repo r WHERE r.id IN :ids")
   List<Object[]> findOwnerIdsByRepoIds(@Param("ids") Set<UUID> ids);
 
   long countByCreatedAtAfter(Instant since);
 
-  @Query("SELECT r FROM Repo r JOIN FETCH r.owner WHERE r.createdAt >= :since")
+  @Query("SELECT r FROM Repo r WHERE r.createdAt >= :since")
   List<Repo> findAllByCreatedAtAfter(@Param("since") Instant since);
 
   @Query(
       "SELECT new dev.gitnode.os.repo.repositories.RepoStatRow("
-          + "r.owner.username, r.name, r.createdAt) "
-          + "FROM Repo r JOIN r.owner WHERE r.createdAt >= :since")
+          + "o.username, r.name, r.createdAt) "
+          + "FROM Repo r JOIN Tenant o ON o.id = r.ownerId WHERE r.createdAt >= :since")
   List<RepoStatRow> findRepoStatsSince(@Param("since") Instant since);
 
-  @Query("SELECT r FROM Repo r JOIN FETCH r.owner")
+  @Query("SELECT r FROM Repo r")
   Page<Repo> findAllWithOwner(Pageable pageable);
 
   @Query(
-      """
-      SELECT r FROM Repo r JOIN FETCH r.owner o
+      value =
+          """
+      SELECT r FROM Repo r JOIN Tenant o ON o.id = r.ownerId
+      WHERE (:owner = '' OR LOWER(o.username) LIKE LOWER(CONCAT('%', :owner, '%')))
+        AND (
+          :query = ''
+          OR LOWER(r.name) LIKE LOWER(CONCAT('%', :query, '%'))
+          OR LOWER(o.username) LIKE LOWER(CONCAT('%', :query, '%'))
+          OR LOWER(CONCAT(o.username, '/', r.name)) LIKE LOWER(CONCAT('%', :query, '%'))
+        )
+      """,
+      countQuery =
+          """
+      SELECT COUNT(r) FROM Repo r JOIN Tenant o ON o.id = r.ownerId
       WHERE (:owner = '' OR LOWER(o.username) LIKE LOWER(CONCAT('%', :owner, '%')))
         AND (
           :query = ''

@@ -104,7 +104,7 @@ class CollaboratorServiceTest {
     repo = new Repo();
     repo.setId(REPO_ID);
     repo.setName("my-repo");
-    repo.setOwner(owner);
+    repo.setOwnerId(owner.getId());
     repo.setPrivate(true);
     repo.setDefaultBranch("main");
     repo.setCreatedAt(Instant.now());

@@ -16,7 +16,7 @@
 package dev.gitnode.os.auth.controllers;
 
 import dev.gitnode.os.auth.services.TwoFactorService;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.shared.ratelimit.RateLimit;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -47,7 +47,7 @@ class TwoFactorController {
   record RecoveryCodes(List<String> recoveryCodes) {}
 
   private final TwoFactorService twoFactor;
-  private final JwtUtils jwt;
+  private final TokenUserResolver jwt;
 
   @GetMapping
   public TwoFactorService.Status status(

@@ -24,7 +24,7 @@ import dev.gitnode.os.actions.services.WorkflowExecutionService;
 import dev.gitnode.os.actions.services.WorkflowRunQueryService;
 import dev.gitnode.os.actions.services.WorkflowTriggerService;
 import dev.gitnode.os.actions.websocket.RunStatusSseRegistry;
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.repo.api.CollaboratorPermission;
 import dev.gitnode.os.repo.api.RepoAccessPort;
 import dev.gitnode.os.repo.api.RepoLookupPort;
@@ -65,7 +65,7 @@ public class WorkflowRunController {
   private final WorkflowTriggerService triggerService;
   private final WorkflowExecutionService executionService;
   private final RunStatusSseRegistry runStatusSseRegistry;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
 
   record PageResponse<T>(List<T> content, long totalElements, int totalPages, int page, int size) {}
 

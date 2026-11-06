@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
-import dev.gitnode.os.identity.repositories.TenantRepository;
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.services.JwtUtils;
 import dev.gitnode.os.shared.errorhandling.exceptions.TokenExpiredException;
 import jakarta.servlet.FilterChain;
@@ -40,7 +40,7 @@ class JwtAuthenticationFilterTest {
   void setUp() {
     this.jwtUtils = mock(JwtUtils.class);
     this.chain = mock(FilterChain.class);
-    this.filter = new JwtAuthenticationFilter(this.jwtUtils, mock(TenantRepository.class));
+    this.filter = new JwtAuthenticationFilter(this.jwtUtils, mock(TenantAccountStore.class));
     doThrow(new TokenExpiredException("invalidToken"))
         .when(this.jwtUtils)
         .verifyAndValidate("runner-jwt");

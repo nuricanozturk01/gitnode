@@ -16,7 +16,7 @@
 
 package dev.gitnode.os.pr.controllers;
 
-import dev.gitnode.os.identity.services.JwtUtils;
+import dev.gitnode.os.identity.api.TokenUserResolver;
 import dev.gitnode.os.pr.dtos.PrMetadata;
 import dev.gitnode.os.pr.services.PrMetadataService;
 import dev.gitnode.os.repo.api.RepoAccessPort;
@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PrMetadataController {
 
   private final PrMetadataService service;
-  private final JwtUtils jwtUtils;
+  private final TokenUserResolver jwtUtils;
   private final RepoAccessPort repoService;
 
   @GetMapping

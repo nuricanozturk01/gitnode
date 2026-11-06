@@ -16,8 +16,7 @@
 package dev.gitnode.os.pr.services;
 
 import dev.gitnode.os.pr.repositories.PrRepository;
-import dev.gitnode.os.shared.lock.DistributedLockService;
-import java.time.Duration;
+import dev.gitnode.os.shared.lock.SchedulerLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
@@ -31,29 +30,18 @@ import org.springframework.stereotype.Component;
 @NullMarked
 public class PrAutoMergeScheduler {
 
-  private static final String LOCK_KEY = "lock:pr:auto-merge";
-  private static final Duration LOCK_TTL = Duration.ofMinutes(2);
-
   private final PrRepository pullRequests;
   private final PrAutoMergeService autoMerge;
-  private final DistributedLockService lockService;
 
+  @SchedulerLock(name = "pr-auto-merge", ttlSeconds = 120)
   @Scheduled(fixedDelayString = "${gitnode.pr.auto-merge.interval:PT15S}")
   public void run() {
-    final var owner = this.lockService.generateOwner();
-    if (!this.lockService.tryLock(LOCK_KEY, owner, LOCK_TTL)) {
-      return;
-    }
-    try {
-      for (final var id : this.pullRequests.findAutoMergeCandidateIds()) {
-        try {
-          this.autoMerge.attempt(id);
-        } catch (final RuntimeException ex) {
-          log.warn("Auto-merge attempt for pull request {} failed: {}", id, ex.getMessage());
-        }
+    for (final var id : this.pullRequests.findAutoMergeCandidateIds()) {
+      try {
+        this.autoMerge.attempt(id);
+      } catch (final RuntimeException ex) {
+        log.warn("Auto-merge attempt for pull request {} failed: {}", id, ex.getMessage());
       }
-    } finally {
-      this.lockService.unlock(LOCK_KEY, owner);
     }
   }
 }

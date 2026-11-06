@@ -77,23 +77,15 @@ public class GitNodeArchitectureTest {
           .resideInAPackage("..controllers..");
 
   /**
-   * R5: only the owning module touches its own persistence packages (no cross-module repos).
-   * Explicitly allowed: repo, identity (owners), githttp and ssh (transport), and the identity
-   * satellites auth, profile and admin, which operate on the account itself (decision 2026-11-03).
+   * R5: only the owning module touches its own persistence packages (no cross-module repos). The
+   * two owners, repo and identity, are the only exceptions.
    */
   @ArchTest
   static final ArchRule persistenceStaysInsideModule =
       FreezingArchRule.freeze(
           noClasses()
               .that()
-              .resideOutsideOfPackages(
-                  "..repo..",
-                  "..identity..",
-                  "..githttp..",
-                  "..ssh..",
-                  "..auth..",
-                  "..profile..",
-                  "..admin..")
+              .resideOutsideOfPackages("..repo..", "..identity..")
               .and()
               .resideInAnyPackage("dev.gitnode.os.(*)..")
               .should()

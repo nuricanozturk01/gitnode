@@ -18,10 +18,10 @@
     allowedDependencies = {
       "events :: team",
       "identity :: api",
-      "identity :: security",
       "repo :: api",
       "repo :: dtos",
-      "shared :: *"
+      "shared :: errorhandling-exceptions",
+      "shared :: ratelimit"
     })
 package dev.gitnode.os.team;
 

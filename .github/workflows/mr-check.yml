@@ -38,6 +38,14 @@ jobs:
       - name: Build and Verify
         run: mvn -B -ntp verify
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: gitnode-backend/target/site/jacoco/
+          if-no-files-found: ignore
+
   gitnode-runner-checks:
     name: GitNode Runner Checks
     runs-on: ubuntu-latest

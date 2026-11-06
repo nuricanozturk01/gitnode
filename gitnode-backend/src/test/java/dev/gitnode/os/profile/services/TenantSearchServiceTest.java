@@ -20,8 +20,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.gitnode.os.identity.api.TenantAccountStore;
 import dev.gitnode.os.identity.entities.Tenant;
-import dev.gitnode.os.identity.repositories.TenantRepository;
 import dev.gitnode.os.profile.dtos.TenantSearchResult;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -35,20 +35,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @DisplayName("TenantSearchService unit tests")
 class TenantSearchServiceTest {
 
-  @Mock private TenantRepository tenantRepository;
+  @Mock private TenantAccountStore tenantRepository;
 
   @InjectMocks private TenantSearchService tenantSearchService;
 
   @Test
   @DisplayName("search returns empty list when repository returns no tenants")
   void search_returnsEmptyList_whenNoTenants() {
-    when(tenantRepository.findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc(anyString()))
-        .thenReturn(List.of());
+    when(tenantRepository.findTop10ByUsernamePrefix(anyString())).thenReturn(List.of());
 
     List<TenantSearchResult> result = tenantSearchService.search("foo");
 
     assertThat(result).isEmpty();
-    verify(tenantRepository).findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc("foo");
+    verify(tenantRepository).findTop10ByUsernamePrefix("foo");
   }
 
   @Test
@@ -63,8 +62,7 @@ class TenantSearchServiceTest {
     t2.setDisplayName(null);
     t2.setAvatarUrl(null);
 
-    when(tenantRepository.findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc("al"))
-        .thenReturn(List.of(t1, t2));
+    when(tenantRepository.findTop10ByUsernamePrefix("al")).thenReturn(List.of(t1, t2));
 
     List<TenantSearchResult> result = tenantSearchService.search("al");
 
@@ -80,11 +78,10 @@ class TenantSearchServiceTest {
   @Test
   @DisplayName("search delegates prefix to repository unchanged")
   void search_delegatesPrefixToRepository() {
-    when(tenantRepository.findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc("x"))
-        .thenReturn(List.of());
+    when(tenantRepository.findTop10ByUsernamePrefix("x")).thenReturn(List.of());
 
     tenantSearchService.search("x");
 
-    verify(tenantRepository).findTop10ByUsernameIgnoreCaseStartingWithOrderByUsernameAsc("x");
+    verify(tenantRepository).findTop10ByUsernamePrefix("x");
   }
 }
